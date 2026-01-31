@@ -140,6 +140,16 @@
                 <configuration>
                     <executable>java</executable>
                     <arguments>
+                        <argument>--add-opens</argument>
+                        <argument>java.desktop/sun.swing=ALL-UNNAMED</argument>
+                        <argument>--add-opens</argument>
+                        <argument>java.desktop/javax.swing.plaf.basic=ALL-UNNAMED</argument>
+                        <argument>--add-opens</argument>
+                        <argument>java.desktop/java.awt=ALL-UNNAMED</argument>
+                        <argument>--add-opens</argument>
+                        <argument>java.desktop/sun.awt=ALL-UNNAMED</argument>
+                        <argument>--add-opens</argument>
+                        <argument>java.base/java.lang=ALL-UNNAMED</argument>
                         <argument>-cp</argument>
                         <classpath/>
                         <argument>-Dorg.pepsoft.worldpainter.devMode=true</argument>

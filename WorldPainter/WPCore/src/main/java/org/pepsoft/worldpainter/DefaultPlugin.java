@@ -150,8 +150,25 @@ public class DefaultPlugin extends AbstractPlugin implements LayerProvider {
             ATTRIBUTE_MC_VERSION, new org.pepsoft.util.Version(1, 20, 5),
             ATTRIBUTE_EXPORT_DATA_VERSION, DATA_VERSION_MC_1_20_5);
 
+    public static final Platform HYTALE = new Platform(
+            "org.pepsoft.hytale",
+            "Hytale",
+            new int[] { 320 }, 320,
+            Integer.MIN_VALUE, Integer.MAX_VALUE, Integer.MIN_VALUE, Integer.MAX_VALUE,
+            0,
+            Arrays.asList(SURVIVAL, CREATIVE, ADVENTURE),
+            Arrays.asList(DEFAULT),
+            Arrays.asList(DIM_NORMAL),
+            EnumSet.of(BLOCK_BASED, NAME_BASED, SEED),
+            ATTRIBUTE_MC_VERSION, new org.pepsoft.util.Version(0, 0, 1));
+
     /**
      * The default set of Minecraft Java Edition-based platforms supported by WorldPainter, ordered by release date from old to new.
      */
     public static List<Platform> DEFAULT_JAVA_PLATFORMS = ImmutableList.of(JAVA_MCREGION, JAVA_ANVIL, JAVA_ANVIL_1_15, JAVA_ANVIL_1_17, JAVA_ANVIL_1_18, JAVA_ANVIL_1_19, JAVA_ANVIL_1_20_5);
+
+    /**
+     * The Hytale platform.
+     */
+    public static List<Platform> HYTALE_PLATFORM = ImmutableList.of(HYTALE);
 }

@@ -4,6 +4,7 @@
   "classes": [
     "org.pepsoft.worldpainter.DefaultPlugin",
     "org.pepsoft.worldpainter.platforms.JavaPlatformProvider",
+    "org.pepsoft.worldpainter.platforms.HytalePlatformProvider",
     "org.pepsoft.worldpainter.DefaultCustomObjectProvider"
   ]
 }
