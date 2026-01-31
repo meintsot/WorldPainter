@@ -1,0 +1,720 @@
+package org.pepsoft.worldpainter.hytale;
+
+import org.pepsoft.minecraft.Entity;
+import org.pepsoft.minecraft.Material;
+import org.pepsoft.minecraft.TileEntity;
+import org.pepsoft.worldpainter.Dimension;
+import org.pepsoft.worldpainter.objects.WPObject;
+
+import javax.vecmath.Point3i;
+import java.awt.*;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.*;
+import java.util.List;
+
+/**
+ * A WorldPainter object wrapper for Hytale prefabs.
+ * 
+ * <p>Hytale prefabs are stored as BSON files in {@code HytaleAssets/Server/Prefab/}
+ * and contain block data, entity placements, and metadata. This class provides:
+ * <ul>
+ *   <li>Loading prefabs from Hytale asset files</li>
+ *   <li>Converting between WPObject and Hytale prefab format</li>
+ *   <li>Support for rotation and mirroring</li>
+ *   <li>Entity marker preservation</li>
+ * </ul>
+ * 
+ * <p>The prefab format stores blocks using palette-based compression similar to
+ * chunk sections, with additional metadata for spawners, loot tables, etc.
+ * 
+ * @see WPObject
+ */
+public class HytalePrefabObject implements WPObject, Serializable {
+    
+    private static final long serialVersionUID = 1L;
+    
+    /** Prefab name/ID. */
+    private String name;
+    
+    /** Prefab dimensions. */
+    private int width, height, length;
+    
+    /** Block data array [y * width * length + z * width + x]. */
+    private HytaleBlock[] blocks;
+    
+    /** Entity positions and types. */
+    private List<PrefabEntity> entities;
+    
+    /** Spawn markers. */
+    private List<PrefabMarker> markers;
+    
+    /** Origin/anchor point offset. */
+    private Point3i origin;
+    
+    /** Optional layer assignments for blocks. */
+    private int[] layers;
+    
+    /** Custom properties/metadata. */
+    private Map<String, Object> properties;
+    
+    /** Source file path, if loaded from disk. */
+    private transient Path sourcePath;
+    
+    /**
+     * Create an empty prefab object.
+     */
+    public HytalePrefabObject(String name, int width, int height, int length) {
+        this.name = name;
+        this.width = width;
+        this.height = height;
+        this.length = length;
+        this.blocks = new HytaleBlock[width * height * length];
+        Arrays.fill(blocks, HytaleBlock.EMPTY);
+        this.entities = new ArrayList<>();
+        this.markers = new ArrayList<>();
+        this.origin = new Point3i(0, 0, 0);
+        this.properties = new HashMap<>();
+    }
+    
+    /**
+     * Private constructor for loading.
+     */
+    private HytalePrefabObject() {
+        this.entities = new ArrayList<>();
+        this.markers = new ArrayList<>();
+        this.properties = new HashMap<>();
+    }
+    
+    // ----- Block access -----
+    
+    /**
+     * Get block at position.
+     */
+    public HytaleBlock getHytaleBlock(int x, int y, int z) {
+        if (x < 0 || x >= width || y < 0 || y >= height || z < 0 || z >= length) {
+            return HytaleBlock.EMPTY;
+        }
+        return blocks[y * width * length + z * width + x];
+    }
+    
+    /**
+     * Set block at position.
+     */
+    public void setHytaleBlock(int x, int y, int z, HytaleBlock block) {
+        if (x < 0 || x >= width || y < 0 || y >= height || z < 0 || z >= length) {
+            return;
+        }
+        blocks[y * width * length + z * width + x] = block != null ? block : HytaleBlock.EMPTY;
+    }
+    
+    /**
+     * Get index for coordinates.
+     */
+    private int getIndex(int x, int y, int z) {
+        return y * width * length + z * width + x;
+    }
+    
+    // ----- Entity and marker access -----
+    
+    public List<PrefabEntity> getPrefabEntities() {
+        return entities;
+    }
+    
+    public void addEntity(PrefabEntity entity) {
+        entities.add(entity);
+    }
+    
+    public List<PrefabMarker> getMarkers() {
+        return markers;
+    }
+    
+    public void addMarker(PrefabMarker marker) {
+        markers.add(marker);
+    }
+    
+    // ----- WPObject implementation -----
+    
+    @Override
+    public String getName() {
+        return name;
+    }
+    
+    @Override
+    public void setName(String name) {
+        this.name = name;
+    }
+    
+    @Override
+    public Point3i getDimensions() {
+        return new Point3i(width, height, length);
+    }
+    
+    @Override
+    public Point3i getOrigin() {
+        return origin;
+    }
+    
+    @Override
+    public void setOrigin(Point3i origin) {
+        this.origin = origin != null ? origin : new Point3i(0, 0, 0);
+    }
+    
+    @Override
+    public Material getMaterial(int x, int y, int z) {
+        HytaleBlock block = getHytaleBlock(x, y, z);
+        // Convert Hytale block to closest Minecraft material for preview
+        return mapHytaleToMinecraft(block);
+    }
+    
+    @Override
+    public void setMaterial(int x, int y, int z, Material material) {
+        // Convert Minecraft material to Hytale block
+        HytaleBlock block = HytaleBlockMapping.toHytaleBlock(material);
+        setHytaleBlock(x, y, z, block);
+    }
+    
+    @Override
+    public boolean getMask(int x, int y, int z) {
+        return !getHytaleBlock(x, y, z).isEmpty();
+    }
+    
+    @Override
+    public List<Entity> getEntities() {
+        // Convert prefab entities to Minecraft entities for WPObject compatibility
+        List<Entity> result = new ArrayList<>();
+        for (PrefabEntity pe : entities) {
+            // Create a generic entity marker
+            Entity e = new Entity(pe.type, new double[] { pe.x, pe.y, pe.z }, 0, 0);
+            result.add(e);
+        }
+        return result;
+    }
+    
+    /**
+     * Get native Hytale entities from this prefab, offset by world coordinates.
+     * Converts prefab entities and markers to HytaleEntity objects suitable for BSON serialization.
+     * 
+     * @param offsetX World X offset to apply to entity positions.
+     * @param offsetY World Y offset to apply to entity positions.
+     * @param offsetZ World Z offset to apply to entity positions.
+     * @return List of HytaleEntity objects with world positions.
+     */
+    public List<HytaleEntity> getHytaleEntities(double offsetX, double offsetY, double offsetZ) {
+        List<HytaleEntity> result = new ArrayList<>();
+        
+        // Convert prefab entities
+        for (PrefabEntity pe : entities) {
+            HytaleEntity entity = HytaleEntity.of(
+                pe.type,
+                pe.x + offsetX,
+                pe.y + offsetY,
+                pe.z + offsetZ,
+                pe.yaw,
+                pe.pitch,
+                0.0f // roll
+            );
+            result.add(entity);
+        }
+        
+        // Convert spawn markers to HytaleSpawnMarker entities
+        for (PrefabMarker marker : markers) {
+            if ("spawn".equalsIgnoreCase(marker.type) || marker.type.toLowerCase().contains("spawn")) {
+                // Determine spawn marker type from marker data
+                String spawnMarkerId = "CreatureSpawn"; // Default
+                if (marker.data != null) {
+                    Object idObj = marker.data.get("spawnMarkerId");
+                    if (idObj != null) {
+                        spawnMarkerId = idObj.toString();
+                    }
+                }
+                
+                HytaleSpawnMarker spawnMarker = new HytaleSpawnMarker(
+                    spawnMarkerId,
+                    marker.x + offsetX,
+                    marker.y + offsetY,
+                    marker.z + offsetZ
+                );
+                
+                // Apply any additional properties from marker data
+                if (marker.data != null) {
+                    Object respawnTime = marker.data.get("respawnTime");
+                    if (respawnTime instanceof Number) {
+                        spawnMarker.setRespawnTime(((Number) respawnTime).intValue());
+                    }
+                    Object spawnCount = marker.data.get("spawnCount");
+                    if (spawnCount instanceof Number) {
+                        spawnMarker.setSpawnCount(((Number) spawnCount).intValue());
+                    }
+                    Object spawnRadius = marker.data.get("spawnRadius");
+                    if (spawnRadius instanceof Number) {
+                        spawnMarker.setSpawnRadius(((Number) spawnRadius).floatValue());
+                    }
+                }
+                
+                result.add(spawnMarker);
+            }
+        }
+        
+        return result;
+    }
+    
+    @Override
+    public List<TileEntity> getTileEntities() {
+        // Hytale doesn't have tile entities in the Minecraft sense
+        return Collections.emptyList();
+    }
+    
+    @Override
+    public Map<String, Serializable> getAttributes() {
+        Map<String, Serializable> attrs = new HashMap<>();
+        for (Map.Entry<String, Object> entry : properties.entrySet()) {
+            if (entry.getValue() instanceof Serializable) {
+                attrs.put(entry.getKey(), (Serializable) entry.getValue());
+            }
+        }
+        return attrs;
+    }
+    
+    @Override
+    public void setAttributes(Map<String, Serializable> attributes) {
+        properties.clear();
+        if (attributes != null) {
+            properties.putAll(attributes);
+        }
+    }
+    
+    @Override
+    public <T extends Serializable> void setAttribute(String key, T value) {
+        properties.put(key, value);
+    }
+    
+    @Override
+    public WPObject clone() {
+        try {
+            HytalePrefabObject copy = (HytalePrefabObject) super.clone();
+            copy.blocks = Arrays.copyOf(blocks, blocks.length);
+            copy.entities = new ArrayList<>(entities);
+            copy.markers = new ArrayList<>(markers);
+            copy.origin = new Point3i(origin);
+            copy.properties = new HashMap<>(properties);
+            return copy;
+        } catch (CloneNotSupportedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+    
+    @Override
+    public void prepareForExport(Dimension dimension) {
+        // No-op for Hytale prefabs
+    }
+    
+    // ----- Hytale-specific methods -----
+    
+    /**
+     * Get prefab dimensions.
+     */
+    public int getWidth() {
+        return width;
+    }
+    
+    public int getHeight() {
+        return height;
+    }
+    
+    public int getLength() {
+        return length;
+    }
+    
+    /**
+     * Get properties map.
+     */
+    public Map<String, Object> getProperties() {
+        return properties;
+    }
+    
+    public void setProperty(String key, Object value) {
+        properties.put(key, value);
+    }
+    
+    public Object getProperty(String key) {
+        return properties.get(key);
+    }
+    
+    /**
+     * Get source file path.
+     */
+    public Path getSourcePath() {
+        return sourcePath;
+    }
+    
+    // ----- Conversion helpers -----
+    
+    /**
+     * Map a Hytale block to closest Minecraft material for preview rendering.
+     */
+    private static Material mapHytaleToMinecraft(HytaleBlock block) {
+        if (block == null || block.isEmpty()) {
+            return Material.AIR;
+        }
+        
+        String id = block.getId();
+        
+        // Soil types
+        if (id.equals("Soil_Grass") || id.equals("Soil_Grass_Lush")) return Material.GRASS_BLOCK;
+        if (id.equals("Soil_Dirt")) return Material.DIRT;
+        if (id.equals("Soil_Sand")) return Material.SAND;
+        if (id.equals("Soil_Sand_Red")) return Material.RED_SAND;
+        if (id.equals("Soil_Gravel")) return Material.GRAVEL;
+        if (id.equals("Soil_Clay")) return Material.CLAY;
+        if (id.equals("Soil_Snow")) return Material.SNOW_BLOCK;
+        
+        // Rock types
+        if (id.startsWith("Rock_Stone")) return Material.STONE;
+        if (id.equals("Rock_Bedrock")) return Material.BEDROCK;
+        if (id.equals("Rock_Sandstone")) return Material.SANDSTONE;
+        if (id.equals("Rock_Ice")) return Material.ICE;
+        if (id.equals("Rock_Basalt")) return Material.BASALT;
+        
+        // Wood types
+        if (id.contains("_Oak_")) return Material.OAK_LOG;
+        if (id.contains("_Birch_")) return Material.BIRCH_LOG;
+        if (id.contains("_Fir_") || id.contains("_Cedar_")) return Material.SPRUCE_LOG;
+        if (id.contains("_Jungle_")) return Material.JUNGLE_LOG;
+        if (id.contains("_Planks")) return Material.OAK_PLANKS;
+        
+        // Leaves
+        if (id.contains("Leaves_Oak")) return Material.OAK_LEAVES;
+        if (id.contains("Leaves_Birch")) return Material.BIRCH_LEAVES;
+        if (id.contains("Leaves_Fir")) return Material.SPRUCE_LEAVES;
+        if (id.contains("Leaves_Jungle")) return Material.JUNGLE_LEAVES;
+        
+        // Ores
+        if (id.contains("Iron")) return Material.IRON_ORE;
+        if (id.contains("Gold")) return Material.GOLD_ORE;
+        if (id.contains("Copper")) return Material.COPPER_ORE;
+        
+        // Fluids
+        if (id.equals("Water_Source")) return Material.WATER;
+        if (id.equals("Lava_Source")) return Material.LAVA;
+        
+        // Default
+        return Material.STONE;
+    }
+    
+    // ----- Static factory methods -----
+    
+    /**
+     * Load a prefab from a Hytale BSON file.
+     * 
+     * <p>Hytale prefab file format (version 8):
+     * <ul>
+     *   <li>"version": int - format version</li>
+     *   <li>"anchorX", "anchorY", "anchorZ": int - origin offset</li>
+     *   <li>"blocks": array of {x, y, z, name, rotation?, support?, filler?, components?}</li>
+     *   <li>"fluids": array of {x, y, z, name, level}</li>
+     *   <li>"entities": array of entity data</li>
+     * </ul>
+     * 
+     * @param path Path to the .bson or .prefab file
+     * @return Loaded prefab object
+     * @throws IOException If file cannot be read or parsed
+     */
+    public static HytalePrefabObject loadFromFile(Path path) throws IOException {
+        byte[] data = Files.readAllBytes(path);
+        
+        // Parse BSON document
+        org.bson.BsonDocument doc;
+        try {
+            org.bson.BsonBinaryReader reader = new org.bson.BsonBinaryReader(
+                java.nio.ByteBuffer.wrap(data));
+            doc = new org.bson.codecs.BsonDocumentCodec().decode(reader, 
+                org.bson.codecs.DecoderContext.builder().build());
+            reader.close();
+        } catch (Exception e) {
+            throw new IOException("Failed to parse BSON prefab: " + path, e);
+        }
+        
+        HytalePrefabObject prefab = new HytalePrefabObject();
+        prefab.sourcePath = path;
+        prefab.name = path.getFileName().toString()
+            .replace(".bson", "")
+            .replace(".prefab", "");
+        
+        // Read anchor/origin
+        int anchorX = doc.containsKey("anchorX") ? doc.getInt32("anchorX").getValue() : 0;
+        int anchorY = doc.containsKey("anchorY") ? doc.getInt32("anchorY").getValue() : 0;
+        int anchorZ = doc.containsKey("anchorZ") ? doc.getInt32("anchorZ").getValue() : 0;
+        prefab.origin = new Point3i(anchorX, anchorY, anchorZ);
+        
+        // Read blocks to determine dimensions and fill data
+        org.bson.BsonValue blocksValue = doc.get("blocks");
+        if (blocksValue == null || !blocksValue.isArray()) {
+            // Empty prefab
+            prefab.width = 1;
+            prefab.height = 1;
+            prefab.length = 1;
+            prefab.blocks = new HytaleBlock[] { HytaleBlock.EMPTY };
+            return prefab;
+        }
+        
+        org.bson.BsonArray blocksArray = blocksValue.asArray();
+        
+        // First pass: determine dimensions
+        int minX = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE;
+        int minY = Integer.MAX_VALUE, maxY = Integer.MIN_VALUE;
+        int minZ = Integer.MAX_VALUE, maxZ = Integer.MIN_VALUE;
+        
+        for (org.bson.BsonValue bv : blocksArray) {
+            org.bson.BsonDocument blockDoc = bv.asDocument();
+            int x = blockDoc.getInt32("x").getValue();
+            int y = blockDoc.getInt32("y").getValue();
+            int z = blockDoc.getInt32("z").getValue();
+            
+            minX = Math.min(minX, x);
+            maxX = Math.max(maxX, x);
+            minY = Math.min(minY, y);
+            maxY = Math.max(maxY, y);
+            minZ = Math.min(minZ, z);
+            maxZ = Math.max(maxZ, z);
+        }
+        
+        // Handle empty blocks array
+        if (minX > maxX) {
+            prefab.width = 1;
+            prefab.height = 1;
+            prefab.length = 1;
+            prefab.blocks = new HytaleBlock[] { HytaleBlock.EMPTY };
+            return prefab;
+        }
+        
+        prefab.width = maxX - minX + 1;
+        prefab.height = maxY - minY + 1;
+        prefab.length = maxZ - minZ + 1;
+        prefab.blocks = new HytaleBlock[prefab.width * prefab.height * prefab.length];
+        Arrays.fill(prefab.blocks, HytaleBlock.EMPTY);
+        
+        // Second pass: populate blocks
+        for (org.bson.BsonValue bv : blocksArray) {
+            org.bson.BsonDocument blockDoc = bv.asDocument();
+            int x = blockDoc.getInt32("x").getValue() - minX;
+            int y = blockDoc.getInt32("y").getValue() - minY;
+            int z = blockDoc.getInt32("z").getValue() - minZ;
+            
+            String blockName = blockDoc.getString("name").getValue();
+            int rotation = blockDoc.containsKey("rotation") ? 
+                blockDoc.getInt32("rotation").getValue() : 0;
+            
+            HytaleBlock block = HytaleBlock.of(blockName, rotation);
+            prefab.blocks[y * prefab.width * prefab.length + z * prefab.width + x] = block;
+        }
+        
+        // Adjust origin relative to minimum bounds
+        prefab.origin = new Point3i(
+            anchorX - minX,
+            anchorY - minY,
+            anchorZ - minZ
+        );
+        
+        // Read fluids (optional)
+        org.bson.BsonValue fluidsValue = doc.get("fluids");
+        if (fluidsValue != null && fluidsValue.isArray()) {
+            org.bson.BsonArray fluidsArray = fluidsValue.asArray();
+            for (org.bson.BsonValue fv : fluidsArray) {
+                org.bson.BsonDocument fluidDoc = fv.asDocument();
+                int x = fluidDoc.getInt32("x").getValue() - minX;
+                int y = fluidDoc.getInt32("y").getValue() - minY;
+                int z = fluidDoc.getInt32("z").getValue() - minZ;
+                String fluidName = fluidDoc.getString("name").getValue();
+                
+                // Convert fluid to block if within bounds
+                if (x >= 0 && x < prefab.width && 
+                    y >= 0 && y < prefab.height && 
+                    z >= 0 && z < prefab.length) {
+                    HytaleBlock currentBlock = prefab.blocks[y * prefab.width * prefab.length + z * prefab.width + x];
+                    if (currentBlock.isEmpty()) {
+                        // Treat as fluid block
+                        prefab.blocks[y * prefab.width * prefab.length + z * prefab.width + x] = 
+                            HytaleBlock.of(fluidName);
+                    }
+                }
+            }
+        }
+        
+        // Read entities (optional)
+        org.bson.BsonValue entitiesValue = doc.get("entities");
+        if (entitiesValue != null && entitiesValue.isArray()) {
+            org.bson.BsonArray entitiesArray = entitiesValue.asArray();
+            for (org.bson.BsonValue ev : entitiesArray) {
+                org.bson.BsonDocument entityDoc = ev.asDocument();
+                // Try to extract position and type from entity data
+                // Entity format varies, so we do best-effort extraction
+                String entityType = "unknown";
+                double ex = 0, ey = 0, ez = 0;
+                
+                if (entityDoc.containsKey("EntityType")) {
+                    entityType = entityDoc.getString("EntityType").getValue();
+                }
+                if (entityDoc.containsKey("Position")) {
+                    org.bson.BsonValue posVal = entityDoc.get("Position");
+                    if (posVal.isDocument()) {
+                        org.bson.BsonDocument posDoc = posVal.asDocument();
+                        ex = posDoc.containsKey("X") ? posDoc.getDouble("X").getValue() : 0;
+                        ey = posDoc.containsKey("Y") ? posDoc.getDouble("Y").getValue() : 0;
+                        ez = posDoc.containsKey("Z") ? posDoc.getDouble("Z").getValue() : 0;
+                    }
+                }
+                
+                PrefabEntity pe = new PrefabEntity(entityType, ex - minX, ey - minY, ez - minZ);
+                prefab.entities.add(pe);
+            }
+        }
+        
+        return prefab;
+    }
+    
+    /**
+     * Save this prefab to a Hytale BSON file.
+     * 
+     * <p>Serializes using Hytale prefab format version 8.
+     * 
+     * @param path Path to write the .bson file
+     * @throws IOException If file cannot be written
+     */
+    public void saveToFile(Path path) throws IOException {
+        org.bson.BsonDocument doc = new org.bson.BsonDocument();
+        
+        // Write version and metadata
+        doc.put("version", new org.bson.BsonInt32(8));
+        doc.put("blockIdVersion", new org.bson.BsonInt32(1));
+        doc.put("anchorX", new org.bson.BsonInt32(origin.x));
+        doc.put("anchorY", new org.bson.BsonInt32(origin.y));
+        doc.put("anchorZ", new org.bson.BsonInt32(origin.z));
+        
+        // Write blocks
+        org.bson.BsonArray blocksArray = new org.bson.BsonArray();
+        for (int y = 0; y < height; y++) {
+            for (int z = 0; z < length; z++) {
+                for (int x = 0; x < width; x++) {
+                    HytaleBlock block = getHytaleBlock(x, y, z);
+                    if (!block.isEmpty()) {
+                        org.bson.BsonDocument blockDoc = new org.bson.BsonDocument();
+                        blockDoc.put("x", new org.bson.BsonInt32(x));
+                        blockDoc.put("y", new org.bson.BsonInt32(y));
+                        blockDoc.put("z", new org.bson.BsonInt32(z));
+                        blockDoc.put("name", new org.bson.BsonString(block.getId()));
+                        
+                        if (block.getRotation() != 0) {
+                            blockDoc.put("rotation", new org.bson.BsonInt32(block.getRotation()));
+                        }
+                        
+                        blocksArray.add(blockDoc);
+                    }
+                }
+            }
+        }
+        doc.put("blocks", blocksArray);
+        
+        // Write entities if any
+        if (!entities.isEmpty()) {
+            org.bson.BsonArray entitiesArray = new org.bson.BsonArray();
+            for (PrefabEntity pe : entities) {
+                org.bson.BsonDocument entityDoc = new org.bson.BsonDocument();
+                entityDoc.put("EntityType", new org.bson.BsonString(pe.type));
+                
+                org.bson.BsonDocument posDoc = new org.bson.BsonDocument();
+                posDoc.put("X", new org.bson.BsonDouble(pe.x));
+                posDoc.put("Y", new org.bson.BsonDouble(pe.y));
+                posDoc.put("Z", new org.bson.BsonDouble(pe.z));
+                entityDoc.put("Position", posDoc);
+                
+                entitiesArray.add(entityDoc);
+            }
+            doc.put("entities", entitiesArray);
+        }
+        
+        // Serialize to BSON bytes
+        org.bson.io.BasicOutputBuffer buffer = new org.bson.io.BasicOutputBuffer();
+        org.bson.BsonBinaryWriter writer = new org.bson.BsonBinaryWriter(buffer);
+        new org.bson.codecs.BsonDocumentCodec().encode(writer, doc, 
+            org.bson.codecs.EncoderContext.builder().build());
+        writer.close();
+        
+        // Write to file
+        Files.write(path, buffer.toByteArray());
+        this.sourcePath = path;
+    }
+    
+    /**
+     * Create a prefab from a WPObject.
+     */
+    public static HytalePrefabObject fromWPObject(WPObject wpObject) {
+        Point3i dims = wpObject.getDimensions();
+        HytalePrefabObject prefab = new HytalePrefabObject(
+            wpObject.getName(), dims.x, dims.y, dims.z);
+        
+        prefab.setOrigin(wpObject.getOrigin());
+        
+        // Copy blocks
+        for (int y = 0; y < dims.y; y++) {
+            for (int z = 0; z < dims.z; z++) {
+                for (int x = 0; x < dims.x; x++) {
+                    if (wpObject.getMask(x, y, z)) {
+                        Material mat = wpObject.getMaterial(x, y, z);
+                        prefab.setHytaleBlock(x, y, z, HytaleBlockMapping.toHytaleBlock(mat));
+                    }
+                }
+            }
+        }
+        
+        // Copy attributes
+        prefab.setAttributes(wpObject.getAttributes());
+        
+        return prefab;
+    }
+    
+    // ----- Inner classes -----
+    
+    /**
+     * Entity placement within a prefab.
+     */
+    public static class PrefabEntity implements Serializable {
+        private static final long serialVersionUID = 1L;
+        
+        public String type;
+        public double x, y, z;
+        public float yaw, pitch;
+        public Map<String, Object> properties;
+        
+        public PrefabEntity(String type, double x, double y, double z) {
+            this.type = type;
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            this.yaw = 0;
+            this.pitch = 0;
+            this.properties = new HashMap<>();
+        }
+    }
+    
+    /**
+     * Marker within a prefab (spawn points, interaction points, etc.)
+     */
+    public static class PrefabMarker implements Serializable {
+        private static final long serialVersionUID = 1L;
+        
+        public String type; // e.g., "spawn", "loot", "trigger"
+        public double x, y, z;
+        public Map<String, Object> data;
+        
+        public PrefabMarker(String type, double x, double y, double z) {
+            this.type = type;
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            this.data = new HashMap<>();
+        }
+    }
+}

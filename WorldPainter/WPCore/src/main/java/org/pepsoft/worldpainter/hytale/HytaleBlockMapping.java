@@ -6,17 +6,23 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Maps WorldPainter/Minecraft materials to Hytale block IDs (strings).
+ * Maps WorldPainter/Minecraft materials to Hytale block IDs (strings) and HytaleBlock objects.
  * 
- * Hytale uses string-based block IDs like "Rock_Stone" whereas WorldPainter uses Minecraft-style materials.
+ * <p>Hytale uses string-based block IDs like "Rock_Stone" whereas WorldPainter uses Minecraft-style materials.
  * Hytale block IDs have no namespace prefix - they use underscore-separated names like:
- * - Soil_Dirt, Soil_Grass, Soil_Sand
- * - Rock_Stone, Rock_Bedrock, Rock_Ice
- * - Wood_Oak_Trunk, Plant_Leaves_Oak
- * - Ore_Iron_Stone, Ore_Gold_Stone
- * - Water_Source, Lava_Source (fluids)
+ * <ul>
+ *   <li>Soil_Dirt, Soil_Grass, Soil_Sand</li>
+ *   <li>Rock_Stone, Rock_Bedrock, Rock_Ice</li>
+ *   <li>Wood_Oak_Trunk, Plant_Leaves_Oak</li>
+ *   <li>Ore_Iron_Stone, Ore_Gold_Stone</li>
+ *   <li>Water_Source, Lava_Source (fluids)</li>
+ * </ul>
  * 
- * This class provides the mapping between the two systems.
+ * <p>This class provides bidirectional mapping between Minecraft materials and Hytale blocks,
+ * as well as support for native HytaleBlock passthrough when working in Hytale-native mode.
+ * 
+ * @see HytaleBlock
+ * @see HytaleBlockRegistry
  */
 public class HytaleBlockMapping {
     
@@ -345,5 +351,138 @@ public class HytaleBlockMapping {
      */
     public static Map<String, String> getMappings() {
         return new HashMap<>(MINECRAFT_TO_HYTALE);
+    }
+    
+    // ----- Native HytaleBlock support -----
+    
+    /**
+     * Convert a WorldPainter Material to a HytaleBlock.
+     * This is the preferred method for new code working with native Hytale blocks.
+     * 
+     * @param material The Minecraft material to convert
+     * @return A HytaleBlock representing the closest Hytale equivalent
+     */
+    public static HytaleBlock toHytaleBlock(Material material) {
+        String hytaleId = toHytale(material);
+        return HytaleBlock.of(hytaleId);
+    }
+    
+    /**
+     * Convert a WorldPainter Material to a HytaleBlock with rotation.
+     * Attempts to derive rotation from the material's properties.
+     * 
+     * @param material The Minecraft material to convert
+     * @return A HytaleBlock with appropriate rotation
+     */
+    public static HytaleBlock toHytaleBlockWithRotation(Material material) {
+        String hytaleId = toHytale(material);
+        int rotation = deriveRotation(material);
+        return HytaleBlock.of(hytaleId, rotation);
+    }
+    
+    /**
+     * Derive Hytale rotation from Minecraft material properties.
+     * 
+     * <p>Hytale rotation is encoded as rx*16 + ry*4 + rz where each component
+     * is 0-3 representing 0°, 90°, 180°, 270° rotations.
+     * 
+     * @param material The material to derive rotation from
+     * @return A rotation value 0-63
+     */
+    private static int deriveRotation(Material material) {
+        if (material == null || material.getProperties() == null) {
+            return 0;
+        }
+        
+        Map<String, String> props = material.getProperties();
+        
+        // Handle axis-oriented blocks (logs, pillars)
+        String axis = props.get("axis");
+        if (axis != null) {
+            switch (axis) {
+                case "y": return 0;          // Vertical (default)
+                case "x": return 1 * 4;      // Rotated to point along X (ry=1)
+                case "z": return 1;          // Rotated to point along Z (rz=1)
+            }
+        }
+        
+        // Handle facing-oriented blocks (stairs, buttons, etc.)
+        String facing = props.get("facing");
+        if (facing != null) {
+            switch (facing) {
+                case "north": return 0;      // Default facing
+                case "south": return 2 * 4;  // ry=2 (180° around Y)
+                case "east": return 1 * 4;   // ry=1 (90° around Y)
+                case "west": return 3 * 4;   // ry=3 (270° around Y)
+                case "up": return 0;
+                case "down": return 2 * 16;  // rx=2 (180° around X, flipped)
+            }
+        }
+        
+        // Handle half blocks (slabs, stairs)
+        String half = props.get("half");
+        if ("top".equals(half)) {
+            return 2 * 16; // Flip upside down
+        }
+        
+        return 0;
+    }
+    
+    /**
+     * Check if a Hytale block ID is valid (registered in the registry or known).
+     * 
+     * @param hytaleId The Hytale block ID to check
+     * @return true if the block is recognized
+     */
+    public static boolean isValidHytaleBlock(String hytaleId) {
+        if (hytaleId == null || hytaleId.isEmpty()) {
+            return false;
+        }
+        // Check registry first
+        HytaleBlockRegistry registry = HytaleBlockRegistry.getInstance();
+        if (registry.contains(hytaleId)) {
+            return true;
+        }
+        // Also check our reverse mapping
+        return HYTALE_TO_MINECRAFT.containsKey(hytaleId);
+    }
+    
+    /**
+     * Get the numeric index for a HytaleBlock, suitable for palette serialization.
+     * This delegates to HytaleBlockRegistry for consistent indexing.
+     * 
+     * @param block The HytaleBlock to get an index for
+     * @return A numeric index for the block
+     */
+    public static int getBlockIndex(HytaleBlock block) {
+        return HytaleBlockRegistry.getInstance().getIndex(block.getId());
+    }
+    
+    /**
+     * Get a HytaleBlock from a numeric index.
+     * 
+     * @param index The palette index
+     * @return The HytaleBlock at that index
+     */
+    public static HytaleBlock getBlockFromIndex(int index) {
+        String id = HytaleBlockRegistry.getInstance().getId(index);
+        return HytaleBlock.of(id);
+    }
+    
+    /**
+     * Convert a HytaleTerrain to a HytaleBlock at the given position.
+     * 
+     * @param terrain The terrain type
+     * @param seed World seed
+     * @param x X coordinate
+     * @param y Y coordinate  
+     * @param z Z coordinate (depth)
+     * @return The HytaleBlock to place
+     */
+    public static HytaleBlock fromTerrain(HytaleTerrain terrain, long seed, int x, int y, int z) {
+        if (terrain == null) {
+            return HytaleBlock.of(HY_STONE);
+        }
+        return terrain.getBlock(seed, x, y, z);
     }
 }

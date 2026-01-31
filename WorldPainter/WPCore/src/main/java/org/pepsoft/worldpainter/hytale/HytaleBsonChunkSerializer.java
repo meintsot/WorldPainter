@@ -83,16 +83,16 @@ public class HytaleBsonChunkSerializer {
         components.put(COMP_WORLD_CHUNK, createWorldChunkBson());
         
         // Add BlockHealthChunk component
-        components.put(COMP_BLOCK_HEALTH_CHUNK, createBlockHealthChunkBson());
+        components.put(COMP_BLOCK_HEALTH_CHUNK, createBlockHealthChunkBson(chunk));
         
         // Add EnvironmentChunk component
-        components.put(COMP_ENVIRONMENT_CHUNK, createEnvironmentChunkBson());
+        components.put(COMP_ENVIRONMENT_CHUNK, createEnvironmentChunkBson(chunk));
         
         // Add BlockChunk component (heightmap and tintmap)
         components.put(COMP_BLOCK_CHUNK, createBlockChunkBson(chunk));
         
-        // Add EntityChunk component (empty for terrain-only export)
-        components.put(COMP_ENTITY_CHUNK, createEntityChunkBson());
+        // Add EntityChunk component
+        components.put(COMP_ENTITY_CHUNK, createEntityChunkBson(chunk));
         
         root.put("Components", components);
         
@@ -127,8 +127,8 @@ public class HytaleBsonChunkSerializer {
             short[] heightmap = chunk.getHeightmap();
             writeShortBytePalette(buf, heightmap);
             
-            // tint (IntBytePalette) - all zeros for now
-            int[] tintmap = new int[32 * 32];
+            // tint (IntBytePalette) - tint colors from chunk data
+            int[] tintmap = chunk.getTints();
             writeIntBytePalette(buf, tintmap);
             
             byte[] data = new byte[buf.readableBytes()];
@@ -225,12 +225,25 @@ public class HytaleBsonChunkSerializer {
     }
     
     /**
-     * Create EntityChunk BSON (empty - no entities).
-     * Format: { "Entities": [] }
+     * Create EntityChunk BSON with native Hytale entities.
+     * Format: { "Entities": [array of entity holder BSON] }
+     * 
+     * Each entity holder contains:
+     * - "Value": { "EntityType": string, "Components": { ... } }
+     * 
+     * @param chunk The chunk containing entities to serialize.
+     * @return BSON document for entity chunk data.
      */
-    private static BsonDocument createEntityChunkBson() {
+    private static BsonDocument createEntityChunkBson(HytaleChunk chunk) {
         BsonDocument doc = new BsonDocument();
-        doc.put("Entities", new BsonArray());
+        BsonArray entities = new BsonArray();
+        
+        // Serialize native Hytale entities
+        for (HytaleEntity entity : chunk.getHytaleEntities()) {
+            entities.add(entity.toBson());
+        }
+        
+        doc.put("Entities", entities);
         return doc;
     }
     
@@ -246,22 +259,54 @@ public class HytaleBsonChunkSerializer {
     
     /**
      * Create BlockHealthChunk BSON.
-     * Format: 
-     * - "Data": byte array [version(1), healthMapSize(4), fragilityMapSize(4)]
+     * Format (version 2):
+     * - byte: version (2)
+     * - int: healthMapSize
+     * - For each health entry:
+     *   - int x, int y, int z
+     *   - float health (0.0-1.0)
+     *   - long lastDamageTime
+     * - int: fragilityMapSize (always 0 for terrain)
+     * 
+     * @param chunk The chunk containing block health data.
      */
-    private static BsonDocument createBlockHealthChunkBson() {
+    private static BsonDocument createBlockHealthChunkBson(HytaleChunk chunk) {
         BsonDocument doc = new BsonDocument();
         
-        // Serialize: version byte + empty health map + empty fragility map
-        ByteBuf buf = ByteBufAllocator.DEFAULT.buffer(9);
+        Map<Integer, HytaleChunk.BlockHealthData> healthMap = chunk.getBlockHealthMap();
+        
+        // Calculate required buffer size
+        // version(1) + healthMapSize(4) + entries(healthMap.size() * 24) + fragilityMapSize(4)
+        int bufferSize = 1 + 4 + (healthMap.size() * 24) + 4;
+        
+        ByteBuf buf = ByteBufAllocator.DEFAULT.buffer(bufferSize);
         try {
             buf.writeByte(2);  // version
-            buf.writeInt(0);   // blockHealthMap.size()
-            buf.writeInt(0);   // blockFragilityMap.size()
+            buf.writeInt(healthMap.size());
             
-            byte[] data = new byte[buf.readableBytes()];
-            buf.readBytes(data);
-            doc.put("Data", new BsonBinary(data));
+            // Write health entries
+            for (Map.Entry<Integer, HytaleChunk.BlockHealthData> entry : healthMap.entrySet()) {
+                int key = entry.getKey();
+                HytaleChunk.BlockHealthData data = entry.getValue();
+                
+                // Unpack coordinates from key
+                int x = HytaleChunk.unpackX(key);
+                int y = HytaleChunk.unpackY(key);
+                int z = HytaleChunk.unpackZ(key);
+                
+                buf.writeInt(x);
+                buf.writeInt(y);
+                buf.writeInt(z);
+                buf.writeFloat(data.health);
+                buf.writeLong(data.lastDamageTime);
+            }
+            
+            // Fragility map (empty - not used for terrain generation)
+            buf.writeInt(0);
+            
+            byte[] dataBytes = new byte[buf.readableBytes()];
+            buf.readBytes(dataBytes);
+            doc.put("Data", new BsonBinary(dataBytes));
         } finally {
             buf.release();
         }
@@ -270,32 +315,44 @@ public class HytaleBsonChunkSerializer {
     }
     
     /**
-     * Create EnvironmentChunk BSON with default environment.
+     * Create EnvironmentChunk BSON with environments from chunk data.
      * Format:
      * - "Data": byte array with environment mappings and column data
      */
-    private static BsonDocument createEnvironmentChunkBson() {
+    private static BsonDocument createEnvironmentChunkBson(HytaleChunk chunk) {
         BsonDocument doc = new BsonDocument();
         
         ByteBuf buf = ByteBufAllocator.DEFAULT.buffer();
         try {
-            // Environment ID 0 = "Default"
-            String defaultEnv = "Default";
-            int defaultEnvId = 0;
+            String[] environments = chunk.getEnvironments();
+            
+            // Build environment palette from unique environments in chunk
+            List<String> palette = new ArrayList<>();
+            Map<String, Integer> envToId = new HashMap<>();
+            
+            for (String env : environments) {
+                if (!envToId.containsKey(env)) {
+                    envToId.put(env, palette.size());
+                    palette.add(env);
+                }
+            }
             
             // Write environment count
-            buf.writeInt(1);
+            buf.writeInt(palette.size());
             
-            // Write mapping: id + name
-            buf.writeInt(defaultEnvId);
-            writeUtf(buf, defaultEnv);
+            // Write mappings: id + name
+            for (int i = 0; i < palette.size(); i++) {
+                buf.writeInt(i);
+                writeUtf(buf, palette.get(i));
+            }
             
             // Write 1024 columns (32x32), each column uses EnvironmentColumn.serialize format:
             // int n (maxYs count), then n maxYs, then n+1 values.
-            // For a single environment throughout the column: n=0, values[0]=defaultEnvId
+            // For a single environment throughout the column: n=0, values[0]=envId
             for (int i = 0; i < 1024; i++) {
-                buf.writeInt(0); // maxYs size
-                buf.writeInt(defaultEnvId); // single value
+                int envId = envToId.get(environments[i]);
+                buf.writeInt(0); // maxYs size (no Y-layer transitions)
+                buf.writeInt(envId); // single value for entire column
             }
             
             byte[] data = new byte[buf.readableBytes()];
@@ -319,7 +376,7 @@ public class HytaleBsonChunkSerializer {
         
         HytaleChunk.HytaleSection[] chunkSections = chunk.getSections();
         for (int i = 0; i < HytaleChunk.SECTION_COUNT; i++) {
-            sections.add(createSectionHolderBson(chunkSections[i], i));
+            sections.add(createSectionHolderBson(chunkSections[i], i, chunk));
         }
         
         doc.put("Sections", sections);
@@ -330,8 +387,12 @@ public class HytaleBsonChunkSerializer {
      * Create a section holder BSON document.
      * Each section holder has Components containing BlockSection, FluidSection, ChunkSection, BlockPhysics.
      * Order matches real Hytale: ChunkSection, BlockPhysics, Fluid, Block
+     * 
+     * @param section The section data.
+     * @param sectionY The section index (0-9).
+     * @param chunk The parent chunk, needed for heightmap-based lighting.
      */
-    private static BsonDocument createSectionHolderBson(HytaleChunk.HytaleSection section, int sectionY) {
+    private static BsonDocument createSectionHolderBson(HytaleChunk.HytaleSection section, int sectionY, HytaleChunk chunk) {
         BsonDocument holder = new BsonDocument();
         BsonDocument components = new BsonDocument();
         
@@ -345,7 +406,7 @@ public class HytaleBsonChunkSerializer {
         components.put(COMP_FLUID_SECTION, createFluidSectionBson(section));
         
         // Add BlockSection
-        components.put(COMP_BLOCK_SECTION, createBlockSectionBson(section));
+        components.put(COMP_BLOCK_SECTION, createBlockSectionBson(section, sectionY, chunk));
         
         holder.put("Components", components);
         return holder;
@@ -406,8 +467,12 @@ public class HytaleBsonChunkSerializer {
      * - ChunkLightData: global light
      * - short: local change counter
      * - short: global change counter
+     * 
+     * @param section The section data.
+     * @param sectionY The section index (0-9).
+     * @param chunk The parent chunk, needed for heightmap-based lighting.
      */
-    private static BsonDocument createBlockSectionBson(HytaleChunk.HytaleSection section) {
+    private static BsonDocument createBlockSectionBson(HytaleChunk.HytaleSection section, int sectionY, HytaleChunk chunk) {
         BsonDocument doc = new BsonDocument();
         doc.put("Version", new BsonInt32(BLOCK_SECTION_VERSION));
         
@@ -444,12 +509,12 @@ public class HytaleBsonChunkSerializer {
                 buf.writeByte(PALETTE_TYPE_EMPTY);
                 // Empty filler section
                 buf.writeByte(PALETTE_TYPE_EMPTY);
-                // Empty rotation section
-                buf.writeByte(PALETTE_TYPE_EMPTY);
-                // Local light (full skylight)
-                writeFullSkyLightData(buf);
-                // Global light (full skylight)
-                writeFullSkyLightData(buf);
+                // Rotation section - use shared method
+                writeRotationSection(buf, section);
+                // Local light (calculated from heightmap)
+                writeCalculatedSkyLightData(buf, chunk, sectionY);
+                // Global light (same as local for now)
+                writeCalculatedSkyLightData(buf, chunk, sectionY);
                 // Change counters
                 buf.writeShort(0);
                 buf.writeShort(0);
@@ -504,14 +569,14 @@ public class HytaleBsonChunkSerializer {
                 // Filler section (empty)
                 buf.writeByte(PALETTE_TYPE_EMPTY);
 
-                // Rotation section (empty)
-                buf.writeByte(PALETTE_TYPE_EMPTY);
+                // Rotation section - write actual rotations if present
+                writeRotationSection(buf, section);
 
-                // Local light (full skylight)
-                writeFullSkyLightData(buf);
+                // Local light (calculated from heightmap)
+                writeCalculatedSkyLightData(buf, chunk, sectionY);
 
-                // Global light (full skylight)
-                writeFullSkyLightData(buf);
+                // Global light (same as local for now)
+                writeCalculatedSkyLightData(buf, chunk, sectionY);
 
                 // Change counters
                 buf.writeShort(0);
@@ -539,6 +604,74 @@ public class HytaleBsonChunkSerializer {
             int idx2 = (i + 1 < blockIndices.length) ? (blockIndices[i + 1] & 0x0F) : 0;
             // Pack two nibbles into one byte (low nibble first)
             buf.writeByte(idx1 | (idx2 << 4));
+        }
+    }
+    
+    /**
+     * Write the rotation section for a block section.
+     * Rotation values are 0-63, representing rx*16 + ry*4 + rz where each axis is 0-3 (90° increments).
+     */
+    private static void writeRotationSection(ByteBuf buf, HytaleChunk.HytaleSection section) {
+        if (!section.hasRotations()) {
+            // All rotations are 0, write empty palette
+            buf.writeByte(PALETTE_TYPE_EMPTY);
+            return;
+        }
+        
+        byte[] rotations = section.getRotations();
+        
+        // Build rotation palette
+        List<Byte> palette = new ArrayList<>();
+        Map<Byte, Integer> paletteIndex = new HashMap<>();
+        int[] rotationIndices = new int[rotations.length];
+        int[] counts;
+        
+        for (int i = 0; i < rotations.length; i++) {
+            byte rotation = rotations[i];
+            Integer idx = paletteIndex.get(rotation);
+            if (idx == null) {
+                idx = palette.size();
+                paletteIndex.put(rotation, idx);
+                palette.add(rotation);
+            }
+            rotationIndices[i] = idx;
+        }
+        
+        // Count occurrences for each palette entry
+        counts = new int[palette.size()];
+        for (int idx : rotationIndices) {
+            counts[idx]++;
+        }
+        
+        // Determine palette type based on size
+        int paletteType;
+        if (palette.size() <= 16) {
+            paletteType = PALETTE_TYPE_HALF_BYTE;
+        } else {
+            paletteType = PALETTE_TYPE_BYTE;
+        }
+        
+        buf.writeByte(paletteType);
+        
+        // Write palette entries
+        // Format: count (short), then for each: index (byte), value (byte), count (short)
+        buf.writeShort(palette.size());
+        for (int i = 0; i < palette.size(); i++) {
+            buf.writeByte(i); // internal palette index
+            buf.writeByte(palette.get(i)); // rotation value (0-63)
+            buf.writeShort(counts[i]); // count
+        }
+        
+        // Write raw rotation data based on palette type
+        switch (paletteType) {
+            case PALETTE_TYPE_HALF_BYTE:
+                writeHalfByteBlockData(buf, rotationIndices);
+                break;
+            case PALETTE_TYPE_BYTE:
+                for (int idx : rotationIndices) {
+                    buf.writeByte(idx);
+                }
+                break;
         }
     }
     
@@ -572,6 +705,73 @@ public class HytaleBsonChunkSerializer {
         for (int i = 0; i < 8; i++) {
             buf.writeShort(value);
         }
+    }
+    
+    /**
+     * Write calculated sky light data based on heightmap.
+     * Underground blocks (below heightmap) get sky=0, surface/sky blocks get sky=15.
+     * 
+     * @param buf Output buffer.
+     * @param chunk The chunk containing heightmap data.
+     * @param sectionY The section index (0-9).
+     */
+    private static void writeCalculatedSkyLightData(ByteBuf buf, HytaleChunk chunk, int sectionY) {
+        int sectionBaseY = sectionY * HytaleChunk.SECTION_HEIGHT;
+        
+        // Check if entire section is above or below terrain for optimization
+        boolean allAbove = true;
+        boolean allBelow = true;
+        
+        for (int x = 0; x < HytaleChunk.CHUNK_SIZE; x++) {
+            for (int z = 0; z < HytaleChunk.CHUNK_SIZE; z++) {
+                int height = chunk.getHeight(x, z);
+                if (sectionBaseY < height) {
+                    allAbove = false;
+                }
+                if (sectionBaseY + HytaleChunk.SECTION_HEIGHT - 1 >= height) {
+                    allBelow = false;
+                }
+            }
+        }
+        
+        if (allAbove) {
+            // Entire section is above terrain - full skylight
+            writeFullSkyLightData(buf);
+            return;
+        }
+        
+        if (allBelow) {
+            // Entire section is below terrain - no skylight
+            short noLight = HytaleChunkLightDataBuilder.NO_LIGHT;
+            buf.writeShort(0); // changeId
+            buf.writeBoolean(true); // hasData
+            buf.writeInt(17); // octree length
+            buf.writeByte(0); // mask: no children
+            for (int i = 0; i < 8; i++) {
+                buf.writeShort(noLight);
+            }
+            return;
+        }
+        
+        // Mixed section - need to calculate per-block
+        HytaleChunkLightDataBuilder builder = new HytaleChunkLightDataBuilder((short) 0);
+        
+        for (int x = 0; x < HytaleChunk.CHUNK_SIZE; x++) {
+            for (int z = 0; z < HytaleChunk.CHUNK_SIZE; z++) {
+                int height = chunk.getHeight(x, z);
+                
+                for (int y = 0; y < HytaleChunk.SECTION_HEIGHT; y++) {
+                    int worldY = sectionBaseY + y;
+                    // Sky light is 15 at or above heightmap, 0 below
+                    int skyValue = (worldY >= height) ? 15 : 0;
+                    builder.setSkyLight(x, y, z, skyValue);
+                }
+            }
+        }
+        
+        // Serialize the octree
+        builder.serialize(buf);
+        builder.release();
     }
 
     /**
@@ -607,52 +807,77 @@ public class HytaleBsonChunkSerializer {
     private static BsonDocument createFluidSectionBson(HytaleChunk.HytaleSection section) {
         BsonDocument doc = new BsonDocument();
         
+        List<String> fluidPalette = section.getFluidPalette();
+        byte[] fluidIds = section.getFluidIds();
+        byte[] fluidLevels = section.getFluidLevels();
+        
+        // Also check block materials for water/lava (backward compatibility)
         Material[] blocks = section.getBlocks();
-        boolean hasWater = false;
-        boolean hasLava = false;
+        boolean hasWaterFromBlocks = false;
+        boolean hasLavaFromBlocks = false;
         for (Material block : blocks) {
             if (block == Material.WATER) {
-                hasWater = true;
+                hasWaterFromBlocks = true;
             } else if (block == Material.LAVA) {
-                hasLava = true;
+                hasLavaFromBlocks = true;
             }
-            if (hasWater && hasLava) {
-                break;
+        }
+        
+        // Build combined palette
+        List<String> palette = new ArrayList<>();
+        Map<String, Integer> paletteIndex = new HashMap<>();
+        palette.add("Empty");
+        paletteIndex.put("Empty", 0);
+        
+        // Add fluids from section palette
+        for (int i = 1; i < fluidPalette.size(); i++) {
+            String fluid = fluidPalette.get(i);
+            if (!paletteIndex.containsKey(fluid)) {
+                paletteIndex.put(fluid, palette.size());
+                palette.add(fluid);
             }
+        }
+        
+        // Add water/lava if detected in blocks but not in fluid palette
+        if (hasWaterFromBlocks && !paletteIndex.containsKey(HytaleBlockMapping.HY_WATER)) {
+            paletteIndex.put(HytaleBlockMapping.HY_WATER, palette.size());
+            palette.add(HytaleBlockMapping.HY_WATER);
+        }
+        if (hasLavaFromBlocks && !paletteIndex.containsKey(HytaleBlockMapping.HY_LAVA)) {
+            paletteIndex.put(HytaleBlockMapping.HY_LAVA, palette.size());
+            palette.add(HytaleBlockMapping.HY_LAVA);
         }
         
         ByteBuf buf = ByteBufAllocator.DEFAULT.buffer();
         try {
-            if (!hasWater && !hasLava) {
-                // Empty palette type
+            if (palette.size() == 1 && !hasWaterFromBlocks && !hasLavaFromBlocks) {
+                // Empty palette type - no fluids
                 buf.writeByte(PALETTE_TYPE_EMPTY);
-                // No level data
                 buf.writeBoolean(false);
             } else {
-                // Build fluid palette: Empty + Water + Lava (if present)
-                List<String> palette = new ArrayList<>();
-                palette.add("Empty");
-                if (hasWater) {
-                    palette.add(HytaleBlockMapping.HY_WATER);
-                }
-                if (hasLava) {
-                    palette.add(HytaleBlockMapping.HY_LAVA);
-                }
-                
                 int paletteType = PALETTE_TYPE_HALF_BYTE;
                 buf.writeByte(paletteType);
                 
-                // Build indices and counts
+                // Build indices array, combining explicit fluids and block-based water/lava
                 int[] indices = new int[blocks.length];
                 int[] counts = new int[palette.size()];
+                
                 for (int i = 0; i < blocks.length; i++) {
-                    Material block = blocks[i];
                     int idx = 0;
-                    if (block == Material.WATER) {
-                        idx = hasWater ? 1 : 0;
-                    } else if (block == Material.LAVA) {
-                        idx = hasWater ? 2 : 1;
+                    
+                    // First check explicit fluid storage
+                    if (fluidIds[i] != 0 && fluidIds[i] < fluidPalette.size()) {
+                        String fluidName = fluidPalette.get(fluidIds[i] & 0xFF);
+                        idx = paletteIndex.getOrDefault(fluidName, 0);
                     }
+                    // Then check block materials for water/lava
+                    else if (blocks[i] == Material.WATER) {
+                        idx = paletteIndex.getOrDefault(HytaleBlockMapping.HY_WATER, 0);
+                    }
+                    else if (blocks[i] == Material.LAVA) {
+                        idx = paletteIndex.getOrDefault(HytaleBlockMapping.HY_LAVA, 0);
+                    }
+                    
                     indices[i] = idx;
                     counts[idx]++;
                 }
@@ -673,7 +898,9 @@ public class HytaleBsonChunkSerializer {
                 byte[] levelData = new byte[16384];
                 for (int i = 0; i < indices.length; i++) {
                     if (indices[i] != 0) {
-                        setLevelNibble(levelData, i, 8);
+                        // Use explicit fluid level if available, otherwise default to 8 (full)
+                        int level = (fluidLevels[i] & 0xF) != 0 ? (fluidLevels[i] & 0xF) : 8;
+                        setLevelNibble(levelData, i, level);
                     }
                 }
                 buf.writeBytes(levelData);

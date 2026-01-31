@@ -519,6 +519,9 @@ public class HytaleWorldExporter implements WorldExporter {
                     // Pass original block coordinates so tile lookups work correctly
                     populateChunkFromTile(chunk, dimension, tile, originalBlockX, originalBlockZ);
                     
+                    // Add entities (spawn markers, etc.)
+                    addEntitiesToChunk(chunk, dimension, hyChunkX, hyChunkZ);
+                    
                     // Write to region file
                     regionFile.writeChunk(localX, localZ, chunk);
                     
@@ -541,9 +544,11 @@ public class HytaleWorldExporter implements WorldExporter {
     
     /**
      * Populate a Hytale chunk with terrain data from WorldPainter dimension.
+     * Uses HytaleBlockMapping for proper block conversion and sets biomes.
      */
     private void populateChunkFromTile(HytaleChunk chunk, Dimension dimension, Tile tile, int worldBlockX, int worldBlockZ) {
         int waterLevel = tile.getWaterLevel(0, 0);
+        Terrain terrain = tile.getTerrain(0, 0);
         
         // Hytale chunk is 32x32 blocks
         for (int localX = 0; localX < HytaleChunk.CHUNK_SIZE; localX++) {
@@ -555,31 +560,52 @@ public class HytaleWorldExporter implements WorldExporter {
                 int tileLocalX = worldX & 0x7F; // % 128
                 int tileLocalZ = worldZ & 0x7F;
                 
-                // Get terrain height
+                // Get terrain height and terrain type
                 int height = tile.getIntHeight(tileLocalX, tileLocalZ);
                 int localWaterLevel = tile.getWaterLevel(tileLocalX, tileLocalZ);
+                Terrain localTerrain = tile.getTerrain(tileLocalX, tileLocalZ);
+                
+                // Set biome based on terrain type
+                String biome = mapTerrainToBiome(localTerrain);
+                chunk.setBiome(localX, localZ, biome);
+                
+                // Set environment and tint based on biome
+                chunk.setEnvironment(localX, localZ, mapBiomeToEnvironment(biome));
+                chunk.setTint(localX, localZ, mapBiomeToTint(biome));
                 
                 // Bottom layer - bedrock
                 chunk.setMaterial(localX, 0, localZ, Material.BEDROCK);
                 
-                // Fill terrain
+                // Fill terrain - derive materials based on terrain type
+                Material surfaceMaterial = getSurfaceMaterial(localTerrain);
+                Material subsurfaceMaterial = getSubsurfaceMaterial(localTerrain);
+                
                 for (int y = 1; y < height; y++) {
                     Material material;
                     if (y < height - 4) {
                         material = Material.STONE;
                     } else if (y < height - 1) {
-                        material = Material.DIRT;
+                        material = subsurfaceMaterial;
                     } else {
-                        // Top layer depends on biome/terrain type
-                        material = Material.GRASS_BLOCK;
+                        // Top layer depends on terrain type
+                        material = surfaceMaterial;
                     }
                     chunk.setMaterial(localX, y, localZ, material);
+                    
+                    // Derive rotation from terrain/material if applicable
+                    int rotation = HytaleBlockMapping.toHytaleBlockWithRotation(material).getRotation();
+                    if (rotation != 0) {
+                        chunk.getSections()[y >> 5].setRotation(localX, y & 31, localZ, rotation);
+                    }
                 }
                 
                 // Fill water if below water level
                 if (localWaterLevel > height) {
                     for (int y = height; y < localWaterLevel; y++) {
                         chunk.setMaterial(localX, y, localZ, Material.WATER);
+                        // Also set explicit fluid data for proper Hytale fluid simulation
+                        chunk.getSections()[y >> 5].setFluid(localX, y & 31, localZ, 
+                            HytaleBlockMapping.HY_WATER, 8); // Level 8 = full source block
                     }
                 }
                 
@@ -588,6 +614,211 @@ public class HytaleWorldExporter implements WorldExporter {
                 chunk.setHeight(localX, localZ, topBlock);
             }
         }
+    }
+    
+    /**
+     * Add entities to a chunk, including player spawn markers.
+     * 
+     * @param chunk The Hytale chunk to add entities to.
+     * @param dimension The WorldPainter dimension being exported.
+     * @param chunkX The chunk X coordinate.
+     * @param chunkZ The chunk Z coordinate.
+     */
+    private void addEntitiesToChunk(HytaleChunk chunk, Dimension dimension, int chunkX, int chunkZ) {
+        // Check if this chunk contains the world spawn point
+        Point spawnPoint = world.getSpawnPoint();
+        if (spawnPoint != null && dimension.getAnchor().equals(NORMAL_DETAIL)) {
+            // Apply the centering offset to the spawn point
+            int adjustedSpawnX = spawnPoint.x + blockOffsetX;
+            int adjustedSpawnZ = spawnPoint.y + blockOffsetZ;
+            
+            // Calculate which chunk the spawn point falls in
+            int spawnChunkX = adjustedSpawnX >> 5; // / 32
+            int spawnChunkZ = adjustedSpawnZ >> 5;
+            
+            if (spawnChunkX == chunkX && spawnChunkZ == chunkZ) {
+                // This chunk contains the spawn point - add player spawn marker
+                // Calculate local position within the chunk
+                int localX = adjustedSpawnX & 0x1F; // % 32
+                int localZ = adjustedSpawnZ & 0x1F;
+                
+                // Get terrain height at spawn point
+                int height = chunk.getHeight(localX, localZ);
+                
+                // Create spawn marker at terrain height + 1 (player stands on block)
+                double y = height + 1.0;
+                HytaleSpawnMarker spawnMarker = HytaleSpawnMarker.forPlayerSpawn(
+                    adjustedSpawnX + 0.5, // Center on block
+                    y,
+                    adjustedSpawnZ + 0.5
+                );
+                
+                chunk.addHytaleEntity(spawnMarker);
+                logger.info("Added player spawn marker at ({}, {}, {}) in chunk ({}, {})",
+                    adjustedSpawnX + 0.5, y, adjustedSpawnZ + 0.5, chunkX, chunkZ);
+            }
+        }
+    }
+    
+    /**
+     * Map WorldPainter terrain type to Hytale biome name.
+     */
+    private String mapTerrainToBiome(Terrain terrain) {
+        if (terrain == null) {
+            return "Grassland";
+        }
+        
+        String name = terrain.getName().toLowerCase();
+        
+        // Desert terrains
+        if (name.contains("sand") || name.contains("desert") || name.contains("red sand")) {
+            return "Desert";
+        }
+        // Snow/ice terrains
+        if (name.contains("snow") || name.contains("ice") || name.contains("frozen") || name.contains("tundra")) {
+            return "Tundra";
+        }
+        // Tropical terrains
+        if (name.contains("jungle") || name.contains("tropical") || name.contains("swamp")) {
+            return "Tropical";
+        }
+        // Forest terrains
+        if (name.contains("forest") || name.contains("taiga") || name.contains("birch") || name.contains("dark oak")) {
+            return "Forest";
+        }
+        // Ocean/water terrains
+        if (name.contains("ocean") || name.contains("beach") || name.contains("river")) {
+            return "Ocean";
+        }
+        // Mountain terrains
+        if (name.contains("mountain") || name.contains("extreme") || name.contains("peak")) {
+            return "Mountain";
+        }
+        // Underground
+        if (name.contains("deep") || name.contains("cave")) {
+            return "Underground";
+        }
+        
+        // Default to grassland
+        return "Grassland";
+    }
+    
+    /**
+     * Map biome name to Hytale environment name.
+     * Environments control weather, lighting, and other effects in Hytale.
+     */
+    private String mapBiomeToEnvironment(String biome) {
+        if (biome == null) {
+            return "Default";
+        }
+        
+        switch (biome) {
+            case "Desert":
+                return "Desert";
+            case "Tundra":
+                return "Tundra";
+            case "Tropical":
+                return "Tropical";
+            case "Forest":
+                return "Forest";
+            case "Ocean":
+                return "Ocean";
+            case "Mountain":
+                return "Mountain";
+            case "Underground":
+                return "Underground";
+            case "Grassland":
+            default:
+                return "Default";
+        }
+    }
+    
+    /**
+     * Map biome name to tint color (ARGB format).
+     * Tints affect grass, leaves, and other vegetation colors.
+     */
+    private int mapBiomeToTint(String biome) {
+        if (biome == null) {
+            return 0xFF7CFC00; // LawnGreen
+        }
+        
+        switch (biome) {
+            case "Desert":
+                return 0xFFBDB76B; // DarkKhaki - dry, sparse vegetation
+            case "Tundra":
+                return 0xFF87CEEB; // SkyBlue - cold, icy tint
+            case "Tropical":
+                return 0xFF228B22; // ForestGreen - lush, dense vegetation
+            case "Forest":
+                return 0xFF228B22; // ForestGreen
+            case "Ocean":
+                return 0xFF4682B4; // SteelBlue - water tint
+            case "Mountain":
+                return 0xFF808080; // Gray - rocky, sparse vegetation
+            case "Underground":
+                return 0xFF4B0082; // Indigo - dark, underground tint
+            case "Grassland":
+            default:
+                return 0xFF7CFC00; // LawnGreen - default grass color
+        }
+    }
+    
+    /**
+     * Get the surface material for a terrain type.
+     */
+    private Material getSurfaceMaterial(Terrain terrain) {
+        if (terrain == null) {
+            return Material.GRASS_BLOCK;
+        }
+        
+        String name = terrain.getName().toLowerCase();
+        
+        if (name.contains("sand") || name.contains("desert")) {
+            return name.contains("red") ? Material.RED_SAND : Material.SAND;
+        }
+        if (name.contains("snow")) {
+            return Material.SNOW_BLOCK;
+        }
+        if (name.contains("stone") || name.contains("rock")) {
+            return Material.STONE;
+        }
+        if (name.contains("gravel")) {
+            return Material.GRAVEL;
+        }
+        if (name.contains("clay")) {
+            return Material.CLAY;
+        }
+        if (name.contains("dirt")) {
+            return Material.DIRT;
+        }
+        
+        return Material.GRASS_BLOCK;
+    }
+    
+    /**
+     * Get the subsurface material for a terrain type.
+     */
+    private Material getSubsurfaceMaterial(Terrain terrain) {
+        if (terrain == null) {
+            return Material.DIRT;
+        }
+        
+        String name = terrain.getName().toLowerCase();
+        
+        if (name.contains("sand") || name.contains("desert")) {
+            return name.contains("red") ? Material.RED_SAND : Material.SAND;
+        }
+        if (name.contains("snow")) {
+            return Material.DIRT;
+        }
+        if (name.contains("stone") || name.contains("rock")) {
+            return Material.STONE;
+        }
+        if (name.contains("gravel")) {
+            return Material.GRAVEL;
+        }
+        
+        return Material.DIRT;
     }
     
     private ExecutorService createExecutorService(String operation, int jobCount) {
