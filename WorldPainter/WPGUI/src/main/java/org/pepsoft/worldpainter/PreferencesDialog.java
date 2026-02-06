@@ -107,19 +107,14 @@ public class PreferencesDialog extends WorldPainterDialog {
     
     private void updateSurfaceMaterialForPlatform(Platform platform) {
         Object previousSelection = comboBoxSurfaceMaterial.getSelectedItem();
+        comboBoxSurfaceMaterial.setModel(new DefaultComboBoxModel(Terrain.PICK_LIST));
         if (org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(platform)) {
-            org.pepsoft.worldpainter.hytale.HytaleTerrain[] terrains = org.pepsoft.worldpainter.hytale.HytaleTerrain.PICK_LIST;
-            comboBoxSurfaceMaterial.setModel(new DefaultComboBoxModel(terrains));
             comboBoxSurfaceMaterial.setRenderer(new org.pepsoft.worldpainter.hytale.HytaleTerrainListCellRenderer(colourScheme));
-            if (comboBoxSurfaceMaterial.getSelectedIndex() == -1 && terrains.length > 0) {
-                comboBoxSurfaceMaterial.setSelectedIndex(0);
-            }
         } else {
-            comboBoxSurfaceMaterial.setModel(new DefaultComboBoxModel(Terrain.PICK_LIST));
             comboBoxSurfaceMaterial.setRenderer(new TerrainListCellRenderer(colourScheme));
-            if (previousSelection instanceof Terrain) {
-                comboBoxSurfaceMaterial.setSelectedItem(previousSelection);
-            }
+        }
+        if (previousSelection instanceof Terrain) {
+            comboBoxSurfaceMaterial.setSelectedItem(previousSelection);
         }
     }
 

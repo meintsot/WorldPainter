@@ -741,30 +741,14 @@ public class NewWorldDialog extends WorldPainterDialog {
 
     private void updateSurfaceMaterialModel() {
         Object previousSelection = comboBoxSurfaceMaterial.getSelectedItem();
+        comboBoxSurfaceMaterial.setModel(new DefaultComboBoxModel(Terrain.PICK_LIST));
         if (isHytalePlatform()) {
-            HytaleTerrain[] terrains = HytaleTerrain.PICK_LIST;
-            DefaultComboBoxModel<HytaleTerrain> model = new DefaultComboBoxModel<>(terrains);
-            comboBoxSurfaceMaterial.setModel(model);
             comboBoxSurfaceMaterial.setRenderer(new org.pepsoft.worldpainter.hytale.HytaleTerrainListCellRenderer(app.getColourScheme()));
-            if (previousSelection instanceof HytaleTerrain) {
-                String previousName = ((HytaleTerrain) previousSelection).getName();
-                for (int i = 0; i < model.getSize(); i++) {
-                    HytaleTerrain terrain = model.getElementAt(i);
-                    if ((terrain != null) && terrain.getName().equals(previousName)) {
-                        comboBoxSurfaceMaterial.setSelectedIndex(i);
-                        break;
-                    }
-                }
-            }
-            if ((comboBoxSurfaceMaterial.getSelectedIndex() == -1) && (terrains.length > 0)) {
-                comboBoxSurfaceMaterial.setSelectedIndex(0);
-            }
         } else {
-            comboBoxSurfaceMaterial.setModel(new DefaultComboBoxModel(Terrain.PICK_LIST));
             comboBoxSurfaceMaterial.setRenderer(new TerrainListCellRenderer(app.getColourScheme()));
-            if (previousSelection instanceof Terrain) {
-                comboBoxSurfaceMaterial.setSelectedItem(previousSelection);
-            }
+        }
+        if (previousSelection instanceof Terrain) {
+            comboBoxSurfaceMaterial.setSelectedItem(previousSelection);
         }
     }
 

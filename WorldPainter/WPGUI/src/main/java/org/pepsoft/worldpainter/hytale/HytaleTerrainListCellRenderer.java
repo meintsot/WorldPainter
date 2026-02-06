@@ -56,10 +56,15 @@ public class HytaleTerrainListCellRenderer extends DefaultListCellRenderer {
             setText(label);
             setIcon(createColourIcon(terrain.getEffectiveColour()));
         } else if (value instanceof Terrain) {
-            // Fallback for Minecraft terrains - use standard rendering
-            Terrain terrain = (Terrain) value;
-            setText(terrain.getName());
-            setIcon(new ImageIcon(terrain.getIcon(colourScheme)));
+            // Map Minecraft Terrain to Hytale equivalent for display
+            Terrain mcTerrain = (Terrain) value;
+            HytaleTerrain ht = HytaleTerrainHelper.fromMinecraftTerrain(mcTerrain);
+            String label = ht.getName();
+            if (ht.getBiome() != null) {
+                label = label + " (" + ht.getBiome() + ")";
+            }
+            setText(label);
+            setIcon(createColourIcon(ht.getEffectiveColour()));
         } else {
             setText(value.toString());
             setIcon(null);

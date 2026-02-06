@@ -752,15 +752,7 @@ public class DimensionPropertiesEditor extends javax.swing.JPanel {
         ((SpinnerNumberModel) spinnerCeilingHeight.getModel()).setMaximum(maxHeight + 1);
         spinnerCeilingHeight.setValue(dimension.getCeilingHeight());
 
-        if (org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(platform)) {
-            // For Hytale, show Hytale terrain types (rock/soil blocks suitable for subsurface)
-            org.pepsoft.worldpainter.hytale.HytaleTerrain[] hyTerrains = org.pepsoft.worldpainter.hytale.HytaleTerrain.PICK_LIST;
-            comboBoxSubsurfaceMaterial.setModel(new DefaultComboBoxModel(hyTerrains));
-            if (comboBoxSubsurfaceMaterial.getItemCount() > 0) {
-                // Default to Stone for subsurface
-                comboBoxSubsurfaceMaterial.setSelectedItem(org.pepsoft.worldpainter.hytale.HytaleTerrain.STONE);
-            }
-        } else {
+        {
             List<Terrain> materialList = new ArrayList<>(Arrays.asList(Terrain.VALUES));
             for (Iterator<Terrain> i = materialList.iterator(); i.hasNext(); ) {
                 Terrain terrain = i.next();
