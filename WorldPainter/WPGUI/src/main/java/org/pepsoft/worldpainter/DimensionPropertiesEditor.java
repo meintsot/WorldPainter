@@ -140,9 +140,15 @@ public class DimensionPropertiesEditor extends javax.swing.JPanel {
 
     public void init(ColourScheme colourScheme, CustomBiomeManager customBiomeManager, Dimension dimension, Mode mode) {
         this.customBiomeManager = customBiomeManager;
-        comboBoxSubsurfaceMaterial.setRenderer(new TerrainListCellRenderer(colourScheme));
+        Platform dimPlatform = dimension.getWorld().getPlatform();
+        if (org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(dimPlatform)) {
+            comboBoxSubsurfaceMaterial.setRenderer(new org.pepsoft.worldpainter.hytale.HytaleTerrainListCellRenderer(colourScheme));
+        } else {
+            comboBoxSubsurfaceMaterial.setRenderer(new TerrainListCellRenderer(colourScheme));
+        }
         themeEditor.setColourScheme(colourScheme);
-        comboBoxSubsurfaceBiome.setRenderer(new BiomeListCellRenderer(colourScheme, customBiomeManager, "same as surface", dimension.getWorld().getPlatform()));
+        themeEditor.setPlatform(dimPlatform);
+        comboBoxSubsurfaceBiome.setRenderer(new BiomeListCellRenderer(colourScheme, customBiomeManager, "same as surface", dimPlatform));
         setDimension(dimension);
         setMode(mode);
     }
@@ -746,15 +752,25 @@ public class DimensionPropertiesEditor extends javax.swing.JPanel {
         ((SpinnerNumberModel) spinnerCeilingHeight.getModel()).setMaximum(maxHeight + 1);
         spinnerCeilingHeight.setValue(dimension.getCeilingHeight());
 
-        List<Terrain> materialList = new ArrayList<>(Arrays.asList(Terrain.VALUES));
-        for (Iterator<Terrain> i = materialList.iterator(); i.hasNext(); ) {
-            Terrain terrain = i.next();
-            if ((terrain.isCustom() && (! terrain.isConfigured())) || (terrain == Terrain.GRASS) || (terrain == Terrain.DESERT) || (terrain == Terrain.RED_DESERT)) {
-                i.remove();
+        if (org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(platform)) {
+            // For Hytale, show Hytale terrain types (rock/soil blocks suitable for subsurface)
+            org.pepsoft.worldpainter.hytale.HytaleTerrain[] hyTerrains = org.pepsoft.worldpainter.hytale.HytaleTerrain.PICK_LIST;
+            comboBoxSubsurfaceMaterial.setModel(new DefaultComboBoxModel(hyTerrains));
+            if (comboBoxSubsurfaceMaterial.getItemCount() > 0) {
+                // Default to Stone for subsurface
+                comboBoxSubsurfaceMaterial.setSelectedItem(org.pepsoft.worldpainter.hytale.HytaleTerrain.STONE);
             }
+        } else {
+            List<Terrain> materialList = new ArrayList<>(Arrays.asList(Terrain.VALUES));
+            for (Iterator<Terrain> i = materialList.iterator(); i.hasNext(); ) {
+                Terrain terrain = i.next();
+                if ((terrain.isCustom() && (! terrain.isConfigured())) || (terrain == Terrain.GRASS) || (terrain == Terrain.DESERT) || (terrain == Terrain.RED_DESERT)) {
+                    i.remove();
+                }
+            }
+            comboBoxSubsurfaceMaterial.setModel(new DefaultComboBoxModel<>(materialList.toArray(new Terrain[materialList.size()])));
+            comboBoxSubsurfaceMaterial.setSelectedItem(dimension.getSubsurfaceMaterial());
         }
-        comboBoxSubsurfaceMaterial.setModel(new DefaultComboBoxModel<>(materialList.toArray(new Terrain[materialList.size()])));
-        comboBoxSubsurfaceMaterial.setSelectedItem(dimension.getSubsurfaceMaterial());
 
         if (comboBoxSubsurfaceBiome.isEnabled()) {
             final List<Integer> allBiomes = listOf(singletonList(null), getAllBiomes(platform, customBiomeManager));

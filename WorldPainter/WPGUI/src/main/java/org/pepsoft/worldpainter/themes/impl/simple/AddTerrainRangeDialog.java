@@ -11,6 +11,7 @@
 package org.pepsoft.worldpainter.themes.impl.simple;
 
 import org.pepsoft.worldpainter.ColourScheme;
+import org.pepsoft.worldpainter.Platform;
 import org.pepsoft.worldpainter.Terrain;
 import org.pepsoft.worldpainter.WorldPainterDialog;
 import org.pepsoft.worldpainter.themes.TerrainListCellRenderer;
@@ -24,10 +25,11 @@ import java.awt.*;
  */
 public class AddTerrainRangeDialog extends WorldPainterDialog {
     /** Creates new form AddTerrainRangeDialog */
-    public AddTerrainRangeDialog(Window parent, int minHeight, int maxHeight, ColourScheme colourScheme, boolean allowCustomTerrain) {
+    public AddTerrainRangeDialog(Window parent, int minHeight, int maxHeight, ColourScheme colourScheme, boolean allowCustomTerrain, Platform platform) {
         super(parent);
         this.colourScheme = colourScheme;
         this.allowCustomTerrain = allowCustomTerrain;
+        this.platform = platform;
         initComponents();
         
         spinnerLevel.setModel(new SpinnerNumberModel((minHeight + maxHeight) / 2, minHeight + 1, maxHeight - 1, 1));
@@ -77,7 +79,11 @@ public class AddTerrainRangeDialog extends WorldPainterDialog {
 
         comboBoxTerrainType.setModel(new DefaultComboBoxModel(allowCustomTerrain ? Terrain.getConfiguredValues() : Terrain.PICK_LIST));
         comboBoxTerrainType.setSelectedItem(Terrain.DIRT);
-        comboBoxTerrainType.setRenderer(new TerrainListCellRenderer(colourScheme));
+        if (org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(platform)) {
+            comboBoxTerrainType.setRenderer(new org.pepsoft.worldpainter.hytale.HytaleTerrainListCellRenderer(colourScheme));
+        } else {
+            comboBoxTerrainType.setRenderer(new TerrainListCellRenderer(colourScheme));
+        }
 
         buttonCancel.setText("Cancel");
         buttonCancel.addActionListener(new java.awt.event.ActionListener() {
@@ -158,6 +164,7 @@ public class AddTerrainRangeDialog extends WorldPainterDialog {
  
     private final ColourScheme colourScheme;
     private final boolean allowCustomTerrain;
+    private final Platform platform;
     
     private static final long serialVersionUID = 1L;
 }

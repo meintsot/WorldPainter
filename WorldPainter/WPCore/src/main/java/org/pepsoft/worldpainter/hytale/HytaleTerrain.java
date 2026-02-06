@@ -383,124 +383,389 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         // Icon will be recreated on demand
     }
     
-    // ----- Static factory methods for common terrains -----
+    // ----- Static terrains and PICK_LIST -----
+    
+    // ===== SIMPLE SOIL TERRAINS =====
+    public static final HytaleTerrain GRASS = new HytaleTerrain("Grass",
+        new Row[] { new Row(HytaleBlock.of("Soil_Grass"), 1000) },
+        Mode.SIMPLE, 1.0f, "Grassland", 0x59a52c);
+    
+    public static final HytaleTerrain GRASS_LUSH = new HytaleTerrain("Lush Grass",
+        new Row[] { new Row(HytaleBlock.of("Soil_Grass_Lush"), 1000) },
+        Mode.SIMPLE, 1.0f, "Tropical", 0x00a000);
+    
+    public static final HytaleTerrain GRASS_DRY = new HytaleTerrain("Dry Grass",
+        new Row[] { new Row(HytaleBlock.of("Soil_Grass_Dry"), 1000) },
+        Mode.SIMPLE, 1.0f, "Savanna", 0xa0a020);
+    
+    public static final HytaleTerrain GRASS_FROZEN = new HytaleTerrain("Frozen Grass",
+        new Row[] { new Row(HytaleBlock.of("Soil_Grass_Frozen"), 1000) },
+        Mode.SIMPLE, 1.0f, "Tundra", 0x80c0a0);
+    
+    public static final HytaleTerrain DIRT = new HytaleTerrain("Dirt",
+        new Row[] { new Row(HytaleBlock.of("Soil_Dirt"), 1000) },
+        Mode.SIMPLE, 1.0f, null, 0x8b5a2b);
+    
+    public static final HytaleTerrain FARMLAND = new HytaleTerrain("Farmland",
+        new Row[] { new Row(HytaleBlock.of("Soil_Farmland"), 1000) },
+        Mode.SIMPLE, 1.0f, null, 0x6b3a1b);
+    
+    public static final HytaleTerrain SAND = new HytaleTerrain("Sand",
+        new Row[] { new Row(HytaleBlock.of("Soil_Sand"), 1000) },
+        Mode.SIMPLE, 1.0f, "Desert", 0xdbc497);
+    
+    public static final HytaleTerrain SAND_RED = new HytaleTerrain("Red Sand",
+        new Row[] { new Row(HytaleBlock.of("Soil_Sand_Red"), 1000) },
+        Mode.SIMPLE, 1.0f, "Desert", 0xc4633c);
+    
+    public static final HytaleTerrain SAND_WHITE = new HytaleTerrain("White Sand",
+        new Row[] { new Row(HytaleBlock.of("Soil_Sand_White"), 1000) },
+        Mode.SIMPLE, 1.0f, "Ocean", 0xf4e8c6);
+    
+    public static final HytaleTerrain SNOW = new HytaleTerrain("Snow",
+        new Row[] { new Row(HytaleBlock.of("Soil_Snow"), 1000) },
+        Mode.SIMPLE, 1.0f, "Tundra", 0xfffafa);
+    
+    public static final HytaleTerrain GRAVEL = new HytaleTerrain("Gravel",
+        new Row[] { new Row(HytaleBlock.of("Soil_Gravel"), 1000) },
+        Mode.SIMPLE, 1.0f, null, 0x909090);
+    
+    public static final HytaleTerrain GRAVEL_MOSSY = new HytaleTerrain("Mossy Gravel",
+        new Row[] { new Row(HytaleBlock.of("Soil_Gravel_Mossy"), 1000) },
+        Mode.SIMPLE, 1.0f, "Forest", 0x708060);
+    
+    public static final HytaleTerrain CLAY = new HytaleTerrain("Clay",
+        new Row[] { new Row(HytaleBlock.of("Soil_Clay"), 1000) },
+        Mode.SIMPLE, 1.0f, null, 0x9ea4ae);
+    
+    public static final HytaleTerrain MUD = new HytaleTerrain("Mud",
+        new Row[] { new Row(HytaleBlock.of("Soil_Mud"), 1000) },
+        Mode.SIMPLE, 1.0f, "Swamp", 0x5a4a3a);
+    
+    // ===== SIMPLE ROCK TERRAINS =====
+    public static final HytaleTerrain STONE = new HytaleTerrain("Stone",
+        new Row[] { new Row(HytaleBlock.of("Rock_Stone"), 1000) },
+        Mode.SIMPLE, 1.0f, null, 0x808080);
+    
+    public static final HytaleTerrain COBBLESTONE = new HytaleTerrain("Cobblestone",
+        new Row[] { new Row(HytaleBlock.of("Rock_Stone_Cobble"), 1000) },
+        Mode.SIMPLE, 1.0f, null, 0x787878);
+    
+    public static final HytaleTerrain COBBLESTONE_MOSSY = new HytaleTerrain("Mossy Cobblestone",
+        new Row[] { new Row(HytaleBlock.of("Rock_Stone_Cobble_Mossy"), 1000) },
+        Mode.SIMPLE, 1.0f, null, 0x607850);
+    
+    public static final HytaleTerrain SANDSTONE = new HytaleTerrain("Sandstone",
+        new Row[] { new Row(HytaleBlock.of("Rock_Sandstone"), 1000) },
+        Mode.SIMPLE, 1.0f, "Desert", 0xd4c099);
+    
+    public static final HytaleTerrain SANDSTONE_RED = new HytaleTerrain("Red Sandstone",
+        new Row[] { new Row(HytaleBlock.of("Rock_Sandstone_Red"), 1000) },
+        Mode.SIMPLE, 1.0f, "Desert", 0xb45030);
+    
+    public static final HytaleTerrain SHALE = new HytaleTerrain("Shale",
+        new Row[] { new Row(HytaleBlock.of("Rock_Shale"), 1000) },
+        Mode.SIMPLE, 1.0f, null, 0x5a5a5a);
+    
+    public static final HytaleTerrain SLATE = new HytaleTerrain("Slate",
+        new Row[] { new Row(HytaleBlock.of("Rock_Slate"), 1000) },
+        Mode.SIMPLE, 1.0f, null, 0x4a4a4a);
+    
+    public static final HytaleTerrain BASALT = new HytaleTerrain("Basalt",
+        new Row[] { new Row(HytaleBlock.of("Rock_Basalt"), 1000) },
+        Mode.SIMPLE, 1.0f, "Volcanic", 0x3a3a3a);
+    
+    public static final HytaleTerrain MARBLE = new HytaleTerrain("Marble",
+        new Row[] { new Row(HytaleBlock.of("Rock_Marble"), 1000) },
+        Mode.SIMPLE, 1.0f, null, 0xf0f0f0);
+    
+    public static final HytaleTerrain QUARTZITE = new HytaleTerrain("Quartzite",
+        new Row[] { new Row(HytaleBlock.of("Rock_Quartzite"), 1000) },
+        Mode.SIMPLE, 1.0f, null, 0xe0e0e0);
+    
+    public static final HytaleTerrain CALCITE = new HytaleTerrain("Calcite",
+        new Row[] { new Row(HytaleBlock.of("Rock_Calcite"), 1000) },
+        Mode.SIMPLE, 1.0f, null, 0xdbd7ca);
+    
+    public static final HytaleTerrain CHALK = new HytaleTerrain("Chalk",
+        new Row[] { new Row(HytaleBlock.of("Rock_Chalk"), 1000) },
+        Mode.SIMPLE, 1.0f, null, 0xfafafa);
+    
+    public static final HytaleTerrain VOLCANIC = new HytaleTerrain("Volcanic Rock",
+        new Row[] { new Row(HytaleBlock.of("Rock_Volcanic"), 1000) },
+        Mode.SIMPLE, 1.0f, "Volcanic", 0x2a2a2a);
+    
+    public static final HytaleTerrain MAGMA_COOLED = new HytaleTerrain("Cooled Magma",
+        new Row[] { new Row(HytaleBlock.of("Rock_Magma_Cooled"), 1000) },
+        Mode.SIMPLE, 1.0f, "Volcanic", 0x1a0a0a);
+    
+    public static final HytaleTerrain ICE = new HytaleTerrain("Ice",
+        new Row[] { new Row(HytaleBlock.of("Rock_Ice"), 1000) },
+        Mode.SIMPLE, 1.0f, "Tundra", 0xa0d0ff);
+    
+    public static final HytaleTerrain BEDROCK = new HytaleTerrain("Bedrock",
+        new Row[] { new Row(HytaleBlock.of("Rock_Bedrock"), 1000) },
+        Mode.SIMPLE, 1.0f, null, 0x2d2d2d);
+    
+    // ===== ZONE-SPECIFIC MIXED TERRAINS =====
+    
+    // Zone 1 - Temperate
+    public static final HytaleTerrain ZONE1_GRASSLAND = new HytaleTerrain("Z1: Temperate Grassland",
+        new Row[] {
+            new Row(HytaleBlock.of("Soil_Grass"), 800),
+            new Row(HytaleBlock.of("Soil_Dirt"), 200)
+        }, Mode.NOISE, 1.0f, "Grassland", 0x59a52c);
+    
+    public static final HytaleTerrain ZONE1_FOREST_FLOOR = new HytaleTerrain("Z1: Forest Floor",
+        new Row[] {
+            new Row(HytaleBlock.of("Soil_Grass"), 400),
+            new Row(HytaleBlock.of("Soil_Dirt"), 400),
+            new Row(HytaleBlock.of("Soil_Gravel_Mossy"), 200)
+        }, Mode.BLOBS, 1.5f, "Forest", 0x4a7a2a);
+    
+    public static final HytaleTerrain ZONE1_MEADOW = new HytaleTerrain("Z1: Meadow",
+        new Row[] {
+            new Row(HytaleBlock.of("Soil_Grass_Lush"), 700),
+            new Row(HytaleBlock.of("Soil_Grass"), 300)
+        }, Mode.NOISE, 1.0f, "Grassland", 0x40b030);
+    
+    public static final HytaleTerrain ZONE1_BEACH = new HytaleTerrain("Z1: Beach",
+        new Row[] {
+            new Row(HytaleBlock.of("Soil_Sand"), 700),
+            new Row(HytaleBlock.of("Soil_Sand_White"), 200),
+            new Row(HytaleBlock.of("Soil_Gravel"), 100)
+        }, Mode.NOISE, 1.0f, "Ocean", 0xdbc497);
+    
+    public static final HytaleTerrain ZONE1_RIVERBED = new HytaleTerrain("Z1: River Bed",
+        new Row[] {
+            new Row(HytaleBlock.of("Soil_Gravel"), 500),
+            new Row(HytaleBlock.of("Soil_Sand"), 300),
+            new Row(HytaleBlock.of("Soil_Clay"), 200)
+        }, Mode.BLOBS, 1.0f, "Grassland", 0x90a080);
+    
+    // Zone 2 - Arid / Desert
+    public static final HytaleTerrain ZONE2_DESERT = new HytaleTerrain("Z2: Desert",
+        new Row[] {
+            new Row(HytaleBlock.of("Soil_Sand"), 800),
+            new Row(HytaleBlock.of("Soil_Sand_Red"), 200)
+        }, Mode.BLOBS, 2.0f, "Desert", 0xd4b070);
+    
+    public static final HytaleTerrain ZONE2_RED_DESERT = new HytaleTerrain("Z2: Red Desert",
+        new Row[] {
+            new Row(HytaleBlock.of("Soil_Sand_Red"), 700),
+            new Row(HytaleBlock.of("Soil_Sand"), 200),
+            new Row(HytaleBlock.of("Rock_Sandstone_Red"), 100)
+        }, Mode.BLOBS, 2.0f, "Desert", 0xc46040);
+    
+    public static final HytaleTerrain ZONE2_MESA = new HytaleTerrain("Z2: Mesa",
+        new Row[] {
+            new Row(HytaleBlock.of("Rock_Sandstone_Red"), 500),
+            new Row(HytaleBlock.of("Soil_Sand_Red"), 300),
+            new Row(HytaleBlock.of("Rock_Sandstone"), 200)
+        }, Mode.LAYERED, 1.0f, "Desert", 0xb05030);
+    
+    public static final HytaleTerrain ZONE2_OASIS = new HytaleTerrain("Z2: Oasis",
+        new Row[] {
+            new Row(HytaleBlock.of("Soil_Grass"), 500),
+            new Row(HytaleBlock.of("Soil_Sand"), 300),
+            new Row(HytaleBlock.of("Soil_Clay"), 200)
+        }, Mode.BLOBS, 1.0f, "Desert", 0x80a050);
+    
+    public static final HytaleTerrain ZONE2_SAVANNA = new HytaleTerrain("Z2: Savanna",
+        new Row[] {
+            new Row(HytaleBlock.of("Soil_Grass_Dry"), 600),
+            new Row(HytaleBlock.of("Soil_Dirt"), 300),
+            new Row(HytaleBlock.of("Soil_Sand"), 100)
+        }, Mode.NOISE, 1.5f, "Savanna", 0xb0a030);
+    
+    // Zone 3 - Boreal / Cold
+    public static final HytaleTerrain ZONE3_TUNDRA = new HytaleTerrain("Z3: Tundra",
+        new Row[] {
+            new Row(HytaleBlock.of("Soil_Snow"), 600),
+            new Row(HytaleBlock.of("Soil_Grass_Frozen"), 300),
+            new Row(HytaleBlock.of("Soil_Gravel"), 100)
+        }, Mode.BLOBS, 2.0f, "Tundra", 0xe0e8f0);
+    
+    public static final HytaleTerrain ZONE3_TAIGA = new HytaleTerrain("Z3: Taiga",
+        new Row[] {
+            new Row(HytaleBlock.of("Soil_Grass_Frozen"), 500),
+            new Row(HytaleBlock.of("Soil_Snow"), 300),
+            new Row(HytaleBlock.of("Soil_Dirt"), 200)
+        }, Mode.BLOBS, 1.5f, "Tundra", 0x607860);
+    
+    public static final HytaleTerrain ZONE3_FROZEN_LAKE = new HytaleTerrain("Z3: Frozen Lake",
+        new Row[] {
+            new Row(HytaleBlock.of("Rock_Ice"), 800),
+            new Row(HytaleBlock.of("Soil_Snow"), 200)
+        }, Mode.NOISE, 1.0f, "Tundra", 0xa0d0ff);
+    
+    public static final HytaleTerrain ZONE3_SNOWY_PEAKS = new HytaleTerrain("Z3: Snowy Peaks",
+        new Row[] {
+            new Row(HytaleBlock.of("Soil_Snow"), 500),
+            new Row(HytaleBlock.of("Rock_Stone"), 400),
+            new Row(HytaleBlock.of("Rock_Ice"), 100)
+        }, Mode.LAYERED, 1.0f, "Mountain", 0xd0d8e0);
+    
+    // Zone 4 - Volcanic
+    public static final HytaleTerrain ZONE4_VOLCANIC_PLAINS = new HytaleTerrain("Z4: Volcanic Plains",
+        new Row[] {
+            new Row(HytaleBlock.of("Rock_Volcanic"), 500),
+            new Row(HytaleBlock.of("Rock_Basalt"), 300),
+            new Row(HytaleBlock.of("Rock_Magma_Cooled"), 200)
+        }, Mode.BLOBS, 2.0f, "Volcanic", 0x2a2a2a);
+    
+    public static final HytaleTerrain ZONE4_LAVA_FIELDS = new HytaleTerrain("Z4: Lava Fields",
+        new Row[] {
+            new Row(HytaleBlock.of("Rock_Magma_Cooled"), 600),
+            new Row(HytaleBlock.of("Rock_Basalt"), 300),
+            new Row(HytaleBlock.of("Rock_Volcanic"), 100)
+        }, Mode.BLOBS, 1.5f, "Volcanic", 0x1a0a0a);
+    
+    public static final HytaleTerrain ZONE4_ASH_WASTE = new HytaleTerrain("Z4: Ash Waste",
+        new Row[] {
+            new Row(HytaleBlock.of("Soil_Sand"), 400),
+            new Row(HytaleBlock.of("Rock_Volcanic"), 400),
+            new Row(HytaleBlock.of("Rock_Basalt"), 200)
+        }, Mode.NOISE, 1.5f, "Volcanic", 0x404040);
+    
+    // ===== MIXED NATURAL TERRAINS =====
+    public static final HytaleTerrain STONE_MIX = new HytaleTerrain("Stone Mix",
+        new Row[] {
+            new Row(HytaleBlock.of("Rock_Stone"), 500),
+            new Row(HytaleBlock.of("Rock_Shale"), 200),
+            new Row(HytaleBlock.of("Rock_Slate"), 200),
+            new Row(HytaleBlock.of("Rock_Quartzite"), 100)
+        }, Mode.BLOBS, 2.0f, null, 0x707070);
+    
+    public static final HytaleTerrain MOUNTAIN_ROCK = new HytaleTerrain("Mountain Rock",
+        new Row[] {
+            new Row(HytaleBlock.of("Rock_Stone"), 400),
+            new Row(HytaleBlock.of("Rock_Stone_Cobble"), 300),
+            new Row(HytaleBlock.of("Soil_Gravel"), 200),
+            new Row(HytaleBlock.of("Rock_Slate"), 100)
+        }, Mode.BLOBS, 1.5f, "Mountain", 0x808080);
+    
+    public static final HytaleTerrain SWAMP = new HytaleTerrain("Swamp",
+        new Row[] {
+            new Row(HytaleBlock.of("Soil_Mud"), 400),
+            new Row(HytaleBlock.of("Soil_Grass"), 300),
+            new Row(HytaleBlock.of("Soil_Clay"), 200),
+            new Row(HytaleBlock.of("Soil_Dirt"), 100)
+        }, Mode.BLOBS, 1.5f, "Swamp", 0x4a5a3a);
+    
+    public static final HytaleTerrain TROPICAL_BEACH = new HytaleTerrain("Tropical Beach",
+        new Row[] {
+            new Row(HytaleBlock.of("Soil_Sand_White"), 600),
+            new Row(HytaleBlock.of("Soil_Sand"), 300),
+            new Row(HytaleBlock.of("Soil_Gravel"), 100)
+        }, Mode.NOISE, 1.0f, "Tropical", 0xf0e0c0);
+    
+    public static final HytaleTerrain OCEAN_FLOOR = new HytaleTerrain("Ocean Floor",
+        new Row[] {
+            new Row(HytaleBlock.of("Soil_Sand"), 400),
+            new Row(HytaleBlock.of("Soil_Clay"), 300),
+            new Row(HytaleBlock.of("Soil_Gravel"), 200),
+            new Row(HytaleBlock.of("Rock_Stone"), 100)
+        }, Mode.BLOBS, 2.0f, "Ocean", 0x506070);
+    
+    // ===== LAYERED TERRAINS =====
+    public static final HytaleTerrain GRASSLAND_LAYERED = new HytaleTerrain("Grassland (Layered)",
+        new Row[] {
+            new Row(HytaleBlock.of("Soil_Grass"), 1),      // Top: grass
+            new Row(HytaleBlock.of("Soil_Dirt"), 3),       // 3 blocks of dirt
+            new Row(HytaleBlock.of("Rock_Stone"), 1000)    // Then stone
+        }, Mode.LAYERED, 1.0f, "Grassland", 0x59a52c);
+    
+    public static final HytaleTerrain DESERT_LAYERED = new HytaleTerrain("Desert (Layered)",
+        new Row[] {
+            new Row(HytaleBlock.of("Soil_Sand"), 4),        // Top: 4 layers of sand
+            new Row(HytaleBlock.of("Rock_Sandstone"), 1000) // Then sandstone
+        }, Mode.LAYERED, 1.0f, "Desert", 0xdbc497);
+    
+    public static final HytaleTerrain TUNDRA_LAYERED = new HytaleTerrain("Tundra (Layered)",
+        new Row[] {
+            new Row(HytaleBlock.of("Soil_Snow"), 2),       // Top: 2 blocks of snow
+            new Row(HytaleBlock.of("Soil_Dirt"), 3),       // Then dirt
+            new Row(HytaleBlock.of("Rock_Stone"), 1000)    // Then stone
+        }, Mode.LAYERED, 1.0f, "Tundra", 0xe0e8f0);
+    
+    // ===== FLUID TERRAINS =====
+    public static final HytaleTerrain WATER = new HytaleTerrain("Water",
+        new Row[] { new Row(HytaleBlock.of("Water_Source"), 1000) },
+        Mode.SIMPLE, 1.0f, "Ocean", 0x3366ff);
+    
+    public static final HytaleTerrain LAVA = new HytaleTerrain("Lava",
+        new Row[] { new Row(HytaleBlock.of("Lava_Source"), 1000) },
+        Mode.SIMPLE, 1.0f, "Volcanic", 0xff4500);
+    
+    // ===== PICK LIST (ordered for user-facing display) =====
+    
+    /** Array of terrains available for user selection. Ordered logically by category. */
+    public static final HytaleTerrain[] PICK_LIST = {
+        // Soil / Surface
+        GRASS, GRASS_LUSH, GRASS_DRY, GRASS_FROZEN,
+        DIRT, FARMLAND,
+        SAND, SAND_RED, SAND_WHITE,
+        SNOW, GRAVEL, GRAVEL_MOSSY,
+        CLAY, MUD,
+        // Rock
+        STONE, COBBLESTONE, COBBLESTONE_MOSSY,
+        SANDSTONE, SANDSTONE_RED,
+        SHALE, SLATE, BASALT,
+        MARBLE, QUARTZITE, CALCITE, CHALK,
+        VOLCANIC, MAGMA_COOLED, ICE, BEDROCK,
+        // Zone-specific
+        ZONE1_GRASSLAND, ZONE1_FOREST_FLOOR, ZONE1_MEADOW, ZONE1_BEACH, ZONE1_RIVERBED,
+        ZONE2_DESERT, ZONE2_RED_DESERT, ZONE2_MESA, ZONE2_OASIS, ZONE2_SAVANNA,
+        ZONE3_TUNDRA, ZONE3_TAIGA, ZONE3_FROZEN_LAKE, ZONE3_SNOWY_PEAKS,
+        ZONE4_VOLCANIC_PLAINS, ZONE4_LAVA_FIELDS, ZONE4_ASH_WASTE,
+        // Mixed natural
+        STONE_MIX, MOUNTAIN_ROCK, SWAMP, TROPICAL_BEACH, OCEAN_FLOOR,
+        // Layered
+        GRASSLAND_LAYERED, DESERT_LAYERED, TUNDRA_LAYERED,
+        // Fluids
+        WATER, LAVA
+    };
+    
+    // ----- Static factory methods -----
     
     /**
-     * Get all default Hytale terrains.
+     * Get all default Hytale terrains (the PICK_LIST as a modifiable list).
      */
     public static List<HytaleTerrain> getDefaultTerrains() {
-        List<HytaleTerrain> terrains = new ArrayList<>();
-        
-        // Soil terrains
-        terrains.add(createSoilGrass());
-        terrains.add(createSoilGrassLush());
-        terrains.add(createSoilDirt());
-        terrains.add(createSoilSand());
-        terrains.add(createSoilSandRed());
-        terrains.add(createSoilSnow());
-        terrains.add(createSoilGravel());
-        terrains.add(createSoilClay());
-        terrains.add(createSoilMud());
-        
-        // Rock terrains
-        terrains.add(createRockStone());
-        terrains.add(createRockCobble());
-        terrains.add(createRockSandstone());
-        terrains.add(createRockBasalt());
-        terrains.add(createRockBedrock());
-        terrains.add(createRockIce());
-        
-        return terrains;
+        return new ArrayList<>(Arrays.asList(PICK_LIST));
     }
     
-    public static HytaleTerrain createSoilGrass() {
-        return new HytaleTerrain("Grass", 
-            new Row[] { new Row(HytaleBlock.of("Soil_Grass"), 1000) },
-            Mode.SIMPLE, 1.0f, "Grassland", null);
+    /**
+     * Look up a terrain by name (case-insensitive).
+     * 
+     * @param name The display name to search for
+     * @return The matching terrain, or null if not found
+     */
+    public static HytaleTerrain getByName(String name) {
+        if (name == null) return null;
+        for (HytaleTerrain t : PICK_LIST) {
+            if (t.getName().equalsIgnoreCase(name)) {
+                return t;
+            }
+        }
+        return null;
     }
     
-    public static HytaleTerrain createSoilGrassLush() {
-        return new HytaleTerrain("Lush Grass", 
-            new Row[] { new Row(HytaleBlock.of("Soil_Grass_Lush"), 1000) },
-            Mode.SIMPLE, 1.0f, "Tropical", null);
-    }
-    
-    public static HytaleTerrain createSoilDirt() {
-        return new HytaleTerrain("Dirt", 
-            new Row[] { new Row(HytaleBlock.of("Soil_Dirt"), 1000) },
-            Mode.SIMPLE, 1.0f, null, null);
-    }
-    
-    public static HytaleTerrain createSoilSand() {
-        return new HytaleTerrain("Sand", 
-            new Row[] { new Row(HytaleBlock.of("Soil_Sand"), 1000) },
-            Mode.SIMPLE, 1.0f, "Desert", null);
-    }
-    
-    public static HytaleTerrain createSoilSandRed() {
-        return new HytaleTerrain("Red Sand", 
-            new Row[] { new Row(HytaleBlock.of("Soil_Sand_Red"), 1000) },
-            Mode.SIMPLE, 1.0f, "Desert", null);
-    }
-    
-    public static HytaleTerrain createSoilSnow() {
-        return new HytaleTerrain("Snow", 
-            new Row[] { new Row(HytaleBlock.of("Soil_Snow"), 1000) },
-            Mode.SIMPLE, 1.0f, "Tundra", null);
-    }
-    
-    public static HytaleTerrain createSoilGravel() {
-        return new HytaleTerrain("Gravel", 
-            new Row[] { new Row(HytaleBlock.of("Soil_Gravel"), 1000) },
-            Mode.SIMPLE, 1.0f, null, null);
-    }
-    
-    public static HytaleTerrain createSoilClay() {
-        return new HytaleTerrain("Clay", 
-            new Row[] { new Row(HytaleBlock.of("Soil_Clay"), 1000) },
-            Mode.SIMPLE, 1.0f, null, null);
-    }
-    
-    public static HytaleTerrain createSoilMud() {
-        return new HytaleTerrain("Mud", 
-            new Row[] { new Row(HytaleBlock.of("Soil_Mud"), 1000) },
-            Mode.SIMPLE, 1.0f, "Swamp", null);
-    }
-    
-    public static HytaleTerrain createRockStone() {
-        return new HytaleTerrain("Stone", 
-            new Row[] { new Row(HytaleBlock.of("Rock_Stone"), 1000) },
-            Mode.SIMPLE, 1.0f, null, null);
-    }
-    
-    public static HytaleTerrain createRockCobble() {
-        return new HytaleTerrain("Cobblestone", 
-            new Row[] { new Row(HytaleBlock.of("Rock_Stone_Cobble"), 1000) },
-            Mode.SIMPLE, 1.0f, null, null);
-    }
-    
-    public static HytaleTerrain createRockSandstone() {
-        return new HytaleTerrain("Sandstone", 
-            new Row[] { new Row(HytaleBlock.of("Rock_Sandstone"), 1000) },
-            Mode.SIMPLE, 1.0f, "Desert", null);
-    }
-    
-    public static HytaleTerrain createRockBasalt() {
-        return new HytaleTerrain("Basalt", 
-            new Row[] { new Row(HytaleBlock.of("Rock_Basalt"), 1000) },
-            Mode.SIMPLE, 1.0f, "Volcanic", null);
-    }
-    
-    public static HytaleTerrain createRockBedrock() {
-        return new HytaleTerrain("Bedrock", 
-            new Row[] { new Row(HytaleBlock.of("Rock_Bedrock"), 1000) },
-            Mode.SIMPLE, 1.0f, null, null);
-    }
-    
-    public static HytaleTerrain createRockIce() {
-        return new HytaleTerrain("Ice", 
-            new Row[] { new Row(HytaleBlock.of("Rock_Ice"), 1000) },
-            Mode.SIMPLE, 1.0f, "Tundra", null);
+    /**
+     * Get terrains filtered by biome.
+     * 
+     * @param biome The biome to filter by (e.g. "Desert", "Tundra")
+     * @return List of terrains associated with that biome
+     */
+    public static List<HytaleTerrain> getTerrainsByBiome(String biome) {
+        List<HytaleTerrain> result = new ArrayList<>();
+        for (HytaleTerrain t : PICK_LIST) {
+            if (biome.equals(t.getBiome())) {
+                result.add(t);
+            }
+        }
+        return result;
     }
     
     // ----- Inner classes -----

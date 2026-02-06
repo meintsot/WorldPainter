@@ -105,6 +105,24 @@ public class PreferencesDialog extends WorldPainterDialog {
         super.ok();
     }
     
+    private void updateSurfaceMaterialForPlatform(Platform platform) {
+        Object previousSelection = comboBoxSurfaceMaterial.getSelectedItem();
+        if (org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(platform)) {
+            org.pepsoft.worldpainter.hytale.HytaleTerrain[] terrains = org.pepsoft.worldpainter.hytale.HytaleTerrain.PICK_LIST;
+            comboBoxSurfaceMaterial.setModel(new DefaultComboBoxModel(terrains));
+            comboBoxSurfaceMaterial.setRenderer(new org.pepsoft.worldpainter.hytale.HytaleTerrainListCellRenderer(colourScheme));
+            if (comboBoxSurfaceMaterial.getSelectedIndex() == -1 && terrains.length > 0) {
+                comboBoxSurfaceMaterial.setSelectedIndex(0);
+            }
+        } else {
+            comboBoxSurfaceMaterial.setModel(new DefaultComboBoxModel(Terrain.PICK_LIST));
+            comboBoxSurfaceMaterial.setRenderer(new TerrainListCellRenderer(colourScheme));
+            if (previousSelection instanceof Terrain) {
+                comboBoxSurfaceMaterial.setSelectedItem(previousSelection);
+            }
+        }
+    }
+
     private void loadSettings() {
         programmaticChange = true;
         try {
@@ -496,6 +514,9 @@ public class PreferencesDialog extends WorldPainterDialog {
             }
 
             previousPlatform = platform;
+            
+            // Update surface material list for platform (Hytale has its own terrains)
+            updateSurfaceMaterialForPlatform(platform);
         } finally {
             programmaticChange = false;
         }
@@ -504,6 +525,7 @@ public class PreferencesDialog extends WorldPainterDialog {
     private void setControlStatesForPlatform() {
         final Configuration config = Configuration.getInstance();
         final Platform platform = config.getDefaultPlatform();
+        updateSurfaceMaterialForPlatform(platform);
         final List<Generator> supportedGenerators = new ArrayList<>(platform.supportedGenerators);
         supportedGenerators.retainAll(asList(DEFAULT, LARGE_BIOMES, AMPLIFIED, NETHER, END, FLAT));
         comboBoxWorldType.setModel(new DefaultComboBoxModel<>(supportedGenerators.toArray(new Generator[0])));

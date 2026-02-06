@@ -112,7 +112,11 @@ public class ImportHeightMapDialog extends WorldPainterDialog implements Documen
         comboBoxPlatform.setModel(new DefaultComboBoxModel<>(PlatformManager.getInstance().getAllPlatforms().toArray(new Platform[0])));
         labelWarningCutOffBelow.setVisible(false);
         labelWarningCutOffAbove.setVisible(false);
-        comboBoxSingleTerrain.setRenderer(new TerrainListCellRenderer(colourScheme));
+        if (org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(currentDimension != null ? currentDimension.getWorld().getPlatform() : Configuration.getInstance().getDefaultPlatform())) {
+            comboBoxSingleTerrain.setRenderer(new org.pepsoft.worldpainter.hytale.HytaleTerrainListCellRenderer(colourScheme));
+        } else {
+            comboBoxSingleTerrain.setRenderer(new TerrainListCellRenderer(colourScheme));
+        }
         comboBoxSingleTerrain.setSelectedItem(GRASS);
         comboBoxPreset.setRenderer(new ImportPresetListCellRenderer());
 
@@ -131,10 +135,12 @@ public class ImportHeightMapDialog extends WorldPainterDialog implements Documen
             buttonSaveAsDefaults.setEnabled(true);
             checkBoxOnlyRaise.setSelected(true);
             comboBoxSingleTerrain.setModel(new DefaultComboBoxModel<>(Terrain.getConfiguredValues()));
+            themeEditor.setPlatform(platform);
             checkBoxMasterDimension.setSelected(currentDimension.getAnchor().role == MASTER);
             checkBoxMasterDimension.setEnabled(false);
         } else {
             platform = Configuration.getInstance().getDefaultPlatform();
+            themeEditor.setPlatform(platform);
             themeEditor.setTheme(SimpleTheme.createDefault(GRASS, platform.minZ, platform.standardMaxHeight, DEFAULT_WATER_LEVEL, true, true));
             themeEditor.setChangeListener(this);
             comboBoxPlatform.setSelectedItem(platform);

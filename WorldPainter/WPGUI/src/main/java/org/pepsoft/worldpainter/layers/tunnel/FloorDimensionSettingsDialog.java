@@ -30,8 +30,13 @@ public class FloorDimensionSettingsDialog extends WorldPainterDialog {
         ((SpinnerNumberModel) spinnerFloorLevel.getModel()).setMaximum(maxHeight - 1);
         ((SpinnerNumberModel) spinnerFloodLevel.getModel()).setMinimum(minHeight);
         ((SpinnerNumberModel) spinnerFloodLevel.getModel()).setMaximum(maxHeight - 1);
-        comboBoxTerrain.setRenderer(new TerrainListCellRenderer(colourScheme));
-        comboBoxTerrain.setModel(new DefaultComboBoxModel<>(Terrain.getConfiguredValues()));
+        if (org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(platform)) {
+            comboBoxTerrain.setModel(new DefaultComboBoxModel(org.pepsoft.worldpainter.hytale.HytaleTerrain.PICK_LIST));
+            comboBoxTerrain.setRenderer(new org.pepsoft.worldpainter.hytale.HytaleTerrainListCellRenderer(colourScheme));
+        } else {
+            comboBoxTerrain.setRenderer(new TerrainListCellRenderer(colourScheme));
+            comboBoxTerrain.setModel(new DefaultComboBoxModel<>(Terrain.getConfiguredValues()));
+        }
         comboBoxBiome.setRenderer(new BiomeListCellRenderer(colourScheme, null, platform));
         comboBoxBiome.setModel(new DefaultComboBoxModel<>(nullAnd(BiomeUtils.getAllBiomes(platform, null)).toArray(new Integer[0])));
 

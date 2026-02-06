@@ -12,6 +12,7 @@ package org.pepsoft.worldpainter.themes.impl.simple;
 
 import org.pepsoft.worldpainter.App;
 import org.pepsoft.worldpainter.ColourScheme;
+import org.pepsoft.worldpainter.Platform;
 import org.pepsoft.worldpainter.Terrain;
 import org.pepsoft.worldpainter.layers.Layer;
 import org.pepsoft.worldpainter.layers.LayerManager;
@@ -80,6 +81,14 @@ public class SimpleThemeEditor extends javax.swing.JPanel implements ButtonPress
         this.allowCustomItems = allowCustomItems;
     }
 
+    public Platform getPlatform() {
+        return platform;
+    }
+
+    public void setPlatform(Platform platform) {
+        this.platform = platform;
+    }
+
     public SimpleTheme getTheme() {
         return theme;
     }
@@ -100,7 +109,11 @@ public class SimpleThemeEditor extends javax.swing.JPanel implements ButtonPress
             
             tableTerrain.setDefaultEditor(Integer.class, new JSpinnerTableCellEditor(new SpinnerNumberModel(minHeight + 1, minHeight + 1, maxHeight - 1, 1)));
             final JComboBox<Terrain> terrainEditor = new JComboBox<>(allowCustomItems ? Terrain.getConfiguredValues() : Terrain.PICK_LIST);
-            terrainEditor.setRenderer(new TerrainListCellRenderer(colourScheme));
+            if (org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(platform)) {
+                terrainEditor.setRenderer(new org.pepsoft.worldpainter.hytale.HytaleTerrainListCellRenderer(colourScheme));
+            } else {
+                terrainEditor.setRenderer(new TerrainListCellRenderer(colourScheme));
+            }
             tableTerrain.setDefaultEditor(Terrain.class, new DefaultCellEditor(terrainEditor));
             tableTerrain.setDefaultEditor(JButton.class, new JButtonTableCellEditor(this));
             
@@ -163,7 +176,7 @@ public class SimpleThemeEditor extends javax.swing.JPanel implements ButtonPress
     }
 
     private void addTerrain() {
-        AddTerrainRangeDialog dialog = new AddTerrainRangeDialog(SwingUtilities.getWindowAncestor(this), theme.getMinHeight(), theme.getMaxHeight(), colourScheme, allowCustomItems);
+        AddTerrainRangeDialog dialog = new AddTerrainRangeDialog(SwingUtilities.getWindowAncestor(this), theme.getMinHeight(), theme.getMaxHeight(), colourScheme, allowCustomItems, platform);
         dialog.setVisible(true);
         if (! dialog.isCancelled()) {
             terrainTableModel.addRow(dialog.getSelectedLevel(), dialog.getSelectedTerrain());
@@ -368,6 +381,7 @@ public class SimpleThemeEditor extends javax.swing.JPanel implements ButtonPress
     private ChangeListener changeListener;
     private LayerRangesTableModel layerTableModel;
     private boolean programmaticChange, allowCustomItems = true;
+    private Platform platform;
 
     private static final long serialVersionUID = 1L;
     

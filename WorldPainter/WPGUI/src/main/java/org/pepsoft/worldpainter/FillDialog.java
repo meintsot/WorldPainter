@@ -1087,9 +1087,14 @@ chunks:         for (int chunkX = 0; chunkX < TILE_SIZE; chunkX += 16) {
 
         comboBoxInvertLayer.setEnabled(false);
 
-        comboBoxTerrain.setModel(new DefaultComboBoxModel(Terrain.getConfiguredValues()));
+        if (org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(dimension.getWorld().getPlatform())) {
+            comboBoxTerrain.setModel(new DefaultComboBoxModel(org.pepsoft.worldpainter.hytale.HytaleTerrain.PICK_LIST));
+            comboBoxTerrain.setRenderer(new org.pepsoft.worldpainter.hytale.HytaleTerrainListCellRenderer(colourScheme));
+        } else {
+            comboBoxTerrain.setModel(new DefaultComboBoxModel(Terrain.getConfiguredValues()));
+            comboBoxTerrain.setRenderer(new TerrainListCellRenderer(colourScheme));
+        }
         comboBoxTerrain.setEnabled(false);
-        comboBoxTerrain.setRenderer(new TerrainListCellRenderer(colourScheme));
 
         buttonGroup1.add(radioButtonInvertLayer);
         radioButtonInvertLayer.setText("invert a layer:");

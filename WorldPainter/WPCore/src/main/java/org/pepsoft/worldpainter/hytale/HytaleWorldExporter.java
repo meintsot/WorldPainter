@@ -16,6 +16,7 @@ import org.pepsoft.worldpainter.Dimension.Anchor;
 import org.pepsoft.worldpainter.exporting.*;
 import org.pepsoft.worldpainter.history.HistoryEntry;
 import org.pepsoft.worldpainter.layers.Layer;
+import org.pepsoft.worldpainter.layers.FloodWithLava;
 import org.pepsoft.worldpainter.util.FileInUseException;
 import org.pepsoft.worldpainter.vo.AttributeKeyVO;
 import org.pepsoft.worldpainter.vo.EventVO;
@@ -585,12 +586,11 @@ public class HytaleWorldExporter implements WorldExporter {
                     maxWaterLevel = localWaterLevel;
                 }
                 Terrain localTerrain = tile.getTerrain(tileLocalX, tileLocalZ);
-                // TODO: Add HytaleTerrain support to Dimension
-                HytaleTerrain hytaleTerrain = null; // dimension.getHytaleTerrainAt(worldX, worldZ);
-                String explicitBiome = null; // dimension.getHytaleBiomeAt(worldX, worldZ);
-                String biome = (explicitBiome != null)
-                    ? explicitBiome
-                    : ((hytaleTerrain != null && hytaleTerrain.getBiome() != null) ? hytaleTerrain.getBiome() : mapTerrainToBiome(localTerrain));
+                // Map the Minecraft terrain to the best Hytale equivalent
+                HytaleTerrain hytaleTerrain = HytaleTerrainHelper.fromMinecraftTerrain(localTerrain);
+                String biome = (hytaleTerrain != null && hytaleTerrain.getBiome() != null)
+                    ? hytaleTerrain.getBiome()
+                    : mapTerrainToBiome(localTerrain);
                 
                 // Set biome based on terrain type
                 chunk.setBiomeName(localX, localZ, biome);
@@ -613,44 +613,26 @@ public class HytaleWorldExporter implements WorldExporter {
                             chunk.setHytaleBlock(localX, y, localZ, block);
                         }
                     }
-                } else {
-                    Material surfaceMaterial = getSurfaceMaterial(localTerrain);
-                    Material subsurfaceMaterial = getSubsurfaceMaterial(localTerrain);
-                    
-                    for (int y = 1; y <= height; y++) {
-                        Material material;
-                        if (y < height - 3) {
-                            material = Material.STONE;
-                        } else if (y < height) {
-                            material = subsurfaceMaterial;
-                        } else {
-                            material = surfaceMaterial;
-                        }
-                        HytaleBlock block = HytaleBlockMapping.toHytaleBlockWithRotation(material);
-                        if (block.isFluid()) {
-                            chunk.setHytaleBlock(localX, y, localZ, HytaleBlock.EMPTY);
-                            chunk.getSections()[y >> 5].setFluid(localX, y & 31, localZ, block.id, 1);
-                        } else {
-                            chunk.setHytaleBlock(localX, y, localZ, block);
-                        }
-                    }
                 }
                 
-                // Fill water if below water level
+                // Fill water or lava if below water level
                 // Surface block is at height, so water starts at height+1
                 // waterLevel is the TOP surface of water (inclusive)
                 if (localWaterLevel > height) {
                     waterColumns++;
-                    // Debug logging for first water placement in this chunk
+                    // Check if this column is marked as lava instead of water
+                    boolean isLava = tile.getBitLayerValue(FloodWithLava.INSTANCE, tileLocalX, tileLocalZ);
+                    String fluidId = isLava ? HytaleBlockMapping.HY_LAVA : HytaleBlockMapping.HY_WATER;
+                    // Debug logging for first fluid placement in this chunk
                     if (!waterLogged) {
-                        logger.info("Water at world ({}, {}) chunk block ({}, {}) - Terrain Y: {}, Water Y: {}, Placing water Y: {} to {}",
-                            worldX, worldZ, localX, localZ, height, localWaterLevel, height + 1, localWaterLevel);
+                        logger.info("{} at world ({}, {}) chunk block ({}, {}) - Terrain Y: {}, Fluid Y: {}, Placing Y: {} to {}",
+                            isLava ? "Lava" : "Water", worldX, worldZ, localX, localZ, height, localWaterLevel, height + 1, localWaterLevel);
                         waterLogged = true;
                     }
                     for (int y = height + 1; y <= localWaterLevel; y++) {
                         chunk.setHytaleBlock(localX, y, localZ, HytaleBlock.EMPTY);
                         chunk.getSections()[y >> 5].setFluid(localX, y & 31, localZ, 
-                            HytaleBlockMapping.HY_WATER, 1); // Water_Source max level is 1
+                            fluidId, 1); // Source fluids use max level (1 for water/lava)
                     }
                 }
                 

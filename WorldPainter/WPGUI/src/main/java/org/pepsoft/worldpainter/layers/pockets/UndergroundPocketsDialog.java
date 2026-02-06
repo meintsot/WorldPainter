@@ -39,6 +39,7 @@ public class UndergroundPocketsDialog extends AbstractEditLayerDialog<Undergroun
     private UndergroundPocketsDialog(Window parent, Platform platform, MixedMaterial material, UndergroundPocketsLayer existingLayer, ColourScheme colourScheme, int minHeight, int maxHeight, boolean extendedBlockIds) {
         super(parent);
         this.colourScheme = colourScheme;
+        this.platform = platform;
         
         initComponents();
         mixedMaterialChooser.setPlatform(platform);
@@ -305,9 +306,14 @@ public class UndergroundPocketsDialog extends AbstractEditLayerDialog<Undergroun
             }
         });
 
-        comboBoxTerrain.setModel(new DefaultComboBoxModel(Terrain.VALUES));
+        if (org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(platform)) {
+            comboBoxTerrain.setModel(new DefaultComboBoxModel(org.pepsoft.worldpainter.hytale.HytaleTerrain.PICK_LIST));
+            comboBoxTerrain.setRenderer(new org.pepsoft.worldpainter.hytale.HytaleTerrainListCellRenderer(colourScheme));
+        } else {
+            comboBoxTerrain.setModel(new DefaultComboBoxModel(Terrain.VALUES));
+            comboBoxTerrain.setRenderer(new TerrainListCellRenderer(colourScheme));
+        }
         comboBoxTerrain.setEnabled(false);
-        comboBoxTerrain.setRenderer(new TerrainListCellRenderer(colourScheme));
         comboBoxTerrain.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
                 comboBoxTerrainActionPerformed(evt);
@@ -511,6 +517,7 @@ public class UndergroundPocketsDialog extends AbstractEditLayerDialog<Undergroun
     // End of variables declaration//GEN-END:variables
     
     private final ColourScheme colourScheme;
+    private final Platform platform;
     private UndergroundPocketsLayer layer;
     private Timer previewUpdateTimer;
 

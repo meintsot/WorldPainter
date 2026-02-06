@@ -742,24 +742,10 @@ public class NewWorldDialog extends WorldPainterDialog {
     private void updateSurfaceMaterialModel() {
         Object previousSelection = comboBoxSurfaceMaterial.getSelectedItem();
         if (isHytalePlatform()) {
-            List<HytaleTerrain> terrains = HytaleTerrain.getDefaultTerrains();
-            DefaultComboBoxModel<HytaleTerrain> model = new DefaultComboBoxModel<>(terrains.toArray(new HytaleTerrain[0]));
+            HytaleTerrain[] terrains = HytaleTerrain.PICK_LIST;
+            DefaultComboBoxModel<HytaleTerrain> model = new DefaultComboBoxModel<>(terrains);
             comboBoxSurfaceMaterial.setModel(model);
-            comboBoxSurfaceMaterial.setRenderer(new DefaultListCellRenderer() {
-                @Override
-                public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
-                    super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-                    if (value instanceof HytaleTerrain) {
-                        HytaleTerrain terrain = (HytaleTerrain) value;
-                        String label = terrain.getName();
-                        if (terrain.getBiome() != null) {
-                            label = label + " (" + terrain.getBiome() + ')';
-                        }
-                        setText(label);
-                    }
-                    return this;
-                }
-            });
+            comboBoxSurfaceMaterial.setRenderer(new org.pepsoft.worldpainter.hytale.HytaleTerrainListCellRenderer(app.getColourScheme()));
             if (previousSelection instanceof HytaleTerrain) {
                 String previousName = ((HytaleTerrain) previousSelection).getName();
                 for (int i = 0; i < model.getSize(); i++) {
@@ -770,7 +756,7 @@ public class NewWorldDialog extends WorldPainterDialog {
                     }
                 }
             }
-            if ((comboBoxSurfaceMaterial.getSelectedIndex() == -1) && (model.getSize() > 0)) {
+            if ((comboBoxSurfaceMaterial.getSelectedIndex() == -1) && (terrains.length > 0)) {
                 comboBoxSurfaceMaterial.setSelectedIndex(0);
             }
         } else {

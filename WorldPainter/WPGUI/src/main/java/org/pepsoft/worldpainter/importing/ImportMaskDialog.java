@@ -63,7 +63,11 @@ public class ImportMaskDialog extends WorldPainterDialog implements DocumentList
         comboBoxLayer.setModel(new DefaultComboBoxModel<>(allLayers.toArray(new Layer[allLayers.size()])));
         comboBoxLayer.setRenderer(new LayerListCellRenderer());
         comboBoxApplyToTerrain.setModel(new DefaultComboBoxModel<>(nullAnd(asList(Terrain.getConfiguredValues())).toArray(new Terrain[0])));
-        comboBoxApplyToTerrain.setRenderer(new TerrainListCellRenderer(colourScheme, "-all-"));
+        if (org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(dimension.getWorld().getPlatform())) {
+            comboBoxApplyToTerrain.setRenderer(new org.pepsoft.worldpainter.hytale.HytaleTerrainListCellRenderer(colourScheme, "-all-"));
+        } else {
+            comboBoxApplyToTerrain.setRenderer(new TerrainListCellRenderer(colourScheme, "-all-"));
+        }
         fieldFilename.getDocument().addDocumentListener(new DocumentListener() {
             @Override public void insertUpdate(DocumentEvent e) { loadFile(); }
             @Override public void removeUpdate(DocumentEvent e) { loadFile(); }
