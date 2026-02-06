@@ -7,6 +7,8 @@ package org.pepsoft.worldpainter;
 
 import org.pepsoft.minecraft.Material;
 import org.pepsoft.util.DesktopUtils;
+import org.pepsoft.worldpainter.hytale.HytaleBlockRegistry;
+import org.pepsoft.worldpainter.hytale.HytaleTerrainHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -81,7 +83,7 @@ public class MaterialSelector extends javax.swing.JPanel {
                     doLaterOnEventThread(() -> beepAndShowError(this, "The material (" + material.name + ") is not compatible with the current map format (" + platform.displayName + ").\nSelect a compatible material.", "Incompatible Material"));
                 }
                 updateMaterialName();
-            } else if (namespace.equals(MINECRAFT)) {
+            } else if (namespace.equals(primaryNamespace)) {
                 radioButtonMinecraft.setSelected(true);
                 comboBoxMinecraftName.setSelectedItem(simpleName);
             } else {
@@ -132,11 +134,24 @@ public class MaterialSelector extends javax.swing.JPanel {
         }
         this.platform = platform;
         legacyMode = ! platform.capabilities.contains(NAME_BASED);
+        hytaleMode = HytaleTerrainHelper.isHytale(platform);
         if (legacyMode) {
             remove(0);
             ((TitledBorder) jScrollPane1.getBorder()).setTitle("Modern properties");
         } else {
             remove(1);
+        }
+        if (hytaleMode) {
+            // Register all Hytale blocks as Material objects
+            HytaleBlockRegistry.ensureMaterialsRegistered();
+            // Relabel radio buttons and namespace prefix for Hytale
+            radioButtonMinecraft.setText("<html><em>Hytale:</em></html>");
+            jLabel2.setText("hytale:");
+            // Populate the main combo with Hytale block names
+            Vector<String> hytaleNames = new Vector<>(HytaleBlockRegistry.getAllBlockNames());
+            comboBoxMinecraftName.setModel(new DefaultComboBoxModel<>(hytaleNames));
+            // Default namespace for the primary radio
+            primaryNamespace = HytaleBlockRegistry.HYTALE_NAMESPACE;
         }
         setControlStates();
     }
@@ -403,7 +418,7 @@ public class MaterialSelector extends javax.swing.JPanel {
      * selected namespace and simple name.
      */
     private void minecraftNameChanged() {
-        namespace = Material.MINECRAFT;
+        namespace = primaryNamespace;
         simpleName = (String) comboBoxMinecraftName.getSelectedItem();
         material = Material.getPrototype(namespace + ':' + simpleName);
         loadDefaultProperties();
@@ -428,7 +443,7 @@ public class MaterialSelector extends javax.swing.JPanel {
                 }
                 if ((simpleName != null) && (! simpleName.trim().isEmpty())) {
                     if ((namespace == null) || namespace.trim().isEmpty()) {
-                        namespace = Material.MINECRAFT;
+                        namespace = primaryNamespace;
                     }
                     material = Material.get(namespace.trim() + ':' + simpleName.trim(), properties);
                 }
@@ -443,7 +458,7 @@ public class MaterialSelector extends javax.swing.JPanel {
 
     private void updateKnownCustomNames() {
         final Vector<String> simpleNames;
-        if (MINECRAFT.equals(namespace)) {
+        if (primaryNamespace.equals(namespace)) {
             simpleNames = new Vector<>();
         } else {
             simpleNames = new Vector<>(Material.getAllSimpleNamesForNamespace(namespace));
@@ -739,7 +754,7 @@ public class MaterialSelector extends javax.swing.JPanel {
     }//GEN-LAST:event_spinnerDataValueStateChanged
 
     private void radioButtonMinecraftActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_radioButtonMinecraftActionPerformed
-        namespace = Material.MINECRAFT;
+        namespace = primaryNamespace;
         updateMaterial();
         setControlStates();
         loadDefaultProperties();
@@ -817,7 +832,8 @@ public class MaterialSelector extends javax.swing.JPanel {
     // End of variables declaration//GEN-END:variables
 
     private final Map<String, Component> propertyEditors = new HashMap<>();
-    private boolean extendedBlockIds, programmaticChange, legacyMode;
+    private boolean extendedBlockIds, programmaticChange, legacyMode, hytaleMode;
+    private String primaryNamespace = Material.MINECRAFT;
     private Platform platform;
     private Material material;
     private String namespace, simpleName;

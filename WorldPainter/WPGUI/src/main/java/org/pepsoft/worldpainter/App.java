@@ -1527,7 +1527,8 @@ public final class App extends JFrame implements BrushControl,
         MixedMaterial material = Terrain.getCustomMaterial(customMaterialIndex);
         CustomMaterialDialog dialog;
         if (material == null) {
-            material = MixedMaterial.create(world.getPlatform(), Material.DIRT);
+            Material defaultBlock = getDefaultBlockMaterial();
+            material = MixedMaterial.create(world.getPlatform(), defaultBlock);
             dialog = new CustomMaterialDialog(App.this, world.getPlatform(), material, world.isExtendedBlockIds(), selectedColourScheme);
         } else {
             dialog = new CustomMaterialDialog(App.this, world.getPlatform(), material, world.isExtendedBlockIds(), selectedColourScheme);
@@ -1632,7 +1633,8 @@ public final class App extends JFrame implements BrushControl,
         if (button == null) {
             menuItem = new JMenuItem(strings.getString("select.custom.material") + "...");
             menuItem.addActionListener(e -> {
-                MixedMaterial newMaterial = MixedMaterial.create(world.getPlatform(), Material.DIRT);
+                Material defaultBlock = getDefaultBlockMaterial();
+                MixedMaterial newMaterial = MixedMaterial.create(world.getPlatform(), defaultBlock);
                 CustomMaterialDialog dialog = new CustomMaterialDialog(App.this, world.getPlatform(), newMaterial, world.isExtendedBlockIds(), selectedColourScheme);
                 dialog.setVisible(true);
                 if (! dialog.isCancelled()) {
@@ -1889,6 +1891,18 @@ public final class App extends JFrame implements BrushControl,
             throw new InternalError("VM does not support mandatory encoding UTF-8");
         }
         return String.join("/", parts);
+    }
+
+    /**
+     * Return a sensible default block material for new custom terrains, depending on whether
+     * the current world uses a Hytale or Minecraft platform.
+     */
+    private Material getDefaultBlockMaterial() {
+        if (world != null && org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(world.getPlatform())) {
+            org.pepsoft.worldpainter.hytale.HytaleBlockRegistry.ensureMaterialsRegistered();
+            return Material.get(org.pepsoft.worldpainter.hytale.HytaleBlockRegistry.HYTALE_NAMESPACE + ":Soil_Dirt");
+        }
+        return Material.DIRT;
     }
 
     private int findNextCustomTerrainIndex() {
