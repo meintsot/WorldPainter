@@ -794,9 +794,12 @@ public class NewWorldDialog extends WorldPainterDialog {
         ComboBoxModel model = comboBoxSurfaceMaterial.getModel();
         for (int i = 0; i < model.getSize(); i++) {
             Object item = model.getElementAt(i);
-            if (item instanceof HytaleTerrain && ((HytaleTerrain) item).getName().equalsIgnoreCase(name)) {
-                comboBoxSurfaceMaterial.setSelectedIndex(i);
-                break;
+            if (item instanceof Terrain) {
+                HytaleTerrain ht = org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.fromMinecraftTerrain((Terrain) item);
+                if (ht != null && ht.getName().equalsIgnoreCase(name)) {
+                    comboBoxSurfaceMaterial.setSelectedIndex(i);
+                    break;
+                }
             }
         }
     }
@@ -960,7 +963,8 @@ public class NewWorldDialog extends WorldPainterDialog {
         }
         
         if (isHytalePlatform() && selectedHytaleTerrainIndex >= 0) {
-            HytaleTerrain hytaleTerrain = (HytaleTerrain) comboBoxSurfaceMaterial.getSelectedItem();
+            Terrain selectedTerrain = (Terrain) comboBoxSurfaceMaterial.getSelectedItem();
+            HytaleTerrain hytaleTerrain = org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.fromMinecraftTerrain(selectedTerrain);
             return new HytaleTileFactory(tileFactory, hytaleTerrain, selectedHytaleTerrainIndex);
         }
         return tileFactory;
