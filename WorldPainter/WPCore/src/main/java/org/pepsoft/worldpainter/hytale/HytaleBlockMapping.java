@@ -236,17 +236,17 @@ public class HytaleBlockMapping {
         
         String mcName = material.name;
         if (mcName != null) {
+            // Handle "hytale:" namespace - strip prefix and use simpleName directly
+            // as it is already a native Hytale block ID (e.g., "hytale:Soil_Dirt" → "Soil_Dirt")
+            if (mcName.startsWith("hytale:")) {
+                return mcName.substring(7);
+            }
             String hytale = MINECRAFT_TO_HYTALE.get(mcName);
             if (hytale != null) {
                 return hytale;
             }
-            // Try without the minecraft: prefix
-            if (mcName.startsWith("minecraft:")) {
-                hytale = MINECRAFT_TO_HYTALE.get(mcName);
-                if (hytale != null) {
-                    return hytale;
-                }
-            } else {
+            // Try with the minecraft: prefix
+            if (!mcName.startsWith("minecraft:")) {
                 hytale = MINECRAFT_TO_HYTALE.get("minecraft:" + mcName);
                 if (hytale != null) {
                     return hytale;

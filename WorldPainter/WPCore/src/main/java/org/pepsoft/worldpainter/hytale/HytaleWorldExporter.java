@@ -586,8 +586,13 @@ public class HytaleWorldExporter implements WorldExporter {
                     maxWaterLevel = localWaterLevel;
                 }
                 Terrain localTerrain = tile.getTerrain(tileLocalX, tileLocalZ);
+                // Check if this is a custom terrain (backed by MixedMaterial)
+                boolean isCustomTerrain = localTerrain.isCustom();
+                MixedMaterial customMaterial = isCustomTerrain
+                    ? Terrain.getCustomMaterial(localTerrain.getCustomTerrainIndex())
+                    : null;
                 // Map the Minecraft terrain to the best Hytale equivalent
-                HytaleTerrain hytaleTerrain = HytaleTerrainHelper.fromMinecraftTerrain(localTerrain);
+                HytaleTerrain hytaleTerrain = isCustomTerrain ? null : HytaleTerrainHelper.fromMinecraftTerrain(localTerrain);
                 String biome = (hytaleTerrain != null && hytaleTerrain.getBiome() != null)
                     ? hytaleTerrain.getBiome()
                     : mapTerrainToBiome(localTerrain);
@@ -602,7 +607,19 @@ public class HytaleWorldExporter implements WorldExporter {
                 // Bottom layer - bedrock
                 chunk.setHytaleBlock(localX, 0, localZ, HytaleBlock.BEDROCK);
                 
-                if (hytaleTerrain != null) {
+                if (isCustomTerrain && customMaterial != null) {
+                    // Custom terrain: resolve blocks through MixedMaterial → Material → HytaleBlock
+                    for (int y = 1; y <= height; y++) {
+                        Material mat = customMaterial.getMaterial(seed, worldX, worldZ, y);
+                        HytaleBlock block = HytaleBlockMapping.toHytaleBlock(mat);
+                        if (block.isFluid()) {
+                            chunk.setHytaleBlock(localX, y, localZ, HytaleBlock.EMPTY);
+                            chunk.getSections()[y >> 5].setFluid(localX, y & 31, localZ, block.id, 1);
+                        } else {
+                            chunk.setHytaleBlock(localX, y, localZ, block);
+                        }
+                    }
+                } else if (hytaleTerrain != null) {
                     for (int y = 1; y <= height; y++) {
                         int depth = height - y;
                         HytaleBlock block = hytaleTerrain.getBlock(seed, worldX, worldZ, depth);
