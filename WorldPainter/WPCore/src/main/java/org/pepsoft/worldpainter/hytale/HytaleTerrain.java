@@ -286,7 +286,7 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
      * Get a default colour for a Hytale block based on its ID.
      */
     private static int getBlockColour(HytaleBlock block) {
-        String id = block.getId();
+        String id = block.id;
         
         // Rock colours
         if (id.startsWith("Rock_Stone")) return 0x808080;
@@ -521,7 +521,7 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         
         @Override
         public String toString() {
-            return block.getId() + " (" + occurrence + ")";
+            return block.id + " (" + occurrence + ")";
         }
     }
     

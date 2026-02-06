@@ -328,9 +328,15 @@ public class HytaleChunkLightDataBuilder {
         
         // Simple copy - just write all allocated segments
         // TODO: Implement proper compaction with subtree collapsing
-        int[] segmentMap = new int[allocatedSegments.length()];
-        int newIndex = 0;
         
+        // Build segment mapping from old to new indices
+        int maxSegment = allocatedSegments.length();
+        int[] segmentMap = new int[maxSegment];
+        for (int i = 0; i < maxSegment; i++) {
+            segmentMap[i] = -1; // Mark as unmapped
+        }
+        
+        int newIndex = 0;
         for (int seg = allocatedSegments.nextSetBit(0); seg >= 0; seg = allocatedSegments.nextSetBit(seg + 1)) {
             segmentMap[seg] = newIndex++;
         }
@@ -338,7 +344,11 @@ public class HytaleChunkLightDataBuilder {
         // Copy segments with updated pointers
         for (int seg = allocatedSegments.nextSetBit(0); seg >= 0; seg = allocatedSegments.nextSetBit(seg + 1)) {
             int srcPointer = seg * NODE_SIZE;
-            byte mask = light.getByte(srcPointer);
+            byte originalMask = light.getByte(srcPointer);
+            byte mask = originalMask;
+            int maskPosition = result.writerIndex();
+            
+            // Reserve space for mask (will update later if needed)
             result.writeByte(mask);
             
             for (int i = 0; i < TREE_SIZE; i++) {
@@ -346,11 +356,27 @@ public class HytaleChunkLightDataBuilder {
                 if ((mask & (1 << i)) != 0) {
                     // This is a pointer - remap it
                     int oldSegment = value & 0xFFFF;
-                    if (oldSegment < segmentMap.length) {
-                        value = (short) segmentMap[oldSegment];
+                    if (oldSegment >= 0 && oldSegment < maxSegment && allocatedSegments.get(oldSegment)) {
+                        int remapped = segmentMap[oldSegment];
+                        if (remapped >= 0) {
+                            value = (short) remapped;
+                        } else {
+                            // Invalid pointer - convert to leaf with default value
+                            mask &= ~(1 << i); // Clear subdivision bit
+                            value = defaultValue;
+                        }
+                    } else {
+                        // Invalid pointer - convert to leaf with default value
+                        mask &= ~(1 << i); // Clear subdivision bit
+                        value = defaultValue;
                     }
                 }
                 result.writeShort(value);
+            }
+            
+            // Update mask in result if we cleared any subdivision bits
+            if (mask != originalMask) {
+                result.setByte(maskPosition, mask);
             }
         }
         

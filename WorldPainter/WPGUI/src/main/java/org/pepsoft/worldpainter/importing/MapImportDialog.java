@@ -222,6 +222,7 @@ public class MapImportDialog extends WorldPainterDialog {
             mapStatistics.dir = worldDir;
             mapStatistics.platform = platform;
             mapStatistics.levelDat = levelDat;
+            setTitle("Import Existing " + platform.displayName + " Map");
             labelPlatform.setIcon(mapInfo.icon);
             labelPlatform.setText(platform.displayName);
             int width = mapStatistics.highestChunkX - mapStatistics.lowestChunkX + 1;
@@ -369,7 +370,7 @@ public class MapImportDialog extends WorldPainterDialog {
         labelPlatform = new javax.swing.JLabel();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
-        setTitle("Import Existing Minecraft Map");
+        setTitle("Import Existing Map");
 
         jLabel1.setText("Select an existing map:");
 

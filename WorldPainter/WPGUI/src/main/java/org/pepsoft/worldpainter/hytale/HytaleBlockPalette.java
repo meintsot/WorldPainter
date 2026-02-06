@@ -459,7 +459,7 @@ public class HytaleBlockPalette extends JPanel {
      */
     private void addMapping() {
         HytaleBlock selected = getSelectedBlock();
-        String hytaleBlock = selected != null ? selected.getId() : "Rock_Stone";
+        String hytaleBlock = selected != null ? selected.id : "Rock_Stone";
         
         String minecraftBlock = JOptionPane.showInputDialog(this,
             "Enter Minecraft block ID (e.g., minecraft:stone):",

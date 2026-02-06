@@ -514,14 +514,14 @@ public class WorldPainter extends WorldPainterView implements MouseMotionListene
         }
     }
 
-    public boolean isDrawMinecraftBorder() {
-        return drawMinecraftBorder;
+    public boolean isDrawGameBorder() {
+        return drawGameBorder;
     }
 
-    public void setDrawMinecraftBorder(boolean drawMinecraftBorder) {
-        if (drawMinecraftBorder != this.drawMinecraftBorder) {
-            this.drawMinecraftBorder = drawMinecraftBorder;
-            firePropertyChange("drawMinecraftBorder", ! drawMinecraftBorder, drawMinecraftBorder);
+    public void setDrawGameBorder(boolean drawGameBorder) {
+        if (drawGameBorder != this.drawGameBorder) {
+            this.drawGameBorder = drawGameBorder;
+            firePropertyChange("drawGameBorder", ! drawGameBorder, drawGameBorder);
             repaint();
         }
     }
@@ -712,8 +712,8 @@ public class WorldPainter extends WorldPainterView implements MouseMotionListene
             final AffineTransform savedTransform = g2.getTransform();
             final Font savedFont = g2.getFont();
             try {
-                if (drawMinecraftBorder && (dimension.getWorld() != null)) {
-                    drawMinecraftBorderIfNecessary(g2, dimension.getWorld().getBorderSettings());
+                if (drawGameBorder && (dimension.getWorld() != null)) {
+                    drawGameBorderIfNecessary(g2, dimension.getWorld().getBorderSettings());
                 }
 
                 // Switch to world coordinate system
@@ -932,7 +932,7 @@ public class WorldPainter extends WorldPainterView implements MouseMotionListene
         }
     }
 
-    private void drawMinecraftBorderIfNecessary(Graphics2D g2, World2.BorderSettings borderSettings) {
+    private void drawGameBorderIfNecessary(Graphics2D g2, World2.BorderSettings borderSettings) {
         final int size = borderSettings.getSize(), radius = size / 2;
         final Rectangle border = worldToView(borderSettings.getCentreX() - radius, borderSettings.getCentreY() - radius, size, size);
         Rectangle clip = g2.getClipBounds();
@@ -1068,7 +1068,7 @@ public class WorldPainter extends WorldPainterView implements MouseMotionListene
     private int mouseX, mouseY, radius, effectiveRadius, contourSeparation, brushRotation, backgroundDimensionZoom,
             viewDistance;
     private boolean drawBrush, drawOverlays, drawContours, drawViewDistance, drawWalkingDistance,
-            drawMinecraftBorder = true, drawBorders = true, drawBiomes = true;
+            drawGameBorder = true, drawBorders = true, drawBiomes = true;
     private BrushShape brushShape;
     private ColourScheme colourScheme;
     private LightOrigin lightOrigin = LightOrigin.NORTHWEST;

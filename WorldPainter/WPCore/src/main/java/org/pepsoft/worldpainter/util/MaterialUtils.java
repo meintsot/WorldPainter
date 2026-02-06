@@ -48,8 +48,9 @@ public class MaterialUtils {
         final Map<String, Set<String>> nameOnlyMaterials = new HashMap<>();
         Arrays.stream(MixedMaterialManager.getInstance().getMaterials()).forEach(material -> {
             for (MixedMaterial.Row row: material.getRows()) {
-                if (row.material.blockType == -1) {
-                    nameOnlyMaterials.computeIfAbsent(row.material.name, m -> new HashSet<>()).add("custom material " + material.getName());
+                Material mat = row.material;
+                if ((mat != null) && (mat.blockType == -1)) {
+                    nameOnlyMaterials.computeIfAbsent(mat.name, m -> new HashSet<>()).add("custom material " + material.getName());
                 }
             }
         });
@@ -127,8 +128,9 @@ public class MaterialUtils {
             return;
         }
         for (MixedMaterial.Row row: mixedMaterial.getRows()) {
-            if (row.material.blockType == -1) {
-                nameOnlyMaterials.computeIfAbsent(row.material.name, m -> new HashSet<>()).add(name);
+            Material mat = row.material;
+            if ((mat != null) && (mat.blockType == -1)) {
+                nameOnlyMaterials.computeIfAbsent(mat.name, m -> new HashSet<>()).add(name);
             }
         }
     }
@@ -138,7 +140,10 @@ public class MaterialUtils {
         // Check custom materials
         Arrays.stream(MixedMaterialManager.getInstance().getMaterials()).forEach(material -> {
             for (MixedMaterial.Row row: material.getRows()) {
-                allMaterials.add(row.material);
+                Material mat = row.material;
+                if (mat != null) {
+                    allMaterials.add(mat);
+                }
             }
         });
         for (Dimension dimension: world.getDimensions()) {

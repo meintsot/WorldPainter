@@ -23,11 +23,15 @@ import org.pepsoft.worldpainter.Dimension.Anchor;
 import org.pepsoft.worldpainter.Dimension.Border;
 import org.pepsoft.worldpainter.biomeschemes.Minecraft1_2BiomeScheme;
 import org.pepsoft.worldpainter.history.HistoryEntry;
+import org.pepsoft.worldpainter.hytale.HytaleTerrain;
 import org.pepsoft.worldpainter.layers.*;
 import org.pepsoft.worldpainter.layers.exporters.CavernsExporter.CavernsSettings;
 import org.pepsoft.worldpainter.layers.exporters.ExporterSettings;
 import org.pepsoft.worldpainter.layers.exporters.ResourcesExporter.ResourcesExporterSettings;
 import org.pepsoft.worldpainter.plugins.PlatformManager;
+import org.pepsoft.worldpainter.plugins.PlatformProvider;
+import org.pepsoft.worldpainter.exporting.ExportSettings;
+import org.pepsoft.worldpainter.DefaultPlugin;
 import org.pepsoft.worldpainter.themes.SimpleTheme;
 import org.pepsoft.worldpainter.themes.TerrainListCellRenderer;
 import org.pepsoft.worldpainter.themes.impl.simple.EditSimpleThemeDialog;
@@ -98,9 +102,6 @@ public class NewWorldDialog extends WorldPainterDialog {
             }
         });
 
-        comboBoxSurfaceMaterial.setModel(new DefaultComboBoxModel(Terrain.PICK_LIST));
-        comboBoxSurfaceMaterial.setRenderer(new TerrainListCellRenderer(app.getColourScheme()));
-
         initPlatform();
         comboBoxMaxHeight.setSelectedItem(defaultMaxHeight);
         comboBoxMinHeight.setSelectedItem(defaultMinHeight);
@@ -121,7 +122,11 @@ public class NewWorldDialog extends WorldPainterDialog {
             spinnerRange.setValue(Math.round(config.getDefaultRange()));
             spinnerScale.setValue((int) Math.round(config.getDefaultScale() * 100));
             checkBoxLava.setSelected(config.isLava());
-            comboBoxSurfaceMaterial.setSelectedItem(config.getSurface());
+            if (! isHytalePlatform()) {
+                comboBoxSurfaceMaterial.setSelectedItem(config.getSurface());
+            } else {
+                selectDefaultHytaleSurfaceMaterial();
+            }
             checkBoxBeaches.setSelected(config.isBeaches());
             checkBoxCircular.setSelected(config.isDefaultCircularWorld());
         }
@@ -218,7 +223,7 @@ public class NewWorldDialog extends WorldPainterDialog {
         if ((defaultTileFactory instanceof HeightMapTileFactory) && (((HeightMapTileFactory) defaultTileFactory).getTheme() instanceof SimpleTheme)) {
             theme = (SimpleTheme) ((HeightMapTileFactory) defaultTileFactory).getTheme().clone();
         } else {
-            theme = SimpleTheme.createDefault((Terrain) comboBoxSurfaceMaterial.getSelectedItem(), (Integer) comboBoxMinHeight.getSelectedItem(), (Integer) comboBoxMaxHeight.getSelectedItem(), (Integer) spinnerWaterLevel.getValue());
+            theme = SimpleTheme.createDefault(getSelectedTerrainForTileFactory(), (Integer) comboBoxMinHeight.getSelectedItem(), (Integer) comboBoxMaxHeight.getSelectedItem(), (Integer) spinnerWaterLevel.getValue());
         }
 
         scaleToUI();
@@ -238,7 +243,6 @@ public class NewWorldDialog extends WorldPainterDialog {
         fieldName.setText(name);
         fieldName.selectAll();
         fieldName.requestFocusInWindow();
-        labelWarning.setIcon(null);
         labelWarning.setText(" ");
         checkBoxExtendedBlockIds.setSelected(config.isDefaultExtendedBlockIds());
         
@@ -302,10 +306,12 @@ public class NewWorldDialog extends WorldPainterDialog {
 
         // Export settings
         final Configuration config = Configuration.getInstance();
-        world.setCreateGoodiesChest(config.isDefaultCreateGoodiesChest());
-        world.setMapFeatures(config.isDefaultMapFeatures());
-        world.setGameType(config.getDefaultGameType());
-        world.setAllowCheats(config.isDefaultAllowCheats());
+        if (!DefaultPlugin.HYTALE.id.equals(platform.id)) {
+            world.setCreateGoodiesChest(config.isDefaultCreateGoodiesChest());
+            world.setMapFeatures(config.isDefaultMapFeatures());
+            world.setGameType(config.getDefaultGameType());
+            world.setAllowCheats(config.isDefaultAllowCheats());
+        }
 
         world.addDimension(dimension);
         if ((! platform.capabilities.contains(NAME_BASED)) && (platform != JAVA_MCREGION)) {
@@ -653,7 +659,13 @@ public class NewWorldDialog extends WorldPainterDialog {
         dimension.setContoursEnabled(config.isDefaultContoursEnabled());
         dimension.setContourSeparation(config.getDefaultContourSeparation());
 
-        dimension.setExportSettings(config.getDefaultExportSettings());
+        if (DefaultPlugin.HYTALE.id.equals(platform.id)) {
+            PlatformProvider provider = PlatformManager.getInstance().getPlatformProvider(platform);
+            ExportSettings defaultSettings = provider.getDefaultExportSettings(platform);
+            dimension.setExportSettings(defaultSettings);
+        } else {
+            dimension.setExportSettings(config.getDefaultExportSettings());
+        }
 
         return dimension;
     }
@@ -722,9 +734,211 @@ public class NewWorldDialog extends WorldPainterDialog {
         Configuration config = Configuration.getInstance();
         tiledImageViewer1.setTileProvider(new WPTileProvider(tileProvider, colourScheme, app.getCustomBiomeManager(), Collections.singleton(Biome.INSTANCE), config.isDefaultContoursEnabled(), config.getDefaultContourSeparation(), config.getDefaultLightOrigin(), null));
     }
+
+    private boolean isHytalePlatform() {
+        return DefaultPlugin.HYTALE.id.equals(platform.id);
+    }
+
+    private void updateSurfaceMaterialModel() {
+        Object previousSelection = comboBoxSurfaceMaterial.getSelectedItem();
+        if (isHytalePlatform()) {
+            List<HytaleTerrain> terrains = HytaleTerrain.getDefaultTerrains();
+            DefaultComboBoxModel<HytaleTerrain> model = new DefaultComboBoxModel<>(terrains.toArray(new HytaleTerrain[0]));
+            comboBoxSurfaceMaterial.setModel(model);
+            comboBoxSurfaceMaterial.setRenderer(new DefaultListCellRenderer() {
+                @Override
+                public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                    super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                    if (value instanceof HytaleTerrain) {
+                        HytaleTerrain terrain = (HytaleTerrain) value;
+                        String label = terrain.getName();
+                        if (terrain.getBiome() != null) {
+                            label = label + " (" + terrain.getBiome() + ')';
+                        }
+                        setText(label);
+                    }
+                    return this;
+                }
+            });
+            if (previousSelection instanceof HytaleTerrain) {
+                String previousName = ((HytaleTerrain) previousSelection).getName();
+                for (int i = 0; i < model.getSize(); i++) {
+                    HytaleTerrain terrain = model.getElementAt(i);
+                    if ((terrain != null) && terrain.getName().equals(previousName)) {
+                        comboBoxSurfaceMaterial.setSelectedIndex(i);
+                        break;
+                    }
+                }
+            }
+            if ((comboBoxSurfaceMaterial.getSelectedIndex() == -1) && (model.getSize() > 0)) {
+                comboBoxSurfaceMaterial.setSelectedIndex(0);
+            }
+        } else {
+            comboBoxSurfaceMaterial.setModel(new DefaultComboBoxModel(Terrain.PICK_LIST));
+            comboBoxSurfaceMaterial.setRenderer(new TerrainListCellRenderer(app.getColourScheme()));
+            if (previousSelection instanceof Terrain) {
+                comboBoxSurfaceMaterial.setSelectedItem(previousSelection);
+            }
+        }
+    }
+
+    private void selectDefaultHytaleSurfaceMaterial() {
+        if (isHytalePlatform() && (comboBoxSurfaceMaterial.getItemCount() > 0)) {
+            comboBoxSurfaceMaterial.setSelectedIndex(0);
+        }
+    }
+
+    private Terrain getSelectedTerrainForTileFactory() {
+        Object selected = comboBoxSurfaceMaterial.getSelectedItem();
+        if (selected instanceof Terrain) {
+            return (Terrain) selected;
+        }
+        return GRASS;
+    }
+
+    private int getSelectedHytaleTerrainIndex() {
+        if (! isHytalePlatform()) {
+            return -1;
+        }
+        int index = comboBoxSurfaceMaterial.getSelectedIndex();
+        return (index >= 0) ? index : -1;
+    }
+
+    private void updateSeedLabels() {
+        if (isHytalePlatform()) {
+            jLabel7.setText("World seed:");
+            jLabel17.setText("(Default: 62)");
+            radioButtonCustomSeed.setToolTipText("Set your own custom world seed");
+            radioButtonLandSeed.setToolTipText("Start with a flat land world");
+            radioButtonOceanSeed.setToolTipText("Start with an ocean world");
+        } else {
+            jLabel7.setText("Minecraft seed:");
+            jLabel17.setText("(Minecraft default: 62)");
+            radioButtonCustomSeed.setToolTipText("Set your own custom Minecraft seed");
+            radioButtonLandSeed.setToolTipText("Set the seed to the Minecraft default for land");
+            radioButtonOceanSeed.setToolTipText("Set the seed to the Minecraft default for ocean");
+        }
+    }
+
+    private void selectHytaleTerrainByName(String name) {
+        ComboBoxModel model = comboBoxSurfaceMaterial.getModel();
+        for (int i = 0; i < model.getSize(); i++) {
+            Object item = model.getElementAt(i);
+            if (item instanceof HytaleTerrain && ((HytaleTerrain) item).getName().equalsIgnoreCase(name)) {
+                comboBoxSurfaceMaterial.setSelectedIndex(i);
+                break;
+            }
+        }
+    }
+
+    private static final class HytaleTileFactory implements TileFactory {
+        private HytaleTileFactory(TileFactory delegate, HytaleTerrain hytaleTerrain, int hytaleTerrainIndex) {
+            this.delegate = delegate;
+            this.hytaleTerrain = hytaleTerrain;
+            this.hytaleTerrainIndex = hytaleTerrainIndex;
+        }
+
+        @Override
+        public int getMinHeight() {
+            return delegate.getMinHeight();
+        }
+
+        @Override
+        public int getMaxHeight() {
+            return delegate.getMaxHeight();
+        }
+
+        @Override
+        public void setMinMaxHeight(int minHeight, int maxHeight, HeightTransform transform) {
+            delegate.setMinMaxHeight(minHeight, maxHeight, transform);
+        }
+
+        @Override
+        public long getSeed() {
+            return delegate.getSeed();
+        }
+
+        @Override
+        public void setSeed(long seed) {
+            delegate.setSeed(seed);
+        }
+
+        @Override
+        public Tile createTile(int x, int y) {
+            Tile tile = delegate.createTile(x, y);
+            applyHytaleTerrain(tile);
+            return tile;
+        }
+
+        @Override
+        public void applyTheme(Tile tile, int x, int y) {
+            delegate.applyTheme(tile, x, y);
+        }
+
+        @Override
+        public void transform(CoordinateTransform transform) {
+            delegate.transform(transform);
+        }
+
+        @Override
+        public Rectangle getExtent() {
+            return delegate.getExtent();
+        }
+
+        @Override
+        public boolean isTilePresent(int x, int y) {
+            return delegate.isTilePresent(x, y);
+        }
+
+        @Override
+        public Tile getTile(int x, int y) {
+            Tile tile = delegate.getTile(x, y);
+            applyHytaleTerrain(tile);
+            return tile;
+        }
+
+        private void applyHytaleTerrain(Tile tile) {
+            if (tile == null) {
+                return;
+            }
+            // TODO: Add HytaleTerrain field to Tile class
+            // if (tile.hytaleTerrain == null) {
+            //     tile.hytaleTerrain = new short[TILE_SIZE * TILE_SIZE];
+            // }
+            // Arrays.fill(tile.hytaleTerrain, (short) hytaleTerrainIndex);
+
+            // Sync Minecraft terrain for preview
+            if (hytaleTerrain != null) {
+                Terrain mt = mapHytaleToMinecraft(hytaleTerrain);
+                for (int ty = 0; ty < TILE_SIZE; ty++) {
+                    for (int tx = 0; tx < TILE_SIZE; tx++) {
+                        tile.setTerrain(tx, ty, mt);
+                    }
+                }
+            }
+        }
+
+        private Terrain mapHytaleToMinecraft(HytaleTerrain ht) {
+            String name = ht.getName().toLowerCase();
+            if (name.contains("grass")) return Terrain.GRASS;
+            if (name.contains("dirt")) return Terrain.DIRT;
+            if (name.contains("sand")) return Terrain.SAND;
+            if (name.contains("stone")) return Terrain.STONE;
+            if (name.contains("water")) return Terrain.WATER;
+            if (name.contains("snow") || name.contains("ice")) return Terrain.SNOW;
+            if (name.contains("gravel")) return Terrain.GRAVEL;
+            return Terrain.GRASS;
+        }
+
+        private final TileFactory delegate;
+        private final HytaleTerrain hytaleTerrain;
+        private final int hytaleTerrainIndex;
+        private static final long serialVersionUID = 1L;
+    }
     
     private TileFactory createTileFactory(long seed, Dimension.Role role) {
-        final Terrain terrain = (Terrain) comboBoxSurfaceMaterial.getSelectedItem();
+        final Terrain terrain = getSelectedTerrainForTileFactory();
+        final int selectedHytaleTerrainIndex = getSelectedHytaleTerrainIndex();
         final int baseHeight = (Integer) spinnerTerrainLevel.getValue();
         final int waterHeight = (Integer) spinnerWaterLevel.getValue();
         final float range = ((Number) spinnerRange.getValue()).floatValue();
@@ -775,6 +989,10 @@ public class NewWorldDialog extends WorldPainterDialog {
             }
         }
         
+        if (isHytalePlatform() && selectedHytaleTerrainIndex >= 0) {
+            HytaleTerrain hytaleTerrain = (HytaleTerrain) comboBoxSurfaceMaterial.getSelectedItem();
+            return new HytaleTileFactory(tileFactory, hytaleTerrain, selectedHytaleTerrainIndex);
+        }
         return tileFactory;
     }
 
@@ -816,6 +1034,9 @@ public class NewWorldDialog extends WorldPainterDialog {
     }
 
     private void initPlatform() {
+        updateSurfaceMaterialModel();
+        updateSeedLabels();
+
         final int maxWidth = (int) Math.min((((long) platform.maxX - platform.minX) / TILE_SIZE) * TILE_SIZE, Integer.MAX_VALUE);
         final int maxLength = (int) Math.min((((long) platform.maxY - platform.minY) / TILE_SIZE) * TILE_SIZE, Integer.MAX_VALUE);
         SpinnerNumberModel model = (SpinnerNumberModel) spinnerWidth.getModel();
@@ -1689,6 +1910,9 @@ public class NewWorldDialog extends WorldPainterDialog {
     private void radioButtonOceanSeedActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_radioButtonOceanSeedActionPerformed
         if (radioButtonOceanSeed.isSelected()) {
             fieldSeed.setText(Long.toString(World2.DEFAULT_OCEAN_SEED));
+            if (isHytalePlatform()) {
+                selectHytaleTerrainByName("Water");
+            }
             updatePreview();
             setControlStates();
         }
@@ -1697,6 +1921,9 @@ public class NewWorldDialog extends WorldPainterDialog {
     private void radioButtonLandSeedActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_radioButtonLandSeedActionPerformed
         if (radioButtonLandSeed.isSelected()) {
             fieldSeed.setText(Long.toString(World2.DEFAULT_LAND_SEED));
+            if (isHytalePlatform()) {
+                selectHytaleTerrainByName("Grass");
+            }
             updatePreview();
             setControlStates();
         }

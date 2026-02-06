@@ -1,0 +1,285 @@
+
+================================================================================
+ANALYZING: Working World (universe/default) - 0.0.region.bin
+File: C:\Users\Sotirios\Desktop\WorldPainter\universe\worlds\default\chunks\0.0.region.bin
+================================================================================
+  Version: 1, Blobs: 1024, Segment Size: 4096
+  Non-empty chunks: 706/1024
+
+  --- Chunk local (0, 0) ---
+    Raw data size: 553847 bytes
+    Top-level keys: ['Components']
+    Component keys: ['BlockComponentChunk', 'ChunkColumn', 'WorldChunk', 'BlockHealthChunk', 'ChunkSpawnedNPCData', 'EnvironmentChunk', 'BlockChunk', 'EntityChunk']
+
+    [BlockChunk]
+      Version: 3
+      Needs Physics: False
+      Height palette count: 27
+      Height range: 0 - 132
+      Sample heights: [{'x': 0, 'z': 0, 'palette_idx': 1, 'height': 107}, {'x': 1, 'z': 0, 'palette_idx': 9, 'height': 109}, {'x': 2, 'z': 0, 'palette_idx': 9, 'height': 109}, {'x': 3, 'z': 0, 'palette_idx': 2, 'height': 110}, {'x': 4, 'z': 0, 'palette_idx': 2, 'height': 110}]
+
+    [ChunkColumn] 10 sections
+      Section 0 (Y 0-31): Block(palette=HALF_BYTE blocks=['Empty', 'Rock_Volcanic', 'Rock_Basalt_Brick', 'Rock_Basalt_Cobble', 'Rock_Volcanic_Cracked_Lava'])
+      Section 0 (Y 0-31): Fluid(palette=HALF_BYTE fluids=['Empty', 'Lava_Source'] count=33 levels=33
+        Fluid positions: [{'index': 31780, 'x': 4, 'y': 31, 'z': 1, 'palette_idx': 1}, {'index': 31781, 'x': 5, 'y': 31, 'z': 1, 'palette_idx': 1}, {'index': 31782, 'x': 6, 'y': 31, 'z': 1, 'palette_idx': 1}, {'index': 31783, 'x': 7, 'y': 31, 'z': 1, 'palette_idx': 1}, {'index': 31810, 'x': 2, 'y': 31, 'z': 2, 'palette_idx': 1}, {'index': 31811, 'x': 3, 'y': 31, 'z': 2, 'palette_idx': 1}, {'index': 31812, 'x': 4, 'y': 31, 'z': 2, 'palette_idx': 1}, {'index': 31813, 'x': 5, 'y': 31, 'z': 2, 'palette_idx': 1}, {'index': 31814, 'x': 6, 'y': 31, 'z': 2, 'palette_idx': 1}, {'index': 31815, 'x': 7, 'y': 31, 'z': 2, 'palette_idx': 1}]
+        Level positions: [{'index': 31780, 'x': 4, 'y': 31, 'z': 1, 'level': 1}, {'index': 31781, 'x': 5, 'y': 31, 'z': 1, 'level': 1}, {'index': 31782, 'x': 6, 'y': 31, 'z': 1, 'level': 1}, {'index': 31783, 'x': 7, 'y': 31, 'z': 1, 'level': 1}, {'index': 31810, 'x': 2, 'y': 31, 'z': 2, 'level': 1}, {'index': 31811, 'x': 3, 'y': 31, 'z': 2, 'level': 1}, {'index': 31812, 'x': 4, 'y': 31, 'z': 2, 'level': 1}, {'index': 31813, 'x': 5, 'y': 31, 'z': 2, 'level': 1}, {'index': 31814, 'x': 6, 'y': 31, 'z': 2, 'level': 1}, {'index': 31815, 'x': 7, 'y': 31, 'z': 2, 'level': 1}])
+      Section 0: Other components: ['BlockPhysics']
+      Section 1 (Y 32-63): Block(palette=BYTE blocks=['Empty', 'Rock_Stone_Brick_Smooth', 'Rock_Quartzite_Brick_Smooth', 'Plant_Grass_Rocky_Short', 'Rock_Quartzite_Brick_Half'])
+      Section 1 (Y 32-63): Fluid(palette=HALF_BYTE fluids=['Empty', 'Lava_Source'] count=42 levels=42
+        Fluid positions: [{'index': 6, 'x': 6, 'y': 0, 'z': 0, 'palette_idx': 1}, {'index': 7, 'x': 7, 'y': 0, 'z': 0, 'palette_idx': 1}, {'index': 34, 'x': 2, 'y': 0, 'z': 1, 'palette_idx': 1}, {'index': 35, 'x': 3, 'y': 0, 'z': 1, 'palette_idx': 1}, {'index': 36, 'x': 4, 'y': 0, 'z': 1, 'palette_idx': 1}, {'index': 37, 'x': 5, 'y': 0, 'z': 1, 'palette_idx': 1}, {'index': 38, 'x': 6, 'y': 0, 'z': 1, 'palette_idx': 1}, {'index': 39, 'x': 7, 'y': 0, 'z': 1, 'palette_idx': 1}, {'index': 40, 'x': 8, 'y': 0, 'z': 1, 'palette_idx': 1}, {'index': 66, 'x': 2, 'y': 0, 'z': 2, 'palette_idx': 1}]
+        Level positions: [{'index': 6, 'x': 6, 'y': 0, 'z': 0, 'level': 1}, {'index': 7, 'x': 7, 'y': 0, 'z': 0, 'level': 1}, {'index': 34, 'x': 2, 'y': 0, 'z': 1, 'level': 1}, {'index': 35, 'x': 3, 'y': 0, 'z': 1, 'level': 1}, {'index': 36, 'x': 4, 'y': 0, 'z': 1, 'level': 1}, {'index': 37, 'x': 5, 'y': 0, 'z': 1, 'level': 1}, {'index': 38, 'x': 6, 'y': 0, 'z': 1, 'level': 1}, {'index': 39, 'x': 7, 'y': 0, 'z': 1, 'level': 1}, {'index': 40, 'x': 8, 'y': 0, 'z': 1, 'level': 1}, {'index': 66, 'x': 2, 'y': 0, 'z': 2, 'level': 1}])
+      Section 1: Other components: ['BlockPhysics']
+      Section 2 (Y 64-95): Block(palette=BYTE blocks=['Empty', 'Ore_Iron_Basalt', 'Rock_Quartzite_Cobble_Half', 'Rock_Stone_Brick_Decorative', 'Plant_Flower_Orchid_Yellow'])
+      Section 2 (Y 64-95): Fluid(palette=EMPTY)
+      Section 2: Other components: ['BlockPhysics']
+      Section 3 (Y 96-127): Block(palette=BYTE blocks=['Empty', 'Plant_Fern_Winter', 'Wood_Sticks', 'Rock_Stone', 'Plant_Grass_Sharp_Short'])
+      Section 3 (Y 96-127): Fluid(palette=HALF_BYTE fluids=['Empty', 'Water_Source'] count=1148 levels=1148
+        Fluid positions: [{'index': 12288, 'x': 0, 'y': 12, 'z': 0, 'palette_idx': 1}, {'index': 12489, 'x': 9, 'y': 12, 'z': 6, 'palette_idx': 1}, {'index': 13312, 'x': 0, 'y': 13, 'z': 0, 'palette_idx': 1}, {'index': 13348, 'x': 4, 'y': 13, 'z': 1, 'palette_idx': 1}, {'index': 13382, 'x': 6, 'y': 13, 'z': 2, 'palette_idx': 1}, {'index': 13513, 'x': 9, 'y': 13, 'z': 6, 'palette_idx': 1}, {'index': 13867, 'x': 11, 'y': 13, 'z': 17, 'palette_idx': 1}, {'index': 14031, 'x': 15, 'y': 13, 'z': 22, 'palette_idx': 1}, {'index': 14326, 'x': 22, 'y': 13, 'z': 31, 'palette_idx': 1}, {'index': 14336, 'x': 0, 'y': 14, 'z': 0, 'palette_idx': 1}]
+        Level positions: [{'index': 12288, 'x': 0, 'y': 12, 'z': 0, 'level': 1}, {'index': 12489, 'x': 9, 'y': 12, 'z': 6, 'level': 1}, {'index': 13312, 'x': 0, 'y': 13, 'z': 0, 'level': 1}, {'index': 13348, 'x': 4, 'y': 13, 'z': 1, 'level': 1}, {'index': 13382, 'x': 6, 'y': 13, 'z': 2, 'level': 1}, {'index': 13513, 'x': 9, 'y': 13, 'z': 6, 'level': 1}, {'index': 13867, 'x': 11, 'y': 13, 'z': 17, 'level': 1}, {'index': 14031, 'x': 15, 'y': 13, 'z': 22, 'level': 1}, {'index': 14326, 'x': 22, 'y': 13, 'z': 31, 'level': 1}, {'index': 14336, 'x': 0, 'y': 14, 'z': 0, 'level': 1}])
+      Section 3: Other components: ['BlockPhysics']
+      Section 4 (Y 128-159): Block(palette=HALF_BYTE blocks=['Empty', 'Wood_Beech_Branch_Long', 'Wood_Beech_Branch_Corner', 'Plant_Leaves_Beech', 'Wood_Beech_Trunk_Full'])
+      Section 4 (Y 128-159): Fluid(palette=EMPTY)
+      Section 4: Other components: ['BlockPhysics']
+      Section 5 (Y 160-191): Block(palette=EMPTY)
+      Section 5 (Y 160-191): Fluid(palette=EMPTY)
+      Section 6 (Y 192-223): Block(palette=EMPTY)
+      Section 6 (Y 192-223): Fluid(palette=EMPTY)
+      Section 7 (Y 224-255): Block(palette=EMPTY)
+      Section 7 (Y 224-255): Fluid(palette=EMPTY)
+      Section 8 (Y 256-287): Block(palette=EMPTY)
+      Section 8 (Y 256-287): Fluid(palette=EMPTY)
+      Section 9 (Y 288-319): Block(palette=EMPTY)
+      Section 9 (Y 288-319): Fluid(palette=EMPTY)
+
+    [EntityChunk] 2 entities
+
+  --- Chunk local (1, 0) ---
+    Raw data size: 383076 bytes
+    Top-level keys: ['Components']
+    Component keys: ['BlockComponentChunk', 'ChunkColumn', 'WorldChunk', 'BlockHealthChunk', 'ChunkSpawnedNPCData', 'EnvironmentChunk', 'BlockChunk', 'EntityChunk']
+
+    [BlockChunk]
+      Version: 3
+      Needs Physics: False
+      Height palette count: 26
+      Height range: 0 - 140
+      Sample heights: [{'x': 0, 'z': 0, 'palette_idx': 1, 'height': 120}, {'x': 1, 'z': 0, 'palette_idx': 6, 'height': 119}, {'x': 2, 'z': 0, 'palette_idx': 6, 'height': 119}, {'x': 3, 'z': 0, 'palette_idx': 6, 'height': 119}, {'x': 4, 'z': 0, 'palette_idx': 6, 'height': 119}]
+
+    [ChunkColumn] 10 sections
+      Section 0 (Y 0-31): Block(palette=HALF_BYTE blocks=['Empty', 'Rock_Volcanic', 'Rock_Volcanic_Stalactite_Large', 'Rock_Basalt_Cobble', 'Ore_Iron_Basalt_Cracked'])
+      Section 0 (Y 0-31): Fluid(palette=EMPTY)
+      Section 0: Other components: ['BlockPhysics']
+      Section 1 (Y 32-63): Block(palette=BYTE blocks=['Empty', 'Ore_Copper_Stone', 'Wood_Beech_Trunk', 'Rock_Volcanic_Stalactite_Small', 'Rock_Basalt_Brick_Wall'])
+      Section 1 (Y 32-63): Fluid(palette=EMPTY)
+      Section 1: Other components: ['BlockPhysics']
+      Section 2 (Y 64-95): Block(palette=HALF_BYTE blocks=['Empty', 'Plant_Roots_Cave_Small', 'Rock_Stone_Mossy', 'Ore_Copper_Stone', 'Ore_Iron_Basalt_Cracked'])
+      Section 2 (Y 64-95): Fluid(palette=EMPTY)
+      Section 2: Other components: ['BlockPhysics']
+      Section 3 (Y 96-127): Block(palette=BYTE blocks=['Empty', 'Wood_Birch_Branch_Long', 'Plant_Grass_Lush_Tall', 'Plant_Flower_Tall_Yellow', 'Wood_Birch_Trunk_Full'])
+      Section 3 (Y 96-127): Fluid(palette=EMPTY)
+      Section 3: Other components: ['BlockPhysics']
+      Section 4 (Y 128-159): Block(palette=HALF_BYTE blocks=['Empty', 'Plant_Leaves_Beech', 'Wood_Beech_Branch_Long', 'Wood_Birch_Branch_Long', 'Wood_Beech_Trunk_Full'])
+      Section 4 (Y 128-159): Fluid(palette=EMPTY)
+      Section 4: Other components: ['BlockPhysics']
+      Section 5 (Y 160-191): Block(palette=EMPTY)
+      Section 5 (Y 160-191): Fluid(palette=EMPTY)
+      Section 6 (Y 192-223): Block(palette=EMPTY)
+      Section 6 (Y 192-223): Fluid(palette=EMPTY)
+      Section 7 (Y 224-255): Block(palette=EMPTY)
+      Section 7 (Y 224-255): Fluid(palette=EMPTY)
+      Section 8 (Y 256-287): Block(palette=EMPTY)
+      Section 8 (Y 256-287): Fluid(palette=EMPTY)
+      Section 9 (Y 288-319): Block(palette=EMPTY)
+      Section 9 (Y 288-319): Fluid(palette=EMPTY)
+
+    [EntityChunk] 3 entities
+
+  --- Chunk local (2, 0) ---
+    Raw data size: 382044 bytes
+    Top-level keys: ['Components']
+    Component keys: ['BlockComponentChunk', 'ChunkColumn', 'WorldChunk', 'BlockHealthChunk', 'ChunkSpawnedNPCData', 'EnvironmentChunk', 'BlockChunk', 'EntityChunk']
+
+    [BlockChunk]
+      Version: 3
+      Needs Physics: False
+      Height palette count: 29
+      Height range: 0 - 142
+      Sample heights: [{'x': 0, 'z': 0, 'palette_idx': 1, 'height': 116}, {'x': 1, 'z': 0, 'palette_idx': 1, 'height': 116}, {'x': 2, 'z': 0, 'palette_idx': 1, 'height': 116}, {'x': 3, 'z': 0, 'palette_idx': 1, 'height': 116}, {'x': 4, 'z': 0, 'palette_idx': 1, 'height': 116}]
+
+    [ChunkColumn] 10 sections
+      Section 0 (Y 0-31): Block(palette=HALF_BYTE blocks=['Empty', 'Rock_Bedrock', 'Rock_Volcanic_Stalactite_Small', 'Rock_Volcanic', 'Plant_Bramble_Dead_Lavathorn'])
+      Section 0 (Y 0-31): Fluid(palette=HALF_BYTE fluids=['Empty', 'Lava_Source'] count=5 levels=5
+        Fluid positions: [{'index': 30743, 'x': 23, 'y': 30, 'z': 0, 'palette_idx': 1}, {'index': 30744, 'x': 24, 'y': 30, 'z': 0, 'palette_idx': 1}, {'index': 30745, 'x': 25, 'y': 30, 'z': 0, 'palette_idx': 1}, {'index': 30775, 'x': 23, 'y': 30, 'z': 1, 'palette_idx': 1}, {'index': 30776, 'x': 24, 'y': 30, 'z': 1, 'palette_idx': 1}]
+        Level positions: [{'index': 30743, 'x': 23, 'y': 30, 'z': 0, 'level': 1}, {'index': 30744, 'x': 24, 'y': 30, 'z': 0, 'level': 1}, {'index': 30745, 'x': 25, 'y': 30, 'z': 0, 'level': 1}, {'index': 30775, 'x': 23, 'y': 30, 'z': 1, 'level': 1}, {'index': 30776, 'x': 24, 'y': 30, 'z': 1, 'level': 1}])
+      Section 0: Other components: ['BlockPhysics']
+      Section 1 (Y 32-63): Block(palette=BYTE blocks=['Empty', 'Rubble_Volcanic_Medium', 'Deco_Pot_Clay_Broken', 'Plant_Leaves_Bramble', 'Rubble_Volcanic'])
+      Section 1 (Y 32-63): Fluid(palette=EMPTY)
+      Section 1: Other components: ['BlockPhysics']
+      Section 2 (Y 64-95): Block(palette=BYTE blocks=['Empty', 'Soil_Mud_Dry', 'Plant_Roots_Cave_Small', 'Rock_Crystal_Red_Medium', 'Rock_Basalt'])
+      Section 2 (Y 64-95): Fluid(palette=EMPTY)
+      Section 2: Other components: ['BlockPhysics']
+      Section 3 (Y 96-127): Block(palette=BYTE blocks=['Empty', 'Plant_Leaves_Birch', 'Plant_Grass_Lush_Short', 'Soil_Pebbles', 'Wood_Beech_Trunk_Full'])
+      Section 3 (Y 96-127): Fluid(palette=EMPTY)
+      Section 3: Other components: ['BlockPhysics']
+      Section 4 (Y 128-159): Block(palette=HALF_BYTE blocks=['Empty', 'Wood_Beech_Trunk', 'Wood_Birch_Branch_Long', 'Plant_Leaves_Beech', 'Wood_Beech_Branch_Corner'])
+      Section 4 (Y 128-159): Fluid(palette=EMPTY)
+      Section 4: Other components: ['BlockPhysics']
+      Section 5 (Y 160-191): Block(palette=EMPTY)
+      Section 5 (Y 160-191): Fluid(palette=EMPTY)
+      Section 6 (Y 192-223): Block(palette=EMPTY)
+      Section 6 (Y 192-223): Fluid(palette=EMPTY)
+      Section 7 (Y 224-255): Block(palette=EMPTY)
+      Section 7 (Y 224-255): Fluid(palette=EMPTY)
+      Section 8 (Y 256-287): Block(palette=EMPTY)
+      Section 8 (Y 256-287): Fluid(palette=EMPTY)
+      Section 9 (Y 288-319): Block(palette=EMPTY)
+      Section 9 (Y 288-319): Fluid(palette=EMPTY)
+
+    [EntityChunk] 1 entities
+
+Directory not found: C:\Users\Sotirios\Desktop\KOC\run\universe\worlds\Generated World\chunks
+
+================================================================================
+ANALYZING: Exported World (default) - 0.0.region.bin
+File: C:\Users\Sotirios\Desktop\KOC\run\universe\worlds\default\chunks\0.0.region.bin
+================================================================================
+  Version: 1, Blobs: 1024, Segment Size: 4096
+  Non-empty chunks: 618/1024
+
+  --- Chunk local (0, 0) ---
+    Raw data size: 62396 bytes
+    Top-level keys: ['Components']
+    Component keys: ['BlockComponentChunk', 'ChunkColumn', 'WorldChunk', 'BlockHealthChunk', 'ChunkSpawnedNPCData', 'EnvironmentChunk', 'BlockChunk', 'EntityChunk']
+
+    [BlockChunk]
+      Version: 3
+      Needs Physics: False
+      Height palette count: 4
+      Height range: 68 - 71
+      Sample heights: [{'x': 0, 'z': 0, 'palette_idx': 0, 'height': 68}, {'x': 1, 'z': 0, 'palette_idx': 0, 'height': 68}, {'x': 2, 'z': 0, 'palette_idx': 0, 'height': 68}, {'x': 3, 'z': 0, 'palette_idx': 0, 'height': 68}, {'x': 4, 'z': 0, 'palette_idx': 1, 'height': 69}]
+
+    [ChunkColumn] 10 sections
+      Section 0 (Y 0-31): Block(palette=HALF_BYTE blocks=['Rock_Bedrock', 'Rock_Stone'])
+      Section 0 (Y 0-31): Fluid(palette=EMPTY)
+      Section 0: Other components: ['BlockPhysics']
+      Section 1 (Y 32-63): Block(palette=HALF_BYTE blocks=['Rock_Stone'])
+      Section 1 (Y 32-63): Fluid(palette=EMPTY)
+      Section 1: Other components: ['BlockPhysics']
+      Section 2 (Y 64-95): Block(palette=HALF_BYTE blocks=['Rock_Stone', 'Soil_Grass', 'Soil_Dirt', 'Empty'])
+      Section 2 (Y 64-95): Fluid(palette=EMPTY)
+      Section 2: Other components: ['BlockPhysics']
+      Section 3 (Y 96-127): Block(palette=EMPTY)
+      Section 3 (Y 96-127): Fluid(palette=EMPTY)
+      Section 3: Other components: ['BlockPhysics']
+      Section 4 (Y 128-159): Block(palette=EMPTY)
+      Section 4 (Y 128-159): Fluid(palette=EMPTY)
+      Section 4: Other components: ['BlockPhysics']
+      Section 5 (Y 160-191): Block(palette=EMPTY)
+      Section 5 (Y 160-191): Fluid(palette=EMPTY)
+      Section 5: Other components: ['BlockPhysics']
+      Section 6 (Y 192-223): Block(palette=EMPTY)
+      Section 6 (Y 192-223): Fluid(palette=EMPTY)
+      Section 6: Other components: ['BlockPhysics']
+      Section 7 (Y 224-255): Block(palette=EMPTY)
+      Section 7 (Y 224-255): Fluid(palette=EMPTY)
+      Section 7: Other components: ['BlockPhysics']
+      Section 8 (Y 256-287): Block(palette=EMPTY)
+      Section 8 (Y 256-287): Fluid(palette=EMPTY)
+      Section 8: Other components: ['BlockPhysics']
+      Section 9 (Y 288-319): Block(palette=EMPTY)
+      Section 9 (Y 288-319): Fluid(palette=EMPTY)
+      Section 9: Other components: ['BlockPhysics']
+
+    [EntityChunk] 0 entities
+
+  --- Chunk local (1, 0) ---
+    Raw data size: 62288 bytes
+    Top-level keys: ['Components']
+    Component keys: ['BlockComponentChunk', 'ChunkColumn', 'WorldChunk', 'BlockHealthChunk', 'EnvironmentChunk', 'BlockChunk', 'EntityChunk']
+
+    [BlockChunk]
+      Version: 3
+      Needs Physics: False
+      Height palette count: 5
+      Height range: 67 - 71
+      Sample heights: [{'x': 0, 'z': 0, 'palette_idx': 0, 'height': 71}, {'x': 1, 'z': 0, 'palette_idx': 1, 'height': 70}, {'x': 2, 'z': 0, 'palette_idx': 1, 'height': 70}, {'x': 3, 'z': 0, 'palette_idx': 1, 'height': 70}, {'x': 4, 'z': 0, 'palette_idx': 1, 'height': 70}]
+
+    [ChunkColumn] 10 sections
+      Section 0 (Y 0-31): Block(palette=HALF_BYTE blocks=['Rock_Bedrock', 'Rock_Stone'])
+      Section 0 (Y 0-31): Fluid(palette=EMPTY)
+      Section 0: Other components: ['BlockPhysics']
+      Section 1 (Y 32-63): Block(palette=HALF_BYTE blocks=['Rock_Stone'])
+      Section 1 (Y 32-63): Fluid(palette=EMPTY)
+      Section 1: Other components: ['BlockPhysics']
+      Section 2 (Y 64-95): Block(palette=HALF_BYTE blocks=['Rock_Stone', 'Soil_Dirt', 'Soil_Grass', 'Empty'])
+      Section 2 (Y 64-95): Fluid(palette=EMPTY)
+      Section 2: Other components: ['BlockPhysics']
+      Section 3 (Y 96-127): Block(palette=EMPTY)
+      Section 3 (Y 96-127): Fluid(palette=EMPTY)
+      Section 3: Other components: ['BlockPhysics']
+      Section 4 (Y 128-159): Block(palette=EMPTY)
+      Section 4 (Y 128-159): Fluid(palette=EMPTY)
+      Section 4: Other components: ['BlockPhysics']
+      Section 5 (Y 160-191): Block(palette=EMPTY)
+      Section 5 (Y 160-191): Fluid(palette=EMPTY)
+      Section 5: Other components: ['BlockPhysics']
+      Section 6 (Y 192-223): Block(palette=EMPTY)
+      Section 6 (Y 192-223): Fluid(palette=EMPTY)
+      Section 6: Other components: ['BlockPhysics']
+      Section 7 (Y 224-255): Block(palette=EMPTY)
+      Section 7 (Y 224-255): Fluid(palette=EMPTY)
+      Section 7: Other components: ['BlockPhysics']
+      Section 8 (Y 256-287): Block(palette=EMPTY)
+      Section 8 (Y 256-287): Fluid(palette=EMPTY)
+      Section 8: Other components: ['BlockPhysics']
+      Section 9 (Y 288-319): Block(palette=EMPTY)
+      Section 9 (Y 288-319): Fluid(palette=EMPTY)
+      Section 9: Other components: ['BlockPhysics']
+
+    [EntityChunk] 0 entities
+
+  --- Chunk local (2, 0) ---
+    Raw data size: 62286 bytes
+    Top-level keys: ['Components']
+    Component keys: ['BlockComponentChunk', 'ChunkColumn', 'WorldChunk', 'BlockHealthChunk', 'EnvironmentChunk', 'BlockChunk', 'EntityChunk']
+
+    [BlockChunk]
+      Version: 3
+      Needs Physics: False
+      Height palette count: 4
+      Height range: 67 - 70
+      Sample heights: [{'x': 0, 'z': 0, 'palette_idx': 0, 'height': 68}, {'x': 1, 'z': 0, 'palette_idx': 0, 'height': 68}, {'x': 2, 'z': 0, 'palette_idx': 0, 'height': 68}, {'x': 3, 'z': 0, 'palette_idx': 0, 'height': 68}, {'x': 4, 'z': 0, 'palette_idx': 0, 'height': 68}]
+
+    [ChunkColumn] 10 sections
+      Section 0 (Y 0-31): Block(palette=HALF_BYTE blocks=['Rock_Bedrock', 'Rock_Stone'])
+      Section 0 (Y 0-31): Fluid(palette=EMPTY)
+      Section 0: Other components: ['BlockPhysics']
+      Section 1 (Y 32-63): Block(palette=HALF_BYTE blocks=['Rock_Stone'])
+      Section 1 (Y 32-63): Fluid(palette=EMPTY)
+      Section 1: Other components: ['BlockPhysics']
+      Section 2 (Y 64-95): Block(palette=HALF_BYTE blocks=['Rock_Stone', 'Soil_Dirt', 'Soil_Grass', 'Empty'])
+      Section 2 (Y 64-95): Fluid(palette=EMPTY)
+      Section 2: Other components: ['BlockPhysics']
+      Section 3 (Y 96-127): Block(palette=EMPTY)
+      Section 3 (Y 96-127): Fluid(palette=EMPTY)
+      Section 3: Other components: ['BlockPhysics']
+      Section 4 (Y 128-159): Block(palette=EMPTY)
+      Section 4 (Y 128-159): Fluid(palette=EMPTY)
+      Section 4: Other components: ['BlockPhysics']
+      Section 5 (Y 160-191): Block(palette=EMPTY)
+      Section 5 (Y 160-191): Fluid(palette=EMPTY)
+      Section 5: Other components: ['BlockPhysics']
+      Section 6 (Y 192-223): Block(palette=EMPTY)
+      Section 6 (Y 192-223): Fluid(palette=EMPTY)
+      Section 6: Other components: ['BlockPhysics']
+      Section 7 (Y 224-255): Block(palette=EMPTY)
+      Section 7 (Y 224-255): Fluid(palette=EMPTY)
+      Section 7: Other components: ['BlockPhysics']
+      Section 8 (Y 256-287): Block(palette=EMPTY)
+      Section 8 (Y 256-287): Fluid(palette=EMPTY)
+      Section 8: Other components: ['BlockPhysics']
+      Section 9 (Y 288-319): Block(palette=EMPTY)
+      Section 9 (Y 288-319): Fluid(palette=EMPTY)
+      Section 9: Other components: ['BlockPhysics']
+
+    [EntityChunk] 0 entities

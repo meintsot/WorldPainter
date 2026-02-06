@@ -455,7 +455,7 @@ public class HytaleBlockMapping {
      * @return A numeric index for the block
      */
     public static int getBlockIndex(HytaleBlock block) {
-        return HytaleBlockRegistry.getInstance().getIndex(block.getId());
+        return HytaleBlockRegistry.getInstance().getIndex(block.id);
     }
     
     /**

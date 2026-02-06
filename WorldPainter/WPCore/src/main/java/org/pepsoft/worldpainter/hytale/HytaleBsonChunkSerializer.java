@@ -481,30 +481,124 @@ public class HytaleBsonChunkSerializer {
             // Block migration version
             buf.writeInt(0);
             
-            Material[] blocks = section.getBlocks();
-            Map<Material, Integer> paletteIndex = new HashMap<>();
-            List<Material> palette = new ArrayList<>();
-            List<Integer> counts = new ArrayList<>();
-            int[] blockIndices = new int[blocks.length];
-            boolean allAir = true;
+            HytaleBlock[] hytaleBlocks = section.getHytaleBlocks();
+            boolean useHytaleBlocks = section.hasHytaleBlocks();
 
-            for (int i = 0; i < blocks.length; i++) {
-                Material effective = toBlockMaterial(blocks[i]);
-                if (effective != Material.AIR) {
-                    allAir = false;
-                }
-                Integer idx = paletteIndex.get(effective);
-                if (idx == null) {
-                    idx = palette.size();
-                    paletteIndex.put(effective, idx);
-                    palette.add(effective);
-                    counts.add(0);
-                }
-                blockIndices[i] = idx;
-                counts.set(idx, counts.get(idx) + 1);
-            }
+            if (useHytaleBlocks) {
+                Map<String, Integer> paletteIndex = new HashMap<>();
+                List<String> palette = new ArrayList<>();
+                List<Integer> counts = new ArrayList<>();
+                int[] blockIndices = new int[hytaleBlocks.length];
+                boolean allAir = true;
 
-            if (allAir) {
+                for (int i = 0; i < hytaleBlocks.length; i++) {
+                    HytaleBlock effective = (hytaleBlocks[i] != null) ? hytaleBlocks[i] : HytaleBlock.EMPTY;
+                    if (effective.isFluid()) {
+                        effective = HytaleBlock.EMPTY;
+                    }
+                    if (!effective.isEmpty()) {
+                        allAir = false;
+                    }
+                    String id = effective.id;
+                    Integer idx = paletteIndex.get(id);
+                    if (idx == null) {
+                        idx = palette.size();
+                        paletteIndex.put(id, idx);
+                        palette.add(id);
+                        counts.add(0);
+                    }
+                    blockIndices[i] = idx;
+                    counts.set(idx, counts.get(idx) + 1);
+                }
+
+                if (allAir) {
+                    // Empty palette type
+                    buf.writeByte(PALETTE_TYPE_EMPTY);
+                    // Empty filler section
+                    buf.writeByte(PALETTE_TYPE_EMPTY);
+                    // Rotation section - use shared method
+                    writeRotationSection(buf, section);
+                    // Local light (calculated from heightmap)
+                    writeCalculatedSkyLightData(buf, chunk, sectionY);
+                    // Global light (same as local for now)
+                    writeCalculatedSkyLightData(buf, chunk, sectionY);
+                    // Change counters
+                    buf.writeShort(0);
+                    buf.writeShort(0);
+                } else {
+                    int paletteType;
+                    if (palette.size() <= 16) {
+                        paletteType = PALETTE_TYPE_HALF_BYTE;
+                    } else if (palette.size() <= 256) {
+                        paletteType = PALETTE_TYPE_BYTE;
+                    } else {
+                        paletteType = PALETTE_TYPE_SHORT;
+                    }
+
+                    buf.writeByte(paletteType);
+
+                    buf.writeShort(palette.size());
+                    for (int i = 0; i < palette.size(); i++) {
+                        String blockId = palette.get(i);
+                        buf.writeByte(i);
+                        writeUtf(buf, blockId);
+                        buf.writeShort(counts.get(i));
+                    }
+
+                    switch (paletteType) {
+                        case PALETTE_TYPE_HALF_BYTE:
+                            writeHalfByteBlockData(buf, blockIndices);
+                            break;
+                        case PALETTE_TYPE_BYTE:
+                            for (int idx : blockIndices) {
+                                buf.writeByte(idx);
+                            }
+                            break;
+                        case PALETTE_TYPE_SHORT:
+                            for (int idx : blockIndices) {
+                                buf.writeShort(idx);
+                            }
+                            break;
+                    }
+
+                    buf.writeShort(0);
+                    buf.writeShort(0);
+
+                    buf.writeByte(PALETTE_TYPE_EMPTY);
+
+                    writeRotationSection(buf, section);
+
+                    writeCalculatedSkyLightData(buf, chunk, sectionY);
+                    writeCalculatedSkyLightData(buf, chunk, sectionY);
+
+                    buf.writeShort(0);
+                    buf.writeShort(0);
+                }
+            } else {
+                Material[] blocks = section.getBlocks();
+                Map<Material, Integer> paletteIndex = new HashMap<>();
+                List<Material> palette = new ArrayList<>();
+                List<Integer> counts = new ArrayList<>();
+                int[] blockIndices = new int[blocks.length];
+                boolean allAir = true;
+
+                for (int i = 0; i < blocks.length; i++) {
+                    Material effective = toBlockMaterial(blocks[i]);
+                    if (effective != Material.AIR) {
+                        allAir = false;
+                    }
+                    Integer idx = paletteIndex.get(effective);
+                    if (idx == null) {
+                        idx = palette.size();
+                        paletteIndex.put(effective, idx);
+                        palette.add(effective);
+                        counts.add(0);
+                    }
+                    blockIndices[i] = idx;
+                    counts.set(idx, counts.get(idx) + 1);
+                }
+
+                if (allAir) {
                 // Empty palette type
                 buf.writeByte(PALETTE_TYPE_EMPTY);
                 // Empty filler section
@@ -518,7 +612,7 @@ public class HytaleBsonChunkSerializer {
                 // Change counters
                 buf.writeShort(0);
                 buf.writeShort(0);
-            } else {
+                } else {
                 // Determine palette type based on size
                 int paletteType;
                 if (palette.size() <= 16) {
@@ -581,6 +675,7 @@ public class HytaleBsonChunkSerializer {
                 // Change counters
                 buf.writeShort(0);
                 buf.writeShort(0);
+                }
             }
             
             byte[] data = new byte[buf.readableBytes()];
@@ -597,13 +692,17 @@ public class HytaleBsonChunkSerializer {
      * Write block indices as half-byte (nibble) packed data.
      * Each byte contains two 4-bit palette indices.
      * Total: 32768 blocks / 2 = 16384 bytes
+     * 
+     * IMPORTANT: Hytale's BitUtil uses the convention:
+     * - Even indices → HIGH nibble (bits 4-7)
+     * - Odd indices → LOW nibble (bits 0-3)
      */
     private static void writeHalfByteBlockData(ByteBuf buf, int[] blockIndices) {
         for (int i = 0; i < blockIndices.length; i += 2) {
-            int idx1 = blockIndices[i] & 0x0F;
-            int idx2 = (i + 1 < blockIndices.length) ? (blockIndices[i + 1] & 0x0F) : 0;
-            // Pack two nibbles into one byte (low nibble first)
-            buf.writeByte(idx1 | (idx2 << 4));
+            int idx1 = blockIndices[i] & 0x0F;      // Even index → HIGH nibble
+            int idx2 = (i + 1 < blockIndices.length) ? (blockIndices[i + 1] & 0x0F) : 0;  // Odd index → LOW nibble
+            // Pack: even index in high nibble, odd in low nibble (Hytale convention)
+            buf.writeByte((idx1 << 4) | idx2);
         }
     }
     
@@ -717,25 +816,31 @@ public class HytaleBsonChunkSerializer {
      */
     private static void writeCalculatedSkyLightData(ByteBuf buf, HytaleChunk chunk, int sectionY) {
         int sectionBaseY = sectionY * HytaleChunk.SECTION_HEIGHT;
+        int sectionTopY = sectionBaseY + HytaleChunk.SECTION_HEIGHT - 1;
         
         // Check if entire section is above or below terrain for optimization
+        // Heightmap = topmost solid block (e.g., Y=62)
+        // Skylight applies to blocks AT and ABOVE heightmap (>= height)
+        // So Y=62 (surface) and Y=63+ (air above) all get skylight
         boolean allAbove = true;
         boolean allBelow = true;
         
         for (int x = 0; x < HytaleChunk.CHUNK_SIZE; x++) {
             for (int z = 0; z < HytaleChunk.CHUNK_SIZE; z++) {
                 int height = chunk.getHeight(x, z);
+                // Section is all above/at if its base is at or above all terrain
                 if (sectionBaseY < height) {
                     allAbove = false;
                 }
-                if (sectionBaseY + HytaleChunk.SECTION_HEIGHT - 1 >= height) {
+                // Section is all below if its top ends below all terrain
+                if (sectionTopY >= height) {
                     allBelow = false;
                 }
             }
         }
         
         if (allAbove) {
-            // Entire section is above terrain - full skylight
+            // Entire section is at or above terrain - full skylight
             writeFullSkyLightData(buf);
             return;
         }
@@ -753,25 +858,10 @@ public class HytaleBsonChunkSerializer {
             return;
         }
         
-        // Mixed section - need to calculate per-block
-        HytaleChunkLightDataBuilder builder = new HytaleChunkLightDataBuilder((short) 0);
-        
-        for (int x = 0; x < HytaleChunk.CHUNK_SIZE; x++) {
-            for (int z = 0; z < HytaleChunk.CHUNK_SIZE; z++) {
-                int height = chunk.getHeight(x, z);
-                
-                for (int y = 0; y < HytaleChunk.SECTION_HEIGHT; y++) {
-                    int worldY = sectionBaseY + y;
-                    // Sky light is 15 at or above heightmap, 0 below
-                    int skyValue = (worldY >= height) ? 15 : 0;
-                    builder.setSkyLight(x, y, z, skyValue);
-                }
-            }
-        }
-        
-        // Serialize the octree
-        builder.serialize(buf);
-        builder.release();
+        // Mixed section - write simplified lighting
+        // To avoid octree pointer bugs, write full bright sky for now
+        // TODO: Implement proper per-block lighting when octree builder is stable
+        writeFullSkyLightData(buf);
     }
 
     /**
@@ -799,6 +889,17 @@ public class HytaleBsonChunkSerializer {
             levelData[byteIndex] = (byte) ((levelData[byteIndex] & 0x0F) | (nibble << 4));
         }
     }
+
+    /**
+     * Determine a sane default fluid level when explicit level data is missing.
+     * In Hytale assets, source fluids use max level 1 while spreading fluids use max level 8.
+     */
+    private static int defaultFluidLevel(String fluidName) {
+        if (fluidName == null || fluidName.isEmpty() || "Empty".equals(fluidName)) {
+            return 0;
+        }
+        return fluidName.endsWith("_Source") ? 1 : 8;
+    }
     
     /**
      * Create FluidSection BSON.
@@ -810,11 +911,13 @@ public class HytaleBsonChunkSerializer {
         List<String> fluidPalette = section.getFluidPalette();
         byte[] fluidIds = section.getFluidIds();
         byte[] fluidLevels = section.getFluidLevels();
+        HytaleBlock[] hytaleBlocks = section.getHytaleBlocks();
         
         // Also check block materials for water/lava (backward compatibility)
         Material[] blocks = section.getBlocks();
         boolean hasWaterFromBlocks = false;
         boolean hasLavaFromBlocks = false;
+        boolean hasHytaleFluids = false;
         for (Material block : blocks) {
             if (block == Material.WATER) {
                 hasWaterFromBlocks = true;
@@ -847,10 +950,21 @@ public class HytaleBsonChunkSerializer {
             paletteIndex.put(HytaleBlockMapping.HY_LAVA, palette.size());
             palette.add(HytaleBlockMapping.HY_LAVA);
         }
+        if (section.hasHytaleBlocks()) {
+            for (HytaleBlock block : hytaleBlocks) {
+                if (block != null && block.isFluid()) {
+                    hasHytaleFluids = true;
+                    if (!paletteIndex.containsKey(block.id)) {
+                        paletteIndex.put(block.id, palette.size());
+                        palette.add(block.id);
+                    }
+                }
+            }
+        }
         
         ByteBuf buf = ByteBufAllocator.DEFAULT.buffer();
         try {
-            if (palette.size() == 1 && !hasWaterFromBlocks && !hasLavaFromBlocks) {
+            if (palette.size() == 1 && !hasWaterFromBlocks && !hasLavaFromBlocks && !hasHytaleFluids) {
                 // Empty palette type - no fluids
                 buf.writeByte(PALETTE_TYPE_EMPTY);
                 buf.writeBoolean(false);
@@ -877,6 +991,13 @@ public class HytaleBsonChunkSerializer {
                     else if (blocks[i] == Material.LAVA) {
                         idx = paletteIndex.getOrDefault(HytaleBlockMapping.HY_LAVA, 0);
                     }
+                    // Finally check Hytale blocks for fluids
+                    else if (section.hasHytaleBlocks()) {
+                        HytaleBlock block = hytaleBlocks[i];
+                        if (block != null && block.isFluid()) {
+                            idx = paletteIndex.getOrDefault(block.id, 0);
+                        }
+                    }
                     
                     indices[i] = idx;
                     counts[idx]++;
@@ -898,8 +1019,11 @@ public class HytaleBsonChunkSerializer {
                 byte[] levelData = new byte[16384];
                 for (int i = 0; i < indices.length; i++) {
                     if (indices[i] != 0) {
-                        // Use explicit fluid level if available, otherwise default to 8 (full)
-                        int level = (fluidLevels[i] & 0xF) != 0 ? (fluidLevels[i] & 0xF) : 8;
+                        int level = fluidLevels[i] & 0xF;
+                        if (level == 0) {
+                            String fluidName = (indices[i] < palette.size()) ? palette.get(indices[i]) : null;
+                            level = defaultFluidLevel(fluidName);
+                        }
                         setLevelNibble(levelData, i, level);
                     }
                 }

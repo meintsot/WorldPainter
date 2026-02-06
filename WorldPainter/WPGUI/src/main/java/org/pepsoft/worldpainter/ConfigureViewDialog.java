@@ -92,6 +92,12 @@ public class ConfigureViewDialog extends WorldPainterDialog implements WindowLis
         });
         comboBoxBackgroundImageMode.setSelectedItem(config.getBackgroundImageMode());
         checkBoxShowBiomes.setSelected(config.isShowBiomes());
+        final Platform platform = dimension.getWorld().getPlatform();
+        if (DefaultPlugin.HYTALE.id.equals(platform.id)) {
+            checkBoxShowBiomes.setText("Show Hytale biomes (when available and applicable)");
+        } else {
+            checkBoxShowBiomes.setText("Show Minecraft biomes (when available and applicable)");
+        }
         checkBoxShowBorders.setSelected(config.isShowBorders());
 
         fieldBackgroundImage.getDocument().addDocumentListener(new DocumentListener() {

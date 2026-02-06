@@ -1,0 +1,22 @@
+ M WorldPainter/WPCore/.factorypath
+ M WorldPainter/WPCore/src/main/java/org/pepsoft/worldpainter/hytale/HytaleBlockMapping.java
+ M WorldPainter/WPCore/src/main/java/org/pepsoft/worldpainter/platforms/HytalePlatformProvider.java
+ M WorldPainter/WPGUI/src/main/java/org/pepsoft/worldpainter/App.java
+ M WorldPainter/WPGUI/src/main/java/org/pepsoft/worldpainter/CustomMaterialDialog.java
+ M WorldPainter/WPGUI/src/main/java/org/pepsoft/worldpainter/MaterialSelector.java
+ M WorldPainter/WPGUI/src/main/java/org/pepsoft/worldpainter/MaterialTableCellRenderer.java
+ M WorldPainter/WPGUI/src/main/java/org/pepsoft/worldpainter/PreferencesDialog.java
+ M WorldPainter/WPGUI/src/main/java/org/pepsoft/worldpainter/hytale/HytaleBlockPalette.java
+?? WorldPainter/WPCore/src/main/java/org/pepsoft/worldpainter/hytale/HytaleMappingStore.java
+?? WorldPainter/WPCore/src/main/java/org/pepsoft/worldpainter/platforms/HytaleExportSettings.java
+?? WorldPainter/WPCore/src/main/java/org/pepsoft/worldpainter/platforms/HytaleExportSettingsEditor.java
+?? WorldPainter/WPCore/src/test/java/org/pepsoft/worldpainter/hytale/HytaleBlockMappingCustomTest.java
+?? WorldPainter/WPCore/src/test/java/org/pepsoft/worldpainter/hytale/HytaleMappingStoreTest.java
+?? WorldPainter/WPCore/src/test/java/org/pepsoft/worldpainter/platforms/
+?? WorldPainter/WPGUI/src/main/java/org/pepsoft/worldpainter/hytale/HytaleMappingsPreferencesPanel.java
+?? WorldPainter/WPGUI/src/main/java/org/pepsoft/worldpainter/ui/
+?? WorldPainter/WPGUI/src/test/java/org/pepsoft/worldpainter/MaterialSelectorPlatformUiTest.java
+?? WorldPainter/WPGUI/src/test/java/org/pepsoft/worldpainter/MaterialTableCellRendererPlatformUiTest.java
+?? WorldPainter/WPGUI/src/test/java/org/pepsoft/worldpainter/MaterialTableCellRendererTest.java
+?? WorldPainter/WPGUI/src/test/java/org/pepsoft/worldpainter/PreferencesDialogHytaleTabTest.java
+?? WorldPainter/WPGUI/src/test/java/org/pepsoft/worldpainter/hytale/

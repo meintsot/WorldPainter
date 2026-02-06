@@ -8,7 +8,9 @@ package org.pepsoft.worldpainter;
 import org.pepsoft.util.ColourUtils;
 import org.pepsoft.util.IconUtils;
 import org.pepsoft.worldpainter.Dimension.Anchor;
+import org.pepsoft.worldpainter.DefaultPlugin;
 import org.pepsoft.worldpainter.biomeschemes.CustomBiomeManager;
+import org.pepsoft.worldpainter.hytale.HytaleTerrain;
 import org.pepsoft.worldpainter.layers.*;
 import org.pepsoft.worldpainter.layers.Void;
 import org.pepsoft.worldpainter.layers.renderers.*;
@@ -40,6 +42,7 @@ public final class TileRenderer {
         biomeRenderer = new BiomeRenderer(customBiomeManager, colourScheme);
         this.tileProvider = tileProvider;
         final Dimension dimension = (tileProvider instanceof Dimension) ? (Dimension) tileProvider : null;
+        this.dimensionRef = dimension;
         TileProvider relatedTileProvider = null;
         boolean renderCeilingIntersection = false, renderTunnelRoofIntersection = false;
         TunnelLayerHelper tunnelLayerHelper = null;
@@ -371,17 +374,28 @@ public final class TileRenderer {
             if ((! bottomless) && (intHeight == minHeight)) {
                 colour = bedrockColour;
             } else {
-                Terrain terrain = tile.getTerrain(x, y);
-                if (topLayersRelativeToTerrain
-                        && terrain.isCustom()) {
-                    MixedMaterial mixedMaterial = Terrain.getCustomMaterial(terrain.getCustomTerrainIndex());
-                    if (mixedMaterial.getMode() == MixedMaterial.Mode.LAYERED){
-                        colour = terrain.getColour(seed, worldX, worldY, mixedMaterial.getPatternHeight() - 1, intHeight, platform, colourScheme);
+                        if (DefaultPlugin.HYTALE.id.equals(platform.id)) {
+                    // TODO: Add HytaleTerrain support to Dimension
+                    HytaleTerrain hytaleTerrain = null; // (dimensionRef != null) ? dimensionRef.getHytaleTerrainAt(worldX, worldY) : null;
+                    if (hytaleTerrain != null) {
+                        colour = 0xff000000 | hytaleTerrain.getEffectiveColour();
                     } else {
+                        Terrain terrain = tile.getTerrain(x, y);
                         colour = terrain.getColour(seed, worldX, worldY, height, intHeight, platform, colourScheme);
                     }
                 } else {
-                    colour = terrain.getColour(seed, worldX, worldY, height, intHeight, platform, colourScheme);
+                    Terrain terrain = tile.getTerrain(x, y);
+                    if (topLayersRelativeToTerrain
+                            && terrain.isCustom()) {
+                        MixedMaterial mixedMaterial = Terrain.getCustomMaterial(terrain.getCustomTerrainIndex());
+                        if (mixedMaterial.getMode() == MixedMaterial.Mode.LAYERED){
+                            colour = terrain.getColour(seed, worldX, worldY, mixedMaterial.getPatternHeight() - 1, intHeight, platform, colourScheme);
+                        } else {
+                            colour = terrain.getColour(seed, worldX, worldY, height, intHeight, platform, colourScheme);
+                        }
+                    } else {
+                        colour = terrain.getColour(seed, worldX, worldY, height, intHeight, platform, colourScheme);
+                    }
                 }
             }
         } else {
@@ -505,6 +519,7 @@ public final class TileRenderer {
     private final int zoom, waterColour, lavaColour, bedrockColour, notPresentColour, voidColour;;
     private final Platform platform;
     private final TileProvider tileProvider, relatedTileProvider;
+    private final Dimension dimensionRef;
     private final boolean renderCeilingIntersection, renderTunnelRoofIntersection;
     private final TunnelLayerHelper tunnelLayerHelper;
     private final ColourRamp colourRamp;

@@ -146,6 +146,11 @@ public class HytaleChunk implements Chunk {
         if (y < 0 || y >= MAX_HEIGHT) return Material.AIR;
         return getSection(y).getMaterial(x, y & 31, z);
     }
+
+    public HytaleBlock getHytaleBlock(int x, int y, int z) {
+        if (y < 0 || y >= MAX_HEIGHT) return HytaleBlock.EMPTY;
+        return getSection(y).getHytaleBlock(x, y & 31, z);
+    }
     
     @Override
     public void setMaterial(int x, int y, int z, Material material) {
@@ -159,6 +164,24 @@ public class HytaleChunk implements Chunk {
             int newHeight = 0;
             for (int h = y - 1; h >= 0; h--) {
                 if (getMaterial(x, h, z) != Material.AIR) {
+                    newHeight = h;
+                    break;
+                }
+            }
+            setHeight(x, z, newHeight);
+        }
+    }
+
+    public void setHytaleBlock(int x, int y, int z, HytaleBlock block) {
+        if (y < 0 || y >= MAX_HEIGHT) return;
+        HytaleBlock effective = (block != null) ? block : HytaleBlock.EMPTY;
+        getSection(y).setHytaleBlock(x, y & 31, z, effective);
+        if (!effective.isEmpty() && y > getHeight(x, z)) {
+            setHeight(x, z, y);
+        } else if (effective.isEmpty() && y == getHeight(x, z)) {
+            int newHeight = 0;
+            for (int h = y - 1; h >= 0; h--) {
+                if (!getHytaleBlock(x, h, z).isEmpty()) {
                     newHeight = h;
                     break;
                 }
@@ -355,7 +378,7 @@ public class HytaleChunk implements Chunk {
      * @param z Local Z coordinate (0-31)
      * @return The biome name for that column
      */
-    public String getBiome(int x, int z) {
+    public String getBiomeName(int x, int z) {
         return biomes[z * CHUNK_SIZE + x];
     }
     
@@ -365,7 +388,7 @@ public class HytaleChunk implements Chunk {
      * @param z Local Z coordinate (0-31)
      * @param biome The biome name to set
      */
-    public void setBiome(int x, int z, String biome) {
+    public void setBiomeName(int x, int z, String biome) {
         biomes[z * CHUNK_SIZE + x] = biome != null ? biome : "Grassland";
     }
     
@@ -426,11 +449,11 @@ public class HytaleChunk implements Chunk {
      * Get the tint color for a specific column.
      * @param x Local x coordinate (0-31)
      * @param z Local z coordinate (0-31)
-     * @return The tint color in ARGB format
+     * @return The tint color in ARGB format (0xAARRGGBB)
      */
     public int getTint(int x, int z) {
         if (x < 0 || x >= CHUNK_SIZE || z < 0 || z >= CHUNK_SIZE) {
-            return 0xFF7CFC00;
+            return 0xFF7CFC00; // Default LawnGreen in ARGB
         }
         return tints[z * CHUNK_SIZE + x];
     }
@@ -439,7 +462,7 @@ public class HytaleChunk implements Chunk {
      * Set the tint color for a specific column.
      * @param x Local x coordinate (0-31)
      * @param z Local z coordinate (0-31)
-     * @param tint The tint color in ARGB format
+     * @param tint The tint color in ARGB format (0xAARRGGBB)
      */
     public void setTint(int x, int z, int tint) {
         if (x < 0 || x >= CHUNK_SIZE || z < 0 || z >= CHUNK_SIZE) {
@@ -484,9 +507,11 @@ public class HytaleChunk implements Chunk {
         // Use palette-based storage like Hytale does
         // For simplicity, we start with a direct material array and can optimize later
         private final Material[] blocks;
+        private final HytaleBlock[] hytaleBlocks;
         private final byte[] rotations; // Hytale rotation: 0-63 (6 bits: rx*16 + ry*4 + rz)
         private final byte[] fluidIds; // Fluid type: 0=empty, 1=water, 2=lava, etc.
-        private final byte[] fluidLevels; // Fluid level: 0-15 (8 = full source)
+        // Fluid level: 0-15, interpreted relative to fluid MaxFluidLevel (source fluids are typically level 1).
+        private final byte[] fluidLevels;
         private final byte[] blockLight;
         private final byte[] skyLight;
         
@@ -502,6 +527,7 @@ public class HytaleChunk implements Chunk {
         
         public HytaleSection() {
             blocks = new Material[SECTION_SIZE];
+            hytaleBlocks = new HytaleBlock[SECTION_SIZE];
             rotations = new byte[SECTION_SIZE];
             fluidIds = new byte[SECTION_SIZE];
             fluidLevels = new byte[SECTION_SIZE];
@@ -514,6 +540,7 @@ public class HytaleChunk implements Chunk {
             paletteIndex.put(air, 0);
             for (int i = 0; i < SECTION_SIZE; i++) {
                 blocks[i] = air;
+                hytaleBlocks[i] = HytaleBlock.EMPTY;
                 rotations[i] = 0; // No rotation by default
                 fluidIds[i] = 0; // No fluid by default
                 fluidLevels[i] = 0;
@@ -528,6 +555,10 @@ public class HytaleChunk implements Chunk {
         public Material getMaterial(int x, int y, int z) {
             return blocks[getIndex(x, y, z)];
         }
+
+        public HytaleBlock getHytaleBlock(int x, int y, int z) {
+            return hytaleBlocks[getIndex(x, y, z)];
+        }
         
         public void setMaterial(int x, int y, int z, Material material) {
             if (!paletteIndex.containsKey(material)) {
@@ -535,6 +566,26 @@ public class HytaleChunk implements Chunk {
                 palette.add(material);
             }
             blocks[getIndex(x, y, z)] = material;
+        }
+
+        public void setHytaleBlock(int x, int y, int z, HytaleBlock block) {
+            int index = getIndex(x, y, z);
+            HytaleBlock effective = (block != null) ? block : HytaleBlock.EMPTY;
+            hytaleBlocks[index] = effective;
+            rotations[index] = (byte) (effective.rotation & 0x3F);
+        }
+
+        public HytaleBlock[] getHytaleBlocks() {
+            return hytaleBlocks;
+        }
+
+        public boolean hasHytaleBlocks() {
+            for (HytaleBlock block : hytaleBlocks) {
+                if (block != null && !block.isEmpty()) {
+                    return true;
+                }
+            }
+            return false;
         }
         
         /**
@@ -582,7 +633,7 @@ public class HytaleChunk implements Chunk {
         
         /**
          * Get fluid level at position.
-         * @return Fluid level 0-15 (8 = full source block)
+         * @return Fluid level 0-15, interpreted relative to fluid MaxFluidLevel.
          */
         public int getFluidLevel(int x, int y, int z) {
             return fluidLevels[getIndex(x, y, z)] & 0xF;
@@ -591,7 +642,7 @@ public class HytaleChunk implements Chunk {
         /**
          * Set fluid at position by name.
          * @param fluidName Fluid name (e.g., "Water_Source", "Lava_Source")
-         * @param level Fluid level 0-15 (8 = full source)
+         * @param level Fluid level 0-15, interpreted relative to fluid MaxFluidLevel
          */
         public void setFluid(int x, int y, int z, String fluidName, int level) {
             int idx = getIndex(x, y, z);

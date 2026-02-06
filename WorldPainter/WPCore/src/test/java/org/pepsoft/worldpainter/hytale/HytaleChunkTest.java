@@ -1,5 +1,8 @@
 package org.pepsoft.worldpainter.hytale;
 
+import org.bson.BsonArray;
+import org.bson.BsonDocument;
+import org.bson.RawBsonDocument;
 import org.junit.Test;
 import org.pepsoft.minecraft.Material;
 
@@ -143,5 +146,95 @@ public class HytaleChunkTest {
         assertEquals("0.0.region.bin", HytaleRegionFile.getRegionFileName(0, 0));
         assertEquals("1.2.region.bin", HytaleRegionFile.getRegionFileName(1, 2));
         assertEquals("-1.-1.region.bin", HytaleRegionFile.getRegionFileName(-1, -1));
+    }
+
+    @Test
+    public void testDefaultTintIsArgbGreen() {
+        HytaleChunk chunk = new HytaleChunk(0, 0, 0, 320);
+        assertEquals(0xFF7CFC00, chunk.getTint(0, 0));
+    }
+
+    @Test
+    public void testMissingWaterSourceLevelDefaultsToOne() {
+        HytaleChunk chunk = new HytaleChunk(0, 0, 0, 320);
+        HytaleChunk.HytaleSection section = chunk.getSections()[0];
+
+        section.setFluid(0, 0, 0, HytaleBlockMapping.HY_WATER, 1);
+        section.getFluidLevels()[0] = 0;
+
+        byte[] fluidData = getSerializedFluidData(chunk, 0);
+        assertNotNull(fluidData);
+        assertEquals(1, readFluidLevel(fluidData, 0));
+    }
+
+    @Test
+    public void testMissingFlowingWaterLevelDefaultsToEight() {
+        HytaleChunk chunk = new HytaleChunk(0, 0, 0, 320);
+        HytaleChunk.HytaleSection section = chunk.getSections()[0];
+
+        section.setFluid(1, 0, 0, "Water", 8);
+        section.getFluidLevels()[1] = 0;
+
+        byte[] fluidData = getSerializedFluidData(chunk, 0);
+        assertNotNull(fluidData);
+        assertEquals(8, readFluidLevel(fluidData, 1));
+    }
+
+    private static byte[] getSerializedFluidData(HytaleChunk chunk, int sectionIndex) {
+        BsonDocument root = new RawBsonDocument(HytaleBsonChunkSerializer.serializeChunk(chunk));
+        BsonDocument components = root.getDocument("Components");
+        BsonDocument chunkColumn = components.getDocument("ChunkColumn");
+        BsonArray sections = chunkColumn.getArray("Sections");
+        BsonDocument sectionHolder = sections.get(sectionIndex).asDocument();
+        BsonDocument sectionComponents = sectionHolder.getDocument("Components");
+        BsonDocument fluidDoc = sectionComponents.getDocument("Fluid");
+        return fluidDoc.getBinary("Data").getData();
+    }
+
+    private static int readFluidLevel(byte[] fluidData, int index) {
+        int p = 0;
+        int paletteType = fluidData[p++] & 0xFF;
+        if (paletteType == 0) {
+            return 0;
+        }
+
+        int entryCount = ((fluidData[p] & 0xFF) << 8) | (fluidData[p + 1] & 0xFF);
+        p += 2;
+        for (int i = 0; i < entryCount; i++) {
+            p += 1;
+            int utfLength = ((fluidData[p] & 0xFF) << 8) | (fluidData[p + 1] & 0xFF);
+            p += 2;
+            p += utfLength;
+            p += 2;
+        }
+
+        int indexDataLength;
+        switch (paletteType) {
+            case 1:
+                indexDataLength = 16384;
+                break;
+            case 2:
+                indexDataLength = 32768;
+                break;
+            case 3:
+                indexDataLength = 65536;
+                break;
+            default:
+                fail("Unexpected fluid palette type: " + paletteType);
+                return 0;
+        }
+        p += indexDataLength;
+
+        boolean hasLevels = fluidData[p++] != 0;
+        if (!hasLevels) {
+            return 0;
+        }
+
+        int byteIndex = index >> 1;
+        int levelByte = fluidData[p + byteIndex] & 0xFF;
+        if ((index & 1) == 0) {
+            return levelByte & 0xF;
+        }
+        return (levelByte >> 4) & 0xF;
     }
 }

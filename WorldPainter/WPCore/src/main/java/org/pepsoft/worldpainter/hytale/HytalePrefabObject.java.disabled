@@ -360,7 +360,7 @@ public class HytalePrefabObject implements WPObject, Serializable {
             return Material.AIR;
         }
         
-        String id = block.getId();
+        String id = block.id;
         
         // Soil types
         if (id.equals("Soil_Grass") || id.equals("Soil_Grass_Lush")) return Material.GRASS_BLOCK;
@@ -604,10 +604,10 @@ public class HytalePrefabObject implements WPObject, Serializable {
                         blockDoc.put("x", new org.bson.BsonInt32(x));
                         blockDoc.put("y", new org.bson.BsonInt32(y));
                         blockDoc.put("z", new org.bson.BsonInt32(z));
-                        blockDoc.put("name", new org.bson.BsonString(block.getId()));
+                        blockDoc.put("name", new org.bson.BsonString(block.id));
                         
-                        if (block.getRotation() != 0) {
-                            blockDoc.put("rotation", new org.bson.BsonInt32(block.getRotation()));
+                        if (block.rotation != 0) {
+                            blockDoc.put("rotation", new org.bson.BsonInt32(block.rotation));
                         }
                         
                         blocksArray.add(blockDoc);
