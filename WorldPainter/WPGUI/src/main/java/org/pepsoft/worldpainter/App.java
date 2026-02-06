@@ -3618,6 +3618,11 @@ public final class App extends JFrame implements BrushControl,
             }
         }
 
+        // Custom terrains
+        JButton addCustomTerrainButton = new JButton(ACTION_SHOW_CUSTOM_TERRAIN_POPUP);
+        addCustomTerrainButton.setMargin(App.BUTTON_INSETS);
+        buttonPanel.add(addCustomTerrainButton);
+
         buttonPanel.revalidate();
         buttonPanel.repaint();
     }
