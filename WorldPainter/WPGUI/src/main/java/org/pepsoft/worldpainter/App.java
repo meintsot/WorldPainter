@@ -3476,7 +3476,16 @@ public final class App extends JFrame implements BrushControl,
             terrainPanel.add(checkBoxSoloTerrain, constraints);
         }
 
-        JPanel buttonPanel = new JPanel(new GridLayout(0, 5));
+        terrainButtonPanel = new JPanel(new GridLayout(0, 5));
+        populateMinecraftTerrainButtons();
+        terrainPanel.add(terrainButtonPanel, constraints);
+
+        return terrainPanel;
+    }
+
+    private void populateMinecraftTerrainButtons() {
+        JPanel buttonPanel = terrainButtonPanel;
+        buttonPanel.removeAll();
         // Surface
         buttonPanel.add(createTerrainButton(GRASS));
         buttonPanel.add(createTerrainButton(PERMADIRT));
@@ -3574,9 +3583,62 @@ public final class App extends JFrame implements BrushControl,
         JButton addCustomTerrainButton = new JButton(ACTION_SHOW_CUSTOM_TERRAIN_POPUP);
         addCustomTerrainButton.setMargin(App.BUTTON_INSETS);
         buttonPanel.add(addCustomTerrainButton);
-        terrainPanel.add(buttonPanel, constraints);
 
-        return terrainPanel;
+        buttonPanel.revalidate();
+        buttonPanel.repaint();
+    }
+
+    private void populateHytaleTerrainButtons() {
+        JPanel buttonPanel = terrainButtonPanel;
+        buttonPanel.removeAll();
+
+        org.pepsoft.worldpainter.hytale.HytaleTerrain[] pickList = org.pepsoft.worldpainter.hytale.HytaleTerrain.PICK_LIST;
+        for (org.pepsoft.worldpainter.hytale.HytaleTerrain ht : pickList) {
+            buttonPanel.add(createHytaleTerrainButton(ht));
+        }
+        // Pad to fill last row (5-column grid)
+        int remainder = pickList.length % 5;
+        if (remainder != 0) {
+            for (int i = 0; i < 5 - remainder; i++) {
+                buttonPanel.add(Box.createGlue());
+            }
+        }
+
+        buttonPanel.revalidate();
+        buttonPanel.repaint();
+    }
+
+    private JToggleButton createHytaleTerrainButton(final org.pepsoft.worldpainter.hytale.HytaleTerrain hytaleTerrain) {
+        final Terrain terrain = org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.toMinecraftTerrain(hytaleTerrain);
+        final JToggleButton button = new JToggleButton();
+        button.putClientProperty(KEY_PAINT_ID, createTerrainPaintId(terrain));
+        button.setMargin(App.SMALLER_BUTTON_INSETS);
+        button.setIcon(new ImageIcon(hytaleTerrain.getIcon(selectedColourScheme)));
+        String tooltip = hytaleTerrain.getName();
+        if (hytaleTerrain.getBiome() != null) {
+            tooltip += " (" + hytaleTerrain.getBiome() + ")";
+        }
+        button.setToolTipText(tooltip);
+        button.addItemListener(event -> {
+            if (event.getStateChange() == ItemEvent.SELECTED) {
+                paintUpdater = () -> {
+                    paint = PaintFactory.createTerrainPaint(terrain);
+                    paintChanged();
+                };
+                paintUpdater.updatePaint();
+            }
+        });
+        paintButtonGroup.add(button);
+        return button;
+    }
+
+    void updateTerrainButtonsForPlatform() {
+        if (terrainButtonPanel == null) return;
+        if (world != null && org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(world.getPlatform())) {
+            populateHytaleTerrainButtons();
+        } else {
+            populateMinecraftTerrainButtons();
+        }
     }
     
     private JPanel createCustomTerrainPanel() {
@@ -5328,6 +5390,7 @@ public final class App extends JFrame implements BrushControl,
         setEnabled(extendedBlockIdsMenuItem, (! platform.capabilities.contains(NAME_BASED)) && (platform != JAVA_MCREGION));
         brushOptions.setPlatform(platform);
         infoPanel.setPlatform(platform);
+        updateTerrainButtonsForPlatform();
         // TODO actually why not support these:
         setEnabled(Caves.INSTANCE, (! caveFloor) && (! floatingFloor), "Caves not supported in Custom Cave/Tunnel floor dimensions");
         setEnabled(Caverns.INSTANCE, (! caveFloor) && (! floatingFloor), "Caverns not supported in Custom Cave/Tunnel floor dimensions");
@@ -6767,7 +6830,7 @@ public final class App extends JFrame implements BrushControl,
         // Do nothing
     };
     private JMenu recentMenu;
-    private JPanel toolSettingsPanel, customTerrainPanel;
+    private JPanel toolSettingsPanel, customTerrainPanel, terrainButtonPanel;
     private Timer autosaveTimer;
     private int pauseAutosave;
     private long autosaveInhibitedUntil;
