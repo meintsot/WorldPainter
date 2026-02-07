@@ -344,7 +344,7 @@ public class HytaleBlockRegistry {
             "Soil_Grass", "Soil_Grass_Burnt", "Soil_Grass_Cold", "Soil_Grass_Deep",
             "Soil_Grass_Dry", "Soil_Grass_Full", "Soil_Grass_Sunny", "Soil_Grass_Wet",
             "Soil_Mud", "Soil_Mud_Dry", "Soil_Ash",
-            "Soil_Leaves", "Soil_Needles", "Soil_Roots_Poisoned", "Soil_Seaweed_Block",
+            "Soil_Leaves", "Soil_Leaves_Autumn", "Soil_Needles", "Soil_Roots_Poisoned", "Soil_Seaweed_Block",
             "Soil_Pathway", "Soil_Pathway_Half", "Soil_Pathway_Quarter", "Soil_Pathway_ThreeQuarter"
         );
 
@@ -584,6 +584,7 @@ public class HytaleBlockRegistry {
             "Plant_Bush_Green", "Plant_Bush_Hanging",
             "Plant_Bush_Jungle", "Plant_Bush_Lush", "Plant_Bush_Wet",
             "Plant_Bush_Winter", "Plant_Bush_Winter_Red", "Plant_Bush_Winter_Sharp", "Plant_Bush_Winter_Snow",
+            "Plant_Bush_Bramble",
             "Plant_Bramble_Dead_Lavathorn", "Plant_Bramble_Dead_Twisted",
             "Plant_Bramble_Dry_Magic", "Plant_Bramble_Dry_Sandthorn", "Plant_Bramble_Dry_Twisted",
             "Plant_Bramble_Moss_Twisted", "Plant_Bramble_Winter"
