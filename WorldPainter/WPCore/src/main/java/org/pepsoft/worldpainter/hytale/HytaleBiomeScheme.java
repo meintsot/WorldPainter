@@ -63,8 +63,15 @@ public class HytaleBiomeScheme implements BiomeScheme {
             case ZONE3_CAVES:
             case ZONE4_CAVES:
                 return PATTERN_CAVES;
+            case ZONE1_STRUCTURES:
+            case ZONE2_STRUCTURES:
+            case ZONE3_STRUCTURES:
+            case ZONE4_STRUCTURES:
+                return PATTERN_STRUCTURES;
+            case ZONE0:
             case OCEAN:
                 return PATTERN_OCEAN;
+            case UNIQUE:
             case SPECIAL:
                 return PATTERN_SPECIAL;
             default:
@@ -104,8 +111,10 @@ public class HytaleBiomeScheme implements BiomeScheme {
     private static final boolean[][] PATTERN_CAVES = createDotsPattern();
     /** Wave pattern for ocean */
     private static final boolean[][] PATTERN_OCEAN = createWavePattern();
-    /** Diamond pattern for special biomes */
+    /** Diamond pattern for special/unique biomes */
     private static final boolean[][] PATTERN_SPECIAL = createDiamondPattern();
+    /** Cross-hatch pattern for structure biomes */
+    private static final boolean[][] PATTERN_STRUCTURES = createCrossHatchPattern();
 
     private static boolean[][] createDotsPattern() {
         boolean[][] pattern = new boolean[16][16];
@@ -135,6 +144,16 @@ public class HytaleBiomeScheme implements BiomeScheme {
                 int cx = (x % 8) - 4;
                 int cy = (y % 8) - 4;
                 pattern[x][y] = (Math.abs(cx) + Math.abs(cy) == 3);
+            }
+        }
+        return pattern;
+    }
+
+    private static boolean[][] createCrossHatchPattern() {
+        boolean[][] pattern = new boolean[16][16];
+        for (int x = 0; x < 16; x++) {
+            for (int y = 0; y < 16; y++) {
+                pattern[x][y] = (x % 6 == 0) || (y % 6 == 0);
             }
         }
         return pattern;
