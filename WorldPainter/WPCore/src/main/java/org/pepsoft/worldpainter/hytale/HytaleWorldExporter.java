@@ -16,6 +16,7 @@ import org.pepsoft.worldpainter.Dimension.Anchor;
 import org.pepsoft.worldpainter.exporting.*;
 import org.pepsoft.worldpainter.history.HistoryEntry;
 import org.pepsoft.worldpainter.layers.Layer;
+import org.pepsoft.worldpainter.layers.Biome;
 import org.pepsoft.worldpainter.layers.FloodWithLava;
 import org.pepsoft.worldpainter.util.FileInUseException;
 import org.pepsoft.worldpainter.vo.AttributeKeyVO;
@@ -593,16 +594,43 @@ public class HytaleWorldExporter implements WorldExporter {
                     : null;
                 // Map the Minecraft terrain to the best Hytale equivalent
                 HytaleTerrain hytaleTerrain = isCustomTerrain ? null : HytaleTerrainHelper.fromMinecraftTerrain(localTerrain);
-                String biome = (hytaleTerrain != null && hytaleTerrain.getBiome() != null)
-                    ? hytaleTerrain.getBiome()
-                    : mapTerrainToBiome(localTerrain);
+
+                // Resolve biome: check if user painted a biome via the Biome layer
+                int paintedBiomeId = tile.getLayerValue(Biome.INSTANCE, tileLocalX, tileLocalZ);
+                String biome;
+                String environment;
+                int tint;
+                if (paintedBiomeId != HytaleBiome.BIOME_AUTO) {
+                    // User explicitly painted a Hytale biome
+                    HytaleBiome hb = HytaleBiome.getById(paintedBiomeId);
+                    if (hb != null) {
+                        biome = hb.getName();
+                        environment = hb.getEnvironment();
+                        tint = hb.getTint();
+                    } else {
+                        // Unknown biome ID, fall back to auto
+                        biome = (hytaleTerrain != null && hytaleTerrain.getBiome() != null)
+                            ? hytaleTerrain.getBiome()
+                            : mapTerrainToBiome(localTerrain);
+                        HytaleBiome fallback = HytaleBiome.fromTerrainBiomeName(biome);
+                        environment = fallback.getEnvironment();
+                        tint = fallback.getTint();
+                    }
+                } else {
+                    // Auto biome: derive from terrain
+                    String terrainBiomeName = (hytaleTerrain != null && hytaleTerrain.getBiome() != null)
+                        ? hytaleTerrain.getBiome()
+                        : mapTerrainToBiome(localTerrain);
+                    HytaleBiome autoBiome = HytaleBiome.fromTerrainBiomeName(terrainBiomeName);
+                    biome = autoBiome.getName();
+                    environment = autoBiome.getEnvironment();
+                    tint = autoBiome.getTint();
+                }
                 
-                // Set biome based on terrain type
+                // Set biome, environment and tint
                 chunk.setBiomeName(localX, localZ, biome);
-                
-                // Set environment and tint based on biome
-                chunk.setEnvironment(localX, localZ, mapBiomeToEnvironment(biome));
-                chunk.setTint(localX, localZ, mapBiomeToTint(biome));
+                chunk.setEnvironment(localX, localZ, environment);
+                chunk.setTint(localX, localZ, tint);
                 
                 // Bottom layer - bedrock
                 chunk.setHytaleBlock(localX, 0, localZ, HytaleBlock.BEDROCK);

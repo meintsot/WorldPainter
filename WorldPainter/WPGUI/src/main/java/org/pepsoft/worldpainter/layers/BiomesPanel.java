@@ -9,6 +9,9 @@ import org.pepsoft.worldpainter.ColourScheme;
 import org.pepsoft.worldpainter.Platform;
 import org.pepsoft.worldpainter.World2;
 import org.pepsoft.worldpainter.biomeschemes.*;
+import org.pepsoft.worldpainter.hytale.HytaleBiome;
+import org.pepsoft.worldpainter.hytale.HytaleBiomeScheme;
+import org.pepsoft.worldpainter.hytale.HytaleTerrainHelper;
 
 import javax.swing.*;
 import java.awt.*;
@@ -52,14 +55,21 @@ public class BiomesPanel extends JPanel implements CustomBiomeManager.CustomBiom
         biomeHelper = new BiomeHelper(colourScheme, customBiomeManager, platform);
         BiomesSet desiredSet;
         // TODO move this stuff to BiomeScheme/PlatformProvider
-        if (platform.capabilities.contains(NAMED_BIOMES)) {
+        if (HytaleTerrainHelper.isHytale(platform)) {
+            desiredSet = getHytaleBiomesSet();
+            showIds = false;
+            hytaleMode = true;
+        } else if (platform.capabilities.contains(NAMED_BIOMES)) {
             desiredSet = MINECRAFT_1_20_BIOMES;
             showIds = false;
+            hytaleMode = false;
         } else if (platform.capabilities.contains(BIOMES) || platform.capabilities.contains(BIOMES_3D)) {
             desiredSet = MINECRAFT_1_17_BIOMES;
             showIds = true;
+            hytaleMode = false;
         } else {
             desiredSet = null;
+            hytaleMode = false;
         }
         if (biomesSet != desiredSet) {
             loadBiomes(desiredSet, colourScheme);
@@ -199,7 +209,8 @@ public class BiomesPanel extends JPanel implements CustomBiomeManager.CustomBiom
             int index = 0;
             for (final int biome: biomesSet.biomeOrder) {
                 if (biome != -1) {
-                    final JToggleButton button = new JToggleButton(new ImageIcon(BiomeSchemeManager.createImage(StaticBiomeInfo.INSTANCE, biome, colourScheme)));
+                    final JToggleButton button = new JToggleButton(new ImageIcon(BiomeSchemeManager.createImage(
+                            hytaleMode ? HytaleBiomeScheme.INSTANCE : StaticBiomeInfo.INSTANCE, biome, colourScheme)));
                     button.putClientProperty(KEY_BIOME, biome);
                     button.setMargin(App.BUTTON_INSETS);
                     StringBuilder tooltip = new StringBuilder();
@@ -497,6 +508,7 @@ public class BiomesPanel extends JPanel implements CustomBiomeManager.CustomBiom
     private BiomesSet biomesSet;
     private int selectedBiome = BIOME_PLAINS, selectedBaseBiome = BIOME_PLAINS;
     private boolean showIds;
+    private boolean hytaleMode;
 
     // TODO move this stuff to BiomeScheme/PlatformProvider
 
@@ -815,6 +827,24 @@ public class BiomesPanel extends JPanel implements CustomBiomeManager.CustomBiom
 
     private static final BiomesSet MINECRAFT_1_17_BIOMES = new BiomesSet(MC_117_BIOME_ORDER, MC_117_DESCRIPTORS, Minecraft1_17Biomes.BIOME_NAMES);
     private static final BiomesSet MINECRAFT_1_20_BIOMES = new BiomesSet(MC_121_BIOME_ORDER, new HashSet<>(MC_121_DESCRIPTORS), Minecraft1_21Biomes.BIOME_NAMES);
+
+    /**
+     * Lazily constructed Hytale biomes set. Each Hytale biome is a standalone button with no variants/options.
+     */
+    private static BiomesSet hytaleBiomesSet;
+
+    private static BiomesSet getHytaleBiomesSet() {
+        if (hytaleBiomesSet == null) {
+            int[] biomeOrder = HytaleBiome.getBiomeOrder();
+            Set<BiomeDescriptor> descriptors = new HashSet<>();
+            for (HytaleBiome hb : HytaleBiome.getAllBiomes()) {
+                descriptors.add(new BiomeDescriptor(hb.getId()));
+            }
+            hytaleBiomesSet = new BiomesSet(biomeOrder, descriptors, HytaleBiome.getDisplayNames());
+        }
+        return hytaleBiomesSet;
+    }
+
 
     public enum BiomeOption {HILLS, SHORE, EDGE, PLATEAU, MOUNTAINOUS, VARIANT, FROZEN, SNOWY, DEEP, WOODED, WARM,
         LUKEWARM, COLD, TALL, FLOWERS, LAKES, GRAVELLY, SHATTERED, SMALL_ISLANDS, MIDLANDS, HIGHLANDS, BARRENS,

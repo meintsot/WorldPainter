@@ -90,6 +90,10 @@ public final class BiomeUtils {
     }
 
     public static BiomeScheme getBiomeScheme(Platform platform) {
+        // Check for Hytale platform first
+        if (org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(platform)) {
+            return org.pepsoft.worldpainter.hytale.HytaleBiomeScheme.INSTANCE;
+        }
         final Version mcVersion = platform.getAttribute(ATTRIBUTE_MC_VERSION);
         if (mcVersion.isAtLeast(V_1_18)) { // TODO Make this dynamic
             return StaticBiomeInfo.INSTANCE;
