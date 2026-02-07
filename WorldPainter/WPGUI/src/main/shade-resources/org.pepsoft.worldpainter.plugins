@@ -1,0 +1,11 @@
+{
+  "name": "WorldPainter Hytale Edition",
+  "version": "2.26.1-SNAPSHOT",
+  "classes": [
+    "org.pepsoft.worldpainter.DefaultPlugin",
+    "org.pepsoft.worldpainter.platforms.JavaPlatformProvider",
+    "org.pepsoft.worldpainter.platforms.HytalePlatformProvider",
+    "org.pepsoft.worldpainter.DefaultCustomObjectProvider",
+    "org.pepsoft.worldpainter.layers.DefaultLayerEditorProvider"
+  ]
+}

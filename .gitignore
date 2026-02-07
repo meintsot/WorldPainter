@@ -9,4 +9,7 @@ exports
 # Hytale-specific folders (decompiled source, server data, assets)
 HytaleAssets
 decompiled-src
-universe
+universedist/*.jar
+
+dist/*.jar
+universe/
