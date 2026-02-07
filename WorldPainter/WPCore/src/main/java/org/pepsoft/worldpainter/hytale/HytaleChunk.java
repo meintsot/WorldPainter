@@ -28,6 +28,10 @@ public class HytaleChunk implements Chunk {
     private final String[] biomes; // Biome name for each column (32x32 = 1024)
     private final String[] environments; // Environment name for each column (32x32 = 1024)
     private final int[] tints; // Tint color (ARGB) for each column (32x32 = 1024)
+    private final String[] waterTints; // Per-column water tint hex (null = use environment default)
+    private final float[] spawnDensities; // Per-column spawn density override (-1 = use default)
+    private final String[] spawnTags; // Per-column spawn filter tag (null = all)
+    private final List<PrefabMarker> prefabMarkers = new ArrayList<>(); // Prefab placement markers
     private final List<Entity> entities = new ArrayList<>();
     private final List<TileEntity> tileEntities = new ArrayList<>();
     private final List<HytaleEntity> hytaleEntities = new ArrayList<>(); // Native Hytale entities
@@ -49,11 +53,17 @@ public class HytaleChunk implements Chunk {
         this.biomes = new String[CHUNK_SIZE * CHUNK_SIZE];
         this.environments = new String[CHUNK_SIZE * CHUNK_SIZE];
         this.tints = new int[CHUNK_SIZE * CHUNK_SIZE];
+        this.waterTints = new String[CHUNK_SIZE * CHUNK_SIZE];
+        this.spawnDensities = new float[CHUNK_SIZE * CHUNK_SIZE];
+        this.spawnTags = new String[CHUNK_SIZE * CHUNK_SIZE];
         // Initialize biomes to "Grassland", environments to "Default", tints to default green (grass tint)
         for (int i = 0; i < biomes.length; i++) {
             biomes[i] = "Grassland";
             environments[i] = "Default";
             tints[i] = 0xFF7CFC00; // LawnGreen default tint (ARGB)
+            waterTints[i] = null;
+            spawnDensities[i] = -1.0f; // Default = use environment
+            spawnTags[i] = null;
         }
     }
     
@@ -478,8 +488,75 @@ public class HytaleChunk implements Chunk {
     public int[] getTints() {
         return tints;
     }
+
+    // ─── Water Tint (per-column fluid tint override) ───────────────────
+
+    public void setWaterTint(int x, int z, String tint) {
+        if (x < 0 || x >= CHUNK_SIZE || z < 0 || z >= CHUNK_SIZE) return;
+        waterTints[z * CHUNK_SIZE + x] = tint;
+    }
+
+    public String getWaterTint(int x, int z) {
+        if (x < 0 || x >= CHUNK_SIZE || z < 0 || z >= CHUNK_SIZE) return null;
+        return waterTints[z * CHUNK_SIZE + x];
+    }
+
+    public String[] getWaterTints() { return waterTints; }
+
+    // ─── Spawn Density (per-column entity spawn density override) ─────
+
+    public void setSpawnDensity(int x, int z, float density) {
+        if (x < 0 || x >= CHUNK_SIZE || z < 0 || z >= CHUNK_SIZE) return;
+        spawnDensities[z * CHUNK_SIZE + x] = density;
+    }
+
+    public float getSpawnDensity(int x, int z) {
+        if (x < 0 || x >= CHUNK_SIZE || z < 0 || z >= CHUNK_SIZE) return -1.0f;
+        return spawnDensities[z * CHUNK_SIZE + x];
+    }
+
+    public float[] getSpawnDensities() { return spawnDensities; }
+
+    // ─── Spawn Tag (per-column entity type filter) ────────────────────
+
+    public void setSpawnTag(int x, int z, String tag) {
+        if (x < 0 || x >= CHUNK_SIZE || z < 0 || z >= CHUNK_SIZE) return;
+        spawnTags[z * CHUNK_SIZE + x] = tag;
+    }
+
+    public String getSpawnTag(int x, int z) {
+        if (x < 0 || x >= CHUNK_SIZE || z < 0 || z >= CHUNK_SIZE) return null;
+        return spawnTags[z * CHUNK_SIZE + x];
+    }
+
+    public String[] getSpawnTags() { return spawnTags; }
+
+    // ─── Prefab Markers ───────────────────────────────────────────────
+
+    public void addPrefabMarker(int x, int y, int z, String category, String prefabPath) {
+        prefabMarkers.add(new PrefabMarker(x, y, z, category, prefabPath));
+    }
+
+    public List<PrefabMarker> getPrefabMarkers() { return prefabMarkers; }
     
     // ----- Inner classes -----
+
+    /**
+     * A marker for prefab placement at a specific position.
+     */
+    public static class PrefabMarker {
+        public final int x, y, z;
+        public final String category;
+        public final String prefabPath;
+
+        public PrefabMarker(int x, int y, int z, String category, String prefabPath) {
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            this.category = category;
+            this.prefabPath = prefabPath;
+        }
+    }
     
     /**
      * Data for a damaged block.

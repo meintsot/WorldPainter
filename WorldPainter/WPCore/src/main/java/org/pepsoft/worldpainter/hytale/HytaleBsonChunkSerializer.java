@@ -6,6 +6,7 @@ import io.netty.buffer.Unpooled;
 import org.bson.BsonArray;
 import org.bson.BsonBinary;
 import org.bson.BsonDocument;
+import org.bson.BsonDouble;
 import org.bson.BsonInt32;
 import org.bson.BsonString;
 import org.bson.codecs.BsonDocumentCodec;
@@ -52,6 +53,7 @@ public class HytaleBsonChunkSerializer {
     private static final String COMP_ENVIRONMENT_CHUNK = "EnvironmentChunk";
     private static final String COMP_CHUNK_COLUMN = "ChunkColumn";
     private static final String COMP_BLOCK_HEALTH_CHUNK = "BlockHealthChunk";
+    private static final String COMP_WP_METADATA = "WorldPainterMetadata";
     private static final String COMP_BLOCK_SECTION = "Block";
     private static final String COMP_FLUID_SECTION = "Fluid";
     private static final String COMP_CHUNK_SECTION = "ChunkSection";
@@ -93,6 +95,12 @@ public class HytaleBsonChunkSerializer {
         
         // Add EntityChunk component
         components.put(COMP_ENTITY_CHUNK, createEntityChunkBson(chunk));
+        
+        // Add WorldPainter metadata (water tints, spawn density, prefab markers)
+        BsonDocument wpMeta = createWorldPainterMetadataBson(chunk);
+        if (wpMeta != null) {
+            components.put(COMP_WP_METADATA, wpMeta);
+        }
         
         root.put("Components", components);
         
@@ -245,6 +253,77 @@ public class HytaleBsonChunkSerializer {
         
         doc.put("Entities", entities);
         return doc;
+    }
+
+    /**
+     * Create WorldPainter metadata BSON with water tints, spawn configuration,
+     * and prefab markers. Returns null if there's no custom data to write.
+     *
+     * <p>This component is stored as a custom BSON document that Hytale server
+     * plugins can read to apply WorldPainter-specific features.</p>
+     */
+    private static BsonDocument createWorldPainterMetadataBson(HytaleChunk chunk) {
+        boolean hasData = false;
+        BsonDocument doc = new BsonDocument();
+
+        // ── Water Tints ──
+        String[] waterTints = chunk.getWaterTints();
+        BsonDocument tintDoc = new BsonDocument();
+        for (int i = 0; i < waterTints.length; i++) {
+            if (waterTints[i] != null) {
+                int x = i % HytaleChunk.CHUNK_SIZE;
+                int z = i / HytaleChunk.CHUNK_SIZE;
+                tintDoc.put(x + "," + z, new BsonString(waterTints[i]));
+                hasData = true;
+            }
+        }
+        if (!tintDoc.isEmpty()) {
+            doc.put("WaterTints", tintDoc);
+        }
+
+        // ── Spawn Densities ──
+        float[] spawnDensities = chunk.getSpawnDensities();
+        String[] spawnTags = chunk.getSpawnTags();
+        BsonArray spawnArr = new BsonArray();
+        for (int i = 0; i < spawnDensities.length; i++) {
+            if (spawnDensities[i] >= 0.0f || spawnTags[i] != null) {
+                int x = i % HytaleChunk.CHUNK_SIZE;
+                int z = i / HytaleChunk.CHUNK_SIZE;
+                BsonDocument entry = new BsonDocument();
+                entry.put("x", new BsonInt32(x));
+                entry.put("z", new BsonInt32(z));
+                if (spawnDensities[i] >= 0.0f) {
+                    entry.put("density", new BsonDouble(spawnDensities[i]));
+                }
+                if (spawnTags[i] != null) {
+                    entry.put("tag", new BsonString(spawnTags[i]));
+                }
+                spawnArr.add(entry);
+                hasData = true;
+            }
+        }
+        if (!spawnArr.isEmpty()) {
+            doc.put("SpawnOverrides", spawnArr);
+        }
+
+        // ── Prefab Markers ──
+        List<HytaleChunk.PrefabMarker> prefabs = chunk.getPrefabMarkers();
+        if (!prefabs.isEmpty()) {
+            BsonArray prefabArr = new BsonArray();
+            for (HytaleChunk.PrefabMarker pm : prefabs) {
+                BsonDocument entry = new BsonDocument();
+                entry.put("x", new BsonInt32(pm.x));
+                entry.put("y", new BsonInt32(pm.y));
+                entry.put("z", new BsonInt32(pm.z));
+                entry.put("category", new BsonString(pm.category));
+                entry.put("path", new BsonString(pm.prefabPath));
+                prefabArr.add(entry);
+            }
+            doc.put("PrefabMarkers", prefabArr);
+            hasData = true;
+        }
+
+        return hasData ? doc : null;
     }
     
     /**

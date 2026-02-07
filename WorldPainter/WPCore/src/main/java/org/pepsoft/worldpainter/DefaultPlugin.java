@@ -35,7 +35,12 @@ public class DefaultPlugin extends AbstractPlugin implements LayerProvider {
     
     @Override
     public List<Layer> getLayers() {
-        return Arrays.asList(Frost.INSTANCE, Caves.INSTANCE, Caverns.INSTANCE, Chasms.INSTANCE, DeciduousForest.INSTANCE, PineForest.INSTANCE, SwampLand.INSTANCE, Jungle.INSTANCE, org.pepsoft.worldpainter.layers.Void.INSTANCE, Resources.INSTANCE/*, River.INSTANCE*/);
+        return Arrays.asList(Frost.INSTANCE, Caves.INSTANCE, Caverns.INSTANCE, Chasms.INSTANCE, DeciduousForest.INSTANCE, PineForest.INSTANCE, SwampLand.INSTANCE, Jungle.INSTANCE, org.pepsoft.worldpainter.layers.Void.INSTANCE, Resources.INSTANCE/*, River.INSTANCE*/,
+            // Hytale-specific layers
+            org.pepsoft.worldpainter.hytale.HytaleFluidLayer.INSTANCE,
+            org.pepsoft.worldpainter.hytale.HytaleEnvironmentLayer.INSTANCE,
+            org.pepsoft.worldpainter.hytale.HytaleEntityLayer.INSTANCE,
+            org.pepsoft.worldpainter.hytale.HytalePrefabLayer.INSTANCE);
     }
 
     /**

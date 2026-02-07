@@ -660,24 +660,73 @@ public class HytaleWorldExporter implements WorldExporter {
                     }
                 }
                 
+                // ── Fluid Layer ──────────────────────────────────────
+                // Check HytaleFluidLayer first, then fall back to FloodWithLava
+                int fluidLayerValue = tile.getLayerValue(HytaleFluidLayer.INSTANCE, tileLocalX, tileLocalZ);
+                boolean hasFluidOverride = fluidLayerValue > 0;
+                boolean isLavaFluid = hasFluidOverride 
+                    ? HytaleFluidLayer.isLava(fluidLayerValue)
+                    : tile.getBitLayerValue(FloodWithLava.INSTANCE, tileLocalX, tileLocalZ);
+                
+                // Apply water tint from fluid layer if present
+                if (hasFluidOverride) {
+                    String waterTint = HytaleFluidLayer.getWaterTint(fluidLayerValue);
+                    if (waterTint != null) {
+                        chunk.setWaterTint(localX, localZ, waterTint);
+                    }
+                }
+
                 // Fill water or lava if below water level
                 // Surface block is at height, so water starts at height+1
                 // waterLevel is the TOP surface of water (inclusive)
                 if (localWaterLevel > height) {
                     waterColumns++;
-                    // Check if this column is marked as lava instead of water
-                    boolean isLava = tile.getBitLayerValue(FloodWithLava.INSTANCE, tileLocalX, tileLocalZ);
-                    String fluidId = isLava ? HytaleBlockMapping.HY_LAVA : HytaleBlockMapping.HY_WATER;
+                    String fluidId = isLavaFluid ? HytaleBlockMapping.HY_LAVA : HytaleBlockMapping.HY_WATER;
                     // Debug logging for first fluid placement in this chunk
                     if (!waterLogged) {
                         logger.info("{} at world ({}, {}) chunk block ({}, {}) - Terrain Y: {}, Fluid Y: {}, Placing Y: {} to {}",
-                            isLava ? "Lava" : "Water", worldX, worldZ, localX, localZ, height, localWaterLevel, height + 1, localWaterLevel);
+                            isLavaFluid ? "Lava" : "Water", worldX, worldZ, localX, localZ, height, localWaterLevel, height + 1, localWaterLevel);
                         waterLogged = true;
                     }
                     for (int y = height + 1; y <= localWaterLevel; y++) {
                         chunk.setHytaleBlock(localX, y, localZ, HytaleBlock.EMPTY);
                         chunk.getSections()[y >> 5].setFluid(localX, y & 31, localZ, 
                             fluidId, 1); // Source fluids use max level (1 for water/lava)
+                    }
+                }
+
+                // ── Environment Layer ────────────────────────────────
+                int envLayerValue = tile.getLayerValue(HytaleEnvironmentLayer.INSTANCE, tileLocalX, tileLocalZ);
+                if (envLayerValue != HytaleEnvironmentLayer.ENV_AUTO) {
+                    HytaleEnvironmentData envData = HytaleEnvironmentData.getById(envLayerValue);
+                    if (envData != null) {
+                        environment = envData.getName();
+                        chunk.setEnvironment(localX, localZ, environment);
+                        // Apply water tint from environment if no fluid layer override
+                        if (!hasFluidOverride && envData.getWaterTint() != null) {
+                            chunk.setWaterTint(localX, localZ, envData.getWaterTint());
+                        }
+                    }
+                }
+
+                // ── Entity Layer ─────────────────────────────────────
+                int entityLayerValue = tile.getLayerValue(HytaleEntityLayer.INSTANCE, tileLocalX, tileLocalZ);
+                if (entityLayerValue > 0) {
+                    float spawnDensity = HytaleEntityLayer.getSpawnDensity(entityLayerValue);
+                    chunk.setSpawnDensity(localX, localZ, spawnDensity);
+                    if (entityLayerValue < HytaleEntityLayer.SPAWN_TAGS.length 
+                            && HytaleEntityLayer.SPAWN_TAGS[entityLayerValue] != null) {
+                        chunk.setSpawnTag(localX, localZ, HytaleEntityLayer.SPAWN_TAGS[entityLayerValue]);
+                    }
+                }
+
+                // ── Prefab Layer ─────────────────────────────────────
+                int prefabLayerValue = tile.getLayerValue(HytalePrefabLayer.INSTANCE, tileLocalX, tileLocalZ);
+                if (prefabLayerValue > 0 && prefabLayerValue < HytalePrefabLayer.PREFAB_PATHS.length) {
+                    String prefabPath = HytalePrefabLayer.PREFAB_PATHS[prefabLayerValue];
+                    if (prefabPath != null) {
+                        chunk.addPrefabMarker(localX, height + 1, localZ,
+                            HytalePrefabLayer.PREFAB_NAMES[prefabLayerValue], prefabPath);
                     }
                 }
                 
