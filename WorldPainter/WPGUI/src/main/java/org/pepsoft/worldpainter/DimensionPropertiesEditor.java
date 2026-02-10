@@ -166,6 +166,7 @@ public class DimensionPropertiesEditor extends javax.swing.JPanel {
         }
         this.mode = mode;
         final Anchor anchor = dimension.getAnchor();
+        final boolean hytalePlatform = org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(dimension.getWorld().getPlatform());
         switch (mode) {
             case EXPORT:
                 // Make sure these are in descending order of tab index:
@@ -179,6 +180,11 @@ public class DimensionPropertiesEditor extends javax.swing.JPanel {
                     jTabbedPane1.remove(TAB_CAVES);
                 }
                 jTabbedPane1.remove(TAB_THEME);
+                if (hytalePlatform) {
+                    removeTabIfPresent(jPanel3); // Caves, Caverns and Chasms
+                    removeTabIfPresent(jPanel4); // Resources
+                    removeTabIfPresent(jPanel2); // Other Layers
+                }
                 if ((anchor.role == DETAIL) && (! anchor.invert)) {
                     initialisePostProcessingTab();
                 }
@@ -187,6 +193,10 @@ public class DimensionPropertiesEditor extends javax.swing.JPanel {
                 spinnerMinecraftSeed.setEnabled(false);
                 jTabbedPane1.remove(TAB_CUSTOM_LAYERS);
                 jTabbedPane1.remove(TAB_RESOURCES);
+                if (hytalePlatform) {
+                    removeTabIfPresent(jPanel3); // Caves, Caverns and Chasms
+                    removeTabIfPresent(jPanel2); // Other Layers
+                }
                 themeEditor.setAllowCustomItems(false);
                 break;
             case EDITOR:
@@ -200,6 +210,11 @@ public class DimensionPropertiesEditor extends javax.swing.JPanel {
                 }
                 if ((anchor.role == CAVE_FLOOR) || (anchor.role == FLOATING_FLOOR) || (anchor.role == MASTER)) {
                     jTabbedPane1.remove(TAB_CAVES);
+                }
+                if (hytalePlatform) {
+                    removeTabIfPresent(jPanel3); // Caves, Caverns and Chasms
+                    removeTabIfPresent(jPanel4); // Resources
+                    removeTabIfPresent(jPanel2); // Other Layers
                 }
                 break;
             default:
@@ -219,7 +234,8 @@ public class DimensionPropertiesEditor extends javax.swing.JPanel {
         }
         this.dimension = dimension;
         final Anchor anchor = dimension.getAnchor();
-        if (! ((anchor.role == DETAIL) && (! anchor.invert))) {
+        final boolean hytalePlatform = org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(dimension.getWorld().getPlatform());
+        if ((! ((anchor.role == DETAIL) && (! anchor.invert))) || hytalePlatform) {
             // If we do this straight away it doesn't work due to some bizarre Swing bug, even though we're on the event
             // thread already
             doLaterOnEventThread(() -> {
@@ -228,6 +244,13 @@ public class DimensionPropertiesEditor extends javax.swing.JPanel {
             });
         }
         setPlatform(dimension.getWorld().getPlatform());
+    }
+
+    private void removeTabIfPresent(Component component) {
+        final int index = jTabbedPane1.indexOfComponent(component);
+        if (index >= 0) {
+            jTabbedPane1.remove(index);
+        }
     }
 
     public Platform getPlatform() {

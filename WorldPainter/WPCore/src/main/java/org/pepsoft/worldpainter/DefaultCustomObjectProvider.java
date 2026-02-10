@@ -1,6 +1,7 @@
 package org.pepsoft.worldpainter;
 
 import com.google.common.collect.ImmutableList;
+import org.pepsoft.worldpainter.hytale.HytalePrefabJsonObject;
 import org.pepsoft.worldpainter.layers.bo2.*;
 import org.pepsoft.worldpainter.objects.WPObject;
 import org.pepsoft.worldpainter.plugins.AbstractPlugin;
@@ -9,6 +10,7 @@ import org.pepsoft.worldpainter.plugins.CustomObjectProvider;
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
+import java.util.Locale;
 
 /**
  * Created by Pepijn on 9-3-2017.
@@ -30,7 +32,7 @@ public class DefaultCustomObjectProvider extends AbstractPlugin implements Custo
 
     @Override
     public WPObject loadObject(File file) throws IOException {
-        String name = file.getName().toLowerCase();
+        String name = file.getName().toLowerCase(Locale.ROOT);
         if (name.endsWith(".bo2")) {
             return Bo2Object.load(file);
         } else if (name.endsWith(".bo3")) {
@@ -41,11 +43,13 @@ public class DefaultCustomObjectProvider extends AbstractPlugin implements Custo
             return Schematic.load(file);
         } else if (name.endsWith(".schem")) {
             return Schem.load(file);
+        } else if (name.endsWith(".prefab.json")) {
+            return HytalePrefabJsonObject.load(file);
         } else {
             throw new IllegalArgumentException("Not a supported filename extension: \"" + file.getName() + "\"");
         }
     }
 
-    private static final List<String> SUPPORTED_EXTENSIONS = ImmutableList.of("bo2", "bo3", "schematic", "nbt", "schem");
-    private static final List<String> TYPES = ImmutableList.of(Bo2Object.class.getName(), Bo3Object.class.getName(), Structure.class.getName(), Schematic.class.getName(), Schem.class.getName());
+    private static final List<String> SUPPORTED_EXTENSIONS = ImmutableList.of("bo2", "bo3", "schematic", "nbt", "schem", "prefab.json");
+    private static final List<String> TYPES = ImmutableList.of(Bo2Object.class.getName(), Bo3Object.class.getName(), Structure.class.getName(), Schematic.class.getName(), Schem.class.getName(), HytalePrefabJsonObject.class.getName());
 }

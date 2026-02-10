@@ -117,8 +117,10 @@ public class NewWorldDialog extends WorldPainterDialog {
             }
             spinnerWidth.setValue(config.getDefaultWidth() * 128);
             spinnerLength.setValue(config.getDefaultHeight() * 128);
-            spinnerTerrainLevel.setValue(config.getLevel());
-            spinnerWaterLevel.setValue(config.getWaterLevel());
+            final int minHeight = (Integer) comboBoxMinHeight.getSelectedItem();
+            final int maxHeight = (Integer) comboBoxMaxHeight.getSelectedItem();
+            spinnerTerrainLevel.setValue(getDefaultTerrainLevelForPlatform(platform, minHeight, maxHeight));
+            spinnerWaterLevel.setValue(getDefaultWaterLevelForPlatform(platform, minHeight, maxHeight));
             spinnerRange.setValue(Math.round(config.getDefaultRange()));
             spinnerScale.setValue((int) Math.round(config.getDefaultScale() * 100));
             checkBoxLava.setSelected(config.isLava());
@@ -148,7 +150,11 @@ public class NewWorldDialog extends WorldPainterDialog {
         } else if ((anchor.dim == DIM_NORMAL) && anchor.invert) {
             fieldName.setEnabled(false);
             comboBoxTarget.setEnabled(false);
-            comboBoxSurfaceMaterial.setSelectedItem(STONE_MIX);
+            if (isHytalePlatform()) {
+                selectHytaleTerrain(HytaleTerrain.STONE);
+            } else {
+                comboBoxSurfaceMaterial.setSelectedItem(STONE_MIX);
+            }
             spinnerTerrainLevel.setValue(58);
             spinnerWaterLevel.setValue(0);
             checkBoxBeaches.setSelected(false);
@@ -158,7 +164,11 @@ public class NewWorldDialog extends WorldPainterDialog {
             if (! anchor.invert) {
                 fieldName.setEnabled(false);
                 comboBoxTarget.setEnabled(false);
-                comboBoxSurfaceMaterial.setSelectedItem(NETHERLIKE);
+                if (isHytalePlatform()) {
+                    selectHytaleTerrain(HytaleTerrain.VOLCANIC);
+                } else {
+                    comboBoxSurfaceMaterial.setSelectedItem(NETHERLIKE);
+                }
                 int lavaLevel = defaultMaxHeight * 3 / 4;
                 spinnerTerrainLevel.setValue(lavaLevel - 4);
                 spinnerWaterLevel.setValue(lavaLevel);
@@ -166,7 +176,11 @@ public class NewWorldDialog extends WorldPainterDialog {
             } else {
                 fieldName.setEnabled(false);
                 comboBoxTarget.setEnabled(false);
-                comboBoxSurfaceMaterial.setSelectedItem(NETHERLIKE);
+                if (isHytalePlatform()) {
+                    selectHytaleTerrain(HytaleTerrain.VOLCANIC);
+                } else {
+                    comboBoxSurfaceMaterial.setSelectedItem(NETHERLIKE);
+                }
                 spinnerTerrainLevel.setValue(58);
                 spinnerWaterLevel.setValue(0);
             }
@@ -177,12 +191,20 @@ public class NewWorldDialog extends WorldPainterDialog {
             if (! anchor.invert) {
                 fieldName.setEnabled(false);
                 comboBoxTarget.setEnabled(false);
-                comboBoxSurfaceMaterial.setSelectedItem(END_STONE);
+                if (isHytalePlatform()) {
+                    selectHytaleTerrain(HytaleTerrain.CHALK);
+                } else {
+                    comboBoxSurfaceMaterial.setSelectedItem(END_STONE);
+                }
                 spinnerTerrainLevel.setValue(32);
             } else {
                 fieldName.setEnabled(false);
                 comboBoxTarget.setEnabled(false);
-                comboBoxSurfaceMaterial.setSelectedItem(END_STONE);
+                if (isHytalePlatform()) {
+                    selectHytaleTerrain(HytaleTerrain.CHALK);
+                } else {
+                    comboBoxSurfaceMaterial.setSelectedItem(END_STONE);
+                }
                 spinnerTerrainLevel.setValue(58);
             }
             spinnerWaterLevel.setValue(0);
@@ -739,16 +761,69 @@ public class NewWorldDialog extends WorldPainterDialog {
         return DefaultPlugin.HYTALE.id.equals(platform.id);
     }
 
+    private int getDefaultTerrainLevelForPlatform(Platform platform, Integer minHeight, Integer maxHeight) {
+        if ((platform == null) || (minHeight == null) || (maxHeight == null)) {
+            return Integer.MIN_VALUE;
+        }
+        final int defaultLevel = DefaultPlugin.HYTALE.id.equals(platform.id)
+                ? DEFAULT_HYTALE_TERRAIN_LEVEL
+                : Configuration.getInstance().getLevel();
+        return MathUtils.clamp(minHeight, defaultLevel, maxHeight - 1);
+    }
+
+    private int getDefaultWaterLevelForPlatform(Platform platform, Integer minHeight, Integer maxHeight) {
+        if ((platform == null) || (minHeight == null) || (maxHeight == null)) {
+            return Integer.MIN_VALUE;
+        }
+        final int defaultLevel = DefaultPlugin.HYTALE.id.equals(platform.id)
+                ? DEFAULT_HYTALE_WATER_LEVEL
+                : Configuration.getInstance().getWaterLevel();
+        return MathUtils.clamp(minHeight, defaultLevel, maxHeight - 1);
+    }
+
+    private void initHytaleAssetsDir() {
+        java.io.File[] candidates = {
+            new java.io.File("HytaleAssets"),
+            new java.io.File("..", "HytaleAssets"),
+            new java.io.File(System.getProperty("user.dir"), "HytaleAssets"),
+            new java.io.File(System.getProperty("user.dir"), ".." + java.io.File.separator + "HytaleAssets"),
+            new java.io.File(System.getProperty("user.home"), "Desktop" + java.io.File.separator + "WorldPainter" + java.io.File.separator + "HytaleAssets"),
+        };
+        for (java.io.File candidate : candidates) {
+            if (candidate.isDirectory() && new java.io.File(candidate, "Common" + java.io.File.separator + "BlockTextures").isDirectory()) {
+                HytaleTerrain.setHytaleAssetsDir(candidate);
+                return;
+            }
+        }
+        String sysProp = System.getProperty("org.pepsoft.worldpainter.hytaleAssetsDir");
+        if (sysProp != null) {
+            java.io.File dir = new java.io.File(sysProp);
+            if (dir.isDirectory()) {
+                HytaleTerrain.setHytaleAssetsDir(dir);
+            }
+        }
+    }
+
     private void updateSurfaceMaterialModel() {
         Object previousSelection = comboBoxSurfaceMaterial.getSelectedItem();
-        comboBoxSurfaceMaterial.setModel(new DefaultComboBoxModel(Terrain.PICK_LIST));
         if (isHytalePlatform()) {
+            comboBoxSurfaceMaterial.setModel(new DefaultComboBoxModel(HytaleTerrain.PICK_LIST));
             comboBoxSurfaceMaterial.setRenderer(new org.pepsoft.worldpainter.hytale.HytaleTerrainListCellRenderer(app.getColourScheme()));
         } else {
+            comboBoxSurfaceMaterial.setModel(new DefaultComboBoxModel(Terrain.PICK_LIST));
             comboBoxSurfaceMaterial.setRenderer(new TerrainListCellRenderer(app.getColourScheme()));
         }
-        if (previousSelection instanceof Terrain) {
+        if (previousSelection != null) {
             comboBoxSurfaceMaterial.setSelectedItem(previousSelection);
+        }
+        // If the previous selection didn't match (e.g. Terrain in Hytale model), select a default
+        if (comboBoxSurfaceMaterial.getSelectedItem() == null || 
+            (comboBoxSurfaceMaterial.getSelectedIndex() < 0 && comboBoxSurfaceMaterial.getItemCount() > 0)) {
+            if (isHytalePlatform()) {
+                comboBoxSurfaceMaterial.setSelectedIndex(0);
+            } else if (comboBoxSurfaceMaterial.getItemCount() > 0) {
+                comboBoxSurfaceMaterial.setSelectedIndex(0);
+            }
         }
     }
 
@@ -762,6 +837,9 @@ public class NewWorldDialog extends WorldPainterDialog {
         Object selected = comboBoxSurfaceMaterial.getSelectedItem();
         if (selected instanceof Terrain) {
             return (Terrain) selected;
+        }
+        if (selected instanceof HytaleTerrain) {
+            return org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.toMinecraftTerrain((HytaleTerrain) selected);
         }
         return GRASS;
     }
@@ -777,7 +855,7 @@ public class NewWorldDialog extends WorldPainterDialog {
     private void updateSeedLabels() {
         if (isHytalePlatform()) {
             jLabel7.setText("World seed:");
-            jLabel17.setText("(Default: 62)");
+            jLabel17.setText("(Default: 100)");
             radioButtonCustomSeed.setToolTipText("Set your own custom world seed");
             radioButtonLandSeed.setToolTipText("Start with a flat land world");
             radioButtonOceanSeed.setToolTipText("Start with an ocean world");
@@ -794,13 +872,30 @@ public class NewWorldDialog extends WorldPainterDialog {
         ComboBoxModel model = comboBoxSurfaceMaterial.getModel();
         for (int i = 0; i < model.getSize(); i++) {
             Object item = model.getElementAt(i);
-            if (item instanceof Terrain) {
-                HytaleTerrain ht = org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.fromMinecraftTerrain((Terrain) item);
-                if (ht != null && ht.getName().equalsIgnoreCase(name)) {
+            if (item instanceof HytaleTerrain) {
+                if (((HytaleTerrain) item).getName().equalsIgnoreCase(name)) {
                     comboBoxSurfaceMaterial.setSelectedIndex(i);
-                    break;
+                    return;
                 }
             }
+        }
+    }
+
+    /**
+     * Select a specific HytaleTerrain in the surface material combo box.
+     */
+    private void selectHytaleTerrain(HytaleTerrain target) {
+        ComboBoxModel model = comboBoxSurfaceMaterial.getModel();
+        for (int i = 0; i < model.getSize(); i++) {
+            Object item = model.getElementAt(i);
+            if (target.equals(item)) {
+                comboBoxSurfaceMaterial.setSelectedIndex(i);
+                return;
+            }
+        }
+        // Fallback to first item
+        if (model.getSize() > 0) {
+            comboBoxSurfaceMaterial.setSelectedIndex(0);
         }
     }
 
@@ -963,8 +1058,15 @@ public class NewWorldDialog extends WorldPainterDialog {
         }
         
         if (isHytalePlatform() && selectedHytaleTerrainIndex >= 0) {
-            Terrain selectedTerrain = (Terrain) comboBoxSurfaceMaterial.getSelectedItem();
-            HytaleTerrain hytaleTerrain = org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.fromMinecraftTerrain(selectedTerrain);
+            final Object selectedTerrain = comboBoxSurfaceMaterial.getSelectedItem();
+            final HytaleTerrain hytaleTerrain;
+            if (selectedTerrain instanceof HytaleTerrain) {
+                hytaleTerrain = (HytaleTerrain) selectedTerrain;
+            } else if (selectedTerrain instanceof Terrain) {
+                hytaleTerrain = org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.fromMinecraftTerrain((Terrain) selectedTerrain);
+            } else {
+                hytaleTerrain = null;
+            }
             return new HytaleTileFactory(tileFactory, hytaleTerrain, selectedHytaleTerrainIndex);
         }
         return tileFactory;
@@ -996,7 +1098,7 @@ public class NewWorldDialog extends WorldPainterDialog {
     private void editTheme() {
         theme.setWaterHeight((Integer) spinnerWaterLevel.getValue());
         theme.setBeaches(checkBoxBeaches.isSelected());
-        EditSimpleThemeDialog dialog = new EditSimpleThemeDialog(this, theme);
+        EditSimpleThemeDialog dialog = new EditSimpleThemeDialog(this, theme, colourScheme, platform);
         dialog.setVisible(true);
         if (! dialog.isCancelled()) {
             theme = dialog.getTheme();
@@ -1008,6 +1110,9 @@ public class NewWorldDialog extends WorldPainterDialog {
     }
 
     private void initPlatform() {
+        if (isHytalePlatform()) {
+            initHytaleAssetsDir();
+        }
         updateSurfaceMaterialModel();
         updateSeedLabels();
 
@@ -1056,6 +1161,8 @@ public class NewWorldDialog extends WorldPainterDialog {
         }
 
         final Platform previousPlatform = this.platform;
+        final int previousTerrainLevel = (Integer) spinnerTerrainLevel.getValue();
+        final int previousWaterLevel = (Integer) spinnerWaterLevel.getValue();
         final Integer previousMinHeight = (Integer) comboBoxMinHeight.getSelectedItem(), previousMaxHeight = (Integer) comboBoxMaxHeight.getSelectedItem();
         this.platform = platform;
         initPlatform();
@@ -1098,6 +1205,29 @@ public class NewWorldDialog extends WorldPainterDialog {
             comboBoxMinHeight.setSelectedItem(previousMinHeight);
         }
         processBuildLimits(true);
+
+        final int minHeight = (Integer) comboBoxMinHeight.getSelectedItem();
+        final int maxHeight = (Integer) comboBoxMaxHeight.getSelectedItem();
+        final int newDefaultTerrainLevel = getDefaultTerrainLevelForPlatform(platform, minHeight, maxHeight);
+        final int newDefaultWaterLevel = getDefaultWaterLevelForPlatform(platform, minHeight, maxHeight);
+        final int previousDefaultTerrainLevel = getDefaultTerrainLevelForPlatform(previousPlatform, previousMinHeight, previousMaxHeight);
+        final int previousDefaultWaterLevel = getDefaultWaterLevelForPlatform(previousPlatform, previousMinHeight, previousMaxHeight);
+
+        if (previousTerrainLevel == previousDefaultTerrainLevel) {
+            spinnerTerrainLevel.setValue(newDefaultTerrainLevel);
+        } else {
+            spinnerTerrainLevel.setValue(MathUtils.clamp(minHeight, previousTerrainLevel, maxHeight - 1));
+        }
+        if (previousWaterLevel == previousDefaultWaterLevel) {
+            spinnerWaterLevel.setValue(newDefaultWaterLevel);
+        } else {
+            spinnerWaterLevel.setValue(MathUtils.clamp(minHeight, previousWaterLevel, maxHeight - 1));
+        }
+
+        // After switching to Hytale, select a default surface material
+        if (isHytalePlatform()) {
+            selectDefaultHytaleSurfaceMaterial();
+        }
 
         setControlStates();
     }
@@ -2022,6 +2152,8 @@ public class NewWorldDialog extends WorldPainterDialog {
     private boolean programmaticChange = true;
     private float scale;
 
+    private static final int DEFAULT_HYTALE_TERRAIN_LEVEL = 100;
+    private static final int DEFAULT_HYTALE_WATER_LEVEL = 100;
     static final int ESTIMATED_TILE_DATA_SIZE = 81; // in KB
 
     private static final Icon ICON_WARNING = IconUtils.loadScaledIcon("/org/pepsoft/worldpainter/icons/error.png");

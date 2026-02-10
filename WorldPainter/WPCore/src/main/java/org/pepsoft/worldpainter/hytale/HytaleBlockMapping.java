@@ -364,7 +364,8 @@ public class HytaleBlockMapping {
      */
     public static HytaleBlock toHytaleBlock(Material material) {
         String hytaleId = toHytale(material);
-        return HytaleBlock.of(hytaleId);
+        Integer explicitRotation = getExplicitRotation(material);
+        return (explicitRotation != null) ? HytaleBlock.of(hytaleId, explicitRotation) : HytaleBlock.of(hytaleId);
     }
     
     /**
@@ -376,8 +377,31 @@ public class HytaleBlockMapping {
      */
     public static HytaleBlock toHytaleBlockWithRotation(Material material) {
         String hytaleId = toHytale(material);
-        int rotation = deriveRotation(material);
+        Integer explicitRotation = getExplicitRotation(material);
+        int rotation = (explicitRotation != null) ? explicitRotation : deriveRotation(material);
         return HytaleBlock.of(hytaleId, rotation);
+    }
+
+    private static Integer getExplicitRotation(Material material) {
+        if (material == null) {
+            return null;
+        }
+        String rotationValue = material.getProperty("hytale_rotation");
+        if (rotationValue == null) {
+            rotationValue = material.getProperty("rotation");
+        }
+        if (rotationValue == null) {
+            return null;
+        }
+        try {
+            int rotation = Integer.parseInt(rotationValue);
+            if ((rotation >= 0) && (rotation <= 63)) {
+                return rotation;
+            }
+        } catch (NumberFormatException e) {
+            // Ignore invalid explicit rotation property
+        }
+        return null;
     }
     
     /**

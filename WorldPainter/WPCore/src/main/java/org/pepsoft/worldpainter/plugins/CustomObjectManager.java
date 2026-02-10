@@ -25,6 +25,9 @@ public class CustomObjectManager extends AbstractProviderManager<String, CustomO
             }
         });
         providersByExtension = ImmutableMap.copyOf(tmpMap);
+        extensionsByPriority = providersByExtension.keySet().stream()
+                .sorted((extension1, extension2) -> Integer.compare(extension2.length(), extension1.length()))
+                .collect(toList());
     }
 
     public List<String> getAllSupportedExtensions() {
@@ -34,12 +37,9 @@ public class CustomObjectManager extends AbstractProviderManager<String, CustomO
     }
 
     public WPObject loadObject(File file) throws IOException {
-        String name = file.getName().toLowerCase();
-        int p = name.lastIndexOf('.');
-        String extension = (p != -1) ? name.substring(p + 1).trim() : name.trim();
-        CustomObjectProvider provider = providersByExtension.get(extension);
+        CustomObjectProvider provider = findProvider(file.getName());
         if (provider == null) {
-            throw new IllegalArgumentException("Extension " + extension + " not supported");
+            throw new IllegalArgumentException("No provider found for file " + file.getName());
         }
         return provider.loadObject(file);
     }
@@ -54,7 +54,6 @@ public class CustomObjectManager extends AbstractProviderManager<String, CustomO
      */
     public UniversalFileFilter getFileFilter() {
         List<String> extensions = getAllSupportedExtensions();
-        Set<String> extensionSet = new HashSet<>(extensions);
         String description = "Custom Object Files(" + extensions.stream().map(extension -> "*." + extension).collect(joining(", ")) + ")";
         return new UniversalFileFilter() {
             @Override
@@ -62,10 +61,7 @@ public class CustomObjectManager extends AbstractProviderManager<String, CustomO
                 if (f.isDirectory()) {
                     return true;
                 } else {
-                    String name = f.getName();
-                    int p = name.lastIndexOf('.');
-                    String extension = (p != -1) ? name.substring(p + 1).toLowerCase() : name.toLowerCase();
-                    return extensionSet.contains(extension);
+                    return isSupportedFileName(f.getName());
                 }
             }
 
@@ -76,9 +72,7 @@ public class CustomObjectManager extends AbstractProviderManager<String, CustomO
 
             @Override
             public boolean accept(File dir, String name) {
-                int p = name.lastIndexOf('.');
-                String extension = (p != -1) ? name.substring(p + 1).toLowerCase() : name.toLowerCase();
-                return extensionSet.contains(extension);
+                return isSupportedFileName(name);
             }
         };
     }
@@ -87,7 +81,32 @@ public class CustomObjectManager extends AbstractProviderManager<String, CustomO
         return INSTANCE;
     }
 
+    private CustomObjectProvider findProvider(String fileName) {
+        final String lowerCaseFileName = fileName.toLowerCase(Locale.ROOT);
+        for (String extension: extensionsByPriority) {
+            if (matchesExtension(lowerCaseFileName, extension)) {
+                return providersByExtension.get(extension);
+            }
+        }
+        return null;
+    }
+
+    private boolean isSupportedFileName(String fileName) {
+        final String lowerCaseFileName = fileName.toLowerCase(Locale.ROOT);
+        for (String extension: extensionsByPriority) {
+            if (matchesExtension(lowerCaseFileName, extension)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean matchesExtension(String fileName, String extension) {
+        return fileName.equals(extension) || fileName.endsWith("." + extension);
+    }
+
     private final Map<String, CustomObjectProvider> providersByExtension;
+    private final List<String> extensionsByPriority;
 
     private static final CustomObjectManager INSTANCE = new CustomObjectManager();
 

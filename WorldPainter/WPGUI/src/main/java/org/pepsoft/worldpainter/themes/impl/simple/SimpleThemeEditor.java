@@ -102,14 +102,21 @@ public class SimpleThemeEditor extends javax.swing.JPanel implements ButtonPress
             terrainTableModel = new TerrainRangesTableModel(theme.getTerrainRanges());
             terrainTableModel.setChangeListener(this);
             tableTerrain.setModel(terrainTableModel);
+            final boolean hytalePlatform = org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(platform);
+            tableTerrain.setRowHeight(hytalePlatform ? 34 : 25);
             
             tableTerrain.setDefaultRenderer(Integer.class, new DefaultTableCellRenderer());
-            tableTerrain.setDefaultRenderer(Terrain.class, new TerrainTableCellRenderer(colourScheme));
+            if (hytalePlatform) {
+                tableTerrain.setDefaultRenderer(Terrain.class,
+                        new org.pepsoft.worldpainter.hytale.HytaleTerrainTableCellRenderer(colourScheme));
+            } else {
+                tableTerrain.setDefaultRenderer(Terrain.class, new TerrainTableCellRenderer(colourScheme));
+            }
             tableTerrain.setDefaultRenderer(JButton.class, new JButtonTableCellRenderer());
             
             tableTerrain.setDefaultEditor(Integer.class, new JSpinnerTableCellEditor(new SpinnerNumberModel(minHeight + 1, minHeight + 1, maxHeight - 1, 1)));
             final JComboBox<Terrain> terrainEditor = new JComboBox<>(allowCustomItems ? Terrain.getConfiguredValues() : Terrain.PICK_LIST);
-            if (org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(platform)) {
+            if (hytalePlatform) {
                 terrainEditor.setRenderer(new org.pepsoft.worldpainter.hytale.HytaleTerrainListCellRenderer(colourScheme));
             } else {
                 terrainEditor.setRenderer(new TerrainListCellRenderer(colourScheme));

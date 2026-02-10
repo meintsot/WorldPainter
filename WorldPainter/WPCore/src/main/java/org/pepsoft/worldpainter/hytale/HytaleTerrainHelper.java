@@ -57,11 +57,7 @@ public final class HytaleTerrainHelper {
      */
     public static String getDisplayName(Object terrain) {
         if (terrain instanceof HytaleTerrain) {
-            HytaleTerrain ht = (HytaleTerrain) terrain;
-            if (ht.getBiome() != null) {
-                return ht.getName() + " (" + ht.getBiome() + ")";
-            }
-            return ht.getName();
+            return ((HytaleTerrain) terrain).getName();
         } else if (terrain instanceof Terrain) {
             return ((Terrain) terrain).getName();
         }
@@ -98,13 +94,13 @@ public final class HytaleTerrainHelper {
 
         // Sand/Desert
         if (name.contains("red sand")) return HytaleTerrain.SAND_RED;
-        if (name.contains("red desert")) return HytaleTerrain.ZONE2_RED_DESERT;
-        if (name.contains("desert")) return HytaleTerrain.ZONE2_DESERT;
-        if (name.contains("mesa")) return HytaleTerrain.ZONE2_MESA;
+        if (name.contains("red desert")) return HytaleTerrain.SAND_RED;
+        if (name.contains("desert")) return HytaleTerrain.SAND;
+        if (name.contains("mesa")) return HytaleTerrain.SAND_RED;
         if (name.contains("sand")) return HytaleTerrain.SAND;
 
         // Snow/Ice
-        if (name.contains("deep snow")) return HytaleTerrain.ZONE3_TUNDRA;
+        if (name.contains("deep snow")) return HytaleTerrain.SNOW;
         if (name.contains("snow")) return HytaleTerrain.SNOW;
         if (name.contains("ice")) return HytaleTerrain.ICE;
 
@@ -119,7 +115,7 @@ public final class HytaleTerrainHelper {
         if (name.contains("granite")) return HytaleTerrain.SHALE;
         if (name.contains("diorite")) return HytaleTerrain.QUARTZITE;
         if (name.contains("andesite")) return HytaleTerrain.SLATE;
-        if (name.contains("stone mix")) return HytaleTerrain.STONE_MIX;
+        if (name.contains("stone mix")) return HytaleTerrain.STONE;
         if (name.contains("cobblestone") && name.contains("mossy")) return HytaleTerrain.COBBLESTONE_MOSSY;
         if (name.contains("cobblestone")) return HytaleTerrain.COBBLESTONE;
         if (name.contains("red sandstone")) return HytaleTerrain.SANDSTONE_RED;
@@ -136,13 +132,11 @@ public final class HytaleTerrainHelper {
         if (name.contains("moss")) return HytaleTerrain.GRAVEL_MOSSY;
         if (name.contains("magma")) return HytaleTerrain.MAGMA_COOLED;
 
-        // Grass types
-        if (name.contains("grass path")) return HytaleTerrain.DIRT;
-        if (name.contains("bare grass")) return HytaleTerrain.GRASS;
+        // Grass types - all map to single GRASS
         if (name.contains("grass")) return HytaleTerrain.GRASS;
 
         // Beach
-        if (name.contains("beach")) return HytaleTerrain.ZONE1_BEACH;
+        if (name.contains("beach")) return HytaleTerrain.SAND;
 
         // Nether
         if (name.contains("netherrack") || name.contains("netherlike")) return HytaleTerrain.VOLCANIC;
@@ -152,26 +146,15 @@ public final class HytaleTerrainHelper {
         // End
         if (name.contains("end stone")) return HytaleTerrain.CHALK;
 
-        // Stained clay → clay with colour
+        // Stained clay / terracotta
         if (name.contains("stained clay") || name.contains("terracotta") || name.contains("hardened clay")) {
             return HytaleTerrain.CLAY;
         }
 
         // Resources (mixed ore terrain)
-        if (name.equals("resources")) return HytaleTerrain.STONE_MIX;
+        if (name.equals("resources")) return HytaleTerrain.STONE;
 
         return HytaleTerrain.GRASS;
-    }
-
-    /**
-     * Map a Minecraft Terrain to a Hytale biome name.
-     *
-     * @param terrain Minecraft terrain
-     * @return Hytale biome name
-     */
-    public static String getHytaleBiome(Terrain terrain) {
-        HytaleTerrain ht = fromMinecraftTerrain(terrain);
-        return ht.getBiome() != null ? ht.getBiome() : "Grassland";
     }
 
     /**
@@ -196,13 +179,6 @@ public final class HytaleTerrainHelper {
         Map<HytaleTerrain, Terrain> map = new HashMap<>();
         // Soil / Surface
         map.put(HytaleTerrain.GRASS, Terrain.GRASS);
-        map.put(HytaleTerrain.GRASS_FULL, Terrain.GRASS);
-        map.put(HytaleTerrain.GRASS_SUNNY, Terrain.GRASS);
-        map.put(HytaleTerrain.GRASS_DRY, Terrain.BARE_GRASS);
-        map.put(HytaleTerrain.GRASS_COLD, Terrain.GRASS);
-        map.put(HytaleTerrain.GRASS_BURNT, Terrain.BARE_GRASS);
-        map.put(HytaleTerrain.GRASS_DEEP, Terrain.GRASS);
-        map.put(HytaleTerrain.GRASS_WET, Terrain.GRASS);
         map.put(HytaleTerrain.DIRT, Terrain.PERMADIRT);
         map.put(HytaleTerrain.DIRT_BURNT, Terrain.PERMADIRT);
         map.put(HytaleTerrain.DIRT_COLD, Terrain.PERMADIRT);
@@ -221,6 +197,7 @@ public final class HytaleTerrainHelper {
         map.put(HytaleTerrain.LEAVES_FLOOR, Terrain.PODZOL);
         // Rock
         map.put(HytaleTerrain.STONE, Terrain.STONE);
+        map.put(HytaleTerrain.STONE_MOSSY, Terrain.MOSSY_COBBLESTONE);
         map.put(HytaleTerrain.COBBLESTONE, Terrain.COBBLESTONE);
         map.put(HytaleTerrain.COBBLESTONE_MOSSY, Terrain.MOSSY_COBBLESTONE);
         map.put(HytaleTerrain.SANDSTONE, Terrain.SANDSTONE);
@@ -229,52 +206,17 @@ public final class HytaleTerrainHelper {
         map.put(HytaleTerrain.SHALE, Terrain.TUFF);
         map.put(HytaleTerrain.SLATE, Terrain.DEEPSLATE);
         map.put(HytaleTerrain.BASALT, Terrain.BASALT);
+        map.put(HytaleTerrain.AQUA_ROCK, Terrain.STONE);
         map.put(HytaleTerrain.MARBLE, Terrain.DIORITE);
         map.put(HytaleTerrain.QUARTZITE, Terrain.DIORITE);
         map.put(HytaleTerrain.CALCITE, Terrain.CALCITE);
         map.put(HytaleTerrain.CHALK, Terrain.END_STONE);
+        map.put(HytaleTerrain.SALT, Terrain.END_STONE);
         map.put(HytaleTerrain.VOLCANIC, Terrain.NETHERRACK);
         map.put(HytaleTerrain.MAGMA_COOLED, Terrain.OBSIDIAN);
         map.put(HytaleTerrain.ICE, Terrain.DEEP_SNOW);
         map.put(HytaleTerrain.ICE_PERMAFROST, Terrain.DEEP_SNOW);
         map.put(HytaleTerrain.BEDROCK, Terrain.BEDROCK);
-        map.put(HytaleTerrain.STONE_MOSSY, Terrain.MOSSY_COBBLESTONE);
-        map.put(HytaleTerrain.AQUA_ROCK, Terrain.STONE);
-        map.put(HytaleTerrain.SALT, Terrain.END_STONE);
-        // Zone-specific
-        map.put(HytaleTerrain.ZONE1_GRASSLAND, Terrain.GRASS);
-        map.put(HytaleTerrain.ZONE1_FOREST_FLOOR, Terrain.PODZOL);
-        map.put(HytaleTerrain.ZONE1_MEADOW, Terrain.GRASS);
-        map.put(HytaleTerrain.ZONE1_AUTUMN, Terrain.PODZOL);
-        map.put(HytaleTerrain.ZONE1_BEACH, Terrain.BEACHES);
-        map.put(HytaleTerrain.ZONE1_RIVERBED, Terrain.CLAY);
-        map.put(HytaleTerrain.ZONE2_DESERT, Terrain.DESERT);
-        map.put(HytaleTerrain.ZONE2_RED_DESERT, Terrain.RED_DESERT);
-        map.put(HytaleTerrain.ZONE2_MESA, Terrain.MESA);
-        map.put(HytaleTerrain.ZONE2_PLATEAU, Terrain.SANDSTONE);
-        map.put(HytaleTerrain.ZONE2_OASIS, Terrain.GRASS);
-        map.put(HytaleTerrain.ZONE2_SAVANNA, Terrain.BARE_GRASS);
-        map.put(HytaleTerrain.ZONE3_TUNDRA, Terrain.DEEP_SNOW);
-        map.put(HytaleTerrain.ZONE3_TAIGA, Terrain.PODZOL);
-        map.put(HytaleTerrain.ZONE3_BOREAL_FOREST, Terrain.PODZOL);
-        map.put(HytaleTerrain.ZONE3_FROZEN_LAKE, Terrain.DEEP_SNOW);
-        map.put(HytaleTerrain.ZONE3_SNOWY_PEAKS, Terrain.ROCK);
-        map.put(HytaleTerrain.ZONE4_VOLCANIC_PLAINS, Terrain.NETHERRACK);
-        map.put(HytaleTerrain.ZONE4_LAVA_FIELDS, Terrain.MAGMA);
-        map.put(HytaleTerrain.ZONE4_ASH_WASTE, Terrain.NETHERLIKE);
-        map.put(HytaleTerrain.ZONE4_ASH_DESERT, Terrain.NETHERLIKE);
-        map.put(HytaleTerrain.ZONE4_JUNGLE, Terrain.GRASS);
-        // Mixed natural
-        map.put(HytaleTerrain.STONE_MIX, Terrain.STONE_MIX);
-        map.put(HytaleTerrain.MOUNTAIN_ROCK, Terrain.ROCK);
-        map.put(HytaleTerrain.SWAMP, Terrain.MUD);
-        map.put(HytaleTerrain.TROPICAL_BEACH, Terrain.BEACHES);
-        map.put(HytaleTerrain.OCEAN_FLOOR, Terrain.CLAY);
-        map.put(HytaleTerrain.OCEAN_AQUA, Terrain.CLAY);
-        // Layered
-        map.put(HytaleTerrain.GRASSLAND_LAYERED, Terrain.GRASS);
-        map.put(HytaleTerrain.DESERT_LAYERED, Terrain.DESERT);
-        map.put(HytaleTerrain.TUNDRA_LAYERED, Terrain.DEEP_SNOW);
         // Fluids
         map.put(HytaleTerrain.WATER, Terrain.WATER);
         map.put(HytaleTerrain.LAVA, Terrain.LAVA);

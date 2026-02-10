@@ -6,6 +6,8 @@
 package org.pepsoft.worldpainter.themes.impl.simple;
 
 import java.awt.Window;
+import org.pepsoft.worldpainter.ColourScheme;
+import org.pepsoft.worldpainter.Platform;
 import org.pepsoft.worldpainter.WorldPainterDialog;
 import org.pepsoft.worldpainter.themes.SimpleTheme;
 
@@ -18,8 +20,14 @@ public class EditSimpleThemeDialog extends WorldPainterDialog {
      * Creates new form EditSimpleThemeDialog
      */
     public EditSimpleThemeDialog(Window parent, SimpleTheme theme) {
+        this(parent, theme, null, null);
+    }
+
+    public EditSimpleThemeDialog(Window parent, SimpleTheme theme, ColourScheme colourScheme, Platform platform) {
         super(parent);
         initComponents();
+        simpleThemeEditor1.setColourScheme(colourScheme);
+        simpleThemeEditor1.setPlatform(platform);
         simpleThemeEditor1.setTheme(theme);
         getRootPane().setDefaultButton(buttonOK);
         scaleToUI();

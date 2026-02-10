@@ -16,6 +16,8 @@ import org.pepsoft.worldpainter.Dimension.Anchor;
 import org.pepsoft.worldpainter.World2.BorderSettings;
 import org.pepsoft.worldpainter.biomeschemes.CustomBiomeManager;
 import org.pepsoft.worldpainter.exporting.WorldExportSettings;
+import org.pepsoft.worldpainter.hytale.HytaleTerrainHelper;
+import org.pepsoft.worldpainter.hytale.HytaleWorldSettings;
 import org.pepsoft.worldpainter.layers.CustomLayer;
 import org.pepsoft.worldpainter.layers.Layer;
 import org.pepsoft.worldpainter.layers.Populate;
@@ -102,23 +104,18 @@ public class ExportWorldDialog extends WPDialogWithPaintSelection {
         fieldName.setText(world.getName());
 
         createDimensionPropertiesEditors();
-        checkBoxGoodies.setSelected(world.isCreateGoodiesChest());
         labelPlatform.setText("<html><u>" + platform.displayName + "</u></html>");
         labelPlatform.setToolTipText("Click to change the map format");
-        comboBoxGameType.setModel(new DefaultComboBoxModel<>(platform.supportedGameTypes.toArray(new GameType[platform.supportedGameTypes.size()])));
-        comboBoxGameType.setSelectedItem(world.getGameType());
-        comboBoxGameType.setEnabled(comboBoxGameType.getItemCount() > 1);
+        setGameTypesForPlatform(platform, world.getGameType());
         comboBoxGameType.setRenderer(new EnumListCellRenderer());
-        checkBoxAllowCheats.setSelected(world.isAllowCheats());
         if (world.getDataPacks() != null) {
             for (File dataPackFile: world.getDataPacks()) {
                 dataPacksListModel.addElement(dataPackFile);
             }
         }
         listDataPacks.setModel(dataPacksListModel);
-        listDataPacks.setEnabled(platform.capabilities.contains(DATA_PACKS));
-        checkBoxMapFeatures.setSelected(world.isMapFeatures());
-        comboBoxDifficulty.setSelectedIndex(world.getDifficulty());
+        listDataPacks.setEnabled(platform.capabilities.contains(DATA_PACKS) && (! isHytalePlatform(platform)));
+        applyPlatformSpecificSettings(platform);
 
         DocumentListener documentListener = new DocumentListener() {
             @Override
@@ -291,17 +288,19 @@ public class ExportWorldDialog extends WPDialogWithPaintSelection {
             }
             showWarning = showWarning || (! disableDisabledLayersWarning);
         }
-        for (int i = 0; i < dataPacksListModel.size(); i++) {
-            final File dataPackFile = dataPacksListModel.getElementAt(i);
-            if (! dataPackFile.exists()) {
-                sb.append("<li>Data pack file " + dataPackFile.getName() + " cannot be found.<br>It will not be installed.");
-                showWarning = true;
-            } else if (! dataPackFile.isFile()) {
-                sb.append("<li>Data pack file " + dataPackFile.getName() + " is not a regular file.<br>It will not be installed.");
-                showWarning = true;
-            } else if (! dataPackFile.canRead()) {
-                sb.append("<li>Data pack file " + dataPackFile.getName() + " is not accessible.<br>It will not be installed.");
-                showWarning = true;
+        if (! isHytalePlatform(platform)) {
+            for (int i = 0; i < dataPacksListModel.size(); i++) {
+                final File dataPackFile = dataPacksListModel.getElementAt(i);
+                if (! dataPackFile.exists()) {
+                    sb.append("<li>Data pack file " + dataPackFile.getName() + " cannot be found.<br>It will not be installed.");
+                    showWarning = true;
+                } else if (! dataPackFile.isFile()) {
+                    sb.append("<li>Data pack file " + dataPackFile.getName() + " is not a regular file.<br>It will not be installed.");
+                    showWarning = true;
+                } else if (! dataPackFile.canRead()) {
+                    sb.append("<li>Data pack file " + dataPackFile.getName() + " is not accessible.<br>It will not be installed.");
+                    showWarning = true;
+                }
             }
         }
         sb.append("</ul>");
@@ -353,12 +352,22 @@ public class ExportWorldDialog extends WPDialogWithPaintSelection {
             return;
         }
 
-        world.setCreateGoodiesChest(checkBoxGoodies.isSelected());
-        world.setGameType((GameType) comboBoxGameType.getSelectedItem());
-        world.setAllowCheats(checkBoxAllowCheats.isSelected());
-        world.setMapFeatures(checkBoxMapFeatures.isSelected());
-        world.setDifficulty(comboBoxDifficulty.getSelectedIndex());
-        world.setDataPacks(dataPacksListModel.isEmpty() ? null : Collections.list(dataPacksListModel.elements()));
+        final boolean hytalePlatform = isHytalePlatform(platform);
+        final GameType selectedGameType = (GameType) comboBoxGameType.getSelectedItem();
+        world.setGameType(hytalePlatform ? HytaleWorldSettings.normalizeGameType(selectedGameType) : selectedGameType);
+        if (hytalePlatform) {
+            world.setAttribute(HytaleWorldSettings.ATTRIBUTE_IS_FALL_DAMAGE_ENABLED, checkBoxGoodies.isSelected());
+            world.setAttribute(HytaleWorldSettings.ATTRIBUTE_IS_PVP_ENABLED, checkBoxAllowCheats.isSelected());
+            world.setAttribute(HytaleWorldSettings.ATTRIBUTE_IS_SPAWNING_NPC, checkBoxMapFeatures.isSelected());
+            world.setAttribute(HytaleWorldSettings.ATTRIBUTE_GAMEPLAY_CONFIG, getSelectedGameplayConfig());
+            world.setDataPacks(null);
+        } else {
+            world.setCreateGoodiesChest(checkBoxGoodies.isSelected());
+            world.setAllowCheats(checkBoxAllowCheats.isSelected());
+            world.setMapFeatures(checkBoxMapFeatures.isSelected());
+            world.setDifficulty(comboBoxDifficulty.getSelectedIndex());
+            world.setDataPacks(dataPacksListModel.isEmpty() ? null : Collections.list(dataPacksListModel.elements()));
+        }
 
         // Minecraft world border
         BorderSettings borderSettings = world.getBorderSettings();
@@ -409,7 +418,7 @@ public class ExportWorldDialog extends WPDialogWithPaintSelection {
             checkBoxGoodies.setEnabled(true);
             comboBoxGameType.setEnabled(true);
             checkBoxMapFeatures.setEnabled(true);
-            listDataPacks.setEnabled(platform.capabilities.contains(DATA_PACKS));
+            listDataPacks.setEnabled(platform.capabilities.contains(DATA_PACKS) && (! isHytalePlatform(platform)));
             setControlStates();
         }
     }
@@ -433,15 +442,21 @@ public class ExportWorldDialog extends WPDialogWithPaintSelection {
     }
 
     private void setControlStates() {
+        final boolean hytalePlatform = isHytalePlatform(world.getPlatform());
         boolean notHardcore = comboBoxGameType.getSelectedItem() != HARDCORE;
         final boolean platformSupported = supportedPlatforms.contains(world.getPlatform());
-        checkBoxAllowCheats.setEnabled((world.getPlatform() != JAVA_MCREGION) && notHardcore);
-        comboBoxDifficulty.setEnabled(notHardcore);
+        if (hytalePlatform) {
+            checkBoxAllowCheats.setEnabled(platformSupported);
+            comboBoxDifficulty.setEnabled(platformSupported);
+        } else {
+            checkBoxAllowCheats.setEnabled((world.getPlatform() != JAVA_MCREGION) && notHardcore);
+            comboBoxDifficulty.setEnabled(notHardcore);
+        }
         fieldDirectory.setEnabled(platformSupported);
         buttonSelectDirectory.setEnabled(platformSupported);
         buttonExport.setEnabled(platformSupported);
         buttonTestExport.setEnabled(platformSupported);
-        final boolean dataPacksEnabled = listDataPacks.isEnabled();
+        final boolean dataPacksEnabled = listDataPacks.isVisible() && listDataPacks.isEnabled();
         buttonAddDataPack.setEnabled(dataPacksEnabled);
         buttonRemoveDataPack.setEnabled(dataPacksEnabled && (listDataPacks.getSelectedIndex() != -1));
         if (! platformSupported) {
@@ -451,6 +466,155 @@ public class ExportWorldDialog extends WPDialogWithPaintSelection {
             buttonExport.setToolTipText(null);
             buttonTestExport.setToolTipText(null);
         }
+    }
+
+    private boolean isHytalePlatform(Platform platform) {
+        return HytaleTerrainHelper.isHytale(platform);
+    }
+
+    private void setGameTypesForPlatform(Platform platform, GameType preferredGameType) {
+        final java.util.List<GameType> gameTypes = isHytalePlatform(platform)
+                ? Arrays.asList(ADVENTURE, CREATIVE)
+                : platform.supportedGameTypes;
+        comboBoxGameType.setModel(new DefaultComboBoxModel<>(gameTypes.toArray(new GameType[0])));
+        GameType selectedGameType = isHytalePlatform(platform)
+                ? HytaleWorldSettings.normalizeGameType(preferredGameType)
+                : preferredGameType;
+        if (! gameTypes.contains(selectedGameType)) {
+            selectedGameType = gameTypes.get(0);
+        }
+        comboBoxGameType.setSelectedItem(selectedGameType);
+        comboBoxGameType.setEnabled(gameTypes.size() > 1);
+    }
+
+    private void applyPlatformSpecificSettings(Platform platform) {
+        final boolean hytalePlatform = isHytalePlatform(platform);
+        if (hytalePlatform) {
+            jLabel4.setText("Hytale world settings");
+            jLabel6.setText("Gameplay config:");
+            jLabel8.setText("Enable PvP:");
+            jLabel9.setText("Enable NPC spawning:");
+            jLabel10.setText("Enable fall damage:");
+            checkBoxGoodies.setToolTipText("Whether fall damage is enabled in this world");
+            checkBoxAllowCheats.setToolTipText("Whether player-versus-player combat is enabled in this world");
+            checkBoxMapFeatures.setToolTipText("Whether NPC spawning is enabled in this world");
+
+            checkBoxGoodies.setSelected(world.getAttribute(HytaleWorldSettings.ATTRIBUTE_IS_FALL_DAMAGE_ENABLED).orElse(true));
+            checkBoxAllowCheats.setSelected(world.getAttribute(HytaleWorldSettings.ATTRIBUTE_IS_PVP_ENABLED).orElse(false));
+            checkBoxMapFeatures.setSelected(world.getAttribute(HytaleWorldSettings.ATTRIBUTE_IS_SPAWNING_NPC).orElse(true));
+
+            final java.util.List<String> gameplayConfigs = loadHytaleGameplayConfigs();
+            comboBoxDifficulty.setModel(new DefaultComboBoxModel<>(gameplayConfigs.toArray(new String[0])));
+            comboBoxDifficulty.setSelectedItem(world.getAttribute(HytaleWorldSettings.ATTRIBUTE_GAMEPLAY_CONFIG)
+                    .orElse(HytaleWorldSettings.DEFAULT_GAMEPLAY_CONFIG));
+            if ((comboBoxDifficulty.getSelectedIndex() == -1) && (! gameplayConfigs.isEmpty())) {
+                comboBoxDifficulty.setSelectedIndex(0);
+            }
+
+            setDataPackControlsVisible(false);
+            setMinecraftWorldBorderVisible(false);
+            listDataPacks.setEnabled(false);
+        } else {
+            jLabel4.setText("Game settings");
+            jLabel6.setText("Difficulty:");
+            jLabel8.setText("Allow cheats:");
+            jLabel9.setText("Generate structures:");
+            jLabel10.setText("Include chest of goodies:");
+            checkBoxGoodies.setToolTipText("Include a chest with tools and resources near spawn for you as the level designer");
+            checkBoxAllowCheats.setToolTipText("Whether to allow cheats (single player commands)");
+            checkBoxMapFeatures.setToolTipText(null);
+
+            checkBoxGoodies.setSelected(world.isCreateGoodiesChest());
+            checkBoxAllowCheats.setSelected(world.isAllowCheats());
+            checkBoxMapFeatures.setSelected(world.isMapFeatures());
+            comboBoxDifficulty.setModel(new DefaultComboBoxModel(new String[] { "Peaceful", "Easy", "Normal", "Hard" }));
+            comboBoxDifficulty.setSelectedIndex(world.getDifficulty());
+
+            final boolean dataPacksSupported = platform.capabilities.contains(DATA_PACKS);
+            setDataPackControlsVisible(true);
+            setMinecraftWorldBorderVisible(true);
+            listDataPacks.setEnabled(dataPacksSupported);
+        }
+    }
+
+    private void setDataPackControlsVisible(boolean visible) {
+        jLabel11.setVisible(visible);
+        jLabel12.setVisible(visible);
+        jScrollPane1.setVisible(visible);
+        buttonAddDataPack.setVisible(visible);
+        buttonRemoveDataPack.setVisible(visible);
+    }
+
+    private void setMinecraftWorldBorderVisible(boolean visible) {
+        panelMinecraftWorldBorder.setVisible(visible);
+    }
+
+    private String getSelectedGameplayConfig() {
+        final Object selectedItem = comboBoxDifficulty.getSelectedItem();
+        return (selectedItem != null) ? selectedItem.toString() : HytaleWorldSettings.DEFAULT_GAMEPLAY_CONFIG;
+    }
+
+    private java.util.List<String> loadHytaleGameplayConfigs() {
+        final java.util.List<String> ids = new ArrayList<>();
+        ids.add(HytaleWorldSettings.DEFAULT_GAMEPLAY_CONFIG);
+        final File hytaleAssetsDir = findHytaleAssetsDir();
+        if (hytaleAssetsDir != null) {
+            final File gameplayConfigsDir = new File(hytaleAssetsDir, "Server" + File.separator + "GameplayConfigs");
+            final File[] configFiles = gameplayConfigsDir.listFiles((dir, name) ->
+                    name.toLowerCase(Locale.ROOT).endsWith(".json"));
+            if (configFiles != null) {
+                for (File file : configFiles) {
+                    final String fileName = file.getName();
+                    if (fileName.length() > 5) {
+                        final String id = fileName.substring(0, fileName.length() - 5);
+                        if (! containsIgnoreCase(ids, id)) {
+                            ids.add(id);
+                        }
+                    }
+                }
+            }
+        }
+        ids.sort(String.CASE_INSENSITIVE_ORDER);
+        for (int i = 0; i < ids.size(); i++) {
+            if (HytaleWorldSettings.DEFAULT_GAMEPLAY_CONFIG.equalsIgnoreCase(ids.get(i))) {
+                final String defaultId = ids.remove(i);
+                ids.add(0, defaultId);
+                break;
+            }
+        }
+        return ids;
+    }
+
+    private boolean containsIgnoreCase(java.util.List<String> values, String candidate) {
+        for (String value : values) {
+            if (value.equalsIgnoreCase(candidate)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private File findHytaleAssetsDir() {
+        final File[] candidates = {
+                new File("HytaleAssets"),
+                new File("..", "HytaleAssets"),
+                new File(System.getProperty("user.dir"), "HytaleAssets"),
+                new File(System.getProperty("user.dir"), ".." + File.separator + "HytaleAssets"),
+                new File(System.getProperty("user.home"), "Desktop" + File.separator + "WorldPainter" + File.separator + "HytaleAssets"),
+        };
+        for (File candidate : candidates) {
+            if (candidate.isDirectory() && new File(candidate, "Server" + File.separator + "GameplayConfigs").isDirectory()) {
+                return candidate;
+            }
+        }
+        final String pathFromSystemProperty = System.getProperty("org.pepsoft.worldpainter.hytaleAssetsDir");
+        if (pathFromSystemProperty != null) {
+            final File candidate = new File(pathFromSystemProperty);
+            if (candidate.isDirectory() && new File(candidate, "Server" + File.separator + "GameplayConfigs").isDirectory()) {
+                return candidate;
+            }
+        }
+        return null;
     }
 
     private void selectDir() {
@@ -933,20 +1097,8 @@ public class ExportWorldDialog extends WPDialogWithPaintSelection {
     private void platformChanged() {
         Platform newPlatform = world.getPlatform();
         labelPlatform.setText("<html><u>" + newPlatform.displayName + "</u></html>");
-        GameType gameType = (GameType) comboBoxGameType.getSelectedItem();
-        comboBoxGameType.setModel(new DefaultComboBoxModel<>(newPlatform.supportedGameTypes.toArray(new GameType[newPlatform.supportedGameTypes.size()])));
-        if (newPlatform.supportedGameTypes.contains(gameType)) {
-            comboBoxGameType.setSelectedItem(gameType);
-        } else {
-            comboBoxGameType.setSelectedItem(SURVIVAL);
-        }
-        comboBoxGameType.setEnabled(newPlatform.supportedGameTypes.size() > 1);
-        if (newPlatform != JAVA_MCREGION) {
-            checkBoxAllowCheats.setSelected(gameType == CREATIVE);
-        } else {
-            checkBoxAllowCheats.setSelected(false);
-        }
-        listDataPacks.setEnabled(newPlatform.capabilities.contains(DATA_PACKS));
+        setGameTypesForPlatform(newPlatform, (GameType) comboBoxGameType.getSelectedItem());
+        listDataPacks.setEnabled(newPlatform.capabilities.contains(DATA_PACKS) && (! isHytalePlatform(newPlatform)));
 
         if (supportedPlatforms.contains(newPlatform)) {
             labelPlatformWarning.setVisible(false);
@@ -961,13 +1113,17 @@ public class ExportWorldDialog extends WPDialogWithPaintSelection {
             labelPlatformWarning.setVisible(true);
         }
 
-        checkBoxGoodies.setSelected(world.isCreateGoodiesChest());
+        applyPlatformSpecificSettings(newPlatform);
 
         pack();
         setControlStates();
     }
 
     private void comboBoxGameTypeActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_comboBoxGameTypeActionPerformed
+        if (isHytalePlatform(world.getPlatform())) {
+            setControlStates();
+            return;
+        }
         if ((world.getPlatform() != JAVA_MCREGION) && (comboBoxGameType.getSelectedItem() == CREATIVE)) {
             checkBoxAllowCheats.setSelected(true);
             comboBoxDifficulty.setSelectedIndex(DIFFICULTY_PEACEFUL);

@@ -2,8 +2,6 @@ package org.pepsoft.worldpainter.hytale;
 
 import org.pepsoft.worldpainter.ColourScheme;
 import org.pepsoft.worldpainter.Terrain;
-import org.pepsoft.worldpainter.themes.TerrainListCellRenderer;
-
 import javax.swing.*;
 import java.awt.*;
 
@@ -16,6 +14,7 @@ import java.awt.*;
  * followed by the terrain name and optional biome label.
  */
 public class HytaleTerrainListCellRenderer extends DefaultListCellRenderer {
+    private static final int HYTALE_ICON_SIZE = 28;
 
     private final ColourScheme colourScheme;
     private final String nullLabel;
@@ -38,6 +37,7 @@ public class HytaleTerrainListCellRenderer extends DefaultListCellRenderer {
     public HytaleTerrainListCellRenderer(ColourScheme colourScheme, String nullLabel) {
         this.colourScheme = colourScheme;
         this.nullLabel = nullLabel;
+        setIconTextGap(6);
     }
 
     @Override
@@ -49,52 +49,19 @@ public class HytaleTerrainListCellRenderer extends DefaultListCellRenderer {
             setIcon(null);
         } else if (value instanceof HytaleTerrain) {
             HytaleTerrain terrain = (HytaleTerrain) value;
-            String label = terrain.getName();
-            if (terrain.getBiome() != null) {
-                label = label + " (" + terrain.getBiome() + ")";
-            }
-            setText(label);
-            setIcon(createColourIcon(terrain.getEffectiveColour()));
+            setText(terrain.getName());
+            setIcon(new ImageIcon(terrain.getScaledIcon(HYTALE_ICON_SIZE, colourScheme)));
         } else if (value instanceof Terrain) {
             // Map Minecraft Terrain to Hytale equivalent for display
             Terrain mcTerrain = (Terrain) value;
             HytaleTerrain ht = HytaleTerrainHelper.fromMinecraftTerrain(mcTerrain);
-            String label = ht.getName();
-            if (ht.getBiome() != null) {
-                label = label + " (" + ht.getBiome() + ")";
-            }
-            setText(label);
-            setIcon(createColourIcon(ht.getEffectiveColour()));
+            setText(ht.getName());
+            setIcon(new ImageIcon(ht.getScaledIcon(HYTALE_ICON_SIZE, colourScheme)));
         } else {
             setText(value.toString());
             setIcon(null);
         }
 
         return this;
-    }
-
-    /**
-     * Create a small 16x16 coloured icon.
-     */
-    private static Icon createColourIcon(int rgb) {
-        return new Icon() {
-            @Override
-            public void paintIcon(Component c, Graphics g, int x, int y) {
-                g.setColor(new Color(rgb));
-                g.fillRect(x, y, 16, 16);
-                g.setColor(Color.DARK_GRAY);
-                g.drawRect(x, y, 15, 15);
-            }
-
-            @Override
-            public int getIconWidth() {
-                return 16;
-            }
-
-            @Override
-            public int getIconHeight() {
-                return 16;
-            }
-        };
     }
 }

@@ -11,6 +11,7 @@ import org.pepsoft.worldpainter.Dimension.Anchor;
 import org.pepsoft.worldpainter.DefaultPlugin;
 import org.pepsoft.worldpainter.biomeschemes.CustomBiomeManager;
 import org.pepsoft.worldpainter.hytale.HytaleTerrain;
+import org.pepsoft.worldpainter.hytale.HytaleTerrainHelper;
 import org.pepsoft.worldpainter.layers.*;
 import org.pepsoft.worldpainter.layers.Void;
 import org.pepsoft.worldpainter.layers.renderers.*;
@@ -375,14 +376,10 @@ public final class TileRenderer {
                 colour = bedrockColour;
             } else {
                         if (DefaultPlugin.HYTALE.id.equals(platform.id)) {
-                    // TODO: Add HytaleTerrain support to Dimension
-                    HytaleTerrain hytaleTerrain = null; // (dimensionRef != null) ? dimensionRef.getHytaleTerrainAt(worldX, worldY) : null;
-                    if (hytaleTerrain != null) {
-                        colour = 0xff000000 | hytaleTerrain.getEffectiveColour();
-                    } else {
-                        Terrain terrain = tile.getTerrain(x, y);
-                        colour = terrain.getColour(seed, worldX, worldY, height, intHeight, platform, colourScheme);
-                    }
+                    // Look up Hytale terrain from Minecraft terrain stored on tile
+                    Terrain terrain = tile.getTerrain(x, y);
+                    HytaleTerrain hytaleTerrain = HytaleTerrainHelper.fromMinecraftTerrain(terrain);
+                    colour = 0xff000000 | hytaleTerrain.getEffectiveColour();
                 } else {
                     Terrain terrain = tile.getTerrain(x, y);
                     if (topLayersRelativeToTerrain

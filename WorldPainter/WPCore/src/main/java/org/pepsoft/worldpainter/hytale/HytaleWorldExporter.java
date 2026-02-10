@@ -2,8 +2,11 @@ package org.pepsoft.worldpainter.hytale;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import org.pepsoft.minecraft.Chunk;
 import org.pepsoft.minecraft.ChunkFactory;
+import org.pepsoft.minecraft.Entity;
 import org.pepsoft.minecraft.Material;
+import org.pepsoft.minecraft.TileEntity;
 import org.pepsoft.util.FileUtils;
 import org.pepsoft.util.ParallelProgressManager;
 import org.pepsoft.util.ProgressReceiver;
@@ -15,9 +18,11 @@ import org.pepsoft.worldpainter.Dimension;
 import org.pepsoft.worldpainter.Dimension.Anchor;
 import org.pepsoft.worldpainter.exporting.*;
 import org.pepsoft.worldpainter.history.HistoryEntry;
+import org.pepsoft.worldpainter.layers.Bo2Layer;
 import org.pepsoft.worldpainter.layers.Layer;
 import org.pepsoft.worldpainter.layers.Biome;
 import org.pepsoft.worldpainter.layers.FloodWithLava;
+import org.pepsoft.worldpainter.layers.bo2.Bo2LayerExporter;
 import org.pepsoft.worldpainter.util.FileInUseException;
 import org.pepsoft.worldpainter.vo.AttributeKeyVO;
 import org.pepsoft.worldpainter.vo.EventVO;
@@ -40,6 +45,8 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import static org.pepsoft.util.ExceptionUtils.chainContains;
 import static org.pepsoft.util.mdc.MDCUtils.doWithMdcContext;
+import static org.pepsoft.minecraft.Constants.MC_LAVA;
+import static org.pepsoft.minecraft.Constants.MC_WATER;
 import static org.pepsoft.worldpainter.Constants.*;
 import static org.pepsoft.worldpainter.DefaultPlugin.HYTALE;
 import static org.pepsoft.worldpainter.Dimension.Anchor.NORMAL_DETAIL;
@@ -198,13 +205,19 @@ public class HytaleWorldExporter implements WorldExporter {
         chunkStorage.put("Type", "Hytale");
         config.put("ChunkStorage", chunkStorage);
         
+        final boolean pvpEnabled = world.getAttribute(HytaleWorldSettings.ATTRIBUTE_IS_PVP_ENABLED).orElse(false);
+        final boolean fallDamageEnabled = world.getAttribute(HytaleWorldSettings.ATTRIBUTE_IS_FALL_DAMAGE_ENABLED).orElse(true);
+        final boolean spawningNpcEnabled = world.getAttribute(HytaleWorldSettings.ATTRIBUTE_IS_SPAWNING_NPC).orElse(true);
+        final String gameplayConfig = world.getAttribute(HytaleWorldSettings.ATTRIBUTE_GAMEPLAY_CONFIG)
+                .orElse(HytaleWorldSettings.DEFAULT_GAMEPLAY_CONFIG);
+
         config.put("ChunkConfig", new LinkedHashMap<>());
         config.put("IsTicking", true);
         config.put("IsBlockTicking", true);
-        config.put("IsPvpEnabled", false);
-        config.put("IsFallDamageEnabled", true);
+        config.put("IsPvpEnabled", pvpEnabled);
+        config.put("IsFallDamageEnabled", fallDamageEnabled);
         config.put("IsGameTimePaused", false);
-        config.put("GameTime", "0001-01-01T00:00:00.000000000Z");
+        config.put("GameTime", "0001-01-01T05:30:00.000000000Z");
         
         Map<String, Object> clientEffects = new LinkedHashMap<>();
         clientEffects.put("SunHeightPercent", 100.0);
@@ -217,10 +230,11 @@ public class HytaleWorldExporter implements WorldExporter {
         config.put("ClientEffects", clientEffects);
         
         config.put("RequiredPlugins", new LinkedHashMap<>());
-        config.put("IsSpawningNPC", true);
+        config.put("GameMode", HytaleWorldSettings.toHytaleGameModeName(world.getGameType()));
+        config.put("IsSpawningNPC", spawningNpcEnabled);
         config.put("IsSpawnMarkersEnabled", true);
         config.put("IsAllNPCFrozen", false);
-        config.put("GameplayConfig", "Default");
+        config.put("GameplayConfig", gameplayConfig);
         config.put("IsCompassUpdating", true);
         config.put("IsSavingPlayers", true);
         config.put("IsSavingChunks", true);
@@ -486,6 +500,8 @@ public class HytaleWorldExporter implements WorldExporter {
             // Each region contains 32x32 Hytale chunks
             int chunksExported = 0;
             int totalChunks = 32 * 32;
+            HytaleChunk[][] chunks = new HytaleChunk[32][32];
+            Map<Long, HytaleChunk> chunksByCoords = new HashMap<>();
             
             for (int localZ = 0; localZ < 32; localZ++) {
                 for (int localX = 0; localX < 32; localX++) {
@@ -523,17 +539,29 @@ public class HytaleWorldExporter implements WorldExporter {
                     
                     // Add entities (spawn markers, etc.)
                     addEntitiesToChunk(chunk, dimension, hyChunkX, hyChunkZ);
-                    
-                    // Write to region file
-                    regionFile.writeChunk(localX, localZ, chunk);
-                    
-                    synchronized (stats) {
-                        stats.surfaceArea += HytaleChunk.CHUNK_SIZE * HytaleChunk.CHUNK_SIZE;
-                    }
+                    chunks[localX][localZ] = chunk;
+                    chunksByCoords.put(chunkKey(hyChunkX, hyChunkZ), chunk);
                     
                     chunksExported++;
                     if (progressReceiver != null && chunksExported % 32 == 0) {
                         progressReceiver.setProgress((float) chunksExported / totalChunks);
+                    }
+                }
+            }
+
+            // Apply custom object layers after terrain generation so placement/collision checks can use the final surface.
+            applyCustomObjectLayers(dimension, regionCoords, chunksByCoords);
+
+            // Write all populated chunks to disk.
+            for (int localZ = 0; localZ < 32; localZ++) {
+                for (int localX = 0; localX < 32; localX++) {
+                    HytaleChunk chunk = chunks[localX][localZ];
+                    if (chunk == null) {
+                        continue;
+                    }
+                    regionFile.writeChunk(localX, localZ, chunk);
+                    synchronized (stats) {
+                        stats.surfaceArea += HytaleChunk.CHUNK_SIZE * HytaleChunk.CHUNK_SIZE;
                     }
                 }
             }
@@ -609,18 +637,14 @@ public class HytaleWorldExporter implements WorldExporter {
                         tint = hb.getTint();
                     } else {
                         // Unknown biome ID, fall back to auto
-                        biome = (hytaleTerrain != null && hytaleTerrain.getBiome() != null)
-                            ? hytaleTerrain.getBiome()
-                            : mapTerrainToBiome(localTerrain);
+                        biome = mapTerrainToBiome(localTerrain);
                         HytaleBiome fallback = HytaleBiome.fromTerrainBiomeName(biome);
                         environment = fallback.getEnvironment();
                         tint = fallback.getTint();
                     }
                 } else {
                     // Auto biome: derive from terrain
-                    String terrainBiomeName = (hytaleTerrain != null && hytaleTerrain.getBiome() != null)
-                        ? hytaleTerrain.getBiome()
-                        : mapTerrainToBiome(localTerrain);
+                    String terrainBiomeName = mapTerrainToBiome(localTerrain);
                     HytaleBiome autoBiome = HytaleBiome.fromTerrainBiomeName(terrainBiomeName);
                     biome = autoBiome.getName();
                     environment = autoBiome.getEnvironment();
@@ -782,6 +806,281 @@ public class HytaleWorldExporter implements WorldExporter {
                 logger.info("Added player spawn marker at ({}, {}, {}) in chunk ({}, {})",
                     adjustedSpawnX + 0.5, y, adjustedSpawnZ + 0.5, chunkX, chunkZ);
             }
+        }
+    }
+
+    private void applyCustomObjectLayers(Dimension dimension, Point regionCoords, Map<Long, HytaleChunk> chunksByCoords) {
+        Set<Layer> layers = dimension.getAllLayers(false);
+        if (layers.isEmpty()) {
+            return;
+        }
+
+        int regionSize = HytaleChunk.CHUNK_SIZE * 32;
+        Rectangle exportedArea = new Rectangle(
+                (regionCoords.x << 10) - blockOffsetX,
+                (regionCoords.y << 10) - blockOffsetZ,
+                regionSize,
+                regionSize);
+
+        HytaleRegionMinecraftWorld regionWorld = new HytaleRegionMinecraftWorld(chunksByCoords, blockOffsetX, blockOffsetZ,
+                dimension.getMinHeight(), dimension.getMaxHeight());
+
+        for (Layer layer: layers) {
+            if (! (layer instanceof Bo2Layer)) {
+                continue;
+            }
+            Bo2Layer bo2Layer = (Bo2Layer) layer;
+            Bo2LayerExporter exporter = bo2Layer.getExporter(dimension, platform, dimension.getLayerSettings(bo2Layer));
+            if (exporter == null) {
+                continue;
+            }
+            try {
+                List<Fixup> fixups = exporter.addFeatures(exportedArea, exportedArea, regionWorld);
+                if ((fixups != null) && (! fixups.isEmpty())) {
+                    logger.debug("Skipped {} border fixups for custom object layer '{}' in region {},{}",
+                            fixups.size(), bo2Layer.getName(), regionCoords.x, regionCoords.y);
+                }
+            } catch (RuntimeException e) {
+                logger.error("Error applying custom object layer '{}' in region {},{}",
+                        bo2Layer.getName(), regionCoords.x, regionCoords.y, e);
+            }
+        }
+    }
+
+    private static long chunkKey(int chunkX, int chunkZ) {
+        return (((long) chunkX) << 32) ^ (chunkZ & 0xFFFFFFFFL);
+    }
+
+    private static final class HytaleRegionMinecraftWorld implements MinecraftWorld {
+        private HytaleRegionMinecraftWorld(Map<Long, HytaleChunk> chunksByCoords, int blockOffsetX, int blockOffsetZ,
+                                           int minHeight, int maxHeight) {
+            this.chunksByCoords = chunksByCoords;
+            this.blockOffsetX = blockOffsetX;
+            this.blockOffsetZ = blockOffsetZ;
+            this.minHeight = minHeight;
+            this.maxHeight = maxHeight;
+        }
+
+        @Override
+        public int getBlockTypeAt(int x, int y, int height) {
+            return getMaterialAt(x, y, height).blockType;
+        }
+
+        @Override
+        public int getDataAt(int x, int y, int height) {
+            Material material = getMaterialAt(x, y, height);
+            return (material.data >= 0) ? material.data : 0;
+        }
+
+        @Override
+        public Material getMaterialAt(int x, int y, int height) {
+            if ((height < minHeight) || (height >= maxHeight)) {
+                return Material.AIR;
+            }
+            Location location = toLocation(x, y);
+            if (location == null) {
+                return Material.AIR;
+            }
+            HytaleBlock block = location.chunk.getHytaleBlock(location.localX, height, location.localZ);
+            if ((block != null) && (! block.isEmpty())) {
+                Material material = Material.get(HytaleBlockRegistry.HYTALE_NAMESPACE + ":" + block.id);
+                if (block.rotation != 0) {
+                    material = material.withProperty(HytalePrefabJsonObject.HYTALE_ROTATION_PROPERTY, Integer.toString(block.rotation & 0x3F));
+                }
+                return material;
+            }
+
+            HytaleChunk.HytaleSection section = location.chunk.getSections()[height >> 5];
+            int localY = height & 31;
+            int fluidId = section.getFluidId(location.localX, localY, location.localZ);
+            if (fluidId > 0) {
+                List<String> fluidPalette = section.getFluidPalette();
+                if (fluidId < fluidPalette.size()) {
+                    String fluidName = fluidPalette.get(fluidId);
+                    if (fluidName.contains("Lava")) {
+                        return Material.LAVA;
+                    } else if (fluidName.contains("Water")) {
+                        return Material.WATER;
+                    } else if (! fluidName.equals("Empty")) {
+                        return Material.get(HytaleBlockRegistry.HYTALE_NAMESPACE + ":" + fluidName);
+                    }
+                }
+                return Material.WATER;
+            }
+            return Material.AIR;
+        }
+
+        @Override
+        public void setBlockTypeAt(int x, int y, int height, int blockType) {
+            setMaterialAt(x, y, height, Material.get(blockType));
+        }
+
+        @Override
+        public void setDataAt(int x, int y, int height, int data) {
+            Material existing = getMaterialAt(x, y, height);
+            if (existing.blockType >= 0) {
+                setMaterialAt(x, y, height, Material.get(existing.blockType, data));
+            }
+        }
+
+        @Override
+        public void setMaterialAt(int x, int y, int height, Material material) {
+            if ((height < minHeight) || (height >= maxHeight)) {
+                return;
+            }
+            Location location = toLocation(x, y);
+            if (location == null) {
+                return;
+            }
+            HytaleChunk.HytaleSection section = location.chunk.getSections()[height >> 5];
+            int localY = height & 31;
+
+            if ((material == null) || (material == Material.AIR)) {
+                section.clearFluid(location.localX, localY, location.localZ);
+                location.chunk.setHytaleBlock(location.localX, height, location.localZ, HytaleBlock.EMPTY);
+                return;
+            }
+
+            if (material.isNamed(MC_WATER)) {
+                location.chunk.setHytaleBlock(location.localX, height, location.localZ, HytaleBlock.EMPTY);
+                section.setFluid(location.localX, localY, location.localZ, HytaleBlockMapping.HY_WATER, 1);
+                return;
+            } else if (material.isNamed(MC_LAVA)) {
+                location.chunk.setHytaleBlock(location.localX, height, location.localZ, HytaleBlock.EMPTY);
+                section.setFluid(location.localX, localY, location.localZ, HytaleBlockMapping.HY_LAVA, 1);
+                return;
+            }
+
+            HytaleBlock block = HytaleBlockMapping.toHytaleBlock(material);
+            if (block.isFluid()) {
+                location.chunk.setHytaleBlock(location.localX, height, location.localZ, HytaleBlock.EMPTY);
+                section.setFluid(location.localX, localY, location.localZ, block.id, 1);
+            } else {
+                section.clearFluid(location.localX, localY, location.localZ);
+                location.chunk.setHytaleBlock(location.localX, height, location.localZ, block);
+            }
+        }
+
+        @Override
+        public int getMinHeight() {
+            return minHeight;
+        }
+
+        @Override
+        public int getMaxHeight() {
+            return maxHeight;
+        }
+
+        @Override
+        public void addEntity(double x, double y, double height, Entity entity) {
+            Location location = toLocation((int) Math.floor(x), (int) Math.floor(y));
+            if (location == null) {
+                return;
+            }
+            String entityType = (entity != null) ? entity.getId() : "hytale:prefab_entity";
+            HytaleEntity hytaleEntity = HytaleEntity.of(entityType, x + blockOffsetX, height, y + blockOffsetZ);
+            if (entity != null) {
+                float[] rotation = entity.getRot();
+                hytaleEntity.setRotation(rotation[0], rotation[1], 0.0f);
+            }
+            location.chunk.addHytaleEntity(hytaleEntity);
+        }
+
+        @Override
+        public void addTileEntity(int x, int y, int height, TileEntity tileEntity) {
+            // Hytale has no direct equivalent for Minecraft tile entities in this exporter path.
+        }
+
+        @Override
+        public int getBlockLightLevel(int x, int y, int height) {
+            return 0;
+        }
+
+        @Override
+        public void setBlockLightLevel(int x, int y, int height, int blockLightLevel) {
+            // Not managed here; chunk serializer calculates lighting.
+        }
+
+        @Override
+        public int getSkyLightLevel(int x, int y, int height) {
+            return 15;
+        }
+
+        @Override
+        public void setSkyLightLevel(int x, int y, int height, int skyLightLevel) {
+            // Not managed here; chunk serializer calculates lighting.
+        }
+
+        @Override
+        public boolean isChunkPresent(int x, int y) {
+            int centeredBlockX = x << 4;
+            int centeredBlockZ = y << 4;
+            int hChunkX = Math.floorDiv(centeredBlockX, HytaleChunk.CHUNK_SIZE);
+            int hChunkZ = Math.floorDiv(centeredBlockZ, HytaleChunk.CHUNK_SIZE);
+            return chunksByCoords.containsKey(chunkKey(hChunkX, hChunkZ));
+        }
+
+        @Override
+        public void addChunk(Chunk chunk) {
+            // Not needed for this in-memory region view.
+        }
+
+        @Override
+        public int getHighestNonAirBlock(int x, int y) {
+            for (int z = maxHeight - 1; z >= minHeight; z--) {
+                if (getMaterialAt(x, y, z) != Material.AIR) {
+                    return z;
+                }
+            }
+            return Integer.MIN_VALUE;
+        }
+
+        @Override
+        public Chunk getChunk(int x, int z) {
+            int centeredBlockX = x << 4;
+            int centeredBlockZ = z << 4;
+            int hChunkX = Math.floorDiv(centeredBlockX, HytaleChunk.CHUNK_SIZE);
+            int hChunkZ = Math.floorDiv(centeredBlockZ, HytaleChunk.CHUNK_SIZE);
+            return chunksByCoords.get(chunkKey(hChunkX, hChunkZ));
+        }
+
+        @Override
+        public Chunk getChunkForEditing(int x, int z) {
+            return getChunk(x, z);
+        }
+
+        @Override
+        public void close() {
+            // No resources to close.
+        }
+
+        private Location toLocation(int originalX, int originalZ) {
+            int centeredX = originalX + blockOffsetX;
+            int centeredZ = originalZ + blockOffsetZ;
+            int hChunkX = Math.floorDiv(centeredX, HytaleChunk.CHUNK_SIZE);
+            int hChunkZ = Math.floorDiv(centeredZ, HytaleChunk.CHUNK_SIZE);
+            HytaleChunk chunk = chunksByCoords.get(chunkKey(hChunkX, hChunkZ));
+            if (chunk == null) {
+                return null;
+            }
+            int localX = Math.floorMod(centeredX, HytaleChunk.CHUNK_SIZE);
+            int localZ = Math.floorMod(centeredZ, HytaleChunk.CHUNK_SIZE);
+            return new Location(chunk, localX, localZ);
+        }
+
+        private final Map<Long, HytaleChunk> chunksByCoords;
+        private final int blockOffsetX, blockOffsetZ;
+        private final int minHeight, maxHeight;
+
+        private static final class Location {
+            private Location(HytaleChunk chunk, int localX, int localZ) {
+                this.chunk = chunk;
+                this.localX = localX;
+                this.localZ = localZ;
+            }
+
+            private final HytaleChunk chunk;
+            private final int localX, localZ;
         }
     }
     

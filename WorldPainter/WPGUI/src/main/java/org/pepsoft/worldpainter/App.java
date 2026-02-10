@@ -3631,13 +3631,9 @@ public final class App extends JFrame implements BrushControl,
         final Terrain terrain = org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.toMinecraftTerrain(hytaleTerrain);
         final JToggleButton button = new JToggleButton();
         button.putClientProperty(KEY_PAINT_ID, createTerrainPaintId(terrain));
-        button.setMargin(App.SMALLER_BUTTON_INSETS);
-        button.setIcon(new ImageIcon(hytaleTerrain.getIcon(selectedColourScheme)));
-        String tooltip = hytaleTerrain.getName();
-        if (hytaleTerrain.getBiome() != null) {
-            tooltip += " (" + hytaleTerrain.getBiome() + ")";
-        }
-        button.setToolTipText(tooltip);
+        button.setMargin(new Insets(1, 1, 1, 1));
+        button.setIcon(new ImageIcon(hytaleTerrain.getScaledIcon(32, selectedColourScheme)));
+        button.setToolTipText(hytaleTerrain.getName());
         button.addItemListener(event -> {
             if (event.getStateChange() == ItemEvent.SELECTED) {
                 paintUpdater = () -> {
@@ -3654,11 +3650,49 @@ public final class App extends JFrame implements BrushControl,
     void updateTerrainButtonsForPlatform() {
         if (terrainButtonPanel == null) return;
         if (world != null && org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(world.getPlatform())) {
+            initHytaleAssetsDir();
             populateHytaleTerrainButtons();
         } else {
             populateMinecraftTerrainButtons();
         }
     }
+    
+    /**
+     * Auto-discover and set the HytaleAssets directory for block texture loading.
+     * Searches common locations relative to the working directory and user home.
+     */
+    private void initHytaleAssetsDir() {
+        if (hytaleAssetsDirInitialized) return;
+        hytaleAssetsDirInitialized = true;
+        
+        java.io.File[] candidates = {
+            new java.io.File("HytaleAssets"),
+            new java.io.File("..", "HytaleAssets"),
+            new java.io.File(System.getProperty("user.dir"), "HytaleAssets"),
+            new java.io.File(System.getProperty("user.dir"), ".." + java.io.File.separator + "HytaleAssets"),
+            new java.io.File(System.getProperty("user.home"), "Desktop" + java.io.File.separator + "WorldPainter" + java.io.File.separator + "HytaleAssets"),
+        };
+        for (java.io.File candidate : candidates) {
+            if (candidate.isDirectory() && new java.io.File(candidate, "Common" + java.io.File.separator + "BlockTextures").isDirectory()) {
+                org.pepsoft.worldpainter.hytale.HytaleTerrain.setHytaleAssetsDir(candidate);
+                logger.info("Found HytaleAssets at: {}", candidate.getAbsolutePath());
+                return;
+            }
+        }
+        // Also allow system property override
+        String sysProp = System.getProperty("org.pepsoft.worldpainter.hytaleAssetsDir");
+        if (sysProp != null) {
+            java.io.File dir = new java.io.File(sysProp);
+            if (dir.isDirectory()) {
+                org.pepsoft.worldpainter.hytale.HytaleTerrain.setHytaleAssetsDir(dir);
+                logger.info("Using HytaleAssets from system property: {}", dir.getAbsolutePath());
+                return;
+            }
+        }
+        logger.warn("HytaleAssets directory not found — terrain buttons will use fallback colours");
+    }
+    
+    private boolean hytaleAssetsDirInitialized = false;
     
     private JPanel createCustomTerrainPanel() {
         customTerrainPanel = new JPanel();
