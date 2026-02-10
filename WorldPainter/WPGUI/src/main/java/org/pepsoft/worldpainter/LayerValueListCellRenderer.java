@@ -2,6 +2,8 @@ package org.pepsoft.worldpainter;
 
 import org.pepsoft.worldpainter.biomeschemes.BiomeSchemeManager;
 import org.pepsoft.worldpainter.biomeschemes.CustomBiomeManager;
+import org.pepsoft.worldpainter.hytale.HytaleBiomeIconFactory;
+import org.pepsoft.worldpainter.hytale.HytaleTerrainHelper;
 import org.pepsoft.worldpainter.layers.Annotations;
 import org.pepsoft.worldpainter.layers.Biome;
 import org.pepsoft.worldpainter.layers.Layer;
@@ -32,9 +34,12 @@ public class LayerValueListCellRenderer extends DefaultListCellRenderer {
         } else if (layer instanceof Biome) {
             final BiomeScheme biomeScheme = getBiomeScheme(platform);
             final boolean addIds = ! platform.capabilities.contains(NAMED_BIOMES);
+            final boolean hytaleMode = HytaleTerrainHelper.isHytale(platform);
             for (int value = 0; value < 256; value++) {
                 if (biomeScheme.isBiomePresent(value)) {
-                    icons.put(value, new ImageIcon(scaleIcon(BiomeSchemeManager.createImage(biomeScheme, value, colourScheme), 16)));
+                    icons.put(value, hytaleMode
+                            ? HytaleBiomeIconFactory.getIcon(value, colourScheme, HYTALE_BIOME_ICON_SIZE)
+                            : new ImageIcon(scaleIcon(BiomeSchemeManager.createImage(biomeScheme, value, colourScheme), 16)));
                     texts.put(value, biomeScheme.getBiomeName(value) + (addIds ? (" (" + value + ")") : ""));
                 } else {
                     final int finalValue = value;
@@ -79,4 +84,5 @@ public class LayerValueListCellRenderer extends DefaultListCellRenderer {
     private final boolean showIcons;
     private final Map<Integer, Icon> icons = new HashMap<>();
     private final Map<Integer, String> texts = new HashMap<>();
+    private static final int HYTALE_BIOME_ICON_SIZE = 16;
 }

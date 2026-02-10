@@ -783,7 +783,10 @@ public class DimensionPropertiesEditor extends javax.swing.JPanel {
                     i.remove();
                 }
             }
-            comboBoxSubsurfaceMaterial.setModel(new DefaultComboBoxModel<>(materialList.toArray(new Terrain[materialList.size()])));
+            final Terrain[] materialChoices = materialList.toArray(new Terrain[materialList.size()]);
+            comboBoxSubsurfaceMaterial.setModel(new DefaultComboBoxModel<>(org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(platform)
+                    ? org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.deduplicateForHytaleUi(materialChoices)
+                    : materialChoices));
             comboBoxSubsurfaceMaterial.setSelectedItem(dimension.getSubsurfaceMaterial());
         }
 

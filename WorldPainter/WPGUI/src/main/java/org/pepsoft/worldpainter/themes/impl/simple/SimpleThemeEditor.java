@@ -115,7 +115,10 @@ public class SimpleThemeEditor extends javax.swing.JPanel implements ButtonPress
             tableTerrain.setDefaultRenderer(JButton.class, new JButtonTableCellRenderer());
             
             tableTerrain.setDefaultEditor(Integer.class, new JSpinnerTableCellEditor(new SpinnerNumberModel(minHeight + 1, minHeight + 1, maxHeight - 1, 1)));
-            final JComboBox<Terrain> terrainEditor = new JComboBox<>(allowCustomItems ? Terrain.getConfiguredValues() : Terrain.PICK_LIST);
+            final Terrain[] terrainChoices = allowCustomItems ? Terrain.getConfiguredValues() : Terrain.PICK_LIST;
+            final JComboBox<Terrain> terrainEditor = new JComboBox<>(hytalePlatform
+                    ? org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.deduplicateForHytaleUi(terrainChoices)
+                    : terrainChoices);
             if (hytalePlatform) {
                 terrainEditor.setRenderer(new org.pepsoft.worldpainter.hytale.HytaleTerrainListCellRenderer(colourScheme));
             } else {

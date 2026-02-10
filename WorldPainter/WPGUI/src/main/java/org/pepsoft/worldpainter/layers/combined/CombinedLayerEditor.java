@@ -143,14 +143,17 @@ public class CombinedLayerEditor extends AbstractLayerEditor<CombinedLayer> impl
         final ColourScheme colourScheme = context.getColourScheme();
         final Dimension dimension = context.getDimension();
         final Platform platform = dimension.getWorld().getPlatform();
-        if (org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(platform)) {
+        final boolean hytalePlatform = org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(platform);
+        if (hytalePlatform) {
             comboBoxTerrain.setRenderer(new org.pepsoft.worldpainter.hytale.HytaleTerrainListCellRenderer(colourScheme, "none"));
         } else {
             comboBoxTerrain.setRenderer(new TerrainListCellRenderer(colourScheme, "none"));
         }
         comboBoxBiome.setRenderer(new BiomeListCellRenderer(colourScheme, customBiomeManager, "none", platform));
 
-        List<Terrain> allTerrains = listOf(singletonList(null), asList(Terrain.getConfiguredValues()));
+        List<Terrain> allTerrains = listOf(singletonList(null), asList(hytalePlatform
+                ? org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.deduplicateForHytaleUi(Terrain.getConfiguredValues())
+                : Terrain.getConfiguredValues()));
         comboBoxTerrain.setModel(new DefaultComboBoxModel<>(allTerrains.toArray(new Terrain[allTerrains.size()])));
         List<Integer> allBiomes = listOf(singletonList(-1), getAllBiomes(platform, customBiomeManager));
         comboBoxBiome.setModel(new DefaultComboBoxModel<>(allBiomes.toArray(new Integer[allBiomes.size()])));

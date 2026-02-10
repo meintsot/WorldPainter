@@ -72,8 +72,14 @@ public class PreferencesDialog extends WorldPainterDialog {
         
         initComponents();
         
-        comboBoxSurfaceMaterial.setModel(new DefaultComboBoxModel(Terrain.PICK_LIST));
-        comboBoxSurfaceMaterial.setRenderer(new TerrainListCellRenderer(colourScheme));
+        final Platform initialPlatform = Configuration.getInstance().getDefaultPlatform();
+        final boolean hytaleInitialPlatform = org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(initialPlatform);
+        comboBoxSurfaceMaterial.setModel(new DefaultComboBoxModel(hytaleInitialPlatform
+                ? org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.deduplicateForHytaleUi(Terrain.PICK_LIST)
+                : Terrain.PICK_LIST));
+        comboBoxSurfaceMaterial.setRenderer(hytaleInitialPlatform
+                ? new org.pepsoft.worldpainter.hytale.HytaleTerrainListCellRenderer(colourScheme)
+                : new TerrainListCellRenderer(colourScheme));
         comboBoxMode.setRenderer(new EnumListCellRenderer());
         comboBoxWorldType.setRenderer(new EnumListCellRenderer());
 
@@ -107,8 +113,11 @@ public class PreferencesDialog extends WorldPainterDialog {
     
     private void updateSurfaceMaterialForPlatform(Platform platform) {
         Object previousSelection = comboBoxSurfaceMaterial.getSelectedItem();
-        comboBoxSurfaceMaterial.setModel(new DefaultComboBoxModel(Terrain.PICK_LIST));
-        if (org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(platform)) {
+        final boolean hytalePlatform = org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(platform);
+        comboBoxSurfaceMaterial.setModel(new DefaultComboBoxModel(hytalePlatform
+                ? org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.deduplicateForHytaleUi(Terrain.PICK_LIST)
+                : Terrain.PICK_LIST));
+        if (hytalePlatform) {
             comboBoxSurfaceMaterial.setRenderer(new org.pepsoft.worldpainter.hytale.HytaleTerrainListCellRenderer(colourScheme));
         } else {
             comboBoxSurfaceMaterial.setRenderer(new TerrainListCellRenderer(colourScheme));

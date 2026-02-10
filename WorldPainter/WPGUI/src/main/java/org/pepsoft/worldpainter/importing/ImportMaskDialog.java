@@ -62,8 +62,11 @@ public class ImportMaskDialog extends WorldPainterDialog implements DocumentList
                 .thenComparing(layer -> ((Layer) layer).getName()));
         comboBoxLayer.setModel(new DefaultComboBoxModel<>(allLayers.toArray(new Layer[allLayers.size()])));
         comboBoxLayer.setRenderer(new LayerListCellRenderer());
-        comboBoxApplyToTerrain.setModel(new DefaultComboBoxModel<>(nullAnd(asList(Terrain.getConfiguredValues())).toArray(new Terrain[0])));
-        if (org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(dimension.getWorld().getPlatform())) {
+        final boolean hytalePlatform = org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(dimension.getWorld().getPlatform());
+        comboBoxApplyToTerrain.setModel(new DefaultComboBoxModel<>(nullAnd(asList(hytalePlatform
+                ? org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.deduplicateForHytaleUi(Terrain.getConfiguredValues())
+                : Terrain.getConfiguredValues())).toArray(new Terrain[0])));
+        if (hytalePlatform) {
             comboBoxApplyToTerrain.setRenderer(new org.pepsoft.worldpainter.hytale.HytaleTerrainListCellRenderer(colourScheme, "-all-"));
         } else {
             comboBoxApplyToTerrain.setRenderer(new TerrainListCellRenderer(colourScheme, "-all-"));

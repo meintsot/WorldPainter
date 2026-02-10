@@ -55,7 +55,7 @@ public class HytaleTerrainListCellRenderer extends DefaultListCellRenderer {
             // Map Minecraft Terrain to Hytale equivalent for display
             Terrain mcTerrain = (Terrain) value;
             HytaleTerrain ht = HytaleTerrainHelper.fromMinecraftTerrain(mcTerrain);
-            setText(ht.getName());
+            setText(mcTerrain.isCustom() ? mcTerrain.getName() : ht.getName());
             setIcon(new ImageIcon(ht.getScaledIcon(HYTALE_ICON_SIZE, colourScheme)));
         } else {
             setText(value.toString());

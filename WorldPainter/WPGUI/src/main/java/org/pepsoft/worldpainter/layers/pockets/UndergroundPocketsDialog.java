@@ -306,8 +306,11 @@ public class UndergroundPocketsDialog extends AbstractEditLayerDialog<Undergroun
             }
         });
 
-        comboBoxTerrain.setModel(new DefaultComboBoxModel(Terrain.VALUES));
-        if (org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(platform)) {
+        final boolean hytalePlatform = org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(platform);
+        comboBoxTerrain.setModel(new DefaultComboBoxModel(hytalePlatform
+                ? org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.deduplicateForHytaleUi(Terrain.VALUES)
+                : Terrain.VALUES));
+        if (hytalePlatform) {
             comboBoxTerrain.setRenderer(new org.pepsoft.worldpainter.hytale.HytaleTerrainListCellRenderer(colourScheme));
         } else {
             comboBoxTerrain.setRenderer(new TerrainListCellRenderer(colourScheme));

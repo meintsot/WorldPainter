@@ -10,6 +10,9 @@ import org.pepsoft.util.IconUtils;
 import org.pepsoft.worldpainter.BiomeScheme;
 import org.pepsoft.worldpainter.ColourScheme;
 import org.pepsoft.worldpainter.Platform;
+import org.pepsoft.worldpainter.hytale.HytaleBiome;
+import org.pepsoft.worldpainter.hytale.HytaleBiomeIconFactory;
+import org.pepsoft.worldpainter.hytale.HytaleTerrainHelper;
 
 import javax.swing.*;
 
@@ -25,6 +28,7 @@ public class BiomeHelper {
     public BiomeHelper(ColourScheme colourScheme, CustomBiomeManager customBiomeManager, Platform platform) {
         this.colourScheme = colourScheme;
         this.customBiomeManager = customBiomeManager;
+        hytaleMode = HytaleTerrainHelper.isHytale(platform);
         showIds = ! platform.capabilities.contains(NAMED_BIOMES);
         biomeScheme = getBiomeScheme(platform);
     }
@@ -69,8 +73,14 @@ public class BiomeHelper {
     
     public Icon getBiomeIcon(int biomeID) {
         if (icons[biomeID] == null) {
+            if (hytaleMode && (biomeID == HytaleBiome.BIOME_AUTO)) {
+                icons[biomeID] = HytaleBiomeIconFactory.getIcon(biomeID, colourScheme, HYTALE_ICON_SIZE);
+                return icons[biomeID];
+            }
             if (biomeScheme.isBiomePresent(biomeID)) {
-                icons[biomeID] = new ImageIcon(BiomeSchemeManager.createImage(biomeScheme, biomeID, colourScheme));
+                icons[biomeID] = hytaleMode
+                        ? HytaleBiomeIconFactory.getIcon(biomeID, colourScheme, HYTALE_ICON_SIZE)
+                        : new ImageIcon(BiomeSchemeManager.createImage(biomeScheme, biomeID, colourScheme));
             } else if (customBiomeManager != null) {
                 for (CustomBiome customBiome: customBiomeManager.getCustomBiomes()) {
                     if (customBiome.getId() == biomeID) {
@@ -86,7 +96,9 @@ public class BiomeHelper {
     private final CustomBiomeManager customBiomeManager;
     private final ColourScheme colourScheme;
     private final BiomeScheme biomeScheme;
+    private final boolean hytaleMode;
     private final boolean showIds;
     private final String[][] names = new String[255][2];
     private final Icon[] icons = new Icon[256];
+    private static final int HYTALE_ICON_SIZE = 16;
 }

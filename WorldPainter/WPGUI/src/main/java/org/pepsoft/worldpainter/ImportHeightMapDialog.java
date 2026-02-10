@@ -112,7 +112,8 @@ public class ImportHeightMapDialog extends WorldPainterDialog implements Documen
         comboBoxPlatform.setModel(new DefaultComboBoxModel<>(PlatformManager.getInstance().getAllPlatforms().toArray(new Platform[0])));
         labelWarningCutOffBelow.setVisible(false);
         labelWarningCutOffAbove.setVisible(false);
-        if (org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(currentDimension != null ? currentDimension.getWorld().getPlatform() : Configuration.getInstance().getDefaultPlatform())) {
+        final boolean hytalePlatform = org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(currentDimension != null ? currentDimension.getWorld().getPlatform() : Configuration.getInstance().getDefaultPlatform());
+        if (hytalePlatform) {
             comboBoxSingleTerrain.setRenderer(new org.pepsoft.worldpainter.hytale.HytaleTerrainListCellRenderer(colourScheme));
         } else {
             comboBoxSingleTerrain.setRenderer(new TerrainListCellRenderer(colourScheme));
@@ -134,7 +135,9 @@ public class ImportHeightMapDialog extends WorldPainterDialog implements Documen
             buttonLoadDefaults.setEnabled(true);
             buttonSaveAsDefaults.setEnabled(true);
             checkBoxOnlyRaise.setSelected(true);
-            comboBoxSingleTerrain.setModel(new DefaultComboBoxModel<>(Terrain.getConfiguredValues()));
+            comboBoxSingleTerrain.setModel(new DefaultComboBoxModel<>(hytalePlatform
+                    ? org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.deduplicateForHytaleUi(Terrain.getConfiguredValues())
+                    : Terrain.getConfiguredValues()));
             themeEditor.setPlatform(platform);
             checkBoxMasterDimension.setSelected(currentDimension.getAnchor().role == MASTER);
             checkBoxMasterDimension.setEnabled(false);
@@ -147,7 +150,9 @@ public class ImportHeightMapDialog extends WorldPainterDialog implements Documen
             labelNoUndo.setText(" ");
             checkBoxCreateTiles.setEnabled(false);
             checkBoxOnlyRaise.setEnabled(false);
-            comboBoxSingleTerrain.setModel(new DefaultComboBoxModel<>(PICK_LIST));
+            comboBoxSingleTerrain.setModel(new DefaultComboBoxModel<>(hytalePlatform
+                    ? org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.deduplicateForHytaleUi(PICK_LIST)
+                    : PICK_LIST));
             radioButtonLeaveTerrain.setEnabled(false);
             loadDefaults();
         }
@@ -621,9 +626,25 @@ public class ImportHeightMapDialog extends WorldPainterDialog implements Documen
             return;
         }
         platform = (Platform) comboBoxPlatform.getSelectedItem();
+        final boolean hytalePlatform = org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(platform);
         final int maxHeight;
         programmaticChange = true;
         try {
+            final Object selectedTerrain = comboBoxSingleTerrain.getSelectedItem();
+            comboBoxSingleTerrain.setModel(new DefaultComboBoxModel<>(((currentDimension != null)
+                    ? (hytalePlatform
+                        ? org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.deduplicateForHytaleUi(Terrain.getConfiguredValues())
+                        : Terrain.getConfiguredValues())
+                    : (hytalePlatform
+                        ? org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.deduplicateForHytaleUi(PICK_LIST)
+                        : PICK_LIST))));
+            comboBoxSingleTerrain.setRenderer(hytalePlatform
+                    ? new org.pepsoft.worldpainter.hytale.HytaleTerrainListCellRenderer(colourScheme)
+                    : new TerrainListCellRenderer(colourScheme));
+            if (selectedTerrain instanceof Terrain) {
+                comboBoxSingleTerrain.setSelectedItem(selectedTerrain);
+            }
+
             if (currentDimension != null) {
                 final int minHeight = currentDimension.getMinHeight();
                 maxHeight = currentDimension.getMaxHeight();

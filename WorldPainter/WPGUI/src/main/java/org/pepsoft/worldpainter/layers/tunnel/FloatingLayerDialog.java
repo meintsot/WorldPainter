@@ -49,8 +49,11 @@ public class FloatingLayerDialog extends TunnelLayerDialog {
 
             ((SpinnerNumberModel) spinnerFloorLevel.getModel()).setMinimum(minHeight);
             ((SpinnerNumberModel) spinnerFloorLevel.getModel()).setMaximum(maxHeight - 1);
-            comboBoxTerrain.setModel(new DefaultComboBoxModel<>(Terrain.getConfiguredValues()));
-            if (org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(platform)) {
+            final boolean hytalePlatform = org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(platform);
+            comboBoxTerrain.setModel(new DefaultComboBoxModel<>(hytalePlatform
+                    ? org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.deduplicateForHytaleUi(Terrain.getConfiguredValues())
+                    : Terrain.getConfiguredValues()));
+            if (hytalePlatform) {
                 comboBoxTerrain.setRenderer(new org.pepsoft.worldpainter.hytale.HytaleTerrainListCellRenderer(colourScheme));
             } else {
                 comboBoxTerrain.setRenderer(new TerrainListCellRenderer(colourScheme));

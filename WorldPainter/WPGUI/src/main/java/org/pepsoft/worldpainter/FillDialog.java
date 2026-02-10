@@ -1087,8 +1087,11 @@ chunks:         for (int chunkX = 0; chunkX < TILE_SIZE; chunkX += 16) {
 
         comboBoxInvertLayer.setEnabled(false);
 
-        comboBoxTerrain.setModel(new DefaultComboBoxModel(Terrain.getConfiguredValues()));
-        if (org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(dimension.getWorld().getPlatform())) {
+        final boolean hytalePlatform = org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(dimension.getWorld().getPlatform());
+        comboBoxTerrain.setModel(new DefaultComboBoxModel(hytalePlatform
+                ? org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.deduplicateForHytaleUi(Terrain.getConfiguredValues())
+                : Terrain.getConfiguredValues()));
+        if (hytalePlatform) {
             comboBoxTerrain.setRenderer(new org.pepsoft.worldpainter.hytale.HytaleTerrainListCellRenderer(colourScheme));
         } else {
             comboBoxTerrain.setRenderer(new TerrainListCellRenderer(colourScheme));

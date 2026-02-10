@@ -32,8 +32,9 @@ public class HytaleTerrainTableCellRenderer extends DefaultTableCellRenderer {
             setText(terrain.getName());
             setIcon(getOrCreateIcon(terrain));
         } else if (value instanceof Terrain) {
-            HytaleTerrain terrain = HytaleTerrainHelper.fromMinecraftTerrain((Terrain) value);
-            setText(terrain.getName());
+            Terrain minecraftTerrain = (Terrain) value;
+            HytaleTerrain terrain = HytaleTerrainHelper.fromMinecraftTerrain(minecraftTerrain);
+            setText(minecraftTerrain.isCustom() ? minecraftTerrain.getName() : terrain.getName());
             setIcon(getOrCreateIcon(terrain));
         } else {
             setText(value.toString());

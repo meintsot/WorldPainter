@@ -50,6 +50,67 @@ public final class HytaleTerrainHelper {
     }
 
     /**
+     * Deduplicate a Minecraft {@link Terrain} list for Hytale UI usage.
+     * <p>
+     * Multiple Minecraft terrains map to the same Hytale block (for example
+     * stained clay variants). Showing all of them in Hytale mode produces
+     * duplicate-looking entries. This method keeps one representative terrain
+     * per mapped Hytale terrain while preserving configured custom terrains.
+     *
+     * @param terrains The source terrains to reduce.
+     * @return A deduplicated array suitable for Hytale combo boxes.
+     */
+    public static Terrain[] deduplicateForHytaleUi(Terrain[] terrains) {
+        if ((terrains == null) || (terrains.length == 0)) {
+            return new Terrain[0];
+        }
+
+        final Map<HytaleTerrain, Terrain> representatives = new LinkedHashMap<>();
+        final List<Terrain> customTerrains = new ArrayList<>();
+        final Set<Terrain> availableTerrains = new HashSet<>(Arrays.asList(terrains));
+
+        for (Terrain terrain : terrains) {
+            if (terrain == null) {
+                continue;
+            }
+            if (terrain.isCustom()) {
+                customTerrains.add(terrain);
+            } else {
+                final HytaleTerrain mapped = fromMinecraftTerrain(terrain);
+                representatives.putIfAbsent(mapped, terrain);
+            }
+        }
+
+        final List<Terrain> result = new ArrayList<>();
+        for (HytaleTerrain hytaleTerrain : HytaleTerrain.PICK_LIST) {
+            final Terrain representative = representatives.get(hytaleTerrain);
+            if (representative != null) {
+                if (! result.contains(representative)) {
+                    result.add(representative);
+                }
+            } else {
+                final Terrain fallback = toMinecraftTerrain(hytaleTerrain);
+                if (availableTerrains.contains(fallback) && (! result.contains(fallback))) {
+                    result.add(fallback);
+                }
+            }
+        }
+
+        for (Terrain representative : representatives.values()) {
+            if (! result.contains(representative)) {
+                result.add(representative);
+            }
+        }
+        for (Terrain customTerrain : customTerrains) {
+            if (! result.contains(customTerrain)) {
+                result.add(customTerrain);
+            }
+        }
+
+        return result.toArray(new Terrain[0]);
+    }
+
+    /**
      * Get the display name for a terrain object (either Terrain or HytaleTerrain).
      *
      * @param terrain The terrain object

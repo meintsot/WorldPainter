@@ -10,7 +10,7 @@ import org.pepsoft.worldpainter.Platform;
 import org.pepsoft.worldpainter.World2;
 import org.pepsoft.worldpainter.biomeschemes.*;
 import org.pepsoft.worldpainter.hytale.HytaleBiome;
-import org.pepsoft.worldpainter.hytale.HytaleBiomeScheme;
+import org.pepsoft.worldpainter.hytale.HytaleBiomeIconFactory;
 import org.pepsoft.worldpainter.hytale.HytaleTerrainHelper;
 
 import javax.swing.*;
@@ -206,29 +206,18 @@ public class BiomesPanel extends JPanel implements CustomBiomeManager.CustomBiom
         }
         this.biomesSet = biomesSet;
         if (biomesSet != null) {
+            if (biomesSet.descriptors.stream().noneMatch(descriptor -> descriptor.id == selectedBiome)) {
+                final int firstBiome = stream(biomesSet.biomeOrder).filter(id -> id != -1).findFirst().orElse(BIOME_PLAINS);
+                selectedBiome = firstBiome;
+                selectedBaseBiome = firstBiome;
+            }
             int index = 0;
             for (final int biome: biomesSet.biomeOrder) {
                 if (biome != -1) {
-                    final JToggleButton button = new JToggleButton(new ImageIcon(BiomeSchemeManager.createImage(
-                            hytaleMode ? HytaleBiomeScheme.INSTANCE : StaticBiomeInfo.INSTANCE, biome, colourScheme)));
+                    final JToggleButton button = new JToggleButton(createBiomeButtonIcon(biome, colourScheme));
                     button.putClientProperty(KEY_BIOME, biome);
                     button.setMargin(App.BUTTON_INSETS);
-                    StringBuilder tooltip = new StringBuilder();
-                    tooltip.append(biomesSet.displayNames[biome]);
-                    if (showIds) {
-                        tooltip.append(" (");
-                        List<Integer> variantIds = findVariants(biome);
-                        tooltip.append(variantIds.stream().map(i -> Integer.toString(i)).collect(joining(", ")));
-                        tooltip.append(')');
-                    } else {
-                        Set<BiomeOption> options = findVariantOptions(biome);
-                        if (! options.isEmpty()) {
-                            tooltip.append(" (options: ");
-                            tooltip.append(options.stream().map(this::createOptionName).collect(joining(", ")));
-                            tooltip.append(')');
-                        }
-                    }
-                    button.setToolTipText(tooltip.toString());
+                    button.setToolTipText(createBiomeToolTip(biome, biomesSet.displayNames[biome]));
                     buttonGroup.add(button);
                     if (biome == selectedBiome) {
                         button.setSelected(true);
@@ -286,6 +275,38 @@ public class BiomesPanel extends JPanel implements CustomBiomeManager.CustomBiom
         return stream(option.name().split("_"))
                 .map(s -> s.charAt(0) + s.substring(1).toLowerCase())
                 .collect(joining(" "));
+    }
+
+    private Icon createBiomeButtonIcon(int biome, ColourScheme colourScheme) {
+        if (hytaleMode) {
+            return HytaleBiomeIconFactory.getIcon(biome, colourScheme, HYTALE_BIOME_BUTTON_ICON_SIZE);
+        }
+        return new ImageIcon(BiomeSchemeManager.createImage(StaticBiomeInfo.INSTANCE, biome, colourScheme));
+    }
+
+    private String createBiomeToolTip(int biome, String displayName) {
+        final StringBuilder tooltip = new StringBuilder();
+        tooltip.append(displayName);
+        if (hytaleMode) {
+            final HytaleBiome hytaleBiome = HytaleBiome.getById(biome);
+            if (hytaleBiome != null) {
+                tooltip.append(" [").append(hytaleBiome.getCategory().getDisplayName()).append(']');
+                tooltip.append(" (env: ").append(hytaleBiome.getEnvironment()).append(')');
+            }
+        } else if (showIds) {
+            tooltip.append(" (");
+            List<Integer> variantIds = findVariants(biome);
+            tooltip.append(variantIds.stream().map(i -> Integer.toString(i)).collect(joining(", ")));
+            tooltip.append(')');
+        } else {
+            Set<BiomeOption> options = findVariantOptions(biome);
+            if (! options.isEmpty()) {
+                tooltip.append(" (options: ");
+                tooltip.append(options.stream().map(this::createOptionName).collect(joining(", ")));
+                tooltip.append(')');
+            }
+        }
+        return tooltip.toString();
     }
 
     private void updateOptions() {
@@ -545,6 +566,7 @@ public class BiomesPanel extends JPanel implements CustomBiomeManager.CustomBiom
     private static final String KEY_BIOME_OPTION = BiomesPanel.class.getName() + ".biomeOption";
     private static final String KEY_ADD_BUTTON = BiomesPanel.class.getName() + ".addButton";
     private static final String KEY_CUSTOM_BIOME = BiomesPanel.class.getName() + ".customBiome";
+    private static final int HYTALE_BIOME_BUTTON_ICON_SIZE = 20;
 
     private static final Set<BiomeDescriptor> MC_117_DESCRIPTORS = ImmutableSet.of(
         new BiomeDescriptor(BIOME_OCEAN),

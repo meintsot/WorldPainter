@@ -77,9 +77,13 @@ public class AddTerrainRangeDialog extends WorldPainterDialog {
         jLabel3.setLabelFor(comboBoxTerrainType);
         jLabel3.setText("Terrain type:");
 
-        comboBoxTerrainType.setModel(new DefaultComboBoxModel(allowCustomTerrain ? Terrain.getConfiguredValues() : Terrain.PICK_LIST));
+        final boolean hytalePlatform = org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(platform);
+        final Terrain[] terrainChoices = allowCustomTerrain ? Terrain.getConfiguredValues() : Terrain.PICK_LIST;
+        comboBoxTerrainType.setModel(new DefaultComboBoxModel(hytalePlatform
+                ? org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.deduplicateForHytaleUi(terrainChoices)
+                : terrainChoices));
         comboBoxTerrainType.setSelectedItem(Terrain.DIRT);
-        if (org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(platform)) {
+        if (hytalePlatform) {
             comboBoxTerrainType.setRenderer(new org.pepsoft.worldpainter.hytale.HytaleTerrainListCellRenderer(colourScheme));
         } else {
             comboBoxTerrainType.setRenderer(new TerrainListCellRenderer(colourScheme));
