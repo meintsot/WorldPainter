@@ -168,14 +168,18 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
             }
         }
 
-        // Keep a texture-based fallback when possible (instead of a flat colour swatch).
-        BufferedImage fallbackTexture = loadFallbackTexture();
-        if (fallbackTexture != null) {
-            return renderIsometricIcon(fallbackTexture, fallbackTexture);
+        // No block-specific texture found. Generate a solid-colour isometric cube
+        // from the terrain's effective colour so every terrain gets a unique 3D icon
+        // instead of a generic grey fallback.
+        int rgb = getEffectiveColour();
+        BufferedImage solidTexture = new BufferedImage(4, 4, BufferedImage.TYPE_INT_ARGB);
+        int argb = 0xFF000000 | (rgb & 0xFFFFFF);
+        for (int py = 0; py < 4; py++) {
+            for (int px = 0; px < 4; px++) {
+                solidTexture.setRGB(px, py, argb);
+            }
         }
-
-        // Final fallback when no texture assets are available.
-        return createColourIcon();
+        return renderIsometricIcon(solidTexture, solidTexture);
     }
     
     /**
@@ -563,7 +567,7 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
     public static final HytaleTerrain BASALT = new HytaleTerrain("Basalt",
         HytaleBlock.of("Rock_Basalt"), 0x3a3a3a);
     public static final HytaleTerrain BASALT_COBBLE = new HytaleTerrain("Basalt Cobble",
-        HytaleBlock.of("Rock_Basalt_Cobble"), 0x3a3a3a);
+        HytaleBlock.of("Rock_Basalt_Cobble"), 0x42363e);
     public static final HytaleTerrain BLUE_CRYSTAL = new HytaleTerrain("Blue Crystal",
         HytaleBlock.of("Rock_Crystal_Blue_Block"), 0x3070d0);
     public static final HytaleTerrain BLUE_ICE = new HytaleTerrain("Blue Ice",
@@ -593,11 +597,11 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
     public static final HytaleTerrain FULL_GRASS = new HytaleTerrain("Full Grass",
         HytaleBlock.of("Soil_Grass_Full"), 0x59a52c);
     public static final HytaleTerrain GRASS = new HytaleTerrain("Grass",
-        HytaleBlock.of("Soil_Grass"), 0x59a52c);
+        HytaleBlock.of("Soil_Grass"), 0x61a130);
     public static final HytaleTerrain GREEN_CRYSTAL = new HytaleTerrain("Green Crystal",
         HytaleBlock.of("Rock_Crystal_Green_Block"), 0x30a040);
     public static final HytaleTerrain ICE = new HytaleTerrain("Ice",
-        HytaleBlock.of("Rock_Ice"), 0xa0d0ff);
+        HytaleBlock.of("Rock_Ice"), 0xa8ccff);
     public static final HytaleTerrain MARBLE = new HytaleTerrain("Marble",
         HytaleBlock.of("Rock_Marble"), 0xf0f0f0);
     public static final HytaleTerrain MOSSY_STONE = new HytaleTerrain("Mossy Stone",
@@ -617,7 +621,7 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
     public static final HytaleTerrain RED_SANDSTONE = new HytaleTerrain("Red Sandstone",
         HytaleBlock.of("Rock_Sandstone_Red"), 0xb45030);
     public static final HytaleTerrain RED_SANDSTONE_BRICK_SMOOTH = new HytaleTerrain("Red Sandstone Brick Smooth",
-        HytaleBlock.of("Rock_Sandstone_Red_Brick_Smooth"), 0xb45030);
+        HytaleBlock.of("Rock_Sandstone_Red_Brick_Smooth"), 0xbc4c34);
     public static final HytaleTerrain SALT_BLOCK = new HytaleTerrain("Salt Block",
         HytaleBlock.of("Rock_Salt"), 0xf0e8e0);
     public static final HytaleTerrain SAND = new HytaleTerrain("Sand",
@@ -625,31 +629,31 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
     public static final HytaleTerrain SANDSTONE = new HytaleTerrain("Sandstone",
         HytaleBlock.of("Rock_Sandstone"), 0xd4c099);
     public static final HytaleTerrain SANDSTONE_BRICK_SMOOTH = new HytaleTerrain("Sandstone Brick Smooth",
-        HytaleBlock.of("Rock_Sandstone_Brick_Smooth"), 0xd4c099);
+        HytaleBlock.of("Rock_Sandstone_Brick_Smooth"), 0xdcbc9d);
     public static final HytaleTerrain SHALE = new HytaleTerrain("Shale",
         HytaleBlock.of("Rock_Shale"), 0x5a5a5a);
     public static final HytaleTerrain SHALE_COBBLE = new HytaleTerrain("Shale Cobble",
-        HytaleBlock.of("Rock_Shale_Cobble"), 0x5a5a5a);
+        HytaleBlock.of("Rock_Shale_Cobble"), 0x62565e);
     public static final HytaleTerrain SLATE = new HytaleTerrain("Slate",
-        HytaleBlock.of("Rock_Slate"), 0x4a4a4a);
+        HytaleBlock.of("Rock_Slate"), 0x52464e);
     public static final HytaleTerrain SLATE_COBBLE = new HytaleTerrain("Slate Cobble",
-        HytaleBlock.of("Rock_Slate_Cobble"), 0x4a4a4a);
+        HytaleBlock.of("Rock_Slate_Cobble"), 0x465246);
     public static final HytaleTerrain STONE = new HytaleTerrain("Stone",
         HytaleBlock.of("Rock_Stone"), 0x808080);
     public static final HytaleTerrain SUMMER_GRASS = new HytaleTerrain("Summer Grass",
         HytaleBlock.of("Soil_Grass_Sunny"), 0x69b52c);
     public static final HytaleTerrain VOLCANIC_ROCK = new HytaleTerrain("Volcanic Rock",
-        HytaleBlock.of("Rock_Volcanic"), 0x2a2a2a);
+        HytaleBlock.of("Rock_Volcanic"), 0x32262e);
     public static final HytaleTerrain WET_GRASS = new HytaleTerrain("Wet Grass",
         HytaleBlock.of("Soil_Grass_Wet"), 0x4a9a28);
     public static final HytaleTerrain WHITE_CRYSTAL = new HytaleTerrain("White Crystal",
-        HytaleBlock.of("Rock_Crystal_White_Block"), 0xf0f0f0);
+        HytaleBlock.of("Rock_Crystal_White_Block"), 0xf8ecf4);
     public static final HytaleTerrain WHITE_SAND = new HytaleTerrain("White Sand",
         HytaleBlock.of("Soil_Sand_White"), 0xf4e8c6);
     public static final HytaleTerrain WHITE_SANDSTONE = new HytaleTerrain("White Sandstone",
         HytaleBlock.of("Rock_Sandstone_White"), 0xe8e0d0);
     public static final HytaleTerrain WHITE_SANDSTONE_BRICK_SMOOTH = new HytaleTerrain("White Sandstone Brick Smooth",
-        HytaleBlock.of("Rock_Sandstone_White_Brick_Smooth"), 0xe8e0d0);
+        HytaleBlock.of("Rock_Sandstone_White_Brick_Smooth"), 0xf0dcd4);
     public static final HytaleTerrain YELLOW_CRYSTAL = new HytaleTerrain("Yellow Crystal",
         HytaleBlock.of("Rock_Crystal_Yellow_Block"), 0xd0c030);
 
@@ -683,7 +687,7 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
     public static final HytaleTerrain BURNED_LEAVES = new HytaleTerrain("Burned Leaves",
         HytaleBlock.of("Plant_Leaves_Burnt"), 0x4a3a1b);
     public static final HytaleTerrain CAMPHOR_LEAVES = new HytaleTerrain("Camphor Leaves",
-        HytaleBlock.of("Plant_Leaves_Camphor"), 0x4a8a30);
+        HytaleBlock.of("Plant_Leaves_Camphor"), 0x528634);
     public static final HytaleTerrain CEDAR_LEAVES = new HytaleTerrain("Cedar Leaves",
         HytaleBlock.of("Plant_Leaves_Cedar"), 0x3a6a30);
     public static final HytaleTerrain CRYSTAL_LEAVES = new HytaleTerrain("Crystal Leaves",
@@ -699,7 +703,7 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
     public static final HytaleTerrain FIR_LEAVES = new HytaleTerrain("Fir Leaves",
         HytaleBlock.of("Plant_Leaves_Fir"), 0x2a5a30);
     public static final HytaleTerrain FIR_LEAVES_TIP = new HytaleTerrain("Fir Leaves Tip",
-        HytaleBlock.of("Plant_Leaves_Fir_Red"), 0x3a6a30);
+        HytaleBlock.of("Plant_Leaves_Fir_Red"), 0x426634);
     public static final HytaleTerrain FIRE_LEAVES = new HytaleTerrain("Fire Leaves",
         HytaleBlock.of("Plant_Leaves_Fire"), 0xc04020);
     public static final HytaleTerrain FOREST_FLOOR_LEAVES = new HytaleTerrain("Forest Floor Leaves",
@@ -707,7 +711,7 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
     public static final HytaleTerrain GIANT_PALM_LEAVES = new HytaleTerrain("Giant Palm Leaves",
         HytaleBlock.of("Plant_Leaves_Palm_Oasis"), 0x50a040);
     public static final HytaleTerrain GUMBOAB_LEAVES = new HytaleTerrain("Gumboab Leaves",
-        HytaleBlock.of("Plant_Leaves_Gumboab"), 0x5a8a40);
+        HytaleBlock.of("Plant_Leaves_Gumboab"), 0x628644);
     public static final HytaleTerrain JUNGLE_FLOOR_LEAVES = new HytaleTerrain("Jungle Floor Leaves",
         HytaleBlock.of("Plant_Leaves_Jungle_Floor"), 0x3a6a20);
     public static final HytaleTerrain MAPLE_LEAVES = new HytaleTerrain("Maple Leaves",
@@ -715,7 +719,7 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
     public static final HytaleTerrain OAK_LEAVES = new HytaleTerrain("Oak Leaves",
         HytaleBlock.of("Plant_Leaves_Oak"), 0x4a8a22);
     public static final HytaleTerrain PALM_LEAVES = new HytaleTerrain("Palm Leaves",
-        HytaleBlock.of("Plant_Leaves_Palm"), 0x5a9a30);
+        HytaleBlock.of("Plant_Leaves_Palm"), 0x629634);
     public static final HytaleTerrain PALO_LEAVES = new HytaleTerrain("Palo Leaves",
         HytaleBlock.of("Plant_Leaves_Palo"), 0x6a8a40);
     public static final HytaleTerrain PETRIFIED_PINE_LEAVES = new HytaleTerrain("Petrified Pine Leaves",
@@ -725,13 +729,13 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
     public static final HytaleTerrain RED_FIR_LEAVES = new HytaleTerrain("Red Fir Leaves",
         HytaleBlock.of("Plant_Leaves_Fir_Red"), 0x7a3030);
     public static final HytaleTerrain REDWOOD_LEAVES = new HytaleTerrain("Redwood Leaves",
-        HytaleBlock.of("Plant_Leaves_Redwood"), 0x3a6a30);
+        HytaleBlock.of("Plant_Leaves_Redwood"), 0x36722c);
     public static final HytaleTerrain SHALLOW_LEAVES = new HytaleTerrain("Shallow Leaves",
         HytaleBlock.of("Plant_Leaves_Goldentree"), 0xb0a040);
     public static final HytaleTerrain SNOWY_FIR_LEAVES = new HytaleTerrain("Snowy Fir Leaves",
         HytaleBlock.of("Plant_Leaves_Fir_Snow"), 0x8ab8c0);
     public static final HytaleTerrain SNOWY_FIR_LEAVES_TIP = new HytaleTerrain("Snowy Fir Leaves Tip",
-        HytaleBlock.of("Plant_Leaves_Fir_Snow"), 0x8ab8c0);
+        HytaleBlock.of("Plant_Leaves_Fir_Snow"), 0x92b4c4);
     public static final HytaleTerrain SNOWY_LEAVES = new HytaleTerrain("Snowy Leaves",
         HytaleBlock.of("Plant_Leaves_Snow"), 0xd0e0e8);
     public static final HytaleTerrain SPIRAL_LEAVES = new HytaleTerrain("Spiral Leaves",
@@ -747,13 +751,13 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
 
     // ===== BUSHES & BRAMBLES =====
     public static final HytaleTerrain ARID_BRAMBLE = new HytaleTerrain("Arid Bramble",
-        HytaleBlock.of("Plant_Bramble_Dry_Sandthorn"), 0x8a7a40);
+        HytaleBlock.of("Plant_Bramble_Dry_Sandthorn"), 0x927644);
     public static final HytaleTerrain GREEN_BRAMBLE = new HytaleTerrain("Green Bramble",
-        HytaleBlock.of("Plant_Bramble_Moss_Twisted"), 0x5a8a40);
+        HytaleBlock.of("Plant_Bramble_Moss_Twisted"), 0x56923c);
     public static final HytaleTerrain WINTER_BRAMBLE = new HytaleTerrain("Winter Bramble",
         HytaleBlock.of("Plant_Bramble_Winter"), 0x7a8a90);
     public static final HytaleTerrain BUSH = new HytaleTerrain("Bush",
-        HytaleBlock.of("Plant_Bush"), 0x4a8a30);
+        HytaleBlock.of("Plant_Bush"), 0x46922c);
     public static final HytaleTerrain ARID_BUSH = new HytaleTerrain("Arid Bush",
         HytaleBlock.of("Plant_Bush_Arid"), 0x8a8a40);
     public static final HytaleTerrain ARID_PALM_BUSH = new HytaleTerrain("Arid Palm Bush",
@@ -761,21 +765,21 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
     public static final HytaleTerrain RED_ARID_BUSH = new HytaleTerrain("Red Arid Bush",
         HytaleBlock.of("Plant_Bush_Arid_Red"), 0xa06040);
     public static final HytaleTerrain BUSHY_ARID_GRASS = new HytaleTerrain("Bushy Arid Grass",
-        HytaleBlock.of("Plant_Bush_Arid_Sharp"), 0x8a8a40);
+        HytaleBlock.of("Plant_Bush_Arid_Sharp"), 0x928644);
     public static final HytaleTerrain DRY_BRAMBLE = new HytaleTerrain("Dry Bramble",
         HytaleBlock.of("Plant_Bramble_Dry_Twisted"), 0x7a6a40);
     public static final HytaleTerrain BIG_CRYSTAL_BUSH = new HytaleTerrain("Big Crystal Bush",
-        HytaleBlock.of("Plant_Bush_Crystal"), 0x80c0e0);
+        HytaleBlock.of("Plant_Bush_Crystal"), 0x88bce4);
     public static final HytaleTerrain DEAD_BUSH = new HytaleTerrain("Dead Bush",
-        HytaleBlock.of("Plant_Bush_Dead"), 0x6a5a3a);
+        HytaleBlock.of("Plant_Bush_Dead"), 0x72563e);
     public static final HytaleTerrain DEAD_HANGING_BUSH = new HytaleTerrain("Dead Hanging Bush",
-        HytaleBlock.of("Plant_Bush_Dead_Hanging"), 0x6a5a3a);
+        HytaleBlock.of("Plant_Bush_Dead_Hanging"), 0x666236);
     public static final HytaleTerrain SHRUB = new HytaleTerrain("Shrub",
-        HytaleBlock.of("Plant_Bush_Dead_Twisted"), 0x6a5a3a);
+        HytaleBlock.of("Plant_Bush_Dead_Twisted"), 0x6e5e32);
     public static final HytaleTerrain LARGE_DEAD_BUSH = new HytaleTerrain("Large Dead Bush",
-        HytaleBlock.of("Plant_Bush_Dead_Tall"), 0x6a5a3a);
+        HytaleBlock.of("Plant_Bush_Dead_Tall"), 0x625e3e);
     public static final HytaleTerrain GREEN_BUSH = new HytaleTerrain("Green Bush",
-        HytaleBlock.of("Plant_Bush_Green"), 0x4a8a30);
+        HytaleBlock.of("Plant_Bush_Green"), 0x4e8e28);
     public static final HytaleTerrain EXOTIC_HANGING_BUSH = new HytaleTerrain("Exotic Hanging Bush",
         HytaleBlock.of("Plant_Bush_Hanging"), 0x3a7a30);
     public static final HytaleTerrain JUNGLE_BUSH = new HytaleTerrain("Jungle Bush",
@@ -783,163 +787,163 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
     public static final HytaleTerrain LUSH_BIG_BUSH = new HytaleTerrain("Lush Big Bush",
         HytaleBlock.of("Plant_Bush_Lush"), 0x4a9a30);
     public static final HytaleTerrain WET_BUSH = new HytaleTerrain("Wet Bush",
-        HytaleBlock.of("Plant_Bush_Wet"), 0x4a8a30);
+        HytaleBlock.of("Plant_Bush_Wet"), 0x428e34);
     public static final HytaleTerrain FROZEN_SHRUB = new HytaleTerrain("Frozen Shrub",
-        HytaleBlock.of("Plant_Bush_Winter_Sharp"), 0x7a8a90);
+        HytaleBlock.of("Plant_Bush_Winter_Sharp"), 0x828694);
     public static final HytaleTerrain BUSHY_WINTER_GRASS = new HytaleTerrain("Bushy Winter Grass",
         HytaleBlock.of("Plant_Bush_Winter"), 0x7a8a80);
     public static final HytaleTerrain SNOWY_WINTER_BUSH = new HytaleTerrain("Snowy Winter Bush",
-        HytaleBlock.of("Plant_Bush_Winter_Snow"), 0xd0e0e8);
+        HytaleBlock.of("Plant_Bush_Winter_Snow"), 0xd8dcec);
     public static final HytaleTerrain RED_WINTER_BUSH = new HytaleTerrain("Red Winter Bush",
         HytaleBlock.of("Plant_Bush_Winter_Red"), 0xa05040);
 
     // ===== CACTI =====
     public static final HytaleTerrain CACTUS_BOTTOM = new HytaleTerrain("Cactus Bottom",
-        HytaleBlock.of("Plant_Cactus_1"), 0x3a7a30);
+        HytaleBlock.of("Plant_Cactus_1"), 0x427634);
     public static final HytaleTerrain CACTUS_MIDDLE = new HytaleTerrain("Cactus Middle",
-        HytaleBlock.of("Plant_Cactus_2"), 0x3a7a30);
+        HytaleBlock.of("Plant_Cactus_2"), 0x36822c);
     public static final HytaleTerrain CACTUS_TOP = new HytaleTerrain("Cactus Top",
-        HytaleBlock.of("Plant_Cactus_3"), 0x3a7a30);
+        HytaleBlock.of("Plant_Cactus_3"), 0x3e7e28);
     public static final HytaleTerrain CACTUS_BALL = new HytaleTerrain("Cactus Ball",
-        HytaleBlock.of("Plant_Cactus_Ball_1"), 0x3a7a30);
+        HytaleBlock.of("Plant_Cactus_Ball_1"), 0x327e34);
     public static final HytaleTerrain CACTUS_FLOWER = new HytaleTerrain("Cactus Flower",
         HytaleBlock.of("Plant_Cactus_Flower"), 0xe060a0);
     public static final HytaleTerrain LARGE_FLAT_CACTUS = new HytaleTerrain("Large Flat Cactus",
-        HytaleBlock.of("Plant_Cactus_Flat_1"), 0x3a7a30);
+        HytaleBlock.of("Plant_Cactus_Flat_1"), 0x3e7234);
     public static final HytaleTerrain FLAT_CACTUS = new HytaleTerrain("Flat Cactus",
-        HytaleBlock.of("Plant_Cactus_Flat_2"), 0x3a7a30);
+        HytaleBlock.of("Plant_Cactus_Flat_2"), 0x367e38);
     public static final HytaleTerrain SMALL_FLAT_CACTUS = new HytaleTerrain("Small Flat Cactus",
-        HytaleBlock.of("Plant_Cactus_Flat_3"), 0x3a7a30);
+        HytaleBlock.of("Plant_Cactus_Flat_3"), 0x42822c);
 
     // ===== CORAL BLOCKS =====
     public static final HytaleTerrain BLUE_CORAL_BLOCK = new HytaleTerrain("Blue Coral Block",
-        HytaleBlock.of("Plant_Coral_Block_Blue"), 0x3070d0);
+        HytaleBlock.of("Plant_Coral_Block_Blue"), 0x386cd4);
     public static final HytaleTerrain CYAN_CORAL_BLOCK = new HytaleTerrain("Cyan Coral Block",
         HytaleBlock.of("Plant_Coral_Block_Cyan"), 0x30b0c0);
     public static final HytaleTerrain GREEN_CORAL_BLOCK = new HytaleTerrain("Green Coral Block",
-        HytaleBlock.of("Plant_Coral_Block_Green"), 0x30a040);
+        HytaleBlock.of("Plant_Coral_Block_Green"), 0x389c44);
     public static final HytaleTerrain GRAY_CORAL_BLOCK = new HytaleTerrain("Gray Coral Block",
-        HytaleBlock.of("Plant_Coral_Block_Grey"), 0x808080);
+        HytaleBlock.of("Plant_Coral_Block_Grey"), 0x887c84);
     public static final HytaleTerrain LIME_GREEN_CORAL_BLOCK = new HytaleTerrain("Lime Green Coral Block",
         HytaleBlock.of("Plant_Coral_Block_Lime"), 0x80c040);
     public static final HytaleTerrain ORANGE_CORAL_BLOCK = new HytaleTerrain("Orange Coral Block",
         HytaleBlock.of("Plant_Coral_Block_Orange"), 0xe08030);
     public static final HytaleTerrain PINK_CORAL_BLOCK = new HytaleTerrain("Pink Coral Block",
-        HytaleBlock.of("Plant_Coral_Block_Pink"), 0xe080a0);
+        HytaleBlock.of("Plant_Coral_Block_Pink"), 0xe87ca4);
     public static final HytaleTerrain PURPLE_CORAL_BLOCK = new HytaleTerrain("Purple Coral Block",
-        HytaleBlock.of("Plant_Coral_Block_Purple"), 0x8040c0);
+        HytaleBlock.of("Plant_Coral_Block_Purple"), 0x883cc4);
     public static final HytaleTerrain POISONED_CORAL_BLOCK = new HytaleTerrain("Poisoned Coral Block",
-        HytaleBlock.of("Plant_Coral_Block_Poison"), 0x4a5a2b);
+        HytaleBlock.of("Plant_Coral_Block_Poison"), 0x52562f);
     public static final HytaleTerrain RED_CORAL_BLOCK = new HytaleTerrain("Red Coral Block",
-        HytaleBlock.of("Plant_Coral_Block_Red"), 0xc03030);
+        HytaleBlock.of("Plant_Coral_Block_Red"), 0xc82c34);
     public static final HytaleTerrain VIOLET_CORAL_BLOCK = new HytaleTerrain("Violet Coral Block",
         HytaleBlock.of("Plant_Coral_Block_Violet"), 0x8060c0);
     public static final HytaleTerrain WHITE_CORAL_BLOCK = new HytaleTerrain("White Coral Block",
-        HytaleBlock.of("Plant_Coral_Block_White"), 0xf0f0f0);
+        HytaleBlock.of("Plant_Coral_Block_White"), 0xecf8ec);
     public static final HytaleTerrain YELLOW_CORAL_BLOCK = new HytaleTerrain("Yellow Coral Block",
-        HytaleBlock.of("Plant_Coral_Block_Yellow"), 0xd0c030);
+        HytaleBlock.of("Plant_Coral_Block_Yellow"), 0xd8bc34);
 
     // ===== CORAL BUSHES =====
     public static final HytaleTerrain BLUE_CORAL_BUSH = new HytaleTerrain("Blue Coral Bush",
-        HytaleBlock.of("Plant_Coral_Bush_Blue"), 0x3070d0);
+        HytaleBlock.of("Plant_Coral_Bush_Blue"), 0x2c78cc);
     public static final HytaleTerrain CYAN_CORAL_BUSH = new HytaleTerrain("Cyan Coral Bush",
-        HytaleBlock.of("Plant_Coral_Bush_Cyan"), 0x30b0c0);
+        HytaleBlock.of("Plant_Coral_Bush_Cyan"), 0x38acc4);
     public static final HytaleTerrain GREEN_CORAL_BUSH = new HytaleTerrain("Green Coral Bush",
-        HytaleBlock.of("Plant_Coral_Bush_Green"), 0x30a040);
+        HytaleBlock.of("Plant_Coral_Bush_Green"), 0x2ca83c);
     public static final HytaleTerrain GRAY_CORAL_BUSH = new HytaleTerrain("Gray Coral Bush",
-        HytaleBlock.of("Plant_Coral_Bush_Grey"), 0x808080);
+        HytaleBlock.of("Plant_Coral_Bush_Grey"), 0x7c887c);
     public static final HytaleTerrain NEON_CORAL_BUSH = new HytaleTerrain("Neon Coral Bush",
         HytaleBlock.of("Plant_Coral_Bush_Lime"), 0x80ff40);
     public static final HytaleTerrain ORANGE_CORAL_BUSH = new HytaleTerrain("Orange Coral Bush",
-        HytaleBlock.of("Plant_Coral_Bush_Orange"), 0xe08030);
+        HytaleBlock.of("Plant_Coral_Bush_Orange"), 0xe87c34);
     public static final HytaleTerrain PINK_CORAL_BUSH = new HytaleTerrain("Pink Coral Bush",
-        HytaleBlock.of("Plant_Coral_Bush_Pink"), 0xe080a0);
+        HytaleBlock.of("Plant_Coral_Bush_Pink"), 0xdc889c);
     public static final HytaleTerrain POISONED_CORAL_BUSH = new HytaleTerrain("Poisoned Coral Bush",
-        HytaleBlock.of("Plant_Coral_Bush_Poisoned"), 0x4a5a2b);
+        HytaleBlock.of("Plant_Coral_Bush_Poisoned"), 0x466227);
     public static final HytaleTerrain PURPLE_CORAL_BUSH = new HytaleTerrain("Purple Coral Bush",
-        HytaleBlock.of("Plant_Coral_Bush_Purple"), 0x8040c0);
+        HytaleBlock.of("Plant_Coral_Bush_Purple"), 0x7c48bc);
     public static final HytaleTerrain RED_CORAL_BUSH = new HytaleTerrain("Red Coral Bush",
-        HytaleBlock.of("Plant_Coral_Bush_Red"), 0xc03030);
+        HytaleBlock.of("Plant_Coral_Bush_Red"), 0xbc382c);
     public static final HytaleTerrain VIOLET_CORAL_BUSH = new HytaleTerrain("Violet Coral Bush",
-        HytaleBlock.of("Plant_Coral_Bush_Violet"), 0x8060c0);
+        HytaleBlock.of("Plant_Coral_Bush_Violet"), 0x885cc4);
     public static final HytaleTerrain WHITE_CORAL_BUSH = new HytaleTerrain("White Coral Bush",
-        HytaleBlock.of("Plant_Coral_Bush_White"), 0xf0f0f0);
+        HytaleBlock.of("Plant_Coral_Bush_White"), 0xf4f4e8);
     public static final HytaleTerrain YELLOW_CORAL_BUSH = new HytaleTerrain("Yellow Coral Bush",
-        HytaleBlock.of("Plant_Coral_Bush_Yellow"), 0xd0c030);
+        HytaleBlock.of("Plant_Coral_Bush_Yellow"), 0xccc82c);
 
     // ===== CORAL MODELS (Sponges, Tubes, Fans, Brackets) =====
     public static final HytaleTerrain BLUE_CORAL_SPONGE = new HytaleTerrain("Blue Coral Sponge",
-        HytaleBlock.of("Plant_Coral_Model_Blue"), 0x3070d0);
+        HytaleBlock.of("Plant_Coral_Model_Blue"), 0x3474c8);
     public static final HytaleTerrain CYAN_CORAL_SPONGE = new HytaleTerrain("Cyan Coral Sponge",
-        HytaleBlock.of("Plant_Coral_Model_Cyan"), 0x30b0c0);
+        HytaleBlock.of("Plant_Coral_Model_Cyan"), 0x2cb8bc);
     public static final HytaleTerrain GREEN_CORAL_TUBES = new HytaleTerrain("Green Coral Tubes",
-        HytaleBlock.of("Plant_Coral_Model_Green"), 0x30a040);
+        HytaleBlock.of("Plant_Coral_Model_Green"), 0x34a438);
     public static final HytaleTerrain GRAY_BRACKET_CORAL = new HytaleTerrain("Gray Bracket Coral",
-        HytaleBlock.of("Plant_Coral_Model_Grey"), 0x808080);
+        HytaleBlock.of("Plant_Coral_Model_Grey"), 0x848478);
     public static final HytaleTerrain LIME_CORAL_SPONGE = new HytaleTerrain("Lime Coral Sponge",
-        HytaleBlock.of("Plant_Coral_Model_Lime"), 0x80c040);
+        HytaleBlock.of("Plant_Coral_Model_Lime"), 0x88bc44);
     public static final HytaleTerrain ORANGE_BRACKET_CORAL = new HytaleTerrain("Orange Bracket Coral",
-        HytaleBlock.of("Plant_Coral_Model_Orange"), 0xe08030);
+        HytaleBlock.of("Plant_Coral_Model_Orange"), 0xdc882c);
     public static final HytaleTerrain PINK_FAN_CORAL = new HytaleTerrain("Pink Fan Coral",
-        HytaleBlock.of("Plant_Coral_Model_Pink"), 0xe080a0);
+        HytaleBlock.of("Plant_Coral_Model_Pink"), 0xe48498);
     public static final HytaleTerrain PURPLE_CORAL_TUBES = new HytaleTerrain("Purple Coral Tubes",
-        HytaleBlock.of("Plant_Coral_Model_Purple"), 0x8040c0);
+        HytaleBlock.of("Plant_Coral_Model_Purple"), 0x8444b8);
     public static final HytaleTerrain RED_CORAL_SPONGE = new HytaleTerrain("Red Coral Sponge",
-        HytaleBlock.of("Plant_Coral_Model_Red"), 0xc03030);
+        HytaleBlock.of("Plant_Coral_Model_Red"), 0xc43428);
     public static final HytaleTerrain SEA_ANEMONE = new HytaleTerrain("Sea Anemone",
-        HytaleBlock.of("Plant_Coral_Model_Violet"), 0x8060c0);
+        HytaleBlock.of("Plant_Coral_Model_Violet"), 0x7c68bc);
     public static final HytaleTerrain WHITE_CORAL_SPONGE = new HytaleTerrain("White Coral Sponge",
-        HytaleBlock.of("Plant_Coral_Model_White"), 0xf0f0f0);
+        HytaleBlock.of("Plant_Coral_Model_White"), 0xe8f4f4);
     public static final HytaleTerrain YELLOW_CORAL_TUBES = new HytaleTerrain("Yellow Coral Tubes",
-        HytaleBlock.of("Plant_Coral_Model_Yellow"), 0xd0c030);
+        HytaleBlock.of("Plant_Coral_Model_Yellow"), 0xd4c428);
 
     // ===== BERRY BUSHES =====
     public static final HytaleTerrain BERRY_BUSH = new HytaleTerrain("Berry Bush",
         HytaleBlock.of("Plant_Crop_Berry_Block"), 0x4a6a30);
     public static final HytaleTerrain WET_BERRY_BUSH = new HytaleTerrain("Wet Berry Bush",
-        HytaleBlock.of("Plant_Crop_Berry_Wet_Block"), 0x3a6a30);
+        HytaleBlock.of("Plant_Crop_Berry_Wet_Block"), 0x3e6e28);
     public static final HytaleTerrain WINTER_BERRY_BUSH = new HytaleTerrain("Winter Berry Bush",
         HytaleBlock.of("Plant_Crop_Berry_Winter_Block"), 0x5a6a60);
 
     // ===== SPECIAL FLORA =====
     public static final HytaleTerrain BLOOD_ROSE = new HytaleTerrain("Blood Rose",
-        HytaleBlock.of("Plant_Flower_Common_Red"), 0xc03030);
+        HytaleBlock.of("Plant_Flower_Common_Red"), 0xb83434);
     public static final HytaleTerrain BLOOD_CAP_MUSHROOM = new HytaleTerrain("Blood Cap Mushroom",
-        HytaleBlock.of("Plant_Crop_Mushroom_Cap_Red"), 0xc03030);
+        HytaleBlock.of("Plant_Crop_Mushroom_Cap_Red"), 0xc42834);
     public static final HytaleTerrain BLOOD_LEAF = new HytaleTerrain("Blood Leaf",
-        HytaleBlock.of("Plant_Flower_Bushy_Red"), 0xc03030);
+        HytaleBlock.of("Plant_Flower_Bushy_Red"), 0xbc3438);
     public static final HytaleTerrain AZURE_FERN = new HytaleTerrain("Azure Fern",
-        HytaleBlock.of("Plant_Fern_Forest"), 0x4080c0);
+        HytaleBlock.of("Plant_Fern_Forest"), 0x487cc4);
     public static final HytaleTerrain AZURE_CAP_MUSHROOM = new HytaleTerrain("Azure Cap Mushroom",
-        HytaleBlock.of("Plant_Crop_Mushroom_Common_Blue"), 0x4080c0);
+        HytaleBlock.of("Plant_Crop_Mushroom_Common_Blue"), 0x3c88bc);
     public static final HytaleTerrain AZURE_KELP = new HytaleTerrain("Azure Kelp",
-        HytaleBlock.of("Plant_Seaweed_Grass_Green"), 0x4080c0);
+        HytaleBlock.of("Plant_Seaweed_Grass_Green"), 0x4484b8);
     public static final HytaleTerrain BROWN_MUSHROOM_MYCELIUM = new HytaleTerrain("Brown Mushroom Mycelium",
         HytaleBlock.of("Plant_Crop_Mushroom_Block_Brown_Mycelium"), 0x8a6a4a);
     public static final HytaleTerrain LARGE_BOOMSHROOM = new HytaleTerrain("Large Boomshroom",
         HytaleBlock.of("Plant_Crop_Mushroom_Boomshroom_Large"), 0xa08040);
     public static final HytaleTerrain SMALL_BOOMSHROOM = new HytaleTerrain("Small Boomshroom",
-        HytaleBlock.of("Plant_Crop_Mushroom_Boomshroom_Small"), 0xa08040);
+        HytaleBlock.of("Plant_Crop_Mushroom_Boomshroom_Small"), 0xa87c44);
     public static final HytaleTerrain BROWN_CAP_MUSHROOM = new HytaleTerrain("Brown Cap Mushroom",
-        HytaleBlock.of("Plant_Crop_Mushroom_Cap_Brown"), 0x8a6a4a);
+        HytaleBlock.of("Plant_Crop_Mushroom_Cap_Brown"), 0x92664e);
     public static final HytaleTerrain SPOTTED_GREEN_CAP_MUSHROOM = new HytaleTerrain("Spotted Green Cap Mushroom",
         HytaleBlock.of("Plant_Crop_Mushroom_Cap_Green"), 0x40a040);
     public static final HytaleTerrain SPOTTED_ALLIUM_CAP_MUSHROOM = new HytaleTerrain("Spotted Allium Cap Mushroom",
-        HytaleBlock.of("Plant_Crop_Mushroom_Cap_Poison"), 0x8040c0);
+        HytaleBlock.of("Plant_Crop_Mushroom_Cap_Poison"), 0x7844c4);
     public static final HytaleTerrain RED_CAP_MUSHROOM = new HytaleTerrain("Red Cap Mushroom",
-        HytaleBlock.of("Plant_Crop_Mushroom_Cap_Red"), 0xc03030);
+        HytaleBlock.of("Plant_Crop_Mushroom_Cap_Red"), 0xc8382c);
     public static final HytaleTerrain WHITE_CAP_MUSHROOM = new HytaleTerrain("White Cap Mushroom",
-        HytaleBlock.of("Plant_Crop_Mushroom_Cap_White"), 0xf0f0f0);
+        HytaleBlock.of("Plant_Crop_Mushroom_Cap_White"), 0xf4e8f4);
     public static final HytaleTerrain BLUE_COMMON_MUSHROOM = new HytaleTerrain("Blue Common Mushroom",
-        HytaleBlock.of("Plant_Crop_Mushroom_Common_Blue"), 0x3070d0);
+        HytaleBlock.of("Plant_Crop_Mushroom_Common_Blue"), 0x2874d4);
     public static final HytaleTerrain BROWN_COMMON_MUSHROOM = new HytaleTerrain("Brown Common Mushroom",
-        HytaleBlock.of("Plant_Crop_Mushroom_Common_Brown"), 0x8a6a4a);
+        HytaleBlock.of("Plant_Crop_Mushroom_Common_Brown"), 0x867246);
     public static final HytaleTerrain PUFFY_GREEN_COMMON_MUSHROOM = new HytaleTerrain("Puffy Green Common Mushroom",
-        HytaleBlock.of("Plant_Crop_Mushroom_Common_Lime"), 0x80c040);
+        HytaleBlock.of("Plant_Crop_Mushroom_Common_Lime"), 0x7cc83c);
     public static final HytaleTerrain BLUE_FLAT_CAP_MUSHROOM = new HytaleTerrain("Blue Flat Cap Mushroom",
-        HytaleBlock.of("Plant_Crop_Mushroom_Flatcap_Blue"), 0x3070d0);
+        HytaleBlock.of("Plant_Crop_Mushroom_Flatcap_Blue"), 0x3468d4);
     public static final HytaleTerrain GREEN_FLAT_CAP_MUSHROOM = new HytaleTerrain("Green Flat Cap Mushroom",
-        HytaleBlock.of("Plant_Crop_Mushroom_Flatcap_Green"), 0x30a040);
+        HytaleBlock.of("Plant_Crop_Mushroom_Flatcap_Green"), 0x28a444);
     public static final HytaleTerrain BLUE_GLOWING_MUSHROOM = new HytaleTerrain("Blue Glowing Mushroom",
         HytaleBlock.of("Plant_Crop_Mushroom_Glowing_Blue"), 0x40a0ff);
     public static final HytaleTerrain GREEN_GLOWING_MUSHROOM = new HytaleTerrain("Green Glowing Mushroom",
@@ -953,383 +957,383 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
     public static final HytaleTerrain VIOLET_GLOWING_MUSHROOM = new HytaleTerrain("Violet Glowing Mushroom",
         HytaleBlock.of("Plant_Crop_Mushroom_Glowing_Violet"), 0x8060ff);
     public static final HytaleTerrain BROWN_MUSHROOM_SHELF = new HytaleTerrain("Brown Mushroom Shelf",
-        HytaleBlock.of("Plant_Crop_Mushroom_Shelve_Brown"), 0x8a6a4a);
+        HytaleBlock.of("Plant_Crop_Mushroom_Shelve_Brown"), 0x8e6e42);
     public static final HytaleTerrain GREEN_MUSHROOM_SHELF = new HytaleTerrain("Green Mushroom Shelf",
-        HytaleBlock.of("Plant_Crop_Mushroom_Shelve_Green"), 0x30a040);
+        HytaleBlock.of("Plant_Crop_Mushroom_Shelve_Green"), 0x349844);
     public static final HytaleTerrain YELLOW_MUSHROOM_SHELVES = new HytaleTerrain("Yellow Mushroom Shelves",
-        HytaleBlock.of("Plant_Crop_Mushroom_Shelve_Yellow"), 0xd0c030);
+        HytaleBlock.of("Plant_Crop_Mushroom_Shelve_Yellow"), 0xc8c434);
 
     // ===== STORM / ZONE-SPECIFIC =====
     public static final HytaleTerrain STORM_THISTLE = new HytaleTerrain("Storm Thistle",
-        HytaleBlock.of("Plant_Flower_Bushy_Purple"), 0x8040c0);
+        HytaleBlock.of("Plant_Flower_Bushy_Purple"), 0x8438c4);
     public static final HytaleTerrain STORM_CAP_MUSHROOM = new HytaleTerrain("Storm Cap Mushroom",
         HytaleBlock.of("Plant_Crop_Mushroom_Cap_White"), 0xa0a0b0);
     public static final HytaleTerrain STORM_SAPLING = new HytaleTerrain("Storm Sapling",
-        HytaleBlock.of("Plant_Sapling_Crystal"), 0x80c0e0);
+        HytaleBlock.of("Plant_Sapling_Crystal"), 0x7cc8dc);
 
     // ===== FERNS =====
     public static final HytaleTerrain FERN = new HytaleTerrain("Fern",
-        HytaleBlock.of("Plant_Fern"), 0x4a8a30);
+        HytaleBlock.of("Plant_Fern"), 0x4e8234);
     public static final HytaleTerrain ARID_FERN = new HytaleTerrain("Arid Fern",
-        HytaleBlock.of("Plant_Fern_Arid"), 0x8a8a40);
+        HytaleBlock.of("Plant_Fern_Arid"), 0x86923c);
     public static final HytaleTerrain FOREST_FERN = new HytaleTerrain("Forest Fern",
-        HytaleBlock.of("Plant_Fern_Forest"), 0x4a8a30);
+        HytaleBlock.of("Plant_Fern_Forest"), 0x468e38);
     public static final HytaleTerrain JUNGLE_FERN = new HytaleTerrain("Jungle Fern",
-        HytaleBlock.of("Plant_Fern_Jungle"), 0x2a6a20);
+        HytaleBlock.of("Plant_Fern_Jungle"), 0x326624);
     public static final HytaleTerrain TALL_FERN = new HytaleTerrain("Tall Fern",
-        HytaleBlock.of("Plant_Fern_Tall"), 0x4a8a30);
+        HytaleBlock.of("Plant_Fern_Tall"), 0x52922c);
     public static final HytaleTerrain WET_FERN = new HytaleTerrain("Wet Fern",
-        HytaleBlock.of("Plant_Fern_Wet_Big"), 0x3a7a30);
+        HytaleBlock.of("Plant_Fern_Wet_Big"), 0x367638);
     public static final HytaleTerrain GIANT_WET_FERN = new HytaleTerrain("Giant Wet Fern",
-        HytaleBlock.of("Plant_Fern_Wet_Giant"), 0x3a7a30);
+        HytaleBlock.of("Plant_Fern_Wet_Giant"), 0x467234);
     public static final HytaleTerrain BLUE_NETTLE = new HytaleTerrain("Blue Nettle",
-        HytaleBlock.of("Plant_Flower_Bushy_Blue"), 0x3070d0);
+        HytaleBlock.of("Plant_Flower_Bushy_Blue"), 0x2c74d8);
     public static final HytaleTerrain LARGE_FERN = new HytaleTerrain("Large Fern",
-        HytaleBlock.of("Plant_Fern_Jungle_Trunk"), 0x3a6a20);
+        HytaleBlock.of("Plant_Fern_Jungle_Trunk"), 0x426624);
     public static final HytaleTerrain CYAN_FESTUCA = new HytaleTerrain("Cyan Festuca",
-        HytaleBlock.of("Plant_Flower_Bushy_Cyan"), 0x30b0c0);
+        HytaleBlock.of("Plant_Flower_Bushy_Cyan"), 0x34b4b8);
     public static final HytaleTerrain NETTLE = new HytaleTerrain("Nettle",
-        HytaleBlock.of("Plant_Flower_Bushy_Green"), 0x4a8a30);
+        HytaleBlock.of("Plant_Flower_Bushy_Green"), 0x468638);
     public static final HytaleTerrain ASHY_BUSH = new HytaleTerrain("Ashy Bush",
-        HytaleBlock.of("Plant_Flower_Bushy_Grey"), 0x808080);
+        HytaleBlock.of("Plant_Flower_Bushy_Grey"), 0x788484);
     public static final HytaleTerrain BUSHY_ORANGE_FERN = new HytaleTerrain("Bushy Orange Fern",
-        HytaleBlock.of("Plant_Flower_Bushy_Orange"), 0xe08030);
+        HytaleBlock.of("Plant_Flower_Bushy_Orange"), 0xe48428);
     public static final HytaleTerrain POISONED_NETTLE = new HytaleTerrain("Poisoned Nettle",
-        HytaleBlock.of("Plant_Flower_Bushy_Poisoned"), 0x4a5a2b);
+        HytaleBlock.of("Plant_Flower_Bushy_Poisoned"), 0x4e5e23);
     public static final HytaleTerrain PURPLE_NETTLE = new HytaleTerrain("Purple Nettle",
-        HytaleBlock.of("Plant_Flower_Bushy_Violet"), 0x8060c0);
+        HytaleBlock.of("Plant_Flower_Bushy_Violet"), 0x8464b8);
     public static final HytaleTerrain RED_FEATHER_LEAF = new HytaleTerrain("Red Feather Leaf",
-        HytaleBlock.of("Plant_Flower_Bushy_Red"), 0xc03030);
+        HytaleBlock.of("Plant_Flower_Bushy_Red"), 0xbc2c38);
     public static final HytaleTerrain PURPLE_FLOWERS = new HytaleTerrain("Purple Flowers",
-        HytaleBlock.of("Plant_Flower_Bushy_Purple"), 0x8040c0);
+        HytaleBlock.of("Plant_Flower_Bushy_Purple"), 0x7c44c8);
     public static final HytaleTerrain FROST_LEAF = new HytaleTerrain("Frost Leaf",
-        HytaleBlock.of("Plant_Fern_Winter"), 0x8ab8c0);
+        HytaleBlock.of("Plant_Fern_Winter"), 0x86c0bc);
 
     // ===== FLOWERS =====
     public static final HytaleTerrain YELLOW_ARID_FLOWER_BUSH = new HytaleTerrain("Yellow Arid Flower Bush",
-        HytaleBlock.of("Plant_Flower_Bushy_Yellow"), 0xd0c030);
+        HytaleBlock.of("Plant_Flower_Bushy_Yellow"), 0xd4b834);
     public static final HytaleTerrain BLUE_HIBISCUS = new HytaleTerrain("Blue Hibiscus",
-        HytaleBlock.of("Plant_Flower_Common_Blue"), 0x3070d0);
+        HytaleBlock.of("Plant_Flower_Common_Blue"), 0x3878cc);
     public static final HytaleTerrain BLUE_ALOE = new HytaleTerrain("Blue Aloe",
-        HytaleBlock.of("Plant_Flower_Common_Blue2"), 0x3070d0);
+        HytaleBlock.of("Plant_Flower_Common_Blue2"), 0x2c6cd8);
     public static final HytaleTerrain CYAN_ARID_FLOWER = new HytaleTerrain("Cyan Arid Flower",
-        HytaleBlock.of("Plant_Flower_Common_Cyan"), 0x30b0c0);
+        HytaleBlock.of("Plant_Flower_Common_Cyan"), 0x28b4c4);
     public static final HytaleTerrain CYAN_HIBISCUS = new HytaleTerrain("Cyan Hibiscus",
-        HytaleBlock.of("Plant_Flower_Common_Cyan2"), 0x30b0c0);
+        HytaleBlock.of("Plant_Flower_Common_Cyan2"), 0x34a8c4);
     public static final HytaleTerrain LINEN_WEED = new HytaleTerrain("Linen Weed",
-        HytaleBlock.of("Plant_Flower_Common_Grey"), 0x808080);
+        HytaleBlock.of("Plant_Flower_Common_Grey"), 0x847884);
     public static final HytaleTerrain SANDY_LION = new HytaleTerrain("Sandy Lion",
-        HytaleBlock.of("Plant_Flower_Common_Grey2"), 0x808080);
+        HytaleBlock.of("Plant_Flower_Common_Grey2"), 0x7c8488);
     public static final HytaleTerrain JUNGLE_FLOWER = new HytaleTerrain("Jungle Flower",
-        HytaleBlock.of("Plant_Flower_Common_Lime"), 0x80c040);
+        HytaleBlock.of("Plant_Flower_Common_Lime"), 0x84c438);
     public static final HytaleTerrain LIME_SUCCULENT = new HytaleTerrain("Lime Succulent",
-        HytaleBlock.of("Plant_Flower_Common_Lime2"), 0x80c040);
+        HytaleBlock.of("Plant_Flower_Common_Lime2"), 0x78c444);
     public static final HytaleTerrain CHRYSANTHEMUM = new HytaleTerrain("Chrysanthemum",
-        HytaleBlock.of("Plant_Flower_Common_Orange"), 0xe08030);
+        HytaleBlock.of("Plant_Flower_Common_Orange"), 0xd88434);
     public static final HytaleTerrain COMMON_ORANGE_FLOWER = new HytaleTerrain("Common Orange Flower",
-        HytaleBlock.of("Plant_Flower_Common_Orange2"), 0xe08030);
+        HytaleBlock.of("Plant_Flower_Common_Orange2"), 0xe47834);
     public static final HytaleTerrain COMMON_PINK_FLOWER = new HytaleTerrain("Common Pink Flower",
-        HytaleBlock.of("Plant_Flower_Common_Pink"), 0xe080a0);
+        HytaleBlock.of("Plant_Flower_Common_Pink"), 0xd884a4);
     public static final HytaleTerrain ALLIUM = new HytaleTerrain("Allium",
-        HytaleBlock.of("Plant_Flower_Common_Pink2"), 0xe080a0);
+        HytaleBlock.of("Plant_Flower_Common_Pink2"), 0xe478a4);
     public static final HytaleTerrain CARMINE_PATCHED_THORN = new HytaleTerrain("Carmine Patched Thorn",
-        HytaleBlock.of("Plant_Flower_Common_Poisoned"), 0x4a5a2b);
+        HytaleBlock.of("Plant_Flower_Common_Poisoned"), 0x425e2f);
     public static final HytaleTerrain COMMON_PINK_FLOWER_POISONED = new HytaleTerrain("Common Pink Flower Poisoned",
         HytaleBlock.of("Plant_Flower_Common_Poisoned2"), 0x6a5a4b);
     public static final HytaleTerrain PURPLE_ARID_FLOWER = new HytaleTerrain("Purple Arid Flower",
-        HytaleBlock.of("Plant_Flower_Common_Purple"), 0x8040c0);
+        HytaleBlock.of("Plant_Flower_Common_Purple"), 0x8848bc);
     public static final HytaleTerrain LAVA_FLOWER = new HytaleTerrain("Lava Flower",
-        HytaleBlock.of("Plant_Flower_Common_Purple2"), 0xc04020);
+        HytaleBlock.of("Plant_Flower_Common_Purple2"), 0xc83c24);
     public static final HytaleTerrain RED_ARID_FLOWER = new HytaleTerrain("Red Arid Flower",
-        HytaleBlock.of("Plant_Flower_Common_Red2"), 0xc03030);
+        HytaleBlock.of("Plant_Flower_Common_Red2"), 0xcc2834);
     public static final HytaleTerrain POPPY = new HytaleTerrain("Poppy",
-        HytaleBlock.of("Plant_Flower_Common_Red"), 0xc03030);
+        HytaleBlock.of("Plant_Flower_Common_Red"), 0xb83c2c);
     public static final HytaleTerrain CAMPANULA_FLOWER = new HytaleTerrain("Campanula Flower",
-        HytaleBlock.of("Plant_Flower_Common_Violet"), 0x8060c0);
+        HytaleBlock.of("Plant_Flower_Common_Violet"), 0x7864c4);
     public static final HytaleTerrain VIOLETS = new HytaleTerrain("Violets",
-        HytaleBlock.of("Plant_Flower_Common_Violet2"), 0x8060c0);
+        HytaleBlock.of("Plant_Flower_Common_Violet2"), 0x8458c4);
     public static final HytaleTerrain WHITE_HYDRANGEA = new HytaleTerrain("White Hydrangea",
-        HytaleBlock.of("Plant_Flower_Common_White"), 0xf0f0f0);
+        HytaleBlock.of("Plant_Flower_Common_White"), 0xecf4f8);
     public static final HytaleTerrain DAISY = new HytaleTerrain("Daisy",
         HytaleBlock.of("Plant_Flower_Common_White2"), 0xf0f0e0);
 
     // ===== GRASS PLANTS =====
     public static final HytaleTerrain SHORT_CAVE_GRASS = new HytaleTerrain("Short Cave Grass",
-        HytaleBlock.of("Plant_Grass_Cave_Short"), 0x4a6a30);
+        HytaleBlock.of("Plant_Grass_Cave_Short"), 0x526634);
     public static final HytaleTerrain DRY_GRASS_PLANT = new HytaleTerrain("Dry Grass",
-        HytaleBlock.of("Plant_Grass_Dry"), 0x8a7a40);
+        HytaleBlock.of("Plant_Grass_Dry"), 0x86823c);
     public static final HytaleTerrain TALL_DRY_GRASS = new HytaleTerrain("Tall Dry Grass",
-        HytaleBlock.of("Plant_Grass_Dry_Tall"), 0x8a7a40);
+        HytaleBlock.of("Plant_Grass_Dry_Tall"), 0x8e7e38);
     public static final HytaleTerrain GNARLED_GRASS = new HytaleTerrain("Gnarled Grass",
-        HytaleBlock.of("Plant_Grass_Gnarled"), 0x5a7a30);
+        HytaleBlock.of("Plant_Grass_Gnarled"), 0x627634);
     public static final HytaleTerrain SHORT_GNARLED_GRASS = new HytaleTerrain("Short Gnarled Grass",
-        HytaleBlock.of("Plant_Grass_Gnarled_Short"), 0x5a7a30);
+        HytaleBlock.of("Plant_Grass_Gnarled_Short"), 0x56822c);
     public static final HytaleTerrain TALL_GNARLED_GRASS = new HytaleTerrain("Tall Gnarled Grass",
-        HytaleBlock.of("Plant_Grass_Gnarled_Tall"), 0x5a7a30);
+        HytaleBlock.of("Plant_Grass_Gnarled_Tall"), 0x5e7e28);
     public static final HytaleTerrain JUNGLE_GRASS = new HytaleTerrain("Jungle Grass",
-        HytaleBlock.of("Plant_Grass_Jungle"), 0x2a6a20);
+        HytaleBlock.of("Plant_Grass_Jungle"), 0x26721c);
     public static final HytaleTerrain SHORT_JUNGLE_GRASS = new HytaleTerrain("Short Jungle Grass",
-        HytaleBlock.of("Plant_Grass_Jungle_Short"), 0x2a6a20);
+        HytaleBlock.of("Plant_Grass_Jungle_Short"), 0x2e6e18);
     public static final HytaleTerrain TALL_JUNGLE_GRASS = new HytaleTerrain("Tall Jungle Grass",
-        HytaleBlock.of("Plant_Grass_Jungle_Tall"), 0x2a6a20);
+        HytaleBlock.of("Plant_Grass_Jungle_Tall"), 0x226e24);
     public static final HytaleTerrain LUSH_GRASS_PLANT = new HytaleTerrain("Lush Grass Plant",
-        HytaleBlock.of("Plant_Grass_Lush"), 0x4a9a30);
+        HytaleBlock.of("Plant_Grass_Lush"), 0x529634);
     public static final HytaleTerrain SHORT_LUSH_GRASS_PLANT = new HytaleTerrain("Short Lush Grass Plant",
-        HytaleBlock.of("Plant_Grass_Lush_Short"), 0x4a9a30);
+        HytaleBlock.of("Plant_Grass_Lush_Short"), 0x46a22c);
     public static final HytaleTerrain TALL_LUSH_GRASS_PLANT = new HytaleTerrain("Tall Lush Grass Plant",
-        HytaleBlock.of("Plant_Grass_Lush_Tall"), 0x4a9a30);
+        HytaleBlock.of("Plant_Grass_Lush_Tall"), 0x4e9e28);
     public static final HytaleTerrain POISON_GRASS = new HytaleTerrain("Poison Grass",
-        HytaleBlock.of("Plant_Grass_Poisoned"), 0x4a5a2b);
+        HytaleBlock.of("Plant_Grass_Poisoned"), 0x4e522f);
     public static final HytaleTerrain SHORT_POISON_GRASS = new HytaleTerrain("Short Poison Grass",
-        HytaleBlock.of("Plant_Grass_Poisoned_Short"), 0x4a5a2b);
+        HytaleBlock.of("Plant_Grass_Poisoned_Short"), 0x465e33);
     public static final HytaleTerrain ROCKY_GRASS = new HytaleTerrain("Rocky Grass",
-        HytaleBlock.of("Plant_Grass_Rocky"), 0x6a8a40);
+        HytaleBlock.of("Plant_Grass_Rocky"), 0x728644);
     public static final HytaleTerrain SHORT_ROCKY_GRASS = new HytaleTerrain("Short Rocky Grass",
-        HytaleBlock.of("Plant_Grass_Rocky_Short"), 0x6a8a40);
+        HytaleBlock.of("Plant_Grass_Rocky_Short"), 0x66923c);
     public static final HytaleTerrain TALL_ROCKY_GRASS = new HytaleTerrain("Tall Rocky Grass",
-        HytaleBlock.of("Plant_Grass_Rocky_Tall"), 0x6a8a40);
+        HytaleBlock.of("Plant_Grass_Rocky_Tall"), 0x6e8e38);
     public static final HytaleTerrain GRASS_PLANT = new HytaleTerrain("Grass",
-        HytaleBlock.of("Plant_Grass_Sharp"), 0x4a8a30);
+        HytaleBlock.of("Plant_Grass_Sharp"), 0x568234);
     public static final HytaleTerrain OVERGROWN_SHARP_GRASS = new HytaleTerrain("Overgrown Sharp Grass",
-        HytaleBlock.of("Plant_Grass_Sharp_Overgrown"), 0x4a8a30);
+        HytaleBlock.of("Plant_Grass_Sharp_Overgrown"), 0x42962c);
     public static final HytaleTerrain SHORT_SHARP_GRASS = new HytaleTerrain("Short Sharp Grass",
-        HytaleBlock.of("Plant_Grass_Sharp_Short"), 0x4a8a30);
+        HytaleBlock.of("Plant_Grass_Sharp_Short"), 0x4e863c);
     public static final HytaleTerrain TALL_GRASS = new HytaleTerrain("Tall Grass",
-        HytaleBlock.of("Plant_Grass_Sharp_Tall"), 0x4a8a30);
+        HytaleBlock.of("Plant_Grass_Sharp_Tall"), 0x3e8e34);
     public static final HytaleTerrain WILD_SHARP_GRASS = new HytaleTerrain("Wild Sharp Grass",
-        HytaleBlock.of("Plant_Grass_Sharp_Wild"), 0x4a8a30);
+        HytaleBlock.of("Plant_Grass_Sharp_Wild"), 0x527e34);
     public static final HytaleTerrain SNOWY_GRASS = new HytaleTerrain("Snowy Grass",
-        HytaleBlock.of("Plant_Grass_Snowy"), 0xd0e0e8);
+        HytaleBlock.of("Plant_Grass_Snowy"), 0xcce8e4);
     public static final HytaleTerrain SHORT_SNOWY_GRASS = new HytaleTerrain("Short Snowy Grass",
-        HytaleBlock.of("Plant_Grass_Snowy_Short"), 0xd0e0e8);
+        HytaleBlock.of("Plant_Grass_Snowy_Short"), 0xd4e4e0);
     public static final HytaleTerrain TALL_SNOWY_GRASS = new HytaleTerrain("Tall Snowy Grass",
-        HytaleBlock.of("Plant_Grass_Snowy_Tall"), 0xd0e0e8);
+        HytaleBlock.of("Plant_Grass_Snowy_Tall"), 0xc8e4ec);
     public static final HytaleTerrain WET_GRASS_PLANT = new HytaleTerrain("Wet Grass",
-        HytaleBlock.of("Plant_Grass_Wet"), 0x4a8a30);
+        HytaleBlock.of("Plant_Grass_Wet"), 0x4e9224);
     public static final HytaleTerrain OVERGROWN_WET_GRASS = new HytaleTerrain("Overgrown Wet Grass",
-        HytaleBlock.of("Plant_Grass_Wet_Overgrown"), 0x4a8a30);
+        HytaleBlock.of("Plant_Grass_Wet_Overgrown"), 0x568e38);
     public static final HytaleTerrain SHORT_WET_GRASS = new HytaleTerrain("Short Wet Grass",
-        HytaleBlock.of("Plant_Grass_Wet_Short"), 0x4a8a30);
+        HytaleBlock.of("Plant_Grass_Wet_Short"), 0x42863c);
     public static final HytaleTerrain TALL_WET_GRASS = new HytaleTerrain("Tall Wet Grass",
-        HytaleBlock.of("Plant_Grass_Wet_Tall"), 0x4a8a30);
+        HytaleBlock.of("Plant_Grass_Wet_Tall"), 0x5a822c);
     public static final HytaleTerrain WILD_WET_GRASS = new HytaleTerrain("Wild Wet Grass",
-        HytaleBlock.of("Plant_Grass_Wet_Wild"), 0x4a8a30);
+        HytaleBlock.of("Plant_Grass_Wet_Wild"), 0x469a28);
     public static final HytaleTerrain WINTER_GRASS = new HytaleTerrain("Winter Grass",
-        HytaleBlock.of("Plant_Grass_Winter"), 0x7a8a80);
+        HytaleBlock.of("Plant_Grass_Winter"), 0x828684);
     public static final HytaleTerrain SHORT_WINTER_GRASS = new HytaleTerrain("Short Winter Grass",
-        HytaleBlock.of("Plant_Grass_Winter_Short"), 0x7a8a80);
+        HytaleBlock.of("Plant_Grass_Winter_Short"), 0x76927c);
     public static final HytaleTerrain TALL_WINTER_GRASS = new HytaleTerrain("Tall Winter Grass",
-        HytaleBlock.of("Plant_Grass_Winter_Tall"), 0x7a8a80);
+        HytaleBlock.of("Plant_Grass_Winter_Tall"), 0x7e8e78);
 
     // ===== MOSS =====
     public static final HytaleTerrain BLUE_MOSS = new HytaleTerrain("Blue Moss",
-        HytaleBlock.of("Plant_Moss_Blue"), 0x3070d0);
+        HytaleBlock.of("Plant_Moss_Blue"), 0x3c68d4);
     public static final HytaleTerrain MOSS = new HytaleTerrain("Moss",
-        HytaleBlock.of("Plant_Moss_Green"), 0x4a8a30);
+        HytaleBlock.of("Plant_Moss_Green"), 0x428640);
     public static final HytaleTerrain DARK_GREEN_MOSS = new HytaleTerrain("Dark Green Moss",
         HytaleBlock.of("Plant_Moss_Green_Dark"), 0x2a5a20);
     public static final HytaleTerrain YELLOW_HIBISCUS = new HytaleTerrain("Yellow Hibiscus",
-        HytaleBlock.of("Plant_Flower_Common_Yellow"), 0xd0c030);
+        HytaleBlock.of("Plant_Flower_Common_Yellow"), 0xccc438);
     public static final HytaleTerrain BLUE_FLAX = new HytaleTerrain("Blue Flax",
-        HytaleBlock.of("Plant_Flower_Flax_Blue"), 0x3070d0);
+        HytaleBlock.of("Plant_Flower_Flax_Blue"), 0x287ccc);
     public static final HytaleTerrain FIRE_FLOWER = new HytaleTerrain("Fire Flower",
-        HytaleBlock.of("Plant_Flower_Flax_Orange"), 0xe08030);
+        HytaleBlock.of("Plant_Flower_Flax_Orange"), 0xdc8438);
     public static final HytaleTerrain DANDELION = new HytaleTerrain("Dandelion",
-        HytaleBlock.of("Plant_Flower_Common_Yellow2"), 0xd0c030);
+        HytaleBlock.of("Plant_Flower_Common_Yellow2"), 0xd8c82c);
     public static final HytaleTerrain PINK_FLAX = new HytaleTerrain("Pink Flax",
-        HytaleBlock.of("Plant_Flower_Flax_Pink"), 0xe080a0);
+        HytaleBlock.of("Plant_Flower_Flax_Pink"), 0xdc84a8);
     public static final HytaleTerrain BERRY_FLAX = new HytaleTerrain("Berry Flax",
-        HytaleBlock.of("Plant_Flower_Flax_Purple"), 0x8040c0);
+        HytaleBlock.of("Plant_Flower_Flax_Purple"), 0x7c3cc8);
     public static final HytaleTerrain SMALL_DAISIES = new HytaleTerrain("Small Daisies",
-        HytaleBlock.of("Plant_Flower_Flax_White"), 0xf0f0e0);
+        HytaleBlock.of("Plant_Flower_Flax_White"), 0xf8ece4);
     public static final HytaleTerrain LUCERNE = new HytaleTerrain("Lucerne",
-        HytaleBlock.of("Plant_Flower_Flax_Yellow"), 0xd0c030);
+        HytaleBlock.of("Plant_Flower_Flax_Yellow"), 0xccbc38);
     public static final HytaleTerrain HEMLOCK = new HytaleTerrain("Hemlock",
-        HytaleBlock.of("Plant_Flower_Hemlock"), 0xf0f0e0);
+        HytaleBlock.of("Plant_Flower_Hemlock"), 0xecf8dc);
     public static final HytaleTerrain BLUE_CAVEWEED = new HytaleTerrain("Blue Caveweed",
-        HytaleBlock.of("Plant_Flower_Tall_Blue"), 0x3070d0);
+        HytaleBlock.of("Plant_Flower_Tall_Blue"), 0x346cdc);
     public static final HytaleTerrain AZURE_FLOWER = new HytaleTerrain("Azure Flower",
-        HytaleBlock.of("Plant_Flower_Tall_Cyan"), 0x30b0c0);
+        HytaleBlock.of("Plant_Flower_Tall_Cyan"), 0x2cb4c8);
     public static final HytaleTerrain ORANGE_ORCHID = new HytaleTerrain("Orange Orchid",
-        HytaleBlock.of("Plant_Flower_Orchid_Orange"), 0xe08030);
+        HytaleBlock.of("Plant_Flower_Orchid_Orange"), 0xe8882c);
     public static final HytaleTerrain PINK_ORCHID = new HytaleTerrain("Pink Orchid",
-        HytaleBlock.of("Plant_Flower_Orchid_Pink"), 0xe080a0);
+        HytaleBlock.of("Plant_Flower_Orchid_Pink"), 0xe8889c);
     public static final HytaleTerrain BLACK_ORCHID = new HytaleTerrain("Black Orchid",
-        HytaleBlock.of("Plant_Flower_Orchid_Purple"), 0x2a2a2a);
+        HytaleBlock.of("Plant_Flower_Orchid_Purple"), 0x263226);
     public static final HytaleTerrain PURPLE_ORCHID = new HytaleTerrain("Purple Orchid",
-        HytaleBlock.of("Plant_Flower_Orchid_Cyan"), 0x8040c0);
+        HytaleBlock.of("Plant_Flower_Orchid_Cyan"), 0x8c38c4);
     public static final HytaleTerrain RED_ORCHID = new HytaleTerrain("Red Orchid",
-        HytaleBlock.of("Plant_Flower_Orchid_Red"), 0xc03030);
+        HytaleBlock.of("Plant_Flower_Orchid_Red"), 0xc42c3c);
     public static final HytaleTerrain WHITE_ORCHID = new HytaleTerrain("White Orchid",
-        HytaleBlock.of("Plant_Flower_Orchid_White"), 0xf0f0f0);
+        HytaleBlock.of("Plant_Flower_Orchid_White"), 0xf8f8ec);
     public static final HytaleTerrain YELLOW_ORCHID = new HytaleTerrain("Yellow Orchid",
-        HytaleBlock.of("Plant_Flower_Orchid_Yellow"), 0xd0c030);
+        HytaleBlock.of("Plant_Flower_Orchid_Yellow"), 0xdcb834);
     public static final HytaleTerrain POISONED_FLOWER = new HytaleTerrain("Poisoned Flower",
-        HytaleBlock.of("Plant_Flower_Poisoned_Orange"), 0x4a5a2b);
+        HytaleBlock.of("Plant_Flower_Poisoned_Orange"), 0x526227);
     public static final HytaleTerrain DELPHINIUM = new HytaleTerrain("Delphinium",
-        HytaleBlock.of("Plant_Flower_Tall_Purple"), 0x8040c0);
+        HytaleBlock.of("Plant_Flower_Tall_Purple"), 0x784cbc);
     public static final HytaleTerrain BUSHY_CYAN_FERN = new HytaleTerrain("Bushy Cyan Fern",
-        HytaleBlock.of("Plant_Flower_Tall_Cyan2"), 0x30b0c0);
+        HytaleBlock.of("Plant_Flower_Tall_Cyan2"), 0x38b8bc);
     public static final HytaleTerrain CYAN_FLOWER = new HytaleTerrain("Cyan Flower",
-        HytaleBlock.of("Plant_Flower_Tall_Pink"), 0xe080a0);
+        HytaleBlock.of("Plant_Flower_Tall_Pink"), 0xdc7ca8);
     public static final HytaleTerrain PINK_CAMELLIA = new HytaleTerrain("Pink Camellia",
-        HytaleBlock.of("Plant_Flower_Tall_Red"), 0xe080a0);
+        HytaleBlock.of("Plant_Flower_Tall_Red"), 0xec78a4);
     public static final HytaleTerrain LAVENDER = new HytaleTerrain("Lavender",
-        HytaleBlock.of("Plant_Lavender_Stage_0"), 0x8060c0);
+        HytaleBlock.of("Plant_Lavender_Stage_0"), 0x7c64c8);
     public static final HytaleTerrain TALL_RED_RAFFLESIA = new HytaleTerrain("Tall Red Rafflesia",
-        HytaleBlock.of("Plant_Flower_Tall_Violet"), 0xc03030);
+        HytaleBlock.of("Plant_Flower_Tall_Violet"), 0xb43434);
     public static final HytaleTerrain LARKSPUR = new HytaleTerrain("Larkspur",
-        HytaleBlock.of("Plant_Flower_Tall_Yellow"), 0xd0c030);
+        HytaleBlock.of("Plant_Flower_Tall_Yellow"), 0xc8cc2c);
     public static final HytaleTerrain SUNFLOWER = new HytaleTerrain("Sunflower",
-        HytaleBlock.of("Plant_Sunflower_Stage_0"), 0xd0c030);
+        HytaleBlock.of("Plant_Sunflower_Stage_0"), 0xd4bc3c);
 
     // ===== WATER PLANTS =====
     public static final HytaleTerrain BLUE_WATER_LILY = new HytaleTerrain("Blue Water Lily",
-        HytaleBlock.of("Plant_Flower_Water_Blue"), 0x3070d0);
+        HytaleBlock.of("Plant_Flower_Water_Blue"), 0x2474d4);
     public static final HytaleTerrain DUCKWEED = new HytaleTerrain("Duckweed",
-        HytaleBlock.of("Plant_Flower_Water_Duckweed"), 0x4a8a30);
+        HytaleBlock.of("Plant_Flower_Water_Duckweed"), 0x569628);
     public static final HytaleTerrain WATER_LILY = new HytaleTerrain("Water Lily",
-        HytaleBlock.of("Plant_Flower_Water_Green"), 0x4a8a30);
+        HytaleBlock.of("Plant_Flower_Water_Green"), 0x42963c);
     public static final HytaleTerrain PURPLE_WATER_LILY = new HytaleTerrain("Purple Water Lily",
-        HytaleBlock.of("Plant_Flower_Water_Purple"), 0x8040c0);
+        HytaleBlock.of("Plant_Flower_Water_Purple"), 0x843ccc);
     public static final HytaleTerrain RED_WATER_LILY = new HytaleTerrain("Red Water Lily",
-        HytaleBlock.of("Plant_Flower_Water_Red"), 0xc03030);
+        HytaleBlock.of("Plant_Flower_Water_Red"), 0xc82434);
     public static final HytaleTerrain WHITE_WATER_LILY = new HytaleTerrain("White Water Lily",
-        HytaleBlock.of("Plant_Flower_Water_White"), 0xf0f0f0);
+        HytaleBlock.of("Plant_Flower_Water_White"), 0xececf8);
 
     // ===== ARID GRASS =====
     public static final HytaleTerrain PLANT_GRASS_ARID = new HytaleTerrain("Plant Grass Arid",
-        HytaleBlock.of("Plant_Grass_Arid"), 0x8a8a40);
+        HytaleBlock.of("Plant_Grass_Arid"), 0x8e8e38);
     public static final HytaleTerrain SHORT_DRY_GRASS = new HytaleTerrain("Short Dry Grass",
-        HytaleBlock.of("Plant_Grass_Arid_Short"), 0x8a8a40);
+        HytaleBlock.of("Plant_Grass_Arid_Short"), 0x828e44);
     public static final HytaleTerrain BUSHY_SAVANNA_GRASS = new HytaleTerrain("Bushy Savanna Grass",
-        HytaleBlock.of("Plant_Grass_Arid_Tall"), 0x8a8a40);
+        HytaleBlock.of("Plant_Grass_Arid_Tall"), 0x8e8244);
 
     // ===== HANGING MOSS =====
     public static final HytaleTerrain BLUE_HANGING_MOSS = new HytaleTerrain("Blue Hanging Moss",
-        HytaleBlock.of("Plant_Moss_Cave_Blue"), 0x3070d0);
+        HytaleBlock.of("Plant_Moss_Cave_Blue"), 0x3864d4);
     public static final HytaleTerrain GREEN_HANGING_MOSS = new HytaleTerrain("Green Hanging Moss",
-        HytaleBlock.of("Plant_Moss_Cave_Green"), 0x4a8a30);
+        HytaleBlock.of("Plant_Moss_Cave_Green"), 0x56823c);
     public static final HytaleTerrain DARK_GREEN_HANGING_MOSS = new HytaleTerrain("Dark Green Hanging Moss",
-        HytaleBlock.of("Plant_Moss_Cave_Green_Dark"), 0x2a5a20);
+        HytaleBlock.of("Plant_Moss_Cave_Green_Dark"), 0x325624);
     public static final HytaleTerrain RED_HANGING_MOSS = new HytaleTerrain("Red Hanging Moss",
-        HytaleBlock.of("Plant_Moss_Cave_Red"), 0xc03030);
+        HytaleBlock.of("Plant_Moss_Cave_Red"), 0xc43824);
     public static final HytaleTerrain YELLOW_HANGING_MOSS = new HytaleTerrain("Yellow Hanging Moss",
-        HytaleBlock.of("Plant_Moss_Cave_Yellow"), 0xd0c030);
+        HytaleBlock.of("Plant_Moss_Cave_Yellow"), 0xc4c434);
     public static final HytaleTerrain RED_MOSS = new HytaleTerrain("Red Moss",
-        HytaleBlock.of("Plant_Moss_Red"), 0xc03030);
+        HytaleBlock.of("Plant_Moss_Red"), 0xcc3438);
 
     // ===== MOSS RUGS =====
     public static final HytaleTerrain BLUE_MOSS_RUG = new HytaleTerrain("Blue Moss Rug",
-        HytaleBlock.of("Plant_Moss_Rug_Blue"), 0x3070d0);
+        HytaleBlock.of("Plant_Moss_Rug_Blue"), 0x3478c4);
     public static final HytaleTerrain GREEN_MOSS_RUG = new HytaleTerrain("Green Moss Rug",
-        HytaleBlock.of("Plant_Moss_Rug_Green"), 0x4a8a30);
+        HytaleBlock.of("Plant_Moss_Rug_Green"), 0x5a8638);
     public static final HytaleTerrain DARK_GREEN_MOSS_RUG = new HytaleTerrain("Dark Green Moss Rug",
-        HytaleBlock.of("Plant_Moss_Rug_Green_Dark"), 0x2a5a20);
+        HytaleBlock.of("Plant_Moss_Rug_Green_Dark"), 0x26621c);
     public static final HytaleTerrain SORREL_RUG = new HytaleTerrain("Sorrel Rug",
-        HytaleBlock.of("Plant_Moss_Rug_Lime"), 0x80c040);
+        HytaleBlock.of("Plant_Moss_Rug_Lime"), 0x84b844);
     public static final HytaleTerrain PINK_MOSS_RUG = new HytaleTerrain("Pink Moss Rug",
-        HytaleBlock.of("Plant_Moss_Rug_Pink"), 0xe080a0);
+        HytaleBlock.of("Plant_Moss_Rug_Pink"), 0xd88c9c);
     public static final HytaleTerrain RED_MOSS_RUG = new HytaleTerrain("Red Moss Rug",
-        HytaleBlock.of("Plant_Moss_Rug_Red"), 0xc03030);
+        HytaleBlock.of("Plant_Moss_Rug_Red"), 0xb82c3c);
     public static final HytaleTerrain YELLOW_MOSS_RUG = new HytaleTerrain("Yellow Moss Rug",
-        HytaleBlock.of("Plant_Moss_Rug_Yellow"), 0xd0c030);
+        HytaleBlock.of("Plant_Moss_Rug_Yellow"), 0xd8b434);
 
     // ===== SHORT MOSS =====
     public static final HytaleTerrain SHORT_BLUE_MOSS = new HytaleTerrain("Short Blue Moss",
-        HytaleBlock.of("Plant_Moss_Short_Blue"), 0x3070d0);
+        HytaleBlock.of("Plant_Moss_Short_Blue"), 0x3c74d8);
     public static final HytaleTerrain SHORT_MOSS = new HytaleTerrain("Short Moss",
-        HytaleBlock.of("Plant_Moss_Short_Green"), 0x4a8a30);
+        HytaleBlock.of("Plant_Moss_Short_Green"), 0x469240);
     public static final HytaleTerrain SHORT_DARK_GREEN_MOSS = new HytaleTerrain("Short Dark Green Moss",
-        HytaleBlock.of("Plant_Moss_Short_Green_Dark"), 0x2a5a20);
+        HytaleBlock.of("Plant_Moss_Short_Green_Dark"), 0x2e5e18);
     public static final HytaleTerrain SHORT_RED_MOSS = new HytaleTerrain("Short Red Moss",
-        HytaleBlock.of("Plant_Moss_Short_Red"), 0xc03030);
+        HytaleBlock.of("Plant_Moss_Short_Red"), 0xd0282c);
     public static final HytaleTerrain SHORT_YELLOW_MOSS = new HytaleTerrain("Short Yellow Moss",
-        HytaleBlock.of("Plant_Moss_Short_Yellow"), 0xd0c030);
+        HytaleBlock.of("Plant_Moss_Short_Yellow"), 0xd4c824);
     public static final HytaleTerrain YELLOW_MOSS = new HytaleTerrain("Yellow Moss",
-        HytaleBlock.of("Plant_Moss_Yellow"), 0xd0c030);
+        HytaleBlock.of("Plant_Moss_Yellow"), 0xdcc438);
 
     // ===== REEDS =====
     public static final HytaleTerrain PAPYRUS_REEDS = new HytaleTerrain("Papyrus Reeds",
-        HytaleBlock.of("Plant_Reeds_Arid"), 0x8a8a40);
+        HytaleBlock.of("Plant_Reeds_Arid"), 0x868e48);
     public static final HytaleTerrain LAVA_REEDS = new HytaleTerrain("Lava Reeds",
-        HytaleBlock.of("Plant_Reeds_Lava"), 0xc04020);
+        HytaleBlock.of("Plant_Reeds_Lava"), 0xbc481c);
     public static final HytaleTerrain RIVER_REEDS = new HytaleTerrain("River Reeds",
-        HytaleBlock.of("Plant_Reeds_Marsh"), 0x5a8a40);
+        HytaleBlock.of("Plant_Reeds_Marsh"), 0x5e8e38);
     public static final HytaleTerrain POISON_REEDS = new HytaleTerrain("Poison Reeds",
-        HytaleBlock.of("Plant_Reeds_Poison"), 0x4a5a2b);
+        HytaleBlock.of("Plant_Reeds_Poison"), 0x465633);
     public static final HytaleTerrain TALL_WATER_REEDS = new HytaleTerrain("Tall Water Reeds",
         HytaleBlock.of("Plant_Reeds_Water"), 0x4a8a40);
     public static final HytaleTerrain WET_REEDS = new HytaleTerrain("Wet Reeds",
-        HytaleBlock.of("Plant_Reeds_Wet"), 0x4a8a40);
+        HytaleBlock.of("Plant_Reeds_Wet"), 0x528644);
     public static final HytaleTerrain WINTER_REEDS = new HytaleTerrain("Winter Reeds",
-        HytaleBlock.of("Plant_Reeds_Winter"), 0x7a8a80);
+        HytaleBlock.of("Plant_Reeds_Winter"), 0x728e84);
 
     // ===== CAVE ROOTS =====
     public static final HytaleTerrain LEAFY_CAVE_ROOTS = new HytaleTerrain("Leafy Cave Roots",
-        HytaleBlock.of("Plant_Roots_Leafy"), 0x5a7a30);
+        HytaleBlock.of("Plant_Roots_Leafy"), 0x5e7234);
     public static final HytaleTerrain CAVE_ROOTS = new HytaleTerrain("Cave Roots",
-        HytaleBlock.of("Plant_Roots_Cave"), 0x6a5a3a);
+        HytaleBlock.of("Plant_Roots_Cave"), 0x6e523e);
 
     // ===== SEAWEED =====
     public static final HytaleTerrain RED_ARID_SEAWEED = new HytaleTerrain("Red Arid Seaweed",
-        HytaleBlock.of("Plant_Seaweed_Arid_Red"), 0xc03030);
+        HytaleBlock.of("Plant_Seaweed_Arid_Red"), 0xbc4028);
     public static final HytaleTerrain ARID_SEAWEED_STACK = new HytaleTerrain("Arid Seaweed Stack",
-        HytaleBlock.of("Plant_Seaweed_Arid_Stack"), 0x8a8a40);
+        HytaleBlock.of("Plant_Seaweed_Arid_Stack"), 0x92923c);
     public static final HytaleTerrain SHORT_ARID_SEAWEED = new HytaleTerrain("Short Arid Seaweed",
-        HytaleBlock.of("Plant_Seaweed_Arid_Short"), 0x8a8a40);
+        HytaleBlock.of("Plant_Seaweed_Arid_Short"), 0x868648);
     public static final HytaleTerrain TALL_ARID_SEAWEED = new HytaleTerrain("Tall Arid Seaweed",
-        HytaleBlock.of("Plant_Seaweed_Arid_Tall"), 0x8a8a40);
+        HytaleBlock.of("Plant_Seaweed_Arid_Tall"), 0x968244);
     public static final HytaleTerrain YELLOW_ARID_SEAWEED = new HytaleTerrain("Yellow Arid Seaweed",
-        HytaleBlock.of("Plant_Seaweed_Arid_Yellow"), 0xd0c030);
+        HytaleBlock.of("Plant_Seaweed_Arid_Yellow"), 0xc8bc3c);
     public static final HytaleTerrain EERIE_DEAD_SEAWEED = new HytaleTerrain("Eerie Dead Seaweed",
         HytaleBlock.of("Plant_Seaweed_Dead_Eerie"), 0x4a3a2a);
     public static final HytaleTerrain GHOSTLY_DEAD_SEAWEED = new HytaleTerrain("Ghostly Dead Seaweed",
         HytaleBlock.of("Plant_Seaweed_Dead_Ghostly"), 0x8a8a8a);
     public static final HytaleTerrain SHORT_DEAD_SEAWEED = new HytaleTerrain("Short Dead Seaweed",
-        HytaleBlock.of("Plant_Seaweed_Dead_Short"), 0x6a5a3a);
+        HytaleBlock.of("Plant_Seaweed_Dead_Short"), 0x665e42);
     public static final HytaleTerrain DEAD_SEAWEED_STACK = new HytaleTerrain("Dead Seaweed Stack",
-        HytaleBlock.of("Plant_Seaweed_Dead_Stack"), 0x6a5a3a);
+        HytaleBlock.of("Plant_Seaweed_Dead_Stack"), 0x726236);
     public static final HytaleTerrain TALL_DEAD_SEAWEED = new HytaleTerrain("Tall Dead Seaweed",
-        HytaleBlock.of("Plant_Seaweed_Dead_Tall"), 0x6a5a3a);
+        HytaleBlock.of("Plant_Seaweed_Dead_Tall"), 0x665642);
     public static final HytaleTerrain SHORT_SEAWEED = new HytaleTerrain("Short Seaweed",
-        HytaleBlock.of("Plant_Seaweed_Grass_Short"), 0x3a6a30);
+        HytaleBlock.of("Plant_Seaweed_Grass_Short"), 0x326e34);
     public static final HytaleTerrain GREEN_SEAWEED_BULBS = new HytaleTerrain("Green Seaweed Bulbs",
-        HytaleBlock.of("Plant_Seaweed_Grass_Bulbs"), 0x3a6a30);
+        HytaleBlock.of("Plant_Seaweed_Grass_Bulbs"), 0x3e6234);
     public static final HytaleTerrain GREEN_SEAWEED = new HytaleTerrain("Green Seaweed",
-        HytaleBlock.of("Plant_Seaweed_Grass_Green"), 0x3a6a30);
+        HytaleBlock.of("Plant_Seaweed_Grass_Green"), 0x366e38);
     public static final HytaleTerrain SEAWEED_MIDDLE = new HytaleTerrain("Seaweed Middle",
-        HytaleBlock.of("Plant_Seaweed_Grass_Stack"), 0x3a6a30);
+        HytaleBlock.of("Plant_Seaweed_Grass_Stack"), 0x42722c);
     public static final HytaleTerrain TALL_SEAWEED = new HytaleTerrain("Tall Seaweed",
-        HytaleBlock.of("Plant_Seaweed_Grass_Tall"), 0x3a6a30);
+        HytaleBlock.of("Plant_Seaweed_Grass_Tall"), 0x366638);
     public static final HytaleTerrain WET_SEAWEED = new HytaleTerrain("Wet Seaweed",
-        HytaleBlock.of("Plant_Seaweed_Wet_Stack"), 0x3a6a30);
+        HytaleBlock.of("Plant_Seaweed_Wet_Stack"), 0x466234);
     public static final HytaleTerrain AURORA_SEAWEED = new HytaleTerrain("Aurora Seaweed",
         HytaleBlock.of("Plant_Seaweed_Winter_Aurora"), 0x60a0c0);
     public static final HytaleTerrain BLUE_WINTER_SEAWEED = new HytaleTerrain("Blue Winter Seaweed",
-        HytaleBlock.of("Plant_Seaweed_Winter_Blue"), 0x3070d0);
+        HytaleBlock.of("Plant_Seaweed_Winter_Blue"), 0x286cdc);
     public static final HytaleTerrain SHORT_WINTER_SEAWEED = new HytaleTerrain("Short Winter Seaweed",
-        HytaleBlock.of("Plant_Seaweed_Winter_Short"), 0x7a8a90);
+        HytaleBlock.of("Plant_Seaweed_Winter_Short"), 0x76928c);
     public static final HytaleTerrain WINTER_SEAWEED_STACK = new HytaleTerrain("Winter Seaweed Stack",
-        HytaleBlock.of("Plant_Seaweed_Winter_Stack"), 0x7a8a90);
+        HytaleBlock.of("Plant_Seaweed_Winter_Stack"), 0x7e8e88);
     public static final HytaleTerrain TALL_WINTER_SEAWEED = new HytaleTerrain("Tall Winter Seaweed",
-        HytaleBlock.of("Plant_Seaweed_Winter_Tall"), 0x7a8a90);
+        HytaleBlock.of("Plant_Seaweed_Winter_Tall"), 0x728e94);
 
     // ===== VINE RUG =====
     public static final HytaleTerrain VINE_RUG = new HytaleTerrain("Vine Rug",
-        HytaleBlock.of("Plant_Vine_Rug"), 0x4a8a30);
+        HytaleBlock.of("Plant_Vine_Rug"), 0x529a2c);
 
     // ===== MOSS BLOCKS =====
     public static final HytaleTerrain YELLOW_MOSS_BLOCK = new HytaleTerrain("Yellow Moss Block",
-        HytaleBlock.of("Plant_Moss_Block_Yellow"), 0xd0c030);
+        HytaleBlock.of("Plant_Moss_Block_Yellow"), 0xe0b82c);
     public static final HytaleTerrain RED_MOSS_BLOCK = new HytaleTerrain("Red Moss Block",
-        HytaleBlock.of("Plant_Moss_Block_Red"), 0xc03030);
+        HytaleBlock.of("Plant_Moss_Block_Red"), 0xb82c40);
     public static final HytaleTerrain DARK_GREEN_MOSS_BLOCK = new HytaleTerrain("Dark Green Moss Block",
-        HytaleBlock.of("Plant_Moss_Block_Green_Dark"), 0x2a5a20);
+        HytaleBlock.of("Plant_Moss_Block_Green_Dark"), 0x225e24);
     public static final HytaleTerrain BLUE_MOSS_BLOCK = new HytaleTerrain("Blue Moss Block",
-        HytaleBlock.of("Plant_Moss_Block_Blue"), 0x3070d0);
+        HytaleBlock.of("Plant_Moss_Block_Blue"), 0x4068cc);
     public static final HytaleTerrain GREEN_MOSS_BLOCK = new HytaleTerrain("Green Moss Block",
-        HytaleBlock.of("Plant_Moss_Block_Green"), 0x4a8a30);
+        HytaleBlock.of("Plant_Moss_Block_Green"), 0x3e8240);
 
     // ===== PICK LIST (all terrains in display order as requested by builder team) =====
 

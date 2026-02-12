@@ -106,7 +106,7 @@ public final class HytaleBiome {
             "Env_Zone1_Boom_Caves", 0xFFA08040, 0xA08040, Category.ZONE1);
 
     public static final HytaleBiome DEEP_LAVA_CAVES = register("Zone1_Deep_Lava_Caves", "Deep Lava Caves",
-            "Env_Zone1_Caves_Volcanic", 0xFF8B4513, 0x8B2500, Category.ZONE1);
+            "Env_Zone1_Caves_Volcanic", 0xFF8B4513, 0x7B1F08, Category.ZONE1);
 
     // ─── Zone 2: Howling Sands ─────────────────────────────────────────
 
