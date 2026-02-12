@@ -2745,7 +2745,7 @@ public final class App extends JFrame implements BrushControl,
 
         dockingManager.addFrame(new DockableFrameBuilder(createLayerPanel(), "Layers", DOCK_SIDE_WEST, 3).build());
 
-        dockingManager.addFrame(new DockableFrameBuilder(createTerrainPanel(), "Terrain", DOCK_SIDE_WEST, 3).build());
+        dockingManager.addFrame(new DockableFrameBuilder(createTerrainPanel(), "Terrain", DOCK_SIDE_WEST, 3).scrollable().build());
 
         biomesPanelFrame = new DockableFrameBuilder(createBiomesPanelContainer(), "Biomes", DOCK_SIDE_WEST, 3).scrollable().build();
         dockingManager.addFrame(biomesPanelFrame);
@@ -3630,14 +3630,14 @@ public final class App extends JFrame implements BrushControl,
     private JToggleButton createHytaleTerrainButton(final org.pepsoft.worldpainter.hytale.HytaleTerrain hytaleTerrain) {
         final Terrain terrain = org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.toMinecraftTerrain(hytaleTerrain);
         final JToggleButton button = new JToggleButton();
-        button.putClientProperty(KEY_PAINT_ID, createTerrainPaintId(terrain));
+        button.putClientProperty(KEY_PAINT_ID, "HytaleTerrain/" + hytaleTerrain.getLayerIndex());
         button.setMargin(new Insets(1, 1, 1, 1));
         button.setIcon(new ImageIcon(hytaleTerrain.getScaledIcon(32, selectedColourScheme)));
         button.setToolTipText(hytaleTerrain.getName());
         button.addItemListener(event -> {
             if (event.getStateChange() == ItemEvent.SELECTED) {
                 paintUpdater = () -> {
-                    paint = PaintFactory.createTerrainPaint(terrain);
+                    paint = new org.pepsoft.worldpainter.painting.HytaleTerrainPaint(terrain, hytaleTerrain);
                     paintChanged();
                 };
                 paintUpdater.updatePaint();

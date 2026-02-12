@@ -336,6 +336,10 @@ public class CustomMaterialDialog extends WorldPainterDialog implements Property
             previousCalculatedName = createName();
             selectedColour = (mixedMaterial.getColour() != null) ? mixedMaterial.getColour() : Color.ORANGE.getRGB();
             checkBoxColour.setSelected(mixedMaterial.getColour() != null);
+            // For Hytale mode, auto-enable colour override so it renders properly
+            if (org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(platform) && !checkBoxColour.isSelected()) {
+                checkBoxColour.setSelected(true);
+            }
 
             setControlStates();
             updatePreview();

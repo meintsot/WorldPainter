@@ -620,8 +620,14 @@ public class HytaleWorldExporter implements WorldExporter {
                 MixedMaterial customMaterial = isCustomTerrain
                     ? Terrain.getCustomMaterial(localTerrain.getCustomTerrainIndex())
                     : null;
-                // Map the Minecraft terrain to the best Hytale equivalent
-                HytaleTerrain hytaleTerrain = isCustomTerrain ? null : HytaleTerrainHelper.fromMinecraftTerrain(localTerrain);
+                // Read per-pixel HytaleTerrain layer first, fall back to Terrain-based lookup
+                int htIndex = HytaleTerrainLayer.getTerrainIndex(tile, tileLocalX, tileLocalZ);
+                HytaleTerrain hytaleTerrain;
+                if (htIndex > 0) {
+                    hytaleTerrain = HytaleTerrain.getByLayerIndex(htIndex);
+                } else {
+                    hytaleTerrain = isCustomTerrain ? null : HytaleTerrainHelper.fromMinecraftTerrain(localTerrain);
+                }
 
                 // Resolve biome: check if user painted a biome via the Biome layer
                 int paintedBiomeId = tile.getLayerValue(Biome.INSTANCE, tileLocalX, tileLocalZ);

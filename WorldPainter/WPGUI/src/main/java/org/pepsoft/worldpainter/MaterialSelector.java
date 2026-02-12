@@ -150,6 +150,15 @@ public class MaterialSelector extends javax.swing.JPanel {
             // Populate the main combo with Hytale block names
             Vector<String> hytaleNames = new Vector<>(HytaleBlockRegistry.getAllBlockNames());
             comboBoxMinecraftName.setModel(new DefaultComboBoxModel<>(hytaleNames));
+            // Display friendly names (underscores replaced with spaces) in the dropdown
+            comboBoxMinecraftName.setRenderer(new javax.swing.DefaultListCellRenderer() {
+                @Override
+                public java.awt.Component getListCellRendererComponent(javax.swing.JList<?> list, Object value,
+                        int index, boolean isSelected, boolean cellHasFocus) {
+                    String display = (value instanceof String) ? HytaleBlockRegistry.formatDisplayName((String) value) : "";
+                    return super.getListCellRendererComponent(list, display, index, isSelected, cellHasFocus);
+                }
+            });
             // Default namespace for the primary radio
             primaryNamespace = HytaleBlockRegistry.HYTALE_NAMESPACE;
         }

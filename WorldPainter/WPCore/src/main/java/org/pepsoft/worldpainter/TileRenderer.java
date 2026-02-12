@@ -214,7 +214,8 @@ public final class TileRenderer {
         if (hideAllLayers) {
             layerList.clear();
         } else {
-            layerList.removeIf(layer -> (layer instanceof Void) || (layer instanceof NotPresent) || (layer instanceof NotPresentBlock));
+            layerList.removeIf(layer -> (layer instanceof Void) || (layer instanceof NotPresent) || (layer instanceof NotPresentBlock)
+                    || layer == org.pepsoft.worldpainter.hytale.HytaleTerrainLayer.LO || layer == org.pepsoft.worldpainter.hytale.HytaleTerrainLayer.HI);
         }
         final Layer[] layers = layerList.toArray(new Layer[layerList.size()]);
         final LayerRenderer[] renderers = new LayerRenderer[layers.length];
@@ -376,9 +377,15 @@ public final class TileRenderer {
                 colour = bedrockColour;
             } else {
                         if (DefaultPlugin.HYTALE.id.equals(platform.id)) {
-                    // Look up Hytale terrain from Minecraft terrain stored on tile
-                    Terrain terrain = tile.getTerrain(x, y);
-                    HytaleTerrain hytaleTerrain = HytaleTerrainHelper.fromMinecraftTerrain(terrain);
+                    // Read per-pixel HytaleTerrain layer first, fall back to Terrain-based lookup
+                    int htIndex = org.pepsoft.worldpainter.hytale.HytaleTerrainLayer.getTerrainIndex(tile, x, y);
+                    HytaleTerrain hytaleTerrain;
+                    if (htIndex > 0) {
+                        hytaleTerrain = HytaleTerrain.getByLayerIndex(htIndex);
+                    } else {
+                        Terrain terrain = tile.getTerrain(x, y);
+                        hytaleTerrain = HytaleTerrainHelper.fromMinecraftTerrain(terrain);
+                    }
                     colour = 0xff000000 | hytaleTerrain.getEffectiveColour();
                 } else {
                     Terrain terrain = tile.getTerrain(x, y);

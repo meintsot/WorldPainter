@@ -196,6 +196,27 @@ public class HytaleBlockRegistry {
         return blockId.replace('_', ' ');
     }
 
+    /**
+     * Get the colour for a Hytale block ID, looking up from HytaleTerrain data.
+     * Returns null if no colour is known for this block.
+     */
+    public static Integer getBlockColour(String blockId) {
+        if (blockColourMap == null) {
+            // Build the map lazily from HytaleTerrain data
+            Map<String, Integer> map = new HashMap<>();
+            for (HytaleTerrain t : HytaleTerrain.PICK_LIST) {
+                HytaleBlock block = t.getBlock();
+                if (block != null && t.getColour() != null) {
+                    map.putIfAbsent(block.id, t.getColour());
+                }
+            }
+            blockColourMap = map;
+        }
+        return blockColourMap.get(blockId);
+    }
+
+    private static volatile Map<String, Integer> blockColourMap;
+
     // =========================================================================
     // Legacy / backward-compatible API
     // =========================================================================
