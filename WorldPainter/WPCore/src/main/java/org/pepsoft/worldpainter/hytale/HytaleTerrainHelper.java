@@ -149,27 +149,21 @@ public final class HytaleTerrainHelper {
 
         String name = terrain.getName().toLowerCase();
 
-        // Direct name matches
-        if (name.contains("lava")) return HytaleTerrain.LAVA;
-        if (name.contains("water")) return HytaleTerrain.WATER;
-
         // Sand/Desert
-        if (name.contains("red sand")) return HytaleTerrain.SAND_RED;
-        if (name.contains("red desert")) return HytaleTerrain.SAND_RED;
+        if (name.contains("red sand")) return HytaleTerrain.RED_SAND;
+        if (name.contains("red desert")) return HytaleTerrain.RED_SAND;
         if (name.contains("desert")) return HytaleTerrain.SAND;
-        if (name.contains("mesa")) return HytaleTerrain.SAND_RED;
+        if (name.contains("mesa")) return HytaleTerrain.RED_SAND;
         if (name.contains("sand")) return HytaleTerrain.SAND;
 
         // Snow/Ice
-        if (name.contains("deep snow")) return HytaleTerrain.SNOW;
-        if (name.contains("snow")) return HytaleTerrain.SNOW;
+        if (name.contains("snow")) return HytaleTerrain.ICE;
         if (name.contains("ice")) return HytaleTerrain.ICE;
 
         // Rock types
-        if (name.contains("bedrock")) return HytaleTerrain.BEDROCK;
-        if (name.contains("obsidian")) return HytaleTerrain.MAGMA_COOLED;
+        if (name.contains("obsidian")) return HytaleTerrain.COLD_MAGMA;
         if (name.contains("basalt")) return HytaleTerrain.BASALT;
-        if (name.contains("blackstone")) return HytaleTerrain.VOLCANIC;
+        if (name.contains("blackstone")) return HytaleTerrain.VOLCANIC_ROCK;
         if (name.contains("deepslate")) return HytaleTerrain.SLATE;
         if (name.contains("tuff")) return HytaleTerrain.SHALE;
         if (name.contains("calcite")) return HytaleTerrain.CALCITE;
@@ -177,31 +171,29 @@ public final class HytaleTerrainHelper {
         if (name.contains("diorite")) return HytaleTerrain.QUARTZITE;
         if (name.contains("andesite")) return HytaleTerrain.SLATE;
         if (name.contains("stone mix")) return HytaleTerrain.STONE;
-        if (name.contains("cobblestone") && name.contains("mossy")) return HytaleTerrain.COBBLESTONE_MOSSY;
-        if (name.contains("cobblestone")) return HytaleTerrain.COBBLESTONE;
-        if (name.contains("red sandstone")) return HytaleTerrain.SANDSTONE_RED;
+        if (name.contains("cobblestone")) return HytaleTerrain.MOSSY_STONE;
+        if (name.contains("red sandstone")) return HytaleTerrain.RED_SANDSTONE;
         if (name.contains("sandstone")) return HytaleTerrain.SANDSTONE;
         if (name.equals("rock") || name.equals("stone")) return HytaleTerrain.STONE;
 
         // Earth
-        if (name.contains("gravel")) return HytaleTerrain.GRAVEL;
-        if (name.contains("clay")) return HytaleTerrain.CLAY;
-        if (name.contains("mud")) return HytaleTerrain.MUD;
-        if (name.contains("podzol")) return HytaleTerrain.DIRT;
-        if (name.contains("dirt") || name.contains("permadirt")) return HytaleTerrain.DIRT;
-        if (name.contains("mycelium")) return HytaleTerrain.MUD;
-        if (name.contains("moss")) return HytaleTerrain.GRAVEL_MOSSY;
-        if (name.contains("magma")) return HytaleTerrain.MAGMA_COOLED;
+        if (name.contains("gravel")) return HytaleTerrain.STONE;
+        if (name.contains("clay")) return HytaleTerrain.STONE;
+        if (name.contains("mud")) return HytaleTerrain.WET_GRASS;
+        if (name.contains("podzol")) return HytaleTerrain.DEEP_GRASS;
+        if (name.contains("dirt") || name.contains("permadirt")) return HytaleTerrain.DEEP_GRASS;
+        if (name.contains("mycelium")) return HytaleTerrain.DEEP_GRASS;
+        if (name.contains("magma")) return HytaleTerrain.COLD_MAGMA;
 
-        // Grass types - all map to single GRASS
+        // Grass types
         if (name.contains("grass")) return HytaleTerrain.GRASS;
 
         // Beach
         if (name.contains("beach")) return HytaleTerrain.SAND;
 
         // Nether
-        if (name.contains("netherrack") || name.contains("netherlike")) return HytaleTerrain.VOLCANIC;
-        if (name.contains("soul")) return HytaleTerrain.MUD;
+        if (name.contains("netherrack") || name.contains("netherlike")) return HytaleTerrain.VOLCANIC_ROCK;
+        if (name.contains("soul")) return HytaleTerrain.BURNED_GRASS;
         if (name.contains("nylium")) return HytaleTerrain.GRASS;
 
         // End
@@ -209,11 +201,21 @@ public final class HytaleTerrainHelper {
 
         // Stained clay / terracotta
         if (name.contains("stained clay") || name.contains("terracotta") || name.contains("hardened clay")) {
-            return HytaleTerrain.CLAY;
+            return HytaleTerrain.RED_SANDSTONE;
         }
 
         // Resources (mixed ore terrain)
         if (name.equals("resources")) return HytaleTerrain.STONE;
+
+        // Lava / Water - map to stone/grass since we removed fluid terrains
+        if (name.contains("lava")) return HytaleTerrain.VOLCANIC_ROCK;
+        if (name.contains("water")) return HytaleTerrain.GRASS;
+
+        // Bedrock - map to basalt
+        if (name.contains("bedrock")) return HytaleTerrain.BASALT;
+
+        // Moss
+        if (name.contains("moss")) return HytaleTerrain.MOSSY_STONE;
 
         return HytaleTerrain.GRASS;
     }
@@ -238,49 +240,64 @@ public final class HytaleTerrainHelper {
     private static synchronized void buildReverseMap() {
         if (HYTALE_TO_MC != null) return;
         Map<HytaleTerrain, Terrain> map = new HashMap<>();
-        // Soil / Surface
+
+        // Ground blocks
         map.put(HytaleTerrain.GRASS, Terrain.GRASS);
-        map.put(HytaleTerrain.DIRT, Terrain.PERMADIRT);
-        map.put(HytaleTerrain.DIRT_BURNT, Terrain.PERMADIRT);
-        map.put(HytaleTerrain.DIRT_COLD, Terrain.PERMADIRT);
-        map.put(HytaleTerrain.DIRT_DRY, Terrain.PERMADIRT);
-        map.put(HytaleTerrain.DIRT_POISONED, Terrain.PERMADIRT);
+        map.put(HytaleTerrain.FULL_GRASS, Terrain.GRASS);
+        map.put(HytaleTerrain.DEEP_GRASS, Terrain.GRASS);
+        map.put(HytaleTerrain.SUMMER_GRASS, Terrain.GRASS);
+        map.put(HytaleTerrain.WET_GRASS, Terrain.GRASS);
+        map.put(HytaleTerrain.COLD_GRASS, Terrain.GRASS);
+        map.put(HytaleTerrain.DRY_GRASS, Terrain.GRASS);
+        map.put(HytaleTerrain.BURNED_GRASS, Terrain.PERMADIRT);
         map.put(HytaleTerrain.SAND, Terrain.SAND);
-        map.put(HytaleTerrain.SAND_RED, Terrain.RED_SAND);
-        map.put(HytaleTerrain.SAND_WHITE, Terrain.SAND);
-        map.put(HytaleTerrain.SAND_ASHEN, Terrain.SAND);
-        map.put(HytaleTerrain.SNOW, Terrain.DEEP_SNOW);
-        map.put(HytaleTerrain.GRAVEL, Terrain.GRAVEL);
-        map.put(HytaleTerrain.GRAVEL_MOSSY, Terrain.GRAVEL);
-        map.put(HytaleTerrain.CLAY, Terrain.CLAY);
-        map.put(HytaleTerrain.MUD, Terrain.MUD);
-        map.put(HytaleTerrain.MUD_DRY, Terrain.PERMADIRT);
-        map.put(HytaleTerrain.LEAVES_FLOOR, Terrain.PODZOL);
-        // Rock
+        map.put(HytaleTerrain.RED_SAND, Terrain.RED_SAND);
+        map.put(HytaleTerrain.WHITE_SAND, Terrain.SAND);
+        map.put(HytaleTerrain.ASHEN_SAND, Terrain.SAND);
         map.put(HytaleTerrain.STONE, Terrain.STONE);
-        map.put(HytaleTerrain.STONE_MOSSY, Terrain.MOSSY_COBBLESTONE);
-        map.put(HytaleTerrain.COBBLESTONE, Terrain.COBBLESTONE);
-        map.put(HytaleTerrain.COBBLESTONE_MOSSY, Terrain.MOSSY_COBBLESTONE);
+        map.put(HytaleTerrain.MOSSY_STONE, Terrain.MOSSY_COBBLESTONE);
         map.put(HytaleTerrain.SANDSTONE, Terrain.SANDSTONE);
-        map.put(HytaleTerrain.SANDSTONE_RED, Terrain.RED_SANDSTONE);
-        map.put(HytaleTerrain.SANDSTONE_WHITE, Terrain.SANDSTONE);
+        map.put(HytaleTerrain.SANDSTONE_BRICK_SMOOTH, Terrain.SANDSTONE);
+        map.put(HytaleTerrain.RED_SANDSTONE, Terrain.RED_SANDSTONE);
+        map.put(HytaleTerrain.RED_SANDSTONE_BRICK_SMOOTH, Terrain.RED_SANDSTONE);
+        map.put(HytaleTerrain.WHITE_SANDSTONE, Terrain.SANDSTONE);
+        map.put(HytaleTerrain.WHITE_SANDSTONE_BRICK_SMOOTH, Terrain.SANDSTONE);
         map.put(HytaleTerrain.SHALE, Terrain.TUFF);
+        map.put(HytaleTerrain.SHALE_COBBLE, Terrain.TUFF);
         map.put(HytaleTerrain.SLATE, Terrain.DEEPSLATE);
+        map.put(HytaleTerrain.SLATE_COBBLE, Terrain.DEEPSLATE);
+        map.put(HytaleTerrain.CRACKED_SLATE, Terrain.DEEPSLATE);
         map.put(HytaleTerrain.BASALT, Terrain.BASALT);
-        map.put(HytaleTerrain.AQUA_ROCK, Terrain.STONE);
+        map.put(HytaleTerrain.BASALT_COBBLE, Terrain.BASALT);
+        map.put(HytaleTerrain.AQUA_STONE, Terrain.STONE);
+        map.put(HytaleTerrain.AQUA_COBBLE, Terrain.STONE);
         map.put(HytaleTerrain.MARBLE, Terrain.DIORITE);
         map.put(HytaleTerrain.QUARTZITE, Terrain.DIORITE);
         map.put(HytaleTerrain.CALCITE, Terrain.CALCITE);
+        map.put(HytaleTerrain.CALCITE_COBBLE, Terrain.CALCITE);
         map.put(HytaleTerrain.CHALK, Terrain.END_STONE);
-        map.put(HytaleTerrain.SALT, Terrain.END_STONE);
-        map.put(HytaleTerrain.VOLCANIC, Terrain.NETHERRACK);
-        map.put(HytaleTerrain.MAGMA_COOLED, Terrain.OBSIDIAN);
+        map.put(HytaleTerrain.SALT_BLOCK, Terrain.END_STONE);
+        map.put(HytaleTerrain.VOLCANIC_ROCK, Terrain.NETHERRACK);
+        map.put(HytaleTerrain.CRACKED_VOLCANIC_ROCK, Terrain.NETHERRACK);
+        map.put(HytaleTerrain.POISONED_VOLCANIC_ROCK, Terrain.NETHERRACK);
+        map.put(HytaleTerrain.COLD_MAGMA, Terrain.OBSIDIAN);
         map.put(HytaleTerrain.ICE, Terrain.DEEP_SNOW);
-        map.put(HytaleTerrain.ICE_PERMAFROST, Terrain.DEEP_SNOW);
-        map.put(HytaleTerrain.BEDROCK, Terrain.BEDROCK);
-        // Fluids
-        map.put(HytaleTerrain.WATER, Terrain.WATER);
-        map.put(HytaleTerrain.LAVA, Terrain.LAVA);
+        map.put(HytaleTerrain.BLUE_ICE, Terrain.DEEP_SNOW);
+
+        // Crystals
+        map.put(HytaleTerrain.BLUE_CRYSTAL, Terrain.STONE);
+        map.put(HytaleTerrain.CYAN_CRYSTAL, Terrain.STONE);
+        map.put(HytaleTerrain.GREEN_CRYSTAL, Terrain.STONE);
+        map.put(HytaleTerrain.PINK_CRYSTAL, Terrain.STONE);
+        map.put(HytaleTerrain.PURPLE_CRYSTAL, Terrain.STONE);
+        map.put(HytaleTerrain.RED_CRYSTAL, Terrain.STONE);
+        map.put(HytaleTerrain.WHITE_CRYSTAL, Terrain.STONE);
+        map.put(HytaleTerrain.YELLOW_CRYSTAL, Terrain.STONE);
+
+        // All vegetation terrains map to GRASS (they are decorative overlay blocks)
+        // The Minecraft terrain simply holds the terrain type for painting;
+        // the actual block is resolved from HytaleTerrain during export.
+
         HYTALE_TO_MC = map;
     }
 

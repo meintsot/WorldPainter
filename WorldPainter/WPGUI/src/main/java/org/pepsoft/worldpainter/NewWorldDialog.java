@@ -165,7 +165,7 @@ public class NewWorldDialog extends WorldPainterDialog {
                 fieldName.setEnabled(false);
                 comboBoxTarget.setEnabled(false);
                 if (isHytalePlatform()) {
-                    selectHytaleTerrain(HytaleTerrain.VOLCANIC);
+                    selectHytaleTerrain(HytaleTerrain.VOLCANIC_ROCK);
                 } else {
                     comboBoxSurfaceMaterial.setSelectedItem(NETHERLIKE);
                 }
@@ -177,7 +177,7 @@ public class NewWorldDialog extends WorldPainterDialog {
                 fieldName.setEnabled(false);
                 comboBoxTarget.setEnabled(false);
                 if (isHytalePlatform()) {
-                    selectHytaleTerrain(HytaleTerrain.VOLCANIC);
+                    selectHytaleTerrain(HytaleTerrain.VOLCANIC_ROCK);
                 } else {
                     comboBoxSurfaceMaterial.setSelectedItem(NETHERLIKE);
                 }

@@ -48,22 +48,13 @@ public final class HytaleBiome {
     // ─── Categories ────────────────────────────────────────────────────
 
     public enum Category {
-        ZONE1_SURFACE("Zone 1 — Emerald Grove"),
-        ZONE1_CAVES("Zone 1 — Caves"),
-        ZONE1_STRUCTURES("Zone 1 — Structures"),
-        ZONE2_SURFACE("Zone 2 — Howling Sands"),
-        ZONE2_CAVES("Zone 2 — Caves"),
-        ZONE2_STRUCTURES("Zone 2 — Structures"),
-        ZONE3_SURFACE("Zone 3 — Borea"),
-        ZONE3_CAVES("Zone 3 — Caves"),
-        ZONE3_STRUCTURES("Zone 3 — Structures"),
-        ZONE4_SURFACE("Zone 4 — Devastated Lands"),
-        ZONE4_CAVES("Zone 4 — Caves"),
-        ZONE4_STRUCTURES("Zone 4 — Structures"),
-        ZONE0("Zone 0 — Ocean Floor"),
+        ZONE1("Zone 1 — Emerald Wilds"),
+        ZONE2("Zone 2 — Howling Sands"),
+        ZONE3("Zone 3 — Whispering Frost Frontiers"),
+        ZONE4("Zone 4 — Devastated Lands"),
         OCEAN("Ocean"),
-        UNIQUE("Unique Locations"),
-        SPECIAL("Special");
+        MISC("Unknown / Miscellaneous"),
+        ENCOUNTERS("Encounters");
 
         private final String displayName;
 
@@ -72,9 +63,7 @@ public final class HytaleBiome {
     }
 
     // ─── All biome definitions ─────────────────────────────────────────
-    // Tints come from the actual Hytale biome JSONs (TintProvider colors)
-    // Environments come from EnvironmentProvider in the biome JSONs
-    // Display colors are chosen to be recognizable on the biome panel
+    // Builder-team approved biomes only.
 
     // Auto-biome (special value 255 — let exporter decide from terrain)
     public static final int BIOME_AUTO = 255;
@@ -87,332 +76,154 @@ public final class HytaleBiome {
     private static final Map<String, HytaleBiome> BY_NAME = new HashMap<>();
     private static final Map<Category, List<HytaleBiome>> BY_CATEGORY = new LinkedHashMap<>();
 
-    // ─── Zone 1: Emerald Grove (Temperate) ─────────────────────────────
+    // ─── Zone 1: Emerald Wilds ─────────────────────────────────────────
 
-    public static final HytaleBiome ZONE1_PLAINS = register("Zone1_Plains", "Plains",
-            "Env_Zone1_Plains", 0xFF5B9E28, 0x5B9E28, Category.ZONE1_SURFACE);
+    public static final HytaleBiome DRIFTING_PLAINS = register("Zone1_Drifting_Plains", "Drifting Plains",
+            "Env_Zone1_Plains", 0xFF5B9E28, 0x5B9E28, Category.ZONE1);
 
-    public static final HytaleBiome ZONE1_FORESTS = register("Zone1_Forests", "Forests",
-            "Env_Zone1_Forests", 0xFF4A8A22, 0x4A8A22, Category.ZONE1_SURFACE);
+    public static final HytaleBiome SEEDLING_WOODS = register("Zone1_Seedling_Woods", "Seedling Woods",
+            "Env_Zone1_Forests", 0xFF4A8A22, 0x4A8A22, Category.ZONE1);
 
-    public static final HytaleBiome ZONE1_MOUNTAINS = register("Zone1_Mountains", "Mountains",
-            "Env_Zone1_Mountains", 0xFF6CA229, 0x808080, Category.ZONE1_SURFACE);
+    public static final HytaleBiome THE_FENS = register("Zone1_The_Fens", "The Fens",
+            "Env_Zone1_Fens", 0xFF5A7A20, 0x6A8A30, Category.ZONE1);
 
-    public static final HytaleBiome ZONE1_SWAMPS = register("Zone1_Swamps", "Swamps",
-            "Env_Zone1_Swamps", 0xFF5A7A20, 0x5A7A20, Category.ZONE1_SURFACE);
+    public static final HytaleBiome SWAMPS = register("Zone1_Swamps", "Swamps",
+            "Env_Zone1_Swamps", 0xFF5A7A20, 0x5A7A20, Category.ZONE1);
 
-    public static final HytaleBiome ZONE1_SHORES = register("Zone1_Shores", "Shores",
-            "Env_Zone1_Shores", 0xFF7EC850, 0xC2B280, Category.ZONE1_SURFACE);
+    public static final HytaleBiome AZURE_FOREST = register("Zone1_Azure_Forest", "Azure Forest",
+            "Env_Zone1_Azure", 0xFF4080C0, 0x4080C0, Category.ZONE1);
 
-    public static final HytaleBiome ZONE1_AUTUMN = register("Zone1_Autumn", "Autumn Forest",
-            "Env_Zone1_Autumn", 0xFFC87420, 0xC87420, Category.ZONE1_SURFACE);
+    public static final HytaleBiome AUTUMN_FOREST = register("Zone1_Autumn_Forest", "Autumn Forest",
+            "Env_Zone1_Autumn", 0xFFC87420, 0xC87420, Category.ZONE1);
 
-    public static final HytaleBiome ZONE1_AZURE = register("Zone1_Azure", "Azure Forest",
-            "Env_Zone1_Azure", 0xFF4080C0, 0x4080C0, Category.ZONE1_SURFACE);
+    public static final HytaleBiome BOULDER_FIELDS = register("Zone1_Boulder_Fields", "Boulder Fields",
+            "Env_Zone1_Mountains", 0xFF6CA229, 0x808080, Category.ZONE1);
 
-    public static final HytaleBiome ZONE1_KWEEBEC = register("Zone1_Kweebec", "Kweebec Village",
-            "Env_Zone1_Kweebec", 0xFF5B9E28, 0x3B7E18, Category.ZONE1_SURFACE);
+    public static final HytaleBiome CRYSTAL_CAVES = register("Zone1_Crystal_Caves", "Crystal Caves",
+            "Env_Zone1_Crystal_Caves", 0xFF80C0E0, 0x80C0E0, Category.ZONE1);
 
-    public static final HytaleBiome ZONE1_TRORK = register("Zone1_Trork", "Trork Camp",
-            "Env_Zone1_Trork", 0xFF5B9E28, 0x6B4E37, Category.ZONE1_SURFACE);
+    public static final HytaleBiome BOOM_CAVES = register("Zone1_Boom_Caves", "Boom Caves",
+            "Env_Zone1_Boom_Caves", 0xFFA08040, 0xA08040, Category.ZONE1);
 
-    // Zone 1 Caves
-    public static final HytaleBiome ZONE1_CAVES = register("Zone1_Caves", "Caves",
-            "Env_Zone1_Caves", 0xFF4A7A32, 0x555555, Category.ZONE1_CAVES);
+    public static final HytaleBiome DEEP_LAVA_CAVES = register("Zone1_Deep_Lava_Caves", "Deep Lava Caves",
+            "Env_Zone1_Caves_Volcanic", 0xFF8B4513, 0x8B2500, Category.ZONE1);
 
-    public static final HytaleBiome ZONE1_CAVES_FORESTS = register("Zone1_Caves_Forests", "Forest Caves",
-            "Env_Zone1_Caves_Forests", 0xFF3A6A22, 0x3A6A22, Category.ZONE1_CAVES);
+    // ─── Zone 2: Howling Sands ─────────────────────────────────────────
 
-    public static final HytaleBiome ZONE1_CAVES_MOUNTAINS = register("Zone1_Caves_Mountains", "Mountain Caves",
-            "Env_Zone1_Caves_Mountains", 0xFF505050, 0x707070, Category.ZONE1_CAVES);
+    public static final HytaleBiome BADLANDS = register("Zone2_Badlands", "Badlands",
+            "Env_Zone2_Badlands", 0xFFC0A060, 0xC0A060, Category.ZONE2);
 
-    public static final HytaleBiome ZONE1_CAVES_PLAINS = register("Zone1_Caves_Plains", "Plains Caves",
-            "Env_Zone1_Caves_Plains", 0xFF5B9E28, 0x808060, Category.ZONE1_CAVES);
+    public static final HytaleBiome DESOLATE_BASIN = register("Zone2_Desolate_Basin", "Desolate Basin",
+            "Env_Zone2_Desolate_Basin", 0xFF908040, 0x908040, Category.ZONE2);
 
-    public static final HytaleBiome ZONE1_CAVES_SWAMPS = register("Zone1_Caves_Swamps", "Swamp Caves",
-            "Env_Zone1_Caves_Swamps", 0xFF4A6A10, 0x4A6A10, Category.ZONE1_CAVES);
+    public static final HytaleBiome GOLDEN_STEPPES = register("Zone2_Golden_Steppes", "Golden Steppes",
+            "Env_Zone2_Steppes", 0xFFBDB76B, 0xBDB76B, Category.ZONE2);
 
-    public static final HytaleBiome ZONE1_CAVES_GOBLINS = register("Zone1_Caves_Goblins", "Goblin Caves",
-            "Env_Zone1_Caves_Goblins", 0xFF3A5A12, 0x8B4513, Category.ZONE1_CAVES);
+    public static final HytaleBiome DESERTS = register("Zone2_Deserts", "Deserts",
+            "Env_Zone2_Deserts", 0xFFBDB76B, 0xDBC497, Category.ZONE2);
 
-    public static final HytaleBiome ZONE1_CAVES_SPIDERS = register("Zone1_Caves_Spiders", "Spider Caves",
-            "Env_Zone1_Caves_Spiders", 0xFF3A5A12, 0x4A3A4A, Category.ZONE1_CAVES);
+    public static final HytaleBiome OASES = register("Zone2_Oases", "Oases",
+            "Env_Zone2_Oasis", 0xFF60B040, 0x60B040, Category.ZONE2);
 
-    public static final HytaleBiome ZONE1_CAVES_RATS = register("Zone1_Caves_Rats", "Rat Caves",
-            "Env_Zone1_Caves_Rats", 0xFF3A5A12, 0x6A5A4A, Category.ZONE1_CAVES);
+    public static final HytaleBiome SAVANNAS = register("Zone2_Savannas", "Savannas",
+            "Env_Zone2_Savanna", 0xFFA0A020, 0xA0A020, Category.ZONE2);
 
-    public static final HytaleBiome ZONE1_CAVES_VOLCANIC_T1 = register("Zone1_Caves_Volcanic_T1", "Volcanic Caves T1",
-            "Env_Zone1_Caves_Volcanic_T1", 0xFF8B4513, 0x8B2500, Category.ZONE1_CAVES);
+    public static final HytaleBiome HOT_SPRINGS = register("Zone2_Hot_Springs", "Hot Springs",
+            "Env_Zone2_Hot_Springs", 0xFF60B0C0, 0x60B0C0, Category.ZONE2);
 
-    public static final HytaleBiome ZONE1_CAVES_VOLCANIC_T2 = register("Zone1_Caves_Volcanic_T2", "Volcanic Caves T2",
-            "Env_Zone1_Caves_Volcanic_T2", 0xFF8B4513, 0xA03000, Category.ZONE1_CAVES);
+    public static final HytaleBiome SCARAK_HIVE_TUNNELS = register("Zone2_Scarak_Hive_Tunnels", "Scarak Hive Tunnels",
+            "Env_Zone2_Scarak", 0xFF806020, 0x806020, Category.ZONE2);
 
-    public static final HytaleBiome ZONE1_CAVES_VOLCANIC_T3 = register("Zone1_Caves_Volcanic_T3", "Volcanic Caves T3",
-            "Env_Zone1_Caves_Volcanic_T3", 0xFF8B4513, 0xC04000, Category.ZONE1_CAVES);
+    // ─── Zone 3: Whispering Frost Frontiers ────────────────────────────
 
-    // Zone 1 Structures
-    public static final HytaleBiome ZONE1_DEFAULT = register("Zone1", "Default",
-            "Env_Zone1", 0xFF5B9E28, 0x4B8E18, Category.ZONE1_STRUCTURES);
+    public static final HytaleBiome FROSTMARCH_TUNDRA = register("Zone3_Frostmarch_Tundra", "Frostmarch Tundra",
+            "Env_Zone3_Tundra", 0xFF80B497, 0x80B497, Category.ZONE3);
 
-    public static final HytaleBiome ZONE1_DUNGEONS = register("Zone1_Dungeons", "Dungeons",
-            "Env_Zone1_Dungeons", 0xFF5B9E28, 0x4A3A2A, Category.ZONE1_STRUCTURES);
+    public static final HytaleBiome BOREAL_REACH = register("Zone3_Boreal_Reach", "Boreal Reach",
+            "Env_Zone3_Boreal_Reach", 0xFF2A6A3A, 0x2A6A3A, Category.ZONE3);
 
-    public static final HytaleBiome ZONE1_ENCOUNTERS = register("Zone1_Encounters", "Encounters",
-            "Env_Zone1_Encounters", 0xFF5B9E28, 0x5A4A3A, Category.ZONE1_STRUCTURES);
+    public static final HytaleBiome THE_EVERFROST = register("Zone3_The_Everfrost", "The Everfrost",
+            "Env_Zone3_Everfrost", 0xFFA0C8D0, 0xB0D0E0, Category.ZONE3);
 
-    public static final HytaleBiome ZONE1_MAGE_TOWERS = register("Zone1_Mage_Towers", "Mage Towers",
-            "Env_Zone1_Mage_Towers", 0xFF5B9E28, 0x6040A0, Category.ZONE1_STRUCTURES);
+    public static final HytaleBiome GLACIERS = register("Zone3_Glaciers", "Glaciers",
+            "Env_Zone3_Glacial", 0xFFA0C8D0, 0xA0C8D0, Category.ZONE3);
 
-    public static final HytaleBiome ZONE1_MINESHAFTS = register("Zone1_Mineshafts", "Mineshafts",
-            "Env_Zone1_Mineshafts", 0xFF5B9E28, 0x705030, Category.ZONE1_STRUCTURES);
+    public static final HytaleBiome ICEBERGS = register("Zone3_Icebergs", "Icebergs",
+            "Env_Zone3_Icebergs", 0xFFB0D8E0, 0xC0E0F0, Category.ZONE3);
 
-    // ─── Zone 2: Howling Sands (Desert/Arid) ───────────────────────────
+    public static final HytaleBiome MOUNTAINS = register("Zone3_Mountains", "Mountains",
+            "Env_Zone3_Mountains", 0xFF607060, 0x607060, Category.ZONE3);
 
-    public static final HytaleBiome ZONE2_DESERTS = register("Zone2_Deserts", "Deserts",
-            "Env_Zone2_Deserts", 0xFFBDB76B, 0xBDB76B, Category.ZONE2_SURFACE);
+    public static final HytaleBiome REDWOOD_FOREST = register("Zone3_Redwood_Forest", "Redwood Forest",
+            "Env_Zone3_Redwood", 0xFF3A6A30, 0x3A6A30, Category.ZONE3);
 
-    public static final HytaleBiome ZONE2_SAVANNA = register("Zone2_Savanna", "Savanna",
-            "Env_Zone2_Savanna", 0xFFA0A020, 0xA0A020, Category.ZONE2_SURFACE);
+    public static final HytaleBiome BOREAL_FOREST = register("Zone3_Boreal_Forest", "Boreal Forest",
+            "Env_Zone3_Forests", 0xFF2A6A3A, 0x1A5A2A, Category.ZONE3);
 
-    public static final HytaleBiome ZONE2_OASIS = register("Zone2_Oasis", "Oasis",
-            "Env_Zone2_Oasis", 0xFF60B040, 0x60B040, Category.ZONE2_SURFACE);
+    public static final HytaleBiome CEDAR_FOREST = register("Zone3_Cedar_Forest", "Cedar Forest",
+            "Env_Zone3_Cedar", 0xFF3A6A30, 0x2A5A20, Category.ZONE3);
 
-    public static final HytaleBiome ZONE2_PLATEAUS = register("Zone2_Plateaus", "Plateaus",
-            "Env_Zone2_Plateaus", 0xFFC0A060, 0xC0A060, Category.ZONE2_SURFACE);
+    public static final HytaleBiome ICY_CAVES = register("Zone3_Icy_Caves", "Icy Caves",
+            "Env_Zone3_Caves_Glacial", 0xFF80A0B0, 0x80A0B0, Category.ZONE3);
 
-    public static final HytaleBiome ZONE2_SCRUB = register("Zone2_Scrub", "Scrubland",
-            "Env_Zone2_Scrub", 0xFF908040, 0x908040, Category.ZONE2_SURFACE);
+    public static final HytaleBiome SUBMERGED_CAVES = register("Zone3_Submerged_Caves", "Submerged Caves",
+            "Env_Zone3_Caves_Submerged", 0xFF405060, 0x405060, Category.ZONE3);
 
-    public static final HytaleBiome ZONE2_SHORES = register("Zone2_Shores", "Shores",
-            "Env_Zone2_Shores", 0xFFD0C080, 0xD0C080, Category.ZONE2_SURFACE);
+    // ─── Zone 4: Devastated Lands ──────────────────────────────────────
 
-    public static final HytaleBiome ZONE2_SCARAK = register("Zone2_Scarak", "Scarak Nest",
-            "Env_Zone2_Scarak", 0xFF806020, 0x806020, Category.ZONE2_SURFACE);
+    public static final HytaleBiome CHARRED_WOODLANDS = register("Zone4_Charred_Woodlands", "Charred Woodlands",
+            "Env_Zone4_Charred", 0xFF3A2A1A, 0x3A2A1A, Category.ZONE4);
 
-    public static final HytaleBiome ZONE2_FERAN = register("Zone2_Feran", "Feran Territory",
-            "Env_Zone2_Feran", 0xFFA08050, 0xA08050, Category.ZONE2_SURFACE);
+    public static final HytaleBiome CINDER_WASTES = register("Zone4_Cinder_Wastes", "Cinder Wastes",
+            "Env_Zone4_Wastes", 0xFF505020, 0x505020, Category.ZONE4);
 
-    // Zone 2 Caves
-    public static final HytaleBiome ZONE2_CAVES = register("Zone2_Caves", "Caves",
-            "Env_Zone2_Caves", 0xFF605030, 0x555555, Category.ZONE2_CAVES);
+    public static final HytaleBiome VOLCANOES = register("Zone4_Volcanoes", "Volcanoes",
+            "Env_Zone4_Volcanoes", 0xFF8B2500, 0x8B2500, Category.ZONE4);
 
-    public static final HytaleBiome ZONE2_CAVES_DESERTS = register("Zone2_Caves_Deserts", "Desert Caves",
-            "Env_Zone2_Caves_Deserts", 0xFFA09050, 0xA09050, Category.ZONE2_CAVES);
+    public static final HytaleBiome MAGMA_MOUNTAINS = register("Zone4_Magma_Mountains", "Magma Mountains",
+            "Env_Zone4_Magma_Mountains", 0xFFA03000, 0xA03000, Category.ZONE4);
 
-    public static final HytaleBiome ZONE2_CAVES_SAVANNA = register("Zone2_Caves_Savanna", "Savanna Caves",
-            "Env_Zone2_Caves_Savanna", 0xFF808020, 0x808020, Category.ZONE2_CAVES);
+    public static final HytaleBiome VOLCANIC_SHORES = register("Zone4_Volcanic_Shores", "Volcanic Shores",
+            "Env_Zone4_Shores", 0xFF706040, 0x706040, Category.ZONE4);
 
-    public static final HytaleBiome ZONE2_CAVES_PLATEAUS = register("Zone2_Caves_Plateaus", "Plateau Caves",
-            "Env_Zone2_Caves_Plateaus", 0xFFA08050, 0xA08050, Category.ZONE2_CAVES);
+    public static final HytaleBiome EVER_BURNING_WOODS = register("Zone4_Ever_Burning_Woods", "Ever-Burning Woods",
+            "Env_Zone4_Ever_Burning", 0xFFC04020, 0xC04020, Category.ZONE4);
 
-    public static final HytaleBiome ZONE2_CAVES_SCRUB = register("Zone2_Caves_Scrub", "Scrub Caves",
-            "Env_Zone2_Caves_Scrub", 0xFF706030, 0x706030, Category.ZONE2_CAVES);
+    public static final HytaleBiome ASHEN_FLATS = register("Zone4_Ashen_Flats", "Ashen Flats",
+            "Env_Zone4_Ashen", 0xFF808070, 0x808070, Category.ZONE4);
 
-    public static final HytaleBiome ZONE2_CAVES_SCARAK = register("Zone2_Caves_Scarak", "Scarak Caves",
-            "Env_Zone2_Caves_Scarak", 0xFF605020, 0x605020, Category.ZONE2_CAVES);
+    public static final HytaleBiome DESOLATED_WOODLANDS = register("Zone4_Desolated_Woodlands", "Desolated Woodlands",
+            "Env_Zone4_Forests", 0xFF304020, 0x304020, Category.ZONE4);
 
-    public static final HytaleBiome ZONE2_CAVES_GOBLINS = register("Zone2_Caves_Goblins", "Goblin Caves",
-            "Env_Zone2_Caves_Goblins", 0xFF504020, 0x8B4513, Category.ZONE2_CAVES);
+    public static final HytaleBiome MUSHROOM_FORESTS = register("Zone4_Mushroom_Forests", "Mushroom Forests",
+            "Env_Zone4_Mushroom", 0xFF8060A0, 0x8060A0, Category.ZONE4);
 
-    public static final HytaleBiome ZONE2_CAVES_RATS = register("Zone2_Caves_Rats", "Rat Caves",
-            "Env_Zone2_Caves_Rats", 0xFF504020, 0x6A5A4A, Category.ZONE2_CAVES);
+    public static final HytaleBiome TROPICAL_JUNGLE = register("Zone4_Tropical_Jungle", "Tropical Jungle",
+            "Env_Zone4_Jungles", 0xFF1A6030, 0x1A6030, Category.ZONE4);
 
-    public static final HytaleBiome ZONE2_CAVES_VOLCANIC_T1 = register("Zone2_Caves_Volcanic_T1", "Volcanic Caves T1",
-            "Env_Zone2_Caves_Volcanic_T1", 0xFF8B4513, 0x8B2500, Category.ZONE2_CAVES);
-
-    public static final HytaleBiome ZONE2_CAVES_VOLCANIC_T2 = register("Zone2_Caves_Volcanic_T2", "Volcanic Caves T2",
-            "Env_Zone2_Caves_Volcanic_T2", 0xFF8B4513, 0xA03000, Category.ZONE2_CAVES);
-
-    public static final HytaleBiome ZONE2_CAVES_VOLCANIC_T3 = register("Zone2_Caves_Volcanic_T3", "Volcanic Caves T3",
-            "Env_Zone2_Caves_Volcanic_T3", 0xFF8B4513, 0xC04000, Category.ZONE2_CAVES);
-
-    // Zone 2 Structures
-    public static final HytaleBiome ZONE2_DEFAULT = register("Zone2", "Default",
-            "Env_Zone2", 0xFFBDB76B, 0xADA75B, Category.ZONE2_STRUCTURES);
-
-    public static final HytaleBiome ZONE2_DUNGEONS = register("Zone2_Dungeons", "Dungeons",
-            "Env_Zone2_Dungeons", 0xFFBDB76B, 0x6A5A3A, Category.ZONE2_STRUCTURES);
-
-    public static final HytaleBiome ZONE2_ENCOUNTERS = register("Zone2_Encounters", "Encounters",
-            "Env_Zone2_Encounters", 0xFFBDB76B, 0x7A6A4A, Category.ZONE2_STRUCTURES);
-
-    public static final HytaleBiome ZONE2_MAGE_TOWERS = register("Zone2_Mage_Towers", "Mage Towers",
-            "Env_Zone2_Mage_Towers", 0xFFBDB76B, 0x8060B0, Category.ZONE2_STRUCTURES);
-
-    public static final HytaleBiome ZONE2_MINESHAFTS = register("Zone2_Mineshafts", "Mineshafts",
-            "Env_Zone2_Mineshafts", 0xFFBDB76B, 0x907040, Category.ZONE2_STRUCTURES);
-
-    // ─── Zone 3: Borea (Boreal/Cold) ───────────────────────────────────
-
-    public static final HytaleBiome ZONE3_FORESTS = register("Zone3_Forests", "Boreal Forests",
-            "Env_Zone3_Forests", 0xFF2A6A3A, 0x2A6A3A, Category.ZONE3_SURFACE);
-
-    public static final HytaleBiome ZONE3_TUNDRA = register("Zone3_Tundra", "Tundra",
-            "Env_Zone3_Tundra", 0xFF80B497, 0x80B497, Category.ZONE3_SURFACE);
-
-    public static final HytaleBiome ZONE3_GLACIAL = register("Zone3_Glacial", "Glacial",
-            "Env_Zone3_Glacial", 0xFFA0C8D0, 0xA0C8D0, Category.ZONE3_SURFACE);
-
-    public static final HytaleBiome ZONE3_MOUNTAINS = register("Zone3_Mountains", "Mountains",
-            "Env_Zone3_Mountains", 0xFF607060, 0x607060, Category.ZONE3_SURFACE);
-
-    public static final HytaleBiome ZONE3_SHORES = register("Zone3_Shores", "Shores",
-            "Env_Zone3_Shores", 0xFF90A890, 0x90A890, Category.ZONE3_SURFACE);
-
-    public static final HytaleBiome ZONE3_GLACIAL_HENGES = register("Zone3_Glacial_Henges", "Glacial Henges",
-            "Env_Zone3_Glacial_Henges", 0xFFB0D0E0, 0xB0D0E0, Category.ZONE3_SURFACE);
-
-    public static final HytaleBiome ZONE3_HEDERA = register("Zone3_Hedera", "Hedera",
-            "Env_Zone3_Hedera", 0xFF40A060, 0x40A060, Category.ZONE3_SURFACE);
-
-    public static final HytaleBiome ZONE3_OUTLANDER = register("Zone3_Outlander", "Outlander Camp",
-            "Env_Zone3_Outlander", 0xFF506050, 0x506050, Category.ZONE3_SURFACE);
-
-    // Zone 3 Caves
-    public static final HytaleBiome ZONE3_CAVES = register("Zone3_Caves", "Caves",
-            "Env_Zone3_Caves", 0xFF405050, 0x555555, Category.ZONE3_CAVES);
-
-    public static final HytaleBiome ZONE3_CAVES_FORESTS = register("Zone3_Caves_Forests", "Forest Caves",
-            "Env_Zone3_Caves_Forests", 0xFF2A5A2A, 0x2A5A2A, Category.ZONE3_CAVES);
-
-    public static final HytaleBiome ZONE3_CAVES_GLACIAL = register("Zone3_Caves_Glacial", "Glacial Caves",
-            "Env_Zone3_Caves_Glacial", 0xFF80A0B0, 0x80A0B0, Category.ZONE3_CAVES);
-
-    public static final HytaleBiome ZONE3_CAVES_MOUNTAINS = register("Zone3_Caves_Mountains", "Mountain Caves",
-            "Env_Zone3_Caves_Mountains", 0xFF506060, 0x506060, Category.ZONE3_CAVES);
-
-    public static final HytaleBiome ZONE3_CAVES_TUNDRA = register("Zone3_Caves_Tundra", "Tundra Caves",
-            "Env_Zone3_Caves_Tundra", 0xFF609080, 0x609080, Category.ZONE3_CAVES);
-
-    public static final HytaleBiome ZONE3_CAVES_SPIDER = register("Zone3_Caves_Spider", "Spider Caves",
-            "Env_Zone3_Caves_Spider", 0xFF405040, 0x4A3A4A, Category.ZONE3_CAVES);
-
-    public static final HytaleBiome ZONE3_CAVES_VOLCANIC_T1 = register("Zone3_Caves_Volcanic_T1", "Volcanic Caves T1",
-            "Env_Zone3_Caves_Volcanic_T1", 0xFF8B4513, 0x8B2500, Category.ZONE3_CAVES);
-
-    public static final HytaleBiome ZONE3_CAVES_VOLCANIC_T2 = register("Zone3_Caves_Volcanic_T2", "Volcanic Caves T2",
-            "Env_Zone3_Caves_Volcanic_T2", 0xFF8B4513, 0xA03000, Category.ZONE3_CAVES);
-
-    public static final HytaleBiome ZONE3_CAVES_VOLCANIC_T3 = register("Zone3_Caves_Volcanic_T3", "Volcanic Caves T3",
-            "Env_Zone3_Caves_Volcanic_T3", 0xFF8B4513, 0xC04000, Category.ZONE3_CAVES);
-
-    // Zone 3 Structures
-    public static final HytaleBiome ZONE3_DEFAULT = register("Zone3", "Default",
-            "Env_Zone3", 0xFF2A6A3A, 0x1A5A2A, Category.ZONE3_STRUCTURES);
-
-    public static final HytaleBiome ZONE3_DUNGEONS = register("Zone3_Dungeons", "Dungeons",
-            "Env_Zone3_Dungeons", 0xFF2A6A3A, 0x4A4A5A, Category.ZONE3_STRUCTURES);
-
-    public static final HytaleBiome ZONE3_ENCOUNTERS = register("Zone3_Encounters", "Encounters",
-            "Env_Zone3_Encounters", 0xFF2A6A3A, 0x5A5A6A, Category.ZONE3_STRUCTURES);
-
-    public static final HytaleBiome ZONE3_MAGE_TOWERS = register("Zone3_Mage_Towers", "Mage Towers",
-            "Env_Zone3_Mage_Towers", 0xFF2A6A3A, 0x6A50B0, Category.ZONE3_STRUCTURES);
-
-    public static final HytaleBiome ZONE3_MINESHAFTS = register("Zone3_Mineshafts", "Mineshafts",
-            "Env_Zone3_Mineshafts", 0xFF2A6A3A, 0x606050, Category.ZONE3_STRUCTURES);
-
-    // ─── Zone 4: Devastated Lands (Volcanic) ──────────────────────────
-
-    public static final HytaleBiome ZONE4_WASTES = register("Zone4_Wastes", "Wastes",
-            "Env_Zone4_Wastes", 0xFF505020, 0x505020, Category.ZONE4_SURFACE);
-
-    public static final HytaleBiome ZONE4_FORESTS = register("Zone4_Forests", "Dark Forests",
-            "Env_Zone4_Forests", 0xFF304020, 0x304020, Category.ZONE4_SURFACE);
-
-    public static final HytaleBiome ZONE4_JUNGLES = register("Zone4_Jungles", "Jungles",
-            "Env_Zone4_Jungles", 0xFF1A6030, 0x1A6030, Category.ZONE4_SURFACE);
-
-    public static final HytaleBiome ZONE4_VOLCANOES = register("Zone4_Volcanoes", "Volcanoes",
-            "Env_Zone4_Volcanoes", 0xFF8B2500, 0x8B2500, Category.ZONE4_SURFACE);
-
-    public static final HytaleBiome ZONE4_SHORES = register("Zone4_Shores", "Shores",
-            "Env_Zone4_Shores", 0xFF706040, 0x706040, Category.ZONE4_SURFACE);
-
-    public static final HytaleBiome ZONE4_CRUCIBLE = register("Zone4_Crucible", "Crucible",
-            "Env_Zone4_Crucible", 0xFFA03000, 0xA03000, Category.ZONE4_SURFACE);
-
-    // Zone 4 Caves
-    public static final HytaleBiome ZONE4_CAVES = register("Zone4_Caves", "Caves",
-            "Env_Zone4_Caves", 0xFF303020, 0x555555, Category.ZONE4_CAVES);
-
-    public static final HytaleBiome ZONE4_CAVES_VOLCANIC = register("Zone4_Caves_Volcanic", "Volcanic Caves",
-            "Env_Zone4_Caves_Volcanic", 0xFF8B2500, 0x8B2500, Category.ZONE4_CAVES);
-
-    // Zone 4 Structures
-    public static final HytaleBiome ZONE4_DEFAULT = register("Zone4", "Default",
-            "Env_Zone4", 0xFF505020, 0x404010, Category.ZONE4_STRUCTURES);
-
-    public static final HytaleBiome ZONE4_DUNGEONS = register("Zone4_Dungeons", "Dungeons",
-            "Env_Zone4_Dungeons", 0xFF505020, 0x3A2A1A, Category.ZONE4_STRUCTURES);
-
-    public static final HytaleBiome ZONE4_ENCOUNTERS = register("Zone4_Encounters", "Encounters",
-            "Env_Zone4_Encounters", 0xFF505020, 0x4A3A2A, Category.ZONE4_STRUCTURES);
-
-    public static final HytaleBiome ZONE4_MAGE_TOWERS = register("Zone4_Mage_Towers", "Mage Towers",
-            "Env_Zone4_Mage_Towers", 0xFF505020, 0x5A40A0, Category.ZONE4_STRUCTURES);
-
-    public static final HytaleBiome ZONE4_SEWERS = register("Zone4_Sewers", "Sewers",
-            "Env_Zone4_Sewers", 0xFF505020, 0x404030, Category.ZONE4_STRUCTURES);
-
-    // ─── Zone 0: Ocean Floor ──────────────────────────────────────────
-
-    public static final HytaleBiome ZONE0_OCEAN = register("Zone0", "Ocean Default",
-            "Env_Zone0", 0xFF2076B5, 0x2076B5, Category.ZONE0);
-
-    public static final HytaleBiome ZONE0_COLD = register("Zone0_Cold", "Cold Ocean",
-            "Env_Zone0_Cold", 0xFF2076B5, 0x1060A5, Category.ZONE0);
-
-    public static final HytaleBiome ZONE0_TEMPERATE = register("Zone0_Temperate", "Temperate Ocean",
-            "Env_Zone0_Temperate", 0xFF2076B5, 0x2076B5, Category.ZONE0);
-
-    public static final HytaleBiome ZONE0_WARM = register("Zone0_Warm", "Warm Ocean",
-            "Env_Zone0_Warm", 0xFF2076B5, 0x3090C0, Category.ZONE0);
+    public static final HytaleBiome VOLCANIC_CAVERNS = register("Zone4_Volcanic_Caverns", "Volcanic Caverns",
+            "Env_Zone4_Caves_Volcanic", 0xFF8B2500, 0x6B1500, Category.ZONE4);
 
     // ─── Ocean ─────────────────────────────────────────────────────────
 
-    public static final HytaleBiome OCEAN = register("Ocean", "Ocean",
-            "Env_Zone0", 0xFF2076B5, 0x4682B4, Category.OCEAN);
+    public static final HytaleBiome DEEP_OCEAN = register("Deep_Ocean", "Deep Ocean",
+            "Env_Zone0", 0xFF2076B5, 0x1060A5, Category.OCEAN);
 
-    // ─── Unique Locations ──────────────────────────────────────────────
+    public static final HytaleBiome OCEAN_SHELF = register("Ocean_Shelf", "Ocean Shelf",
+            "Env_Zone0_Temperate", 0xFF2076B5, 0x3090C0, Category.OCEAN);
 
-    public static final HytaleBiome FORGOTTEN_TEMPLE_BASE = register("Forgotten_Temple_Base", "Forgotten Temple",
-            "Env_Forgotten_Temple_Base", 0xFF1983D9, 0x8B7D5E, Category.UNIQUE);
+    public static final HytaleBiome CRYSTALLINE_DEPTHS = register("Crystalline_Depths", "Crystalline Depths",
+            "Env_Crystalline_Depths", 0xFF80C0E0, 0x60A0D0, Category.OCEAN);
 
-    public static final HytaleBiome FORGOTTEN_TEMPLE_EXTERIOR = register("Forgotten_Temple_Exterior", "Temple Exterior",
-            "Env_Forgotten_Temple_Exterior", 0xFF1983D9, 0x7B6D4E, Category.UNIQUE);
+    // ─── Unknown / Miscellaneous ───────────────────────────────────────
 
-    public static final HytaleBiome FORGOTTEN_TEMPLE_HEART = register("Forgotten_Temple_Heart", "Temple Heart",
-            "Env_Forgotten_Temple_Heart", 0xFF1983D9, 0xB08040, Category.UNIQUE);
+    public static final HytaleBiome GHOST_FOREST = register("Ghost_Forest", "Ghost Forest",
+            "Env_Ghost_Forest", 0xFF8A8A8A, 0x8A8A8A, Category.MISC);
 
-    public static final HytaleBiome FORGOTTEN_TEMPLE_INTERIOR_GRAND = register("Forgotten_Temple_Interior_Grand", "Temple Interior (Grand)",
-            "Env_Forgotten_Temple_Interior_Grand", 0xFF1983D9, 0x9B8D6E, Category.UNIQUE);
+    // ─── Encounters ────────────────────────────────────────────────────
 
-    public static final HytaleBiome FORGOTTEN_TEMPLE_INTERIOR_SMALL = register("Forgotten_Temple_Interior_Small", "Temple Interior (Small)",
-            "Env_Forgotten_Temple_Interior_Small", 0xFF1983D9, 0x8B7D5E, Category.UNIQUE);
-
-    public static final HytaleBiome FORGOTTEN_TEMPLE_INTERIOR_TENT = register("Forgotten_Temple_Interior_Tent", "Temple Interior (Tent)",
-            "Env_Forgotten_Temple_Interior_Tent", 0xFF1983D9, 0x7B6D4E, Category.UNIQUE);
-
-    public static final HytaleBiome PORTALS_HEDERA = register("Portals_Hedera", "Hedera Portal",
-            "Env_Portals_Hedera", 0xFF264D3D, 0x264D3D, Category.UNIQUE);
-
-    public static final HytaleBiome PORTALS_OASIS = register("Portals_Oasis", "Oasis Portal",
-            "Env_Portals_Oasis", 0xFF198DEA, 0x198DEA, Category.UNIQUE);
-
-    public static final HytaleBiome TEMPLE_OF_GAIA = register("Temple_of_Gaia", "Temple of Gaia",
-            "Env_Temple_of_Gaia", 0xFF50A070, 0x50A070, Category.UNIQUE);
-
-    public static final HytaleBiome DEFAULT_ENV = register("Default", "Default Environment",
-            "Default", 0xFF5B9E28, 0x808080, Category.UNIQUE);
-
-    // ─── Special ───────────────────────────────────────────────────────
-
-    public static final HytaleBiome VOID = register("Void", "Void",
-            "Env_Void", 0xFF202020, 0x202020, Category.SPECIAL);
-
-    public static final HytaleBiome CREATIVE_HUB = register("Creative_Hub", "Creative Hub",
-            "Env_Creative_Hub", 0xFF5B9E28, 0x5B9EFF, Category.SPECIAL);
+    public static final HytaleBiome ENCOUNTERS = register("Encounters", "Encounters",
+            "Env_Encounters", 0xFF5B9E28, 0x5A4A3A, Category.ENCOUNTERS);
 
     // ─── Registration ──────────────────────────────────────────────────
 
@@ -467,145 +278,72 @@ public final class HytaleBiome {
      * Returns the base biome IDs (one per button) in display order.
      */
     public static int[] getBiomeOrder() {
-        // Show all biomes grouped by zone, then ocean/unique/special
         List<Integer> order = new ArrayList<>();
 
-        // Zone 1 surface biomes
-        order.add(ZONE1_PLAINS.id);
-        order.add(ZONE1_FORESTS.id);
-        order.add(ZONE1_MOUNTAINS.id);
-        order.add(ZONE1_SWAMPS.id);
-        order.add(ZONE1_SHORES.id);
-        order.add(ZONE1_AUTUMN.id);
-        order.add(ZONE1_AZURE.id);
-        order.add(ZONE1_KWEEBEC.id);
-        order.add(ZONE1_TRORK.id);
-
-        // Zone 1 cave biomes
-        order.add(ZONE1_CAVES.id);
-        order.add(ZONE1_CAVES_FORESTS.id);
-        order.add(ZONE1_CAVES_MOUNTAINS.id);
-        order.add(ZONE1_CAVES_PLAINS.id);
-        order.add(ZONE1_CAVES_SWAMPS.id);
-        order.add(ZONE1_CAVES_GOBLINS.id);
-        order.add(ZONE1_CAVES_SPIDERS.id);
-        order.add(ZONE1_CAVES_RATS.id);
-        order.add(ZONE1_CAVES_VOLCANIC_T1.id);
-        order.add(ZONE1_CAVES_VOLCANIC_T2.id);
-        order.add(ZONE1_CAVES_VOLCANIC_T3.id);
-
-        // Zone 1 structure biomes
-        order.add(ZONE1_DEFAULT.id);
-        order.add(ZONE1_DUNGEONS.id);
-        order.add(ZONE1_ENCOUNTERS.id);
-        order.add(ZONE1_MAGE_TOWERS.id);
-        order.add(ZONE1_MINESHAFTS.id);
+        // Zone 1 — Emerald Wilds
+        order.add(DRIFTING_PLAINS.id);
+        order.add(SEEDLING_WOODS.id);
+        order.add(THE_FENS.id);
+        order.add(SWAMPS.id);
+        order.add(AZURE_FOREST.id);
+        order.add(AUTUMN_FOREST.id);
+        order.add(BOULDER_FIELDS.id);
+        order.add(CRYSTAL_CAVES.id);
+        order.add(BOOM_CAVES.id);
+        order.add(DEEP_LAVA_CAVES.id);
         order.add(-1); // spacer
 
-        // Zone 2 surface biomes
-        order.add(ZONE2_DESERTS.id);
-        order.add(ZONE2_SAVANNA.id);
-        order.add(ZONE2_OASIS.id);
-        order.add(ZONE2_PLATEAUS.id);
-        order.add(ZONE2_SCRUB.id);
-        order.add(ZONE2_SHORES.id);
-        order.add(ZONE2_SCARAK.id);
-        order.add(ZONE2_FERAN.id);
-
-        // Zone 2 cave biomes
-        order.add(ZONE2_CAVES.id);
-        order.add(ZONE2_CAVES_DESERTS.id);
-        order.add(ZONE2_CAVES_SAVANNA.id);
-        order.add(ZONE2_CAVES_PLATEAUS.id);
-        order.add(ZONE2_CAVES_SCRUB.id);
-        order.add(ZONE2_CAVES_SCARAK.id);
-        order.add(ZONE2_CAVES_GOBLINS.id);
-        order.add(ZONE2_CAVES_RATS.id);
-        order.add(ZONE2_CAVES_VOLCANIC_T1.id);
-        order.add(ZONE2_CAVES_VOLCANIC_T2.id);
-        order.add(ZONE2_CAVES_VOLCANIC_T3.id);
-
-        // Zone 2 structure biomes
-        order.add(ZONE2_DEFAULT.id);
-        order.add(ZONE2_DUNGEONS.id);
-        order.add(ZONE2_ENCOUNTERS.id);
-        order.add(ZONE2_MAGE_TOWERS.id);
-        order.add(ZONE2_MINESHAFTS.id);
+        // Zone 2 — Howling Sands
+        order.add(BADLANDS.id);
+        order.add(DESOLATE_BASIN.id);
+        order.add(GOLDEN_STEPPES.id);
+        order.add(DESERTS.id);
+        order.add(OASES.id);
+        order.add(SAVANNAS.id);
+        order.add(HOT_SPRINGS.id);
+        order.add(SCARAK_HIVE_TUNNELS.id);
         order.add(-1); // spacer
 
-        // Zone 3 surface biomes
-        order.add(ZONE3_FORESTS.id);
-        order.add(ZONE3_TUNDRA.id);
-        order.add(ZONE3_GLACIAL.id);
-        order.add(ZONE3_MOUNTAINS.id);
-        order.add(ZONE3_SHORES.id);
-        order.add(ZONE3_GLACIAL_HENGES.id);
-        order.add(ZONE3_HEDERA.id);
-        order.add(ZONE3_OUTLANDER.id);
-
-        // Zone 3 cave biomes
-        order.add(ZONE3_CAVES.id);
-        order.add(ZONE3_CAVES_FORESTS.id);
-        order.add(ZONE3_CAVES_GLACIAL.id);
-        order.add(ZONE3_CAVES_MOUNTAINS.id);
-        order.add(ZONE3_CAVES_TUNDRA.id);
-        order.add(ZONE3_CAVES_SPIDER.id);
-        order.add(ZONE3_CAVES_VOLCANIC_T1.id);
-        order.add(ZONE3_CAVES_VOLCANIC_T2.id);
-        order.add(ZONE3_CAVES_VOLCANIC_T3.id);
-
-        // Zone 3 structure biomes
-        order.add(ZONE3_DEFAULT.id);
-        order.add(ZONE3_DUNGEONS.id);
-        order.add(ZONE3_ENCOUNTERS.id);
-        order.add(ZONE3_MAGE_TOWERS.id);
-        order.add(ZONE3_MINESHAFTS.id);
+        // Zone 3 — Whispering Frost Frontiers
+        order.add(FROSTMARCH_TUNDRA.id);
+        order.add(BOREAL_REACH.id);
+        order.add(THE_EVERFROST.id);
+        order.add(GLACIERS.id);
+        order.add(ICEBERGS.id);
+        order.add(MOUNTAINS.id);
+        order.add(REDWOOD_FOREST.id);
+        order.add(BOREAL_FOREST.id);
+        order.add(CEDAR_FOREST.id);
+        order.add(ICY_CAVES.id);
+        order.add(SUBMERGED_CAVES.id);
         order.add(-1); // spacer
 
-        // Zone 4 surface biomes
-        order.add(ZONE4_WASTES.id);
-        order.add(ZONE4_FORESTS.id);
-        order.add(ZONE4_JUNGLES.id);
-        order.add(ZONE4_VOLCANOES.id);
-        order.add(ZONE4_SHORES.id);
-        order.add(ZONE4_CRUCIBLE.id);
-
-        // Zone 4 cave biomes
-        order.add(ZONE4_CAVES.id);
-        order.add(ZONE4_CAVES_VOLCANIC.id);
-
-        // Zone 4 structure biomes
-        order.add(ZONE4_DEFAULT.id);
-        order.add(ZONE4_DUNGEONS.id);
-        order.add(ZONE4_ENCOUNTERS.id);
-        order.add(ZONE4_MAGE_TOWERS.id);
-        order.add(ZONE4_SEWERS.id);
+        // Zone 4 — Devastated Lands
+        order.add(CHARRED_WOODLANDS.id);
+        order.add(CINDER_WASTES.id);
+        order.add(VOLCANOES.id);
+        order.add(MAGMA_MOUNTAINS.id);
+        order.add(VOLCANIC_SHORES.id);
+        order.add(EVER_BURNING_WOODS.id);
+        order.add(ASHEN_FLATS.id);
+        order.add(DESOLATED_WOODLANDS.id);
+        order.add(MUSHROOM_FORESTS.id);
+        order.add(TROPICAL_JUNGLE.id);
+        order.add(VOLCANIC_CAVERNS.id);
         order.add(-1); // spacer
 
-        // Zone 0 (ocean floor) biomes
-        order.add(ZONE0_OCEAN.id);
-        order.add(ZONE0_COLD.id);
-        order.add(ZONE0_TEMPERATE.id);
-        order.add(ZONE0_WARM.id);
-        order.add(OCEAN.id);
+        // Ocean
+        order.add(DEEP_OCEAN.id);
+        order.add(OCEAN_SHELF.id);
+        order.add(CRYSTALLINE_DEPTHS.id);
         order.add(-1); // spacer
 
-        // Unique locations
-        order.add(FORGOTTEN_TEMPLE_BASE.id);
-        order.add(FORGOTTEN_TEMPLE_EXTERIOR.id);
-        order.add(FORGOTTEN_TEMPLE_HEART.id);
-        order.add(FORGOTTEN_TEMPLE_INTERIOR_GRAND.id);
-        order.add(FORGOTTEN_TEMPLE_INTERIOR_SMALL.id);
-        order.add(FORGOTTEN_TEMPLE_INTERIOR_TENT.id);
-        order.add(PORTALS_HEDERA.id);
-        order.add(PORTALS_OASIS.id);
-        order.add(TEMPLE_OF_GAIA.id);
-        order.add(DEFAULT_ENV.id);
+        // Unknown / Miscellaneous
+        order.add(GHOST_FOREST.id);
         order.add(-1); // spacer
 
-        // Special
-        order.add(VOID.id);
-        order.add(CREATIVE_HUB.id);
+        // Encounters
+        order.add(ENCOUNTERS.id);
 
         return order.stream().mapToInt(Integer::intValue).toArray();
     }
@@ -615,21 +353,21 @@ public final class HytaleBiome {
      * (used for auto-biome assignment from terrain in the exporter).
      */
     public static HytaleBiome fromTerrainBiomeName(String terrainBiome) {
-        if (terrainBiome == null) return ZONE1_PLAINS;
+        if (terrainBiome == null) return DRIFTING_PLAINS;
 
         switch (terrainBiome) {
-            case "Grassland":   return ZONE1_PLAINS;
-            case "Forest":      return ZONE1_FORESTS;
-            case "Tropical":    return ZONE4_JUNGLES;
-            case "Swamp":       return ZONE1_SWAMPS;
-            case "Savanna":     return ZONE2_SAVANNA;
-            case "Desert":      return ZONE2_DESERTS;
-            case "Tundra":      return ZONE3_TUNDRA;
-            case "Mountain":    return ZONE1_MOUNTAINS;
-            case "Volcanic":    return ZONE4_VOLCANOES;
-            case "Ocean":       return OCEAN;
-            case "Underground": return ZONE1_CAVES;
-            default:            return ZONE1_PLAINS;
+            case "Grassland":   return DRIFTING_PLAINS;
+            case "Forest":      return SEEDLING_WOODS;
+            case "Tropical":    return TROPICAL_JUNGLE;
+            case "Swamp":       return SWAMPS;
+            case "Savanna":     return SAVANNAS;
+            case "Desert":      return DESERTS;
+            case "Tundra":      return FROSTMARCH_TUNDRA;
+            case "Mountain":    return MOUNTAINS;
+            case "Volcanic":    return VOLCANOES;
+            case "Ocean":       return DEEP_OCEAN;
+            case "Underground": return CRYSTAL_CAVES;
+            default:            return DRIFTING_PLAINS;
         }
     }
 }

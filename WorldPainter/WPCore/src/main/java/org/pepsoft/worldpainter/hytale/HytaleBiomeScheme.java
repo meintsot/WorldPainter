@@ -35,7 +35,7 @@ public class HytaleBiomeScheme implements BiomeScheme {
     @Override
     public void getBiomes(int x, int y, int width, int height, int[] buffer) {
         // Placeholder for non-generation contexts.
-        java.util.Arrays.fill(buffer, HytaleBiome.ZONE1_PLAINS.getId());
+        java.util.Arrays.fill(buffer, HytaleBiome.DRIFTING_PLAINS.getId());
     }
 
     @Override

@@ -150,9 +150,9 @@ public final class HytaleBiomeIconFactory {
         }
 
         switch (biome.getCategory()) {
-            case UNIQUE:
+            case MISC:
                 return loadMapMarker("Prefab");
-            case SPECIAL:
+            case ENCOUNTERS:
                 return loadMapMarker("Warp");
             default:
                 return null;
@@ -190,29 +190,20 @@ public final class HytaleBiomeIconFactory {
 
     private static String getZoneBadge(HytaleBiome biome) {
         switch (biome.getCategory()) {
-            case ZONE1_SURFACE:
-            case ZONE1_CAVES:
-            case ZONE1_STRUCTURES:
+            case ZONE1:
                 return "1";
-            case ZONE2_SURFACE:
-            case ZONE2_CAVES:
-            case ZONE2_STRUCTURES:
+            case ZONE2:
                 return "2";
-            case ZONE3_SURFACE:
-            case ZONE3_CAVES:
-            case ZONE3_STRUCTURES:
+            case ZONE3:
                 return "3";
-            case ZONE4_SURFACE:
-            case ZONE4_CAVES:
-            case ZONE4_STRUCTURES:
+            case ZONE4:
                 return "4";
-            case ZONE0:
             case OCEAN:
                 return "0";
-            case UNIQUE:
-                return "U";
-            case SPECIAL:
-                return "X";
+            case MISC:
+                return "M";
+            case ENCOUNTERS:
+                return "E";
             default:
                 return "?";
         }
@@ -220,28 +211,17 @@ public final class HytaleBiomeIconFactory {
 
     private static String getCategoryBadge(HytaleBiome biome) {
         switch (biome.getCategory()) {
-            case ZONE1_SURFACE:
-            case ZONE2_SURFACE:
-            case ZONE3_SURFACE:
-            case ZONE4_SURFACE:
-                return "S";
-            case ZONE1_CAVES:
-            case ZONE2_CAVES:
-            case ZONE3_CAVES:
-            case ZONE4_CAVES:
-                return "C";
-            case ZONE1_STRUCTURES:
-            case ZONE2_STRUCTURES:
-            case ZONE3_STRUCTURES:
-            case ZONE4_STRUCTURES:
-                return "B";
-            case ZONE0:
+            case ZONE1:
+            case ZONE2:
+            case ZONE3:
+            case ZONE4:
+                return "Z";
             case OCEAN:
                 return "W";
-            case UNIQUE:
-                return "U";
-            case SPECIAL:
-                return "X";
+            case MISC:
+                return "M";
+            case ENCOUNTERS:
+                return "E";
             default:
                 return "?";
         }
@@ -250,56 +230,44 @@ public final class HytaleBiomeIconFactory {
     private static HytaleTerrain chooseBaseTerrain(HytaleBiome biome) {
         final String name = (biome.getName() + " " + biome.getDisplayName()).toLowerCase(Locale.ROOT);
         if (name.contains("ocean") || name.contains("river") || name.contains("shore")) {
-            return HytaleTerrain.WATER;
+            return HytaleTerrain.SAND;
         }
         if (name.contains("desert") || name.contains("savanna") || name.contains("oasis") || name.contains("scrub")) {
             return HytaleTerrain.SAND;
         }
-        if (name.contains("swamp")) {
-            return HytaleTerrain.MUD;
+        if (name.contains("swamp") || name.contains("fens")) {
+            return HytaleTerrain.WET_GRASS;
         }
-        if (name.contains("glacial") || name.contains("tundra") || name.contains("frozen")) {
-            return HytaleTerrain.SNOW;
+        if (name.contains("glacial") || name.contains("glacier") || name.contains("tundra") || name.contains("frozen") || name.contains("everfrost") || name.contains("iceberg")) {
+            return HytaleTerrain.ICE;
         }
-        if (name.contains("volcanic") || name.contains("volcano") || name.contains("wastes") || name.contains("crucible")) {
-            return HytaleTerrain.VOLCANIC;
+        if (name.contains("volcanic") || name.contains("volcano") || name.contains("magma") || name.contains("cinder") || name.contains("charred") || name.contains("burning") || name.contains("ashen")) {
+            return HytaleTerrain.VOLCANIC_ROCK;
         }
-        if (name.contains("cave")) {
+        if (name.contains("cave") || name.contains("cavern") || name.contains("tunnel")) {
             return HytaleTerrain.SLATE;
         }
-        if (name.contains("mountain")) {
+        if (name.contains("mountain") || name.contains("boulder")) {
             return HytaleTerrain.STONE;
         }
-        if (name.contains("dungeon") || name.contains("mineshaft") || name.contains("tower")
-                || name.contains("temple") || name.contains("portal")) {
-            return HytaleTerrain.COBBLESTONE;
+        if (name.contains("mushroom")) {
+            return HytaleTerrain.DEEP_GRASS;
         }
 
         switch (biome.getCategory()) {
-            case ZONE2_SURFACE:
+            case ZONE2:
                 return HytaleTerrain.SAND;
-            case ZONE3_SURFACE:
-                return HytaleTerrain.SNOW;
-            case ZONE4_SURFACE:
-                return HytaleTerrain.VOLCANIC;
-            case ZONE1_CAVES:
-            case ZONE2_CAVES:
-            case ZONE3_CAVES:
-            case ZONE4_CAVES:
-                return HytaleTerrain.SLATE;
-            case ZONE1_STRUCTURES:
-            case ZONE2_STRUCTURES:
-            case ZONE3_STRUCTURES:
-            case ZONE4_STRUCTURES:
-                return HytaleTerrain.COBBLESTONE;
-            case ZONE0:
+            case ZONE3:
+                return HytaleTerrain.ICE;
+            case ZONE4:
+                return HytaleTerrain.VOLCANIC_ROCK;
             case OCEAN:
-                return HytaleTerrain.WATER;
-            case UNIQUE:
+                return HytaleTerrain.SAND;
+            case MISC:
                 return HytaleTerrain.CALCITE;
-            case SPECIAL:
-                return HytaleTerrain.BEDROCK;
-            case ZONE1_SURFACE:
+            case ENCOUNTERS:
+                return HytaleTerrain.BASALT;
+            case ZONE1:
             default:
                 return HytaleTerrain.GRASS;
         }
