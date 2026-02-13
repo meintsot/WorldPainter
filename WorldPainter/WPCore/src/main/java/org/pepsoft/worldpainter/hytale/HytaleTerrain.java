@@ -505,6 +505,14 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         if (id.startsWith("Rock_Quartzite")) return 0xe0e0e0;
         if (id.startsWith("Rock_Calcite")) return 0xdbd7ca;
         if (id.startsWith("Rock_Chalk")) return 0xfafafa;
+        if (id.startsWith("Rock_Crystal_White")) return 0xf2f6ff;
+        if (id.startsWith("Rock_Crystal_Yellow")) return 0xf0d24a;
+        if (id.startsWith("Rock_Crystal_Red")) return 0xc84545;
+        if (id.startsWith("Rock_Crystal_Pink")) return 0xe28fc6;
+        if (id.startsWith("Rock_Crystal_Purple")) return 0x8b63c7;
+        if (id.startsWith("Rock_Crystal_Cyan")) return 0x4fc7cd;
+        if (id.startsWith("Rock_Crystal_Blue")) return 0x4d7fd6;
+        if (id.startsWith("Rock_Crystal_Green")) return 0x5aa964;
         if (id.startsWith("Rock_Volcanic")) return 0x2a2a2a;
         if (id.startsWith("Rock_Magma_Cooled")) return 0x1a0a0a;
         if (id.startsWith("Rock_Aqua")) return 0x50a0b0;
@@ -598,7 +606,7 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
     public static final HytaleTerrain BASALT_COBBLE = new HytaleTerrain("Basalt Cobble",
         HytaleBlock.of("Rock_Basalt_Cobble"), 0x4a4046);
     public static final HytaleTerrain BLUE_CRYSTAL = new HytaleTerrain("Blue Crystal",
-        HytaleBlock.of("Rock_Crystal_Blue_Block"), 0x6aa3b8);
+        HytaleBlock.of("Rock_Crystal_Blue_Block"), 0x4d7fd6);
     public static final HytaleTerrain BLUE_ICE = new HytaleTerrain("Blue Ice",
         HytaleBlock.of("Rock_Ice"), 0xa0d0ff);
     public static final HytaleTerrain BURNED_GRASS = new HytaleTerrain("Burned Grass",
@@ -618,7 +626,7 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
     public static final HytaleTerrain CRACKED_VOLCANIC_ROCK = new HytaleTerrain("Cracked Volcanic Rock",
         HytaleBlock.of("Rock_Volcanic_Cracked_Lava"), 0x3a2020);
     public static final HytaleTerrain CYAN_CRYSTAL = new HytaleTerrain("Cyan Crystal",
-        HytaleBlock.of("Rock_Crystal_Cyan_Block"), 0x548ba8);
+        HytaleBlock.of("Rock_Crystal_Cyan_Block"), 0x4fc7cd);
     public static final HytaleTerrain DEEP_GRASS = new HytaleTerrain("Deep Grass",
         HytaleBlock.of("Soil_Grass_Deep"), 0x1f6e12);
     public static final HytaleTerrain DRY_GRASS = new HytaleTerrain("Dry Grass",
@@ -628,7 +636,7 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
     public static final HytaleTerrain GRASS = new HytaleTerrain("Grass",
         HytaleBlock.of("Soil_Grass"), 0x59a52c);
     public static final HytaleTerrain GREEN_CRYSTAL = new HytaleTerrain("Green Crystal",
-        HytaleBlock.of("Rock_Crystal_Green_Block"), 0x407399);
+        HytaleBlock.of("Rock_Crystal_Green_Block"), 0x5aa964);
     public static final HytaleTerrain ICE = new HytaleTerrain("Ice",
         HytaleBlock.of("Rock_Ice"), 0xc0e0f8);
     public static final HytaleTerrain MARBLE = new HytaleTerrain("Marble",
@@ -636,15 +644,15 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
     public static final HytaleTerrain MOSSY_STONE = new HytaleTerrain("Mossy Stone",
         HytaleBlock.of("Rock_Stone_Mossy"), 0x607850);
     public static final HytaleTerrain PINK_CRYSTAL = new HytaleTerrain("Pink Crystal",
-        HytaleBlock.of("Rock_Crystal_Pink_Block"), 0x2f5b8a);
+        HytaleBlock.of("Rock_Crystal_Pink_Block"), 0xe28fc6);
     public static final HytaleTerrain POISONED_VOLCANIC_ROCK = new HytaleTerrain("Poisoned Volcanic Rock",
         HytaleBlock.of("Rock_Volcanic_Cracked_Poisoned"), 0x3a4a2a);
     public static final HytaleTerrain PURPLE_CRYSTAL = new HytaleTerrain("Purple Crystal",
-        HytaleBlock.of("Rock_Crystal_Purple_Block"), 0x20447a);
+        HytaleBlock.of("Rock_Crystal_Purple_Block"), 0x8b63c7);
     public static final HytaleTerrain QUARTZITE = new HytaleTerrain("Quartzite",
         HytaleBlock.of("Rock_Quartzite"), 0xdcdce0);
     public static final HytaleTerrain RED_CRYSTAL = new HytaleTerrain("Red Crystal",
-        HytaleBlock.of("Rock_Crystal_Red_Block"), 0x132f6b);
+        HytaleBlock.of("Rock_Crystal_Red_Block"), 0xc84545);
     public static final HytaleTerrain RED_SAND = new HytaleTerrain("Red Sand",
         HytaleBlock.of("Soil_Sand_Red"), 0xc4633c);
     public static final HytaleTerrain RED_SANDSTONE = new HytaleTerrain("Red Sandstone",
@@ -676,7 +684,7 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
     public static final HytaleTerrain WET_GRASS = new HytaleTerrain("Wet Grass",
         HytaleBlock.of("Soil_Grass_Wet"), 0x38964a);
     public static final HytaleTerrain WHITE_CRYSTAL = new HytaleTerrain("White Crystal",
-        HytaleBlock.of("Rock_Crystal_White_Block"), 0x091c5c);
+        HytaleBlock.of("Rock_Crystal_White_Block"), 0xf2f6ff);
     public static final HytaleTerrain WHITE_SAND = new HytaleTerrain("White Sand",
         HytaleBlock.of("Soil_Sand_White"), 0xf4e8c6);
     public static final HytaleTerrain WHITE_SANDSTONE = new HytaleTerrain("White Sandstone",
@@ -684,7 +692,7 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
     public static final HytaleTerrain WHITE_SANDSTONE_BRICK_SMOOTH = new HytaleTerrain("White Sandstone Brick Smooth",
         HytaleBlock.of("Rock_Sandstone_White_Brick_Smooth"), 0xf0dcd4);
     public static final HytaleTerrain YELLOW_CRYSTAL = new HytaleTerrain("Yellow Crystal",
-        HytaleBlock.of("Rock_Crystal_Yellow_Block"), 0x020d4c);
+        HytaleBlock.of("Rock_Crystal_Yellow_Block"), 0xf0d24a);
 
     // ===== LEAVES =====
     public static final HytaleTerrain AMBER_LEAVES = new HytaleTerrain("Amber Leaves",
@@ -1366,10 +1374,10 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
 
     // ===== PICK LIST (all terrains in display order as requested by builder team) =====
 
-    /** Array of terrains for user selection — builder-team approved list only. */
+    /** Array of terrains shown on the main Terrain tab in Hytale mode. */
     public static final HytaleTerrain[] PICK_LIST;
 
-    /** All defined terrains (same as PICK_LIST for builder-team approved set). */
+    /** All defined terrains, used for indexing, lookup and export. */
     private static final HytaleTerrain[] ALL_TERRAINS;
 
     static {
@@ -1551,8 +1559,19 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
             DARK_GREEN_MOSS_BLOCK, BLUE_MOSS_BLOCK, GREEN_MOSS_BLOCK
         ));
 
-        PICK_LIST = list.toArray(new HytaleTerrain[0]);
-        ALL_TERRAINS = PICK_LIST;
+        ALL_TERRAINS = list.toArray(new HytaleTerrain[0]);
+        PICK_LIST = ALL_TERRAINS;
+    }
+
+    public static HytaleTerrain[] getAdditionalTerrainsForCustomPicker() {
+        Set<HytaleTerrain> primary = new HashSet<>(Arrays.asList(PICK_LIST));
+        List<HytaleTerrain> additional = new ArrayList<>();
+        for (HytaleTerrain terrain : ALL_TERRAINS) {
+            if (!primary.contains(terrain)) {
+                additional.add(terrain);
+            }
+        }
+        return additional.toArray(new HytaleTerrain[0]);
     }
 
     /** 1-based index assigned to each terrain for per-pixel storage. */
@@ -1606,6 +1625,10 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
      */
     public static List<HytaleTerrain> getDefaultTerrains() {
         return new ArrayList<>(Arrays.asList(PICK_LIST));
+    }
+
+    public static List<HytaleTerrain> getAllTerrains() {
+        return new ArrayList<>(Arrays.asList(ALL_TERRAINS));
     }
 
     /**

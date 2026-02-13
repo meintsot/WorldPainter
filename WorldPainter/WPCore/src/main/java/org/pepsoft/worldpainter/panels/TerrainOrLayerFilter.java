@@ -2,6 +2,9 @@ package org.pepsoft.worldpainter.panels;
 
 import org.pepsoft.worldpainter.Dimension;
 import org.pepsoft.worldpainter.Terrain;
+import org.pepsoft.worldpainter.hytale.HytaleTerrain;
+import org.pepsoft.worldpainter.hytale.HytaleTerrainHelper;
+import org.pepsoft.worldpainter.hytale.HytaleTerrainLayer;
 import org.pepsoft.worldpainter.layers.Annotations;
 import org.pepsoft.worldpainter.layers.Biome;
 import org.pepsoft.worldpainter.layers.Layer;
@@ -18,6 +21,13 @@ public abstract class TerrainOrLayerFilter implements Filter {
         if (item instanceof Terrain) {
             objectType = ObjectType.TERRAIN;
             terrain = (Terrain) item;
+            hytaleTerrain = null;
+            layer = null;
+            value = -1;
+        } else if (item instanceof HytaleTerrain) {
+            objectType = ObjectType.HYTALE_TERRAIN;
+            terrain = null;
+            hytaleTerrain = (HytaleTerrain) item;
             layer = null;
             value = -1;
         } else if (item instanceof Layer) {
@@ -27,6 +37,7 @@ public abstract class TerrainOrLayerFilter implements Filter {
                 objectType = ObjectType.INT_LAYER_ANY;
             }
             terrain = null;
+            hytaleTerrain = null;
             layer = (Layer) item;
             value = -1;
         } else if (item instanceof LayerValue) {
@@ -35,11 +46,13 @@ public abstract class TerrainOrLayerFilter implements Filter {
                 if (layerValue.value < 0) {
                     objectType = ObjectType.AUTO_BIOME;
                     terrain = null;
+                    hytaleTerrain = null;
                     layer = null;
                     value = -layerValue.value;
                 } else {
                     objectType = ObjectType.BIOME;
                     terrain = null;
+                    hytaleTerrain = null;
                     layer = null;
                     value = layerValue.value;
                 }
@@ -47,11 +60,13 @@ public abstract class TerrainOrLayerFilter implements Filter {
                 if (layerValue.condition == null) {
                     objectType = ObjectType.ANNOTATION_ANY;
                     terrain = null;
+                    hytaleTerrain = null;
                     layer = null;
                     value = -1;
                 } else {
                     objectType = ObjectType.ANNOTATION;
                     terrain = null;
+                    hytaleTerrain = null;
                     layer = null;
                     value = layerValue.value;
                 }
@@ -59,6 +74,7 @@ public abstract class TerrainOrLayerFilter implements Filter {
                 if (layerValue.condition == null) {
                     objectType = ObjectType.INT_LAYER_ANY;
                     terrain = null;
+                    hytaleTerrain = null;
                     layer = layerValue.layer;
                     value = -1;
                 } else {
@@ -76,6 +92,7 @@ public abstract class TerrainOrLayerFilter implements Filter {
                             throw new InternalError();
                     }
                     terrain = null;
+                    hytaleTerrain = null;
                     layer = layerValue.layer;
                     value = layerValue.value;
                 }
@@ -85,21 +102,25 @@ public abstract class TerrainOrLayerFilter implements Filter {
         } else if (WATER.equals(item)) {
             objectType = ObjectType.WATER;
             terrain = null;
+            hytaleTerrain = null;
             layer = null;
             value = -1;
         } else if (LAVA.equals(item)) {
             objectType = ObjectType.LAVA;
             terrain = null;
+            hytaleTerrain = null;
             layer = null;
             value = -1;
         } else if (LAND.equals(item)) {
             objectType = ObjectType.LAND;
             terrain = null;
+            hytaleTerrain = null;
             layer = null;
             value = -1;
         } else if (AUTO_BIOMES.equals(item)) {
             objectType = ObjectType.BIOME;
             terrain = null;
+            hytaleTerrain = null;
             layer = null;
             value = 255;
         } else {
@@ -117,6 +138,10 @@ public abstract class TerrainOrLayerFilter implements Filter {
 
     public Terrain getTerrain() {
         return terrain;
+    }
+
+    public HytaleTerrain getHytaleTerrain() {
+        return hytaleTerrain;
     }
 
     public Layer getLayer() {
@@ -153,6 +178,9 @@ public abstract class TerrainOrLayerFilter implements Filter {
             case TERRAIN:
                 sb.append("terrain ").append(terrain.name().toLowerCase());
                 break;
+            case HYTALE_TERRAIN:
+                sb.append("hytale terrain ").append(hytaleTerrain.getName().toLowerCase());
+                break;
             case WATER:
                 sb.append("water");
                 break;
@@ -175,8 +203,20 @@ public abstract class TerrainOrLayerFilter implements Filter {
     Dimension dimension;
     final ObjectType objectType;
     final Terrain terrain;
+    final HytaleTerrain hytaleTerrain;
     final Layer layer;
     final int value;
+
+    protected boolean isHytaleTerrainMatch(int x, int y) {
+        if (hytaleTerrain == null) {
+            return false;
+        }
+        int index = (dimension.getLayerValueAt(HytaleTerrainLayer.HI, x, y) << 8) | dimension.getLayerValueAt(HytaleTerrainLayer.LO, x, y);
+        if (index > 0) {
+            return index == hytaleTerrain.getLayerIndex();
+        }
+        return HytaleTerrainHelper.fromMinecraftTerrain(dimension.getTerrainAt(x, y)) == hytaleTerrain;
+    }
 
     public static final String LAND = "Land";
     public static final String WATER = "Water";
@@ -184,6 +224,6 @@ public abstract class TerrainOrLayerFilter implements Filter {
     public static final String AUTO_BIOMES = "Automatic Biomes";
 
     public enum ObjectType {
-        TERRAIN, BIT_LAYER, INT_LAYER_ANY, INT_LAYER_EQUAL, INT_LAYER_EQUAL_OR_HIGHER, INT_LAYER_EQUAL_OR_LOWER, BIOME, WATER, LAND, LAVA, AUTO_BIOME, ANNOTATION_ANY, ANNOTATION
+        TERRAIN, HYTALE_TERRAIN, BIT_LAYER, INT_LAYER_ANY, INT_LAYER_EQUAL, INT_LAYER_EQUAL_OR_HIGHER, INT_LAYER_EQUAL_OR_LOWER, BIOME, WATER, LAND, LAVA, AUTO_BIOME, ANNOTATION_ANY, ANNOTATION
     }
 }

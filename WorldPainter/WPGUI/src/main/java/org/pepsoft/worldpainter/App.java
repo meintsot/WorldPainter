@@ -72,6 +72,8 @@ import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.Box;
 import javax.swing.Timer;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import javax.swing.border.BevelBorder;
 import java.awt.*;
 import java.awt.event.*;
@@ -88,6 +90,7 @@ import java.text.MessageFormat;
 import java.text.NumberFormat;
 import java.util.*;
 import java.util.List;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.zip.GZIPInputStream;
 
@@ -814,6 +817,22 @@ public final class App extends JFrame implements BrushControl,
         if (terrain.isCustom()) {
             int index = terrain.getCustomTerrainIndex();
             setTextIfDifferent(materialLabel, MessageFormat.format(strings.getString("material.custom.1.0"), Terrain.getCustomMaterial(index), index + 1));
+        } else if ((world != null) && org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(world.getPlatform())) {
+            org.pepsoft.worldpainter.hytale.HytaleTerrain hytaleTerrain = null;
+            final int hytaleTerrainIndex = org.pepsoft.worldpainter.hytale.HytaleTerrainLayer.getTerrainIndex(tile, xInTile, yInTile);
+            if (hytaleTerrainIndex > 0) {
+                hytaleTerrain = org.pepsoft.worldpainter.hytale.HytaleTerrain.getByLayerIndex(hytaleTerrainIndex);
+            }
+            if (hytaleTerrain == null) {
+                hytaleTerrain = org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.fromMinecraftTerrain(terrain);
+            }
+            if ((hytaleTerrain != null) && (hytaleTerrain.getBlock() != null)) {
+                setTextIfDifferent(materialLabel, MessageFormat.format(strings.getString("material.0"), hytaleTerrain.getName() + " (" + hytaleTerrain.getBlock().id + ")"));
+            } else if (hytaleTerrain != null) {
+                setTextIfDifferent(materialLabel, MessageFormat.format(strings.getString("material.0"), hytaleTerrain.getName()));
+            } else {
+                setTextIfDifferent(materialLabel, MessageFormat.format(strings.getString("material.0"), terrain.getName()));
+            }
         } else {
             setTextIfDifferent(materialLabel, MessageFormat.format(strings.getString("material.0"), terrain.getName()));
         }
@@ -1644,37 +1663,49 @@ public final class App extends JFrame implements BrushControl,
                 }
             });
             popupMenu.add(menuItem);
+
+            if ((world != null) && org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(world.getPlatform())) {
+                menuItem = new JMenuItem("Select Hytale terrain...");
+                menuItem.addActionListener(e -> showSearchableHytaleTerrainPicker((Component) event.getSource(), selected -> {
+                    final Terrain terrain = org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.toMinecraftTerrain(selected);
+                    paintUpdater = () -> {
+                        paint = new org.pepsoft.worldpainter.painting.HytaleTerrainPaint(terrain, selected);
+                        paintChanged();
+                    };
+                    paintUpdater.updatePaint();
+                }));
+                popupMenu.add(menuItem);
+            }
         }
 
         MixedMaterial[] customMaterials = MixedMaterialManager.getInstance().getMaterials();
         if (customMaterials.length > 0) {
-            JMenu existingMaterialsMenu = new JMenu("Select existing material");
             Set<MixedMaterial> customTerrainMaterials = new HashSet<>();
             for (int i = 0; i < CUSTOM_TERRAIN_COUNT; i++) {
                 if (getCustomTerrain(i).isConfigured()) {
                     customTerrainMaterials.add(Terrain.getCustomMaterial(i));
                 }
             }
+            List<MixedMaterial> availableMaterials = new ArrayList<>();
             for (final MixedMaterial customMaterial: customMaterials) {
                 if (customTerrainMaterials.contains(customMaterial)) {
                     continue;
                 }
-                menuItem = new JMenuItem(customMaterial.getName());
-                menuItem.setIcon(new ImageIcon(customMaterial.getIcon(selectedColourScheme)));
-                menuItem.addActionListener(e -> {
+                availableMaterials.add(customMaterial);
+            }
+            if (! availableMaterials.isEmpty()) {
+                menuItem = new JMenuItem("Select existing material...");
+                menuItem.addActionListener(e -> showSearchableMixedMaterialPicker((Component) event.getSource(), availableMaterials, selected -> {
                     if (button != null) {
-                        Terrain.setCustomMaterial(customMaterialIndex, customMaterial);
-                        button.setIcon(new ImageIcon(customMaterial.getIcon(selectedColourScheme)));
-                        button.setToolTipText(MessageFormat.format(strings.getString("customMaterial.0.right.click.to.change"), customMaterial));
+                        Terrain.setCustomMaterial(customMaterialIndex, selected);
+                        button.setIcon(new ImageIcon(selected.getIcon(selectedColourScheme)));
+                        button.setToolTipText(MessageFormat.format(strings.getString("customMaterial.0.right.click.to.change"), selected));
                         view.refreshTiles();
                     } else {
-                        addButtonForNewCustomTerrain(findNextCustomTerrainIndex(), customMaterial, true);
+                        addButtonForNewCustomTerrain(findNextCustomTerrainIndex(), selected, true);
                     }
-                });
-                existingMaterialsMenu.add(menuItem);
-            }
-            if (existingMaterialsMenu.getMenuComponentCount() > 0) {
-                popupMenu.add(existingMaterialsMenu);
+                }));
+                popupMenu.add(menuItem);
             }
         }
 
@@ -1733,6 +1764,138 @@ public final class App extends JFrame implements BrushControl,
             Component invoker = (Component) event.getSource();
             popupMenu.show(invoker, invoker.getWidth(), 0);
         }
+    }
+
+    private void showSearchableHytaleTerrainPicker(Component parent, Consumer<org.pepsoft.worldpainter.hytale.HytaleTerrain> onSelect) {
+        final JDialog dialog = new JDialog(this, "Select Hytale Terrain", true);
+        final JPanel panel = new JPanel(new BorderLayout(6, 6));
+        final JTextField searchField = new JTextField();
+        final DefaultListModel<org.pepsoft.worldpainter.hytale.HytaleTerrain> model = new DefaultListModel<>();
+        final JList<org.pepsoft.worldpainter.hytale.HytaleTerrain> list = new JList<>(model);
+
+        final List<org.pepsoft.worldpainter.hytale.HytaleTerrain> all = org.pepsoft.worldpainter.hytale.HytaleTerrain.getAllTerrains();
+        all.forEach(model::addElement);
+
+        list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        list.setCellRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                JLabel label = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                org.pepsoft.worldpainter.hytale.HytaleTerrain terrain = (org.pepsoft.worldpainter.hytale.HytaleTerrain) value;
+                label.setText((terrain.getBlock() != null) ? (terrain.getName() + " (" + terrain.getBlock().id + ")") : terrain.getName());
+                label.setIcon(new ImageIcon(terrain.getScaledIcon(16, selectedColourScheme)));
+                return label;
+            }
+        });
+
+        Runnable refilter = () -> {
+            String q = searchField.getText().trim().toLowerCase(Locale.ROOT);
+            model.clear();
+            for (org.pepsoft.worldpainter.hytale.HytaleTerrain terrain : all) {
+                if (q.isEmpty()
+                        || terrain.getName().toLowerCase(Locale.ROOT).contains(q)
+                        || ((terrain.getBlock() != null) && terrain.getBlock().id.toLowerCase(Locale.ROOT).contains(q))) {
+                    model.addElement(terrain);
+                }
+            }
+            if (! model.isEmpty()) {
+                list.setSelectedIndex(0);
+            }
+        };
+        searchField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            @Override public void insertUpdate(javax.swing.event.DocumentEvent e) { refilter.run(); }
+            @Override public void removeUpdate(javax.swing.event.DocumentEvent e) { refilter.run(); }
+            @Override public void changedUpdate(javax.swing.event.DocumentEvent e) { refilter.run(); }
+        });
+
+        JButton selectButton = new JButton("Select");
+        selectButton.addActionListener(e -> {
+            org.pepsoft.worldpainter.hytale.HytaleTerrain selected = list.getSelectedValue();
+            if (selected != null) {
+                onSelect.accept(selected);
+                dialog.dispose();
+            }
+        });
+        JButton cancelButton = new JButton("Cancel");
+        cancelButton.addActionListener(e -> dialog.dispose());
+
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        buttons.add(selectButton);
+        buttons.add(cancelButton);
+
+        panel.add(searchField, BorderLayout.NORTH);
+        panel.add(new JScrollPane(list), BorderLayout.CENTER);
+        panel.add(buttons, BorderLayout.SOUTH);
+
+        dialog.setContentPane(panel);
+        dialog.setSize(520, 520);
+        dialog.setLocationRelativeTo(parent);
+        dialog.getRootPane().setDefaultButton(selectButton);
+        dialog.setVisible(true);
+    }
+
+    private void showSearchableMixedMaterialPicker(Component parent, List<MixedMaterial> materials, Consumer<MixedMaterial> onSelect) {
+        final JDialog dialog = new JDialog(this, "Select Existing Material", true);
+        final JPanel panel = new JPanel(new BorderLayout(6, 6));
+        final JTextField searchField = new JTextField();
+        final DefaultListModel<MixedMaterial> model = new DefaultListModel<>();
+        final JList<MixedMaterial> list = new JList<>(model);
+
+        materials.forEach(model::addElement);
+        list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        list.setCellRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                JLabel label = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                MixedMaterial material = (MixedMaterial) value;
+                label.setText(material.getName());
+                label.setIcon(new ImageIcon(material.getIcon(selectedColourScheme)));
+                return label;
+            }
+        });
+
+        Runnable refilter = () -> {
+            String q = searchField.getText().trim().toLowerCase(Locale.ROOT);
+            model.clear();
+            for (MixedMaterial material : materials) {
+                if (q.isEmpty() || material.getName().toLowerCase(Locale.ROOT).contains(q)) {
+                    model.addElement(material);
+                }
+            }
+            if (! model.isEmpty()) {
+                list.setSelectedIndex(0);
+            }
+        };
+        searchField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            @Override public void insertUpdate(javax.swing.event.DocumentEvent e) { refilter.run(); }
+            @Override public void removeUpdate(javax.swing.event.DocumentEvent e) { refilter.run(); }
+            @Override public void changedUpdate(javax.swing.event.DocumentEvent e) { refilter.run(); }
+        });
+
+        JButton selectButton = new JButton("Select");
+        selectButton.addActionListener(e -> {
+            MixedMaterial selected = list.getSelectedValue();
+            if (selected != null) {
+                onSelect.accept(selected);
+                dialog.dispose();
+            }
+        });
+        JButton cancelButton = new JButton("Cancel");
+        cancelButton.addActionListener(e -> dialog.dispose());
+
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        buttons.add(selectButton);
+        buttons.add(cancelButton);
+
+        panel.add(searchField, BorderLayout.NORTH);
+        panel.add(new JScrollPane(list), BorderLayout.CENTER);
+        panel.add(buttons, BorderLayout.SOUTH);
+
+        dialog.setContentPane(panel);
+        dialog.setSize(480, 460);
+        dialog.setLocationRelativeTo(parent);
+        dialog.getRootPane().setDefaultButton(selectButton);
+        dialog.setVisible(true);
     }
 
     public void showHelp(Component component) {
@@ -3490,7 +3653,31 @@ public final class App extends JFrame implements BrushControl,
             terrainPanel.add(checkBoxSoloTerrain, constraints);
         }
 
+        terrainSearchField = new JTextField(14);
+        terrainSearchField.setToolTipText("Search terrains by name or block id");
+        terrainSearchField.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                updateTerrainButtonsForPlatform();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                updateTerrainButtonsForPlatform();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                updateTerrainButtonsForPlatform();
+            }
+        });
+        constraints.weightx = 1.0;
+        constraints.fill = HORIZONTAL;
+        terrainPanel.add(terrainSearchField, constraints);
+
         terrainButtonPanel = new JPanel(new GridLayout(0, 5));
+        constraints.weightx = 0.0;
+        constraints.fill = GridBagConstraints.NONE;
         populateMinecraftTerrainButtons();
         terrainPanel.add(terrainButtonPanel, constraints);
 
@@ -3606,12 +3793,22 @@ public final class App extends JFrame implements BrushControl,
         JPanel buttonPanel = terrainButtonPanel;
         buttonPanel.removeAll();
 
+        final String query = (terrainSearchField != null)
+                ? terrainSearchField.getText().trim().toLowerCase(Locale.ROOT)
+                : "";
         org.pepsoft.worldpainter.hytale.HytaleTerrain[] pickList = org.pepsoft.worldpainter.hytale.HytaleTerrain.PICK_LIST;
+        int shownCount = 0;
         for (org.pepsoft.worldpainter.hytale.HytaleTerrain ht : pickList) {
+            if ((! query.isEmpty())
+                    && (! ht.getName().toLowerCase(Locale.ROOT).contains(query))
+                    && ((ht.getBlock() == null) || (! ht.getBlock().id.toLowerCase(Locale.ROOT).contains(query)))) {
+                continue;
+            }
             buttonPanel.add(createHytaleTerrainButton(ht));
+            shownCount++;
         }
         // Pad to fill last row (5-column grid)
-        int remainder = pickList.length % 5;
+        int remainder = shownCount % 5;
         if (remainder != 0) {
             for (int i = 0; i < 5 - remainder; i++) {
                 buttonPanel.add(Box.createGlue());
@@ -6884,6 +7081,7 @@ public final class App extends JFrame implements BrushControl,
     };
     private JMenu recentMenu;
     private JPanel toolSettingsPanel, customTerrainPanel, terrainButtonPanel;
+    private JTextField terrainSearchField;
     private Timer autosaveTimer;
     private int pauseAutosave;
     private long autosaveInhibitedUntil;

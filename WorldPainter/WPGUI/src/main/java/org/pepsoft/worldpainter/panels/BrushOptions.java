@@ -8,6 +8,8 @@ import org.pepsoft.util.ObservableBoolean;
 import org.pepsoft.util.swing.BetterJPopupMenu;
 import org.pepsoft.worldpainter.Dimension;
 import org.pepsoft.worldpainter.*;
+import org.pepsoft.worldpainter.hytale.HytaleTerrain;
+import org.pepsoft.worldpainter.hytale.HytaleTerrainHelper;
 import org.pepsoft.worldpainter.biomeschemes.BiomeHelper;
 import org.pepsoft.worldpainter.biomeschemes.CustomBiome;
 import org.pepsoft.worldpainter.biomeschemes.CustomBiomeManager;
@@ -205,6 +207,8 @@ public class BrushOptions extends javax.swing.JPanel implements Observer {
 
     public void setPlatform(Platform platform) {
         this.platform = platform;
+        installPaint(onlyOn, buttonReplace, checkBoxReplace);
+        installPaint(exceptOn, buttonExceptOn, checkBoxExceptOn);
     }
 
     public MapSelectionListener getMapSelectionListener() {
@@ -347,7 +351,13 @@ public class BrushOptions extends javax.swing.JPanel implements Observer {
                     throw new UnsupportedOperationException("Paint of type \"" + paint + "\" not supported");
             }
         } else if (paint instanceof Terrain) {
-            return ((Terrain) paint).getName();
+            final Terrain terrain = (Terrain) paint;
+            if (HytaleTerrainHelper.isHytale(platform) && (! terrain.isCustom())) {
+                return HytaleTerrainHelper.fromMinecraftTerrain(terrain).getName();
+            }
+            return terrain.getName();
+        } else if (paint instanceof HytaleTerrain) {
+            return ((HytaleTerrain) paint).getName();
         } else if (paint instanceof LayerValue) {
             final LayerValue layerValue = (LayerValue) paint;
             if (layerValue.layer instanceof Biome) {
@@ -382,7 +392,14 @@ public class BrushOptions extends javax.swing.JPanel implements Observer {
                     throw new UnsupportedOperationException("Paint of type \"" + paint + "\" not supported");
             }
         } else if (paint instanceof Terrain) {
-            return new ImageIcon(((Terrain) paint).getScaledIcon(16, colourScheme));
+            final Terrain terrain = (Terrain) paint;
+            if (HytaleTerrainHelper.isHytale(platform) && (! terrain.isCustom())) {
+                final HytaleTerrain hytaleTerrain = HytaleTerrainHelper.fromMinecraftTerrain(terrain);
+                return new ImageIcon(hytaleTerrain.getScaledIcon(16, colourScheme));
+            }
+            return new ImageIcon(terrain.getScaledIcon(16, colourScheme));
+        } else if (paint instanceof HytaleTerrain) {
+            return new ImageIcon(((HytaleTerrain) paint).getScaledIcon(16, colourScheme));
         } else if (paint instanceof LayerValue) {
             final LayerValue layerValue = (LayerValue) paint;
             if (layerValue.layer instanceof Biome) {
@@ -432,6 +449,8 @@ public class BrushOptions extends javax.swing.JPanel implements Observer {
                 return new LayerValue(filter.layer, filter.value);
             case TERRAIN:
                 return filter.terrain;
+            case HYTALE_TERRAIN:
+                return filter.getHytaleTerrain();
             case WATER:
                 return TerrainOrLayerFilter.WATER;
             case LAND:
@@ -545,25 +564,31 @@ public class BrushOptions extends javax.swing.JPanel implements Observer {
         popupMenu.add(eyedropperItem);
 
         final JMenu terrainMenu = new JMenu("Terrain");
-        final JMenu customTerrainMenu = new JMenu("Custom");
-        final JMenu stainedClayTerrainMenu = new JMenu("Stained Terracotta");
-        for (Terrain terrain: Terrain.getConfiguredValues()) {
-            final Terrain selectedTerrain = terrain;
-            final String name = terrain.getName();
-            final Icon icon = new ImageIcon(terrain.getScaledIcon(16, colourScheme));
-            final JMenuItem menuItem = new JMenuItem(name, icon);
-            menuItem.addActionListener(e -> listener.objectSelected(selectedTerrain, name, icon));
-            if (terrain.isCustom()) {
-                customTerrainMenu.add(menuItem);
-            } else if (STAINED_TERRACOTTAS.contains(terrain)) {
-                stainedClayTerrainMenu.add(menuItem);
-            } else {
-                terrainMenu.add(menuItem);
+        if (HytaleTerrainHelper.isHytale(platform)) {
+            final JMenuItem searchTerrainItem = new JMenuItem("Search Hytale terrain...");
+            searchTerrainItem.addActionListener(e -> showHytaleTerrainSelectionDialog(listener));
+            terrainMenu.add(searchTerrainItem);
+        } else {
+            final JMenu customTerrainMenu = new JMenu("Custom");
+            final JMenu stainedClayTerrainMenu = new JMenu("Stained Terracotta");
+            for (Terrain terrain: Terrain.getConfiguredValues()) {
+                final Terrain selectedTerrain = terrain;
+                final String name = terrain.getName();
+                final Icon icon = new ImageIcon(terrain.getScaledIcon(16, colourScheme));
+                final JMenuItem menuItem = new JMenuItem(name, icon);
+                menuItem.addActionListener(e -> listener.objectSelected(selectedTerrain, name, icon));
+                if (terrain.isCustom()) {
+                    customTerrainMenu.add(menuItem);
+                } else if (STAINED_TERRACOTTAS.contains(terrain)) {
+                    stainedClayTerrainMenu.add(menuItem);
+                } else {
+                    terrainMenu.add(menuItem);
+                }
             }
-        }
-        terrainMenu.add(stainedClayTerrainMenu);
-        if (customTerrainMenu.getMenuComponentCount() > 0) {
-            terrainMenu.add(customTerrainMenu);
+            terrainMenu.add(stainedClayTerrainMenu);
+            if (customTerrainMenu.getMenuComponentCount() > 0) {
+                terrainMenu.add(customTerrainMenu);
+            }
         }
         popupMenu.add(terrainMenu);
         
@@ -690,6 +715,74 @@ public class BrushOptions extends javax.swing.JPanel implements Observer {
         popupMenu = breakUpLongMenus(popupMenu, 25);
 
         return popupMenu;
+    }
+
+    private void showHytaleTerrainSelectionDialog(ObjectSelectionListener listener) {
+        final Window owner = SwingUtilities.getWindowAncestor(this);
+        final JDialog dialog = new JDialog(owner, "Select Hytale Terrain", Dialog.ModalityType.APPLICATION_MODAL);
+        final JPanel panel = new JPanel(new BorderLayout(6, 6));
+        final JTextField searchField = new JTextField();
+        final DefaultListModel<HytaleTerrain> model = new DefaultListModel<>();
+        final JList<HytaleTerrain> list = new JList<>(model);
+
+        final List<HytaleTerrain> allTerrains = HytaleTerrain.getAllTerrains();
+        allTerrains.forEach(model::addElement);
+        list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        list.setCellRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                JLabel label = (JLabel) super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                HytaleTerrain terrain = (HytaleTerrain) value;
+                label.setText((terrain.getBlock() != null) ? (terrain.getName() + " (" + terrain.getBlock().id + ")") : terrain.getName());
+                label.setIcon(new ImageIcon(terrain.getScaledIcon(16, colourScheme)));
+                return label;
+            }
+        });
+
+        Runnable refilter = () -> {
+            String q = searchField.getText().trim().toLowerCase(Locale.ROOT);
+            model.clear();
+            for (HytaleTerrain terrain : allTerrains) {
+                if (q.isEmpty()
+                        || terrain.getName().toLowerCase(Locale.ROOT).contains(q)
+                        || ((terrain.getBlock() != null) && terrain.getBlock().id.toLowerCase(Locale.ROOT).contains(q))) {
+                    model.addElement(terrain);
+                }
+            }
+            if (! model.isEmpty()) {
+                list.setSelectedIndex(0);
+            }
+        };
+        searchField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            @Override public void insertUpdate(javax.swing.event.DocumentEvent e) { refilter.run(); }
+            @Override public void removeUpdate(javax.swing.event.DocumentEvent e) { refilter.run(); }
+            @Override public void changedUpdate(javax.swing.event.DocumentEvent e) { refilter.run(); }
+        });
+
+        JButton selectButton = new JButton("Select");
+        selectButton.addActionListener(e -> {
+            HytaleTerrain selected = list.getSelectedValue();
+            if (selected != null) {
+                final Icon icon = new ImageIcon(selected.getScaledIcon(16, colourScheme));
+                listener.objectSelected(selected, selected.getName(), icon);
+                dialog.dispose();
+            }
+        });
+        JButton cancelButton = new JButton("Cancel");
+        cancelButton.addActionListener(e -> dialog.dispose());
+
+        JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        buttons.add(selectButton);
+        buttons.add(cancelButton);
+
+        panel.add(searchField, BorderLayout.NORTH);
+        panel.add(new JScrollPane(list), BorderLayout.CENTER);
+        panel.add(buttons, BorderLayout.SOUTH);
+        dialog.setContentPane(panel);
+        dialog.setSize(520, 520);
+        dialog.setLocationRelativeTo(this);
+        dialog.getRootPane().setDefaultButton(selectButton);
+        dialog.setVisible(true);
     }
 
     /**

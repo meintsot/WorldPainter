@@ -58,6 +58,11 @@ public class OnlyOnTerrainOrLayerFilter extends TerrainOrLayerFilter {
                     return 0.0f;
                 }
                 break;
+            case HYTALE_TERRAIN:
+                if (! isHytaleTerrainMatch(x, y)) {
+                    return 0.0f;
+                }
+                break;
             case WATER:
                 if ((dimension.getWaterLevelAt(x, y) <= dimension.getIntHeightAt(x, y)) || dimension.getBitLayerValueAt(FloodWithLava.INSTANCE, x, y)) {
                     return 0.0f;
