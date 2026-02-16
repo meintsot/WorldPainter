@@ -128,7 +128,7 @@ public class HytaleWorldExporter implements WorldExporter {
             long start = System.currentTimeMillis();
             
             // Determine if the target directory is on a different (potentially slower/problematic) drive.
-            // When it is, export to a temp directory on the system drive first, then move the result over.
+            // When it is, export to a temp directory on the same drive as the target, then move the result.
             // This avoids OutOfMemoryErrors caused by slow I/O holding region data in RAM too long.
             Path systemTempRoot = Path.of(System.getProperty("java.io.tmpdir"));
             boolean useTempDir = false;
@@ -137,8 +137,8 @@ public class HytaleWorldExporter implements WorldExporter {
                 java.nio.file.FileStore tempStore = Files.getFileStore(systemTempRoot);
                 useTempDir = !targetStore.equals(tempStore);
                 if (useTempDir) {
-                    logger.info("Target directory is on a different drive ({}), will export to temp dir first ({})",
-                        targetStore, tempStore);
+                    logger.info("Target directory is on a different drive ({}), will export to temp dir on target drive",
+                        targetStore);
                 }
             } catch (IOException e) {
                 logger.warn("Could not determine file stores, exporting directly to target", e);
@@ -147,7 +147,7 @@ public class HytaleWorldExporter implements WorldExporter {
             File effectiveWorldDir;
             Path tempDir = null;
             if (useTempDir) {
-                tempDir = Files.createTempDirectory("wp-hytale-export-");
+                tempDir = Files.createTempDirectory(baseDir.toPath(), "wp-hytale-export-");
                 effectiveWorldDir = tempDir.resolve(FileUtils.sanitiseName(name)).toFile();
             } else {
                 effectiveWorldDir = worldDir;

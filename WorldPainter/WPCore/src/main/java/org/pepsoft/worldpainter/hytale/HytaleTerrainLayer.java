@@ -3,6 +3,9 @@ package org.pepsoft.worldpainter.hytale;
 import org.pepsoft.worldpainter.Tile;
 import org.pepsoft.worldpainter.layers.Layer;
 
+import java.io.InvalidObjectException;
+import java.io.ObjectStreamException;
+
 /**
  * Per-pixel layer for storing HytaleTerrain indices.
  * Uses two BYTE layers to form a 16-bit index (supports up to 65535 terrains).
@@ -56,6 +59,15 @@ public final class HytaleTerrainLayer {
         @Override
         public int getDefaultValue() {
             return 0;
+        }
+
+        private Object readResolve() throws ObjectStreamException {
+            if ("HyTerLo".equals(getId())) {
+                return LO;
+            } else if ("HyTerHi".equals(getId())) {
+                return HI;
+            }
+            throw new InvalidObjectException("Unknown ByteLayer id: " + getId());
         }
 
         private static final long serialVersionUID = 1L;

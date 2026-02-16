@@ -219,7 +219,7 @@ public final class TileRenderer {
             layerList.clear();
         } else {
             layerList.removeIf(layer -> (layer instanceof Void) || (layer instanceof NotPresent) || (layer instanceof NotPresentBlock)
-                    || layer == org.pepsoft.worldpainter.hytale.HytaleTerrainLayer.LO || layer == org.pepsoft.worldpainter.hytale.HytaleTerrainLayer.HI);
+                    || layer.equals(org.pepsoft.worldpainter.hytale.HytaleTerrainLayer.LO) || layer.equals(org.pepsoft.worldpainter.hytale.HytaleTerrainLayer.HI));
         }
         final Layer[] layers = layerList.toArray(new Layer[layerList.size()]);
         final LayerRenderer[] renderers = new LayerRenderer[layers.length];
