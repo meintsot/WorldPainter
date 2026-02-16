@@ -301,13 +301,17 @@ public class HytaleBlockPalette extends JPanel {
         g2d.setColor(new Color(rgb));
         g2d.fillRect(2, 2, size - 4, size - 4);
         
-        // Draw border
-        g2d.setColor(Color.DARK_GRAY);
+        // Draw border with contrast-aware colour (adapts to dark/light LAF)
+        int luma = ((rgb >> 16) & 0xFF) * 299 + ((rgb >> 8) & 0xFF) * 587 + (rgb & 0xFF) * 114;
+        g2d.setColor(luma > 128000 ? Color.DARK_GRAY : Color.LIGHT_GRAY);
         g2d.drawRect(2, 2, size - 5, size - 5);
+        
+        // Overlay colour adapts to block brightness
+        Color overlay = luma > 128000 ? new Color(0, 0, 0, 50) : new Color(255, 255, 255, 50);
         
         // Draw diagonal pattern for transparent blocks
         if ("Transparent".equals(def.opacity) || "SemiTransparent".equals(def.opacity)) {
-            g2d.setColor(new Color(0, 0, 0, 40));
+            g2d.setColor(overlay);
             for (int i = -size; i < size; i += 4) {
                 g2d.drawLine(i, 0, i + size, size);
             }
@@ -315,7 +319,7 @@ public class HytaleBlockPalette extends JPanel {
         
         // Draw X pattern for foliage/cross draw type
         if ("Cross".equals(def.drawType) || "Foliage".equals(def.material)) {
-            g2d.setColor(new Color(0, 0, 0, 60));
+            g2d.setColor(overlay);
             g2d.drawLine(4, 4, size - 5, size - 5);
             g2d.drawLine(size - 5, 4, 4, size - 5);
         }
