@@ -42,6 +42,7 @@ import org.pepsoft.worldpainter.layers.plants.PlantLayerEditor;
 import org.pepsoft.worldpainter.layers.renderers.VoidRenderer;
 import org.pepsoft.worldpainter.layers.tunnel.TunnelLayer;
 import org.pepsoft.worldpainter.operations.*;
+import org.pepsoft.worldpainter.painting.HytaleTerrainPaint;
 import org.pepsoft.worldpainter.painting.LayerPaint;
 import org.pepsoft.worldpainter.painting.Paint;
 import org.pepsoft.worldpainter.painting.PaintFactory;
@@ -3270,6 +3271,12 @@ public final class App extends JFrame implements BrushControl,
                 }
 
                 @Override
+                public void hytaleTerrainSelected(org.pepsoft.worldpainter.hytale.HytaleTerrain hytaleTerrain) {
+                    eyedropperToggleButton.setSelected(false);
+                    App.getInstance().selectPaint("HytaleTerrain/" + hytaleTerrain.getLayerIndex());
+                }
+
+                @Override
                 public void layerSelected(Layer layer, int value) {
                     eyedropperToggleButton.setSelected(false);
                     if (layer.discrete) {
@@ -5507,7 +5514,7 @@ public final class App extends JFrame implements BrushControl,
         if (activeOperation instanceof PaintOperation) {
             if (paint instanceof LayerPaint) {
                 targetHiddenLayers.remove(((LayerPaint) paint).getLayer());
-            } else if (paint instanceof TerrainPaint) {
+            } else if (paint instanceof TerrainPaint || paint instanceof HytaleTerrainPaint) {
                 targetHiddenLayers.remove(TERRAIN_AS_LAYER);
             }
         } else if ((activeOperation instanceof Flood) || (activeOperation instanceof FloodWithLava)) {

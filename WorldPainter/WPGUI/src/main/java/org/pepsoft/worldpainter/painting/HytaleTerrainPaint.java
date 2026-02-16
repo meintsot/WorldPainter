@@ -34,6 +34,14 @@ public final class HytaleTerrainPaint extends AbstractPaint {
         return "HytaleTerrain/" + layerIndex;
     }
 
+    public int getLayerIndex() {
+        return layerIndex;
+    }
+
+    public HytaleTerrain getHytaleTerrain() {
+        return hytaleTerrain;
+    }
+
     @Override
     public void apply(Dimension dimension, int centreX, int centreY, float dynamicLevel) {
         if (brush.getRadius() == 0) {

@@ -17,6 +17,7 @@ import org.pepsoft.util.swing.ProgressDialog;
 import org.pepsoft.util.swing.ProgressTask;
 import org.pepsoft.worldpainter.biomeschemes.BiomeHelper;
 import org.pepsoft.worldpainter.biomeschemes.CustomBiomeManager;
+import org.pepsoft.worldpainter.hytale.HytaleTerrain;
 import org.pepsoft.worldpainter.layers.*;
 import org.pepsoft.worldpainter.operations.Filter;
 import org.pepsoft.worldpainter.panels.BrushOptions.Listener;
@@ -39,6 +40,7 @@ import static javax.swing.JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT;
 import static javax.swing.KeyStroke.getKeyStroke;
 import static org.pepsoft.util.DesktopUtils.PLATFORM_COMMAND_MASK;
 import static org.pepsoft.util.DesktopUtils.beep;
+import static org.pepsoft.worldpainter.Constants.SYSTEM_LAYERS;
 import static org.pepsoft.worldpainter.Constants.TILE_SIZE;
 import static org.pepsoft.worldpainter.Constants.TILE_SIZE_BITS;
 import static org.pepsoft.worldpainter.biomeschemes.Minecraft1_7Biomes.BIOME_PLAINS;
@@ -153,6 +155,26 @@ public class FillDialog extends WPDialogWithPaintSelection implements Listener, 
             }
 
             @Override
+            public void hytaleTerrainSelected(HytaleTerrain hytaleTerrain) {
+                switch (descriptor) {
+                    case MENU_ONLY_ON:
+                        if (addAnother) {
+                            brushOptions1.addOnlyOn(hytaleTerrain);
+                        } else {
+                            brushOptions1.setOnlyOn(hytaleTerrain);
+                        }
+                        break;
+                    case MENU_EXCEPT_ON:
+                        if (addAnother) {
+                            brushOptions1.addExceptOn(hytaleTerrain);
+                        } else {
+                            brushOptions1.setExceptOn(hytaleTerrain);
+                        }
+                        break;
+                }
+            }
+
+            @Override
             public void layerSelected(Layer layer, int value) {
                 switch (descriptor) {
                     case MENU_ONLY_ON:
@@ -178,7 +200,8 @@ public class FillDialog extends WPDialogWithPaintSelection implements Listener, 
 
     private void initClearLayer() {
         Set<Layer> layersInUse = dimension.getAllLayers(false);
-        layersInUse.removeAll(asList(Biome.INSTANCE, FloodWithLava.INSTANCE, SelectionBlock.INSTANCE, SelectionChunk.INSTANCE, NotPresent.INSTANCE, NotPresentBlock.INSTANCE));
+        layersInUse.removeAll(SYSTEM_LAYERS);
+        layersInUse.remove(Biome.INSTANCE);
         if (! layersInUse.isEmpty()) {
             radioButtonClearLayer.setEnabled(true);
             comboBoxClearLayer.setModel(new DefaultComboBoxModel<>(layersInUse.toArray(new Layer[layersInUse.size()])));

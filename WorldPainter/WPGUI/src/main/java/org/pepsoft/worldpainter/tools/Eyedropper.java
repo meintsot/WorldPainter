@@ -1,12 +1,12 @@
 package org.pepsoft.worldpainter.tools;
 
 import org.pepsoft.util.DesktopUtils;
-import org.pepsoft.worldpainter.ColourScheme;
-import org.pepsoft.worldpainter.Dimension;
-import org.pepsoft.worldpainter.Terrain;
-import org.pepsoft.worldpainter.WorldPainterView;
+import org.pepsoft.worldpainter.*;
 import org.pepsoft.worldpainter.biomeschemes.BiomeHelper;
 import org.pepsoft.worldpainter.biomeschemes.CustomBiomeManager;
+import org.pepsoft.worldpainter.hytale.HytaleTerrain;
+import org.pepsoft.worldpainter.hytale.HytaleTerrainHelper;
+import org.pepsoft.worldpainter.hytale.HytaleTerrainLayer;
 import org.pepsoft.worldpainter.layers.*;
 import org.pepsoft.worldpainter.operations.MouseOrTabletOperation;
 
@@ -19,6 +19,8 @@ import java.util.Set;
 import static org.pepsoft.util.IconUtils.createScaledColourIcon;
 import static org.pepsoft.util.IconUtils.scaleIcon;
 import static org.pepsoft.worldpainter.Constants.SYSTEM_LAYERS;
+import static org.pepsoft.worldpainter.Constants.TILE_SIZE_BITS;
+import static org.pepsoft.worldpainter.Constants.TILE_SIZE_MASK;
 import static org.pepsoft.worldpainter.tools.Eyedropper.PaintType.*;
 
 /**
@@ -57,7 +59,7 @@ public final class Eyedropper extends MouseOrTabletOperation {
         if (! first) {
             throw new InternalError("Should never happen");
         }
-        final Dimension dimension = getDimension();
+        final org.pepsoft.worldpainter.Dimension dimension = getDimension();
         if (dimension.getBitLayerValueAt(NotPresent.INSTANCE, x, y)) {
             DesktopUtils.beep();
             return;
@@ -71,12 +73,34 @@ public final class Eyedropper extends MouseOrTabletOperation {
             // to the user as to exactly what value was selected
             popupMenu = new JPopupMenu();
             if (terrain != null) {
-                popupMenu.add(new AbstractAction(terrain.getName(), new ImageIcon(terrain.getScaledIcon(16, colourScheme))) {
-                    @Override
-                    public void actionPerformed(ActionEvent e) {
-                        callback.terrainSelected(terrain);
+                // On Hytale worlds, resolve the actual HytaleTerrain from the layer index
+                final HytaleTerrain resolvedHytaleTerrain;
+                if (HytaleTerrainHelper.isHytale(dimension.getWorld().getPlatform())) {
+                    final Tile tile = dimension.getTile(x >> TILE_SIZE_BITS, y >> TILE_SIZE_BITS);
+                    if (tile != null) {
+                        final int htIndex = HytaleTerrainLayer.getTerrainIndex(tile, x & TILE_SIZE_MASK, y & TILE_SIZE_MASK);
+                        resolvedHytaleTerrain = (htIndex > 0) ? HytaleTerrain.getByLayerIndex(htIndex) : HytaleTerrainHelper.fromMinecraftTerrain(terrain);
+                    } else {
+                        resolvedHytaleTerrain = HytaleTerrainHelper.fromMinecraftTerrain(terrain);
                     }
-                });
+                } else {
+                    resolvedHytaleTerrain = null;
+                }
+                if (resolvedHytaleTerrain != null) {
+                    popupMenu.add(new AbstractAction(resolvedHytaleTerrain.getName(), new ImageIcon(resolvedHytaleTerrain.getScaledIcon(16, colourScheme))) {
+                        @Override
+                        public void actionPerformed(ActionEvent e) {
+                            callback.hytaleTerrainSelected(resolvedHytaleTerrain);
+                        }
+                    });
+                } else {
+                    popupMenu.add(new AbstractAction(terrain.getName(), new ImageIcon(terrain.getScaledIcon(16, colourScheme))) {
+                        @Override
+                        public void actionPerformed(ActionEvent e) {
+                            callback.terrainSelected(terrain);
+                        }
+                    });
+                }
             }
             if (layers != null) {
                 final BiomeHelper biomeHelper = new BiomeHelper(colourScheme, customBiomeManager, dimension.getWorld().getPlatform());
@@ -149,6 +173,14 @@ public final class Eyedropper extends MouseOrTabletOperation {
          * The user has selected the specified terrain type.
          */
         void terrainSelected(Terrain terrain);
+
+        /**
+         * The user has selected the specified Hytale terrain type. The default implementation delegates to
+         * {@link #terrainSelected(Terrain)} using the Minecraft fallback terrain.
+         */
+        default void hytaleTerrainSelected(org.pepsoft.worldpainter.hytale.HytaleTerrain hytaleTerrain) {
+            terrainSelected(org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.toMinecraftTerrain(hytaleTerrain));
+        }
 
         /**
          * The user has selected the specified layer, which had the specified value at the selected location.

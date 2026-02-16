@@ -99,6 +99,12 @@ class MapSelectionController {
             }
 
             @Override
+            public void hytaleTerrainSelected(org.pepsoft.worldpainter.hytale.HytaleTerrain hytaleTerrain) {
+                cancelPaintSelection(false, false);
+                paintSelectionListener.hytaleTerrainSelected(hytaleTerrain);
+            }
+
+            @Override
             public void layerSelected(Layer layer, int value) {
                 cancelPaintSelection(false, false);
                 paintSelectionListener.layerSelected(layer, value);

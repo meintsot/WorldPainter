@@ -40,6 +40,7 @@ import static java.util.stream.Collectors.toList;
 import static org.pepsoft.util.GUIUtils.getUIScale;
 import static org.pepsoft.util.IconUtils.createScaledColourIcon;
 import static org.pepsoft.util.IconUtils.loadScaledIcon;
+import static org.pepsoft.worldpainter.Constants.SYSTEM_LAYERS;
 import static org.pepsoft.worldpainter.Platform.Capability.NAMED_BIOMES;
 import static org.pepsoft.worldpainter.Terrain.STAINED_TERRACOTTAS;
 import static org.pepsoft.worldpainter.util.BiomeUtils.getBiomeScheme;
@@ -259,6 +260,26 @@ public class BrushOptions extends javax.swing.JPanel implements Observer {
         installPaint(exceptOn, buttonExceptOn, checkBoxExceptOn);
     }
 
+    public void setOnlyOn(HytaleTerrain hytaleTerrain) {
+        onlyOn = hytaleTerrain;
+        installPaint(onlyOn, buttonReplace, checkBoxReplace);
+    }
+
+    public void addOnlyOn(HytaleTerrain hytaleTerrain) {
+        onlyOn = addToSelection(onlyOn, hytaleTerrain);
+        installPaint(onlyOn, buttonReplace, checkBoxReplace);
+    }
+
+    public void setExceptOn(HytaleTerrain hytaleTerrain) {
+        exceptOn = hytaleTerrain;
+        installPaint(exceptOn, buttonExceptOn, checkBoxExceptOn);
+    }
+
+    public void addExceptOn(HytaleTerrain hytaleTerrain) {
+        exceptOn = addToSelection(exceptOn, hytaleTerrain);
+        installPaint(exceptOn, buttonExceptOn, checkBoxExceptOn);
+    }
+
     // Observer
 
     @Override
@@ -425,6 +446,8 @@ public class BrushOptions extends javax.swing.JPanel implements Observer {
             return new LayerValue(Biome.INSTANCE, value);
         } else if (layer instanceof Annotations) {
             return new LayerValue(Annotations.INSTANCE, value);
+        } else if (SYSTEM_LAYERS.contains(layer)) {
+            return null;
         } else if (layer.discrete) {
             throw new UnsupportedOperationException("Discrete layers not supported");
         } else {
@@ -533,6 +556,26 @@ public class BrushOptions extends javax.swing.JPanel implements Observer {
                                 addExceptOn(terrain);
                             } else {
                                 setExceptOn(terrain);
+                            }
+                            break;
+                    }
+                }
+
+                @Override
+                public void hytaleTerrainSelected(HytaleTerrain hytaleTerrain) {
+                    switch (descriptor) {
+                        case MENU_ONLY_ON:
+                            if (addAnother) {
+                                addOnlyOn(hytaleTerrain);
+                            } else {
+                                setOnlyOn(hytaleTerrain);
+                            }
+                            break;
+                        case MENU_EXCEPT_ON:
+                            if (addAnother) {
+                                addExceptOn(hytaleTerrain);
+                            } else {
+                                setExceptOn(hytaleTerrain);
                             }
                             break;
                     }

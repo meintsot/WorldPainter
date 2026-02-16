@@ -109,7 +109,24 @@ public class InfoPanel extends javax.swing.JPanel implements MouseMotionListener
         }
         setTextIfDifferent(labelSlope, (int) Math.round(Math.atan(slope) * 180 / Math.PI) + "°");
         Terrain terrain = tile.getTerrain(x, y);
-        if (terrain != currentTerrain) {
+        // On Hytale worlds, resolve the actual HytaleTerrain from the layer index
+        if (org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(dim.getWorld().getPlatform())) {
+            final int htIndex = org.pepsoft.worldpainter.hytale.HytaleTerrainLayer.getTerrainIndex(tile, x, y);
+            if (terrain != currentTerrain || htIndex != currentHytaleTerrainIndex) {
+                org.pepsoft.worldpainter.hytale.HytaleTerrain hytaleTerrain = (htIndex > 0)
+                        ? org.pepsoft.worldpainter.hytale.HytaleTerrain.getByLayerIndex(htIndex)
+                        : org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.fromMinecraftTerrain(terrain);
+                if (hytaleTerrain != null) {
+                    labelTerrain.setText(hytaleTerrain.getName());
+                    labelTerrain.setIcon(new ImageIcon(hytaleTerrain.getScaledIcon(16, view.getColourScheme())));
+                } else {
+                    labelTerrain.setText(terrain.getName());
+                    labelTerrain.setIcon(new ImageIcon(terrain.getScaledIcon(16, view.getColourScheme())));
+                }
+                currentTerrain = terrain;
+                currentHytaleTerrainIndex = htIndex;
+            }
+        } else if (terrain != currentTerrain) {
             labelTerrain.setText(terrain.getName());
             labelTerrain.setIcon(new ImageIcon(terrain.getScaledIcon(16, view.getColourScheme())));
             currentTerrain = terrain;
@@ -179,6 +196,7 @@ public class InfoPanel extends javax.swing.JPanel implements MouseMotionListener
             labelTerrain.setIcon(ICON_BLANK);
             labelTerrain.setText(null);
             currentTerrain = null;
+            currentHytaleTerrainIndex = 0;
             labelBiome.setIcon(ICON_BLANK);
             labelBiome.setText(null);
             checkBoxAutomaticBiome.setSelected(false);
@@ -465,6 +483,7 @@ public class InfoPanel extends javax.swing.JPanel implements MouseMotionListener
     private Point worldCoords;
     private boolean fieldsClear = true, currentAutomaticBiome, active;
     private Terrain currentTerrain;
+    private int currentHytaleTerrainIndex;
     private int currentBiome;
 
     private static final Set<Layer> HIDDEN_LAYERS = ImmutableSet.<Layer>builder().addAll(SYSTEM_LAYERS).add(Biome.INSTANCE).build();

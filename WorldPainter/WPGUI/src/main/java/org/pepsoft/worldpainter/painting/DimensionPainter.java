@@ -11,6 +11,7 @@ import org.pepsoft.worldpainter.Terrain;
 import org.pepsoft.worldpainter.brushes.Brush;
 import org.pepsoft.worldpainter.brushes.LineBrush;
 import org.pepsoft.worldpainter.brushes.SymmetricBrush;
+import org.pepsoft.worldpainter.hytale.HytaleTerrainLayer;
 import org.pepsoft.worldpainter.layers.Layer;
 
 import java.awt.*;
@@ -355,6 +356,44 @@ public final class DimensionPainter {
                     }
                 };
             }
+        } else if (paint instanceof HytaleTerrainPaint) {
+            final int htPaintIndex = ((HytaleTerrainPaint) paint).getLayerIndex();
+            final int startLo = dimension.getLayerValueAt(HytaleTerrainLayer.LO, x, y);
+            final int startHi = dimension.getLayerValueAt(HytaleTerrainLayer.HI, x, y);
+            final int startIndex = (startHi << 8) | startLo;
+            if (undo) {
+                fillMethod = new UndoDimensionPaintFillMethod(description, dimension, paint) {
+                    @Override
+                    public boolean isBoundary(int x, int y) {
+                        int lo = dimension.getLayerValueAt(HytaleTerrainLayer.LO, x, y);
+                        int hi = dimension.getLayerValueAt(HytaleTerrainLayer.HI, x, y);
+                        return ((hi << 8) | lo) != startIndex;
+                    }
+
+                    @Override
+                    boolean isFilled(int x, int y) {
+                        int lo = dimension.getLayerValueAt(HytaleTerrainLayer.LO, x, y);
+                        int hi = dimension.getLayerValueAt(HytaleTerrainLayer.HI, x, y);
+                        return ((hi << 8) | lo) == htPaintIndex;
+                    }
+                };
+            } else {
+                fillMethod = new DimensionPaintFillMethod(description, dimension, paint) {
+                    @Override
+                    public boolean isBoundary(int x, int y) {
+                        int lo = dimension.getLayerValueAt(HytaleTerrainLayer.LO, x, y);
+                        int hi = dimension.getLayerValueAt(HytaleTerrainLayer.HI, x, y);
+                        return ((hi << 8) | lo) != startIndex;
+                    }
+
+                    @Override
+                    boolean isFilled(int x, int y) {
+                        int lo = dimension.getLayerValueAt(HytaleTerrainLayer.LO, x, y);
+                        int hi = dimension.getLayerValueAt(HytaleTerrainLayer.HI, x, y);
+                        return ((hi << 8) | lo) == htPaintIndex;
+                    }
+                };
+            }
         } else if (paint instanceof PaintFactory.NullPaint) {
             return true;
         } else {
@@ -540,6 +579,12 @@ public final class DimensionPainter {
                 return "Removing " + dimension.getTerrainAt(x, y);
             } else {
                 return "Applying " + ((TerrainPaint) paint).getTerrain();
+            }
+        } else if (paint instanceof HytaleTerrainPaint) {
+            if (undo) {
+                return "Removing " + ((HytaleTerrainPaint) paint).getHytaleTerrain().getName();
+            } else {
+                return "Applying " + ((HytaleTerrainPaint) paint).getHytaleTerrain().getName();
             }
         } else if (paint instanceof PaintFactory.NullPaint) {
             return "Doing nothing";

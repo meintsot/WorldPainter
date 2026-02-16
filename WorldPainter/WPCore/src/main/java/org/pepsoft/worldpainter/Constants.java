@@ -7,6 +7,7 @@ package org.pepsoft.worldpainter;
 
 import com.google.common.collect.ImmutableSet;
 import org.pepsoft.util.Version;
+import org.pepsoft.worldpainter.hytale.HytaleTerrainLayer;
 import org.pepsoft.worldpainter.layers.FloodWithLava;
 import org.pepsoft.worldpainter.layers.Layer;
 import org.pepsoft.worldpainter.layers.NotPresent;
@@ -125,8 +126,11 @@ public final class Constants {
      * Technical system layers that are not manipulated directly by the user and should therefore not be visible or
      * selectable to them.
      */
-    public static final Set<Layer> SYSTEM_LAYERS = ImmutableSet.of(SelectionChunk.INSTANCE, SelectionBlock.INSTANCE,
-            FloodWithLava.INSTANCE, NotPresent.INSTANCE, NotPresentBlock.INSTANCE);
+    public static final Set<Layer> SYSTEM_LAYERS = ImmutableSet.<Layer>builder()
+            .add(SelectionChunk.INSTANCE, SelectionBlock.INSTANCE,
+                    FloodWithLava.INSTANCE, NotPresent.INSTANCE, NotPresentBlock.INSTANCE,
+                    HytaleTerrainLayer.LO, HytaleTerrainLayer.HI)
+            .build();
 
     public static final String MESSAGE_KEY_MASTER_WARNING = "org.pepsoft.worldpainter.ImportHeightMapDialog.masterDimension";
 }

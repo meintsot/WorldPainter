@@ -57,6 +57,12 @@ public class WPDialogWithPaintSelection extends WorldPainterDialog {
                 }
 
                 @Override
+                public void hytaleTerrainSelected(org.pepsoft.worldpainter.hytale.HytaleTerrain hytaleTerrain) {
+                    selectFromMapListener.hytaleTerrainSelected(hytaleTerrain);
+                    showAgain();
+                }
+
+                @Override
                 public void layerSelected(Layer layer, int value) {
                     selectFromMapListener.layerSelected(layer, value);
                     showAgain();
