@@ -127,51 +127,134 @@ public class HytaleWorldExporter implements WorldExporter {
             // Record start time
             long start = System.currentTimeMillis();
             
-            // Create directory structure
-            if (!worldDir.mkdirs()) {
-                throw new IOException("Could not create directory: " + worldDir);
-            }
-            
-            File chunksDir = new File(worldDir, "chunks");
-            if (!chunksDir.mkdirs()) {
-                throw new IOException("Could not create chunks directory");
-            }
-            
-            File resourcesDir = new File(worldDir, "resources");
-            if (!resourcesDir.mkdirs()) {
-                throw new IOException("Could not create resources directory");
-            }
-            
-            // Write config.json
-            writeWorldConfig(worldDir);
-            
-            // Export dimensions
-            Map<Integer, ChunkFactory.Stats> stats = new HashMap<>();
-            Dimension dim0 = world.getDimension(NORMAL_DETAIL);
-            if (dim0 != null) {
-                if (progressReceiver != null) {
-                    progressReceiver.setMessage("Exporting Overworld to Hytale format");
+            // Determine if the target directory is on a different (potentially slower/problematic) drive.
+            // When it is, export to a temp directory on the system drive first, then move the result over.
+            // This avoids OutOfMemoryErrors caused by slow I/O holding region data in RAM too long.
+            Path systemTempRoot = Path.of(System.getProperty("java.io.tmpdir"));
+            boolean useTempDir = false;
+            try {
+                java.nio.file.FileStore targetStore = Files.getFileStore(baseDir.toPath());
+                java.nio.file.FileStore tempStore = Files.getFileStore(systemTempRoot);
+                useTempDir = !targetStore.equals(tempStore);
+                if (useTempDir) {
+                    logger.info("Target directory is on a different drive ({}), will export to temp dir first ({})",
+                        targetStore, tempStore);
                 }
-                stats.put(DIM_NORMAL, exportDimension(worldDir, dim0, progressReceiver));
+            } catch (IOException e) {
+                logger.warn("Could not determine file stores, exporting directly to target", e);
             }
             
-            // Record the export in the world history
-            world.addHistoryEntry(HistoryEntry.WORLD_EXPORTED_FULL, name, worldDir);
-            
-            // Log event
-            Configuration config = Configuration.getInstance();
-            if (config != null) {
-                EventVO event = new EventVO(EVENT_KEY_ACTION_EXPORT_WORLD).duration(System.currentTimeMillis() - start);
-                event.setAttribute(EventVO.ATTRIBUTE_TIMESTAMP, new Date(start));
-                event.setAttribute(ATTRIBUTE_KEY_MAX_HEIGHT, world.getMaxHeight());
-                event.setAttribute(ATTRIBUTE_KEY_PLATFORM, platform.displayName);
-                event.setAttribute(ATTRIBUTE_KEY_PLATFORM_ID, platform.id);
-                config.logEvent(event);
+            File effectiveWorldDir;
+            Path tempDir = null;
+            if (useTempDir) {
+                tempDir = Files.createTempDirectory("wp-hytale-export-");
+                effectiveWorldDir = tempDir.resolve(FileUtils.sanitiseName(name)).toFile();
+            } else {
+                effectiveWorldDir = worldDir;
             }
             
-            logger.info("Export completed in {} ms", System.currentTimeMillis() - start);
-            return stats;
+            try {
+                // Create directory structure
+                if (!effectiveWorldDir.mkdirs()) {
+                    throw new IOException("Could not create directory: " + effectiveWorldDir);
+                }
+                
+                File chunksDir = new File(effectiveWorldDir, "chunks");
+                if (!chunksDir.mkdirs()) {
+                    throw new IOException("Could not create chunks directory");
+                }
+                
+                File resourcesDir = new File(effectiveWorldDir, "resources");
+                if (!resourcesDir.mkdirs()) {
+                    throw new IOException("Could not create resources directory");
+                }
+                
+                // Write config.json
+                writeWorldConfig(effectiveWorldDir);
+                
+                // Export dimensions
+                Map<Integer, ChunkFactory.Stats> stats = new HashMap<>();
+                Dimension dim0 = world.getDimension(NORMAL_DETAIL);
+                if (dim0 != null) {
+                    if (progressReceiver != null) {
+                        progressReceiver.setMessage("Exporting Overworld to Hytale format");
+                    }
+                    stats.put(DIM_NORMAL, exportDimension(effectiveWorldDir, dim0, progressReceiver));
+                }
+                
+                // If we used a temp directory, move the result to the target location
+                if (useTempDir) {
+                    if (progressReceiver != null) {
+                        progressReceiver.setMessage("Moving exported world to target directory...");
+                    }
+                    logger.info("Moving exported world from {} to {}", effectiveWorldDir, worldDir);
+                    copyDirectory(effectiveWorldDir.toPath(), worldDir.toPath());
+                }
+                
+                // Record the export in the world history
+                world.addHistoryEntry(HistoryEntry.WORLD_EXPORTED_FULL, name, worldDir);
+                
+                // Log event
+                Configuration config = Configuration.getInstance();
+                if (config != null) {
+                    EventVO event = new EventVO(EVENT_KEY_ACTION_EXPORT_WORLD).duration(System.currentTimeMillis() - start);
+                    event.setAttribute(EventVO.ATTRIBUTE_TIMESTAMP, new Date(start));
+                    event.setAttribute(ATTRIBUTE_KEY_MAX_HEIGHT, world.getMaxHeight());
+                    event.setAttribute(ATTRIBUTE_KEY_PLATFORM, platform.displayName);
+                    event.setAttribute(ATTRIBUTE_KEY_PLATFORM_ID, platform.id);
+                    config.logEvent(event);
+                }
+                
+                logger.info("Export completed in {} ms", System.currentTimeMillis() - start);
+                return stats;
+            } finally {
+                // Clean up temp directory
+                if (tempDir != null) {
+                    try {
+                        deleteRecursive(tempDir);
+                    } catch (IOException e) {
+                        logger.warn("Could not fully clean up temp directory: {}", tempDir, e);
+                    }
+                }
+            }
         }, "world.name", world.getName(), "platform.id", platform.id);
+    }
+    
+    /**
+     * Copy a directory tree from source to target.
+     */
+    private static void copyDirectory(Path source, Path target) throws IOException {
+        Files.createDirectories(target);
+        try (java.util.stream.Stream<Path> stream = Files.walk(source)) {
+            stream.forEach(src -> {
+                Path dst = target.resolve(source.relativize(src));
+                try {
+                    if (Files.isDirectory(src)) {
+                        Files.createDirectories(dst);
+                    } else {
+                        Files.copy(src, dst, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                    }
+                } catch (IOException e) {
+                    throw new UncheckedIOException(e);
+                }
+            });
+        } catch (java.io.UncheckedIOException e) {
+            throw e.getCause();
+        }
+    }
+    
+    /**
+     * Recursively delete a directory tree.
+     */
+    private static void deleteRecursive(Path path) throws IOException {
+        if (Files.isDirectory(path)) {
+            try (java.util.stream.Stream<Path> stream = Files.list(path)) {
+                for (Path child : stream.collect(java.util.stream.Collectors.toList())) {
+                    deleteRecursive(child);
+                }
+            }
+        }
+        Files.deleteIfExists(path);
     }
     
     /**
@@ -346,10 +429,26 @@ public class HytaleWorldExporter implements WorldExporter {
             AtomicBoolean abort = new AtomicBoolean(false);
             RuntimeException[] exception = new RuntimeException[1];
             
+            // Limit concurrent regions in memory to avoid OutOfMemoryError.
+            // Each Hytale region (32x32 chunks of 32x32x320 blocks) can consume significant memory.
+            final Runtime runtime = Runtime.getRuntime();
+            final long maxMem = runtime.maxMemory();
+            final int maxConcurrentRegions = Math.max(1, (int) (maxMem / (512L * 1024 * 1024)));
+            final Semaphore regionMemorySemaphore = new Semaphore(maxConcurrentRegions);
+            logger.info("Limiting concurrent region exports to {} (max memory: {} MB)", 
+                maxConcurrentRegions, maxMem / (1024 * 1024));
+            
             try {
                 for (Point region : sortedRegions) {
                     executor.execute(() -> {
                         if (abort.get()) return;
+                        
+                        try {
+                            regionMemorySemaphore.acquire();
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            return;
+                        }
                         
                         ProgressReceiver regionProgress = (parallelProgressManager != null) 
                             ? parallelProgressManager.createProgressReceiver() : null;
@@ -359,6 +458,7 @@ public class HytaleWorldExporter implements WorldExporter {
                                 regionProgress.checkForCancellation();
                             } catch (ProgressReceiver.OperationCancelled e) {
                                 abort.set(true);
+                                regionMemorySemaphore.release();
                                 return;
                             }
                         }
@@ -377,6 +477,8 @@ public class HytaleWorldExporter implements WorldExporter {
                             } else if (exception[0] == null) {
                                 exception[0] = new RuntimeException(t.getClass().getSimpleName() + " while exporting region " + region.x + "," + region.y, t);
                             }
+                        } finally {
+                            regionMemorySemaphore.release();
                         }
                     });
                 }

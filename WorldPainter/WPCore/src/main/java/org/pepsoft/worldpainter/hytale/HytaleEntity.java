@@ -286,6 +286,51 @@ public class HytaleEntity implements Serializable, Cloneable {
     // ----- Factory methods -----
     
     /**
+     * Deserialize a HytaleEntity from a BSON document.
+     * 
+     * @param doc BSON document with EntityType, Transform, UUID fields
+     * @return The deserialized entity, or null if the document is invalid
+     */
+    public static HytaleEntity fromBson(BsonDocument doc) {
+        if (doc == null || !doc.containsKey("EntityType")) return null;
+        
+        String type = doc.getString("EntityType").getValue();
+        double ex = 0, ey = 0, ez = 0;
+        float eyaw = 0, epitch = 0, eroll = 0;
+        
+        if (doc.containsKey("Transform")) {
+            BsonDocument transform = doc.getDocument("Transform");
+            if (transform.containsKey("Position")) {
+                BsonDocument pos = transform.getDocument("Position");
+                ex = pos.getDouble("X").getValue();
+                ey = pos.getDouble("Y").getValue();
+                ez = pos.getDouble("Z").getValue();
+            }
+            if (transform.containsKey("Rotation")) {
+                BsonDocument rot = transform.getDocument("Rotation");
+                eyaw = (float) rot.getDouble("X").getValue();
+                epitch = (float) rot.getDouble("Y").getValue();
+                eroll = (float) rot.getDouble("Z").getValue();
+            }
+        }
+        
+        HytaleEntity entity = new HytaleEntity(type, ex, ey, ez, eyaw, epitch, eroll);
+        
+        if (doc.containsKey("UUID")) {
+            BsonDocument uuidDoc = doc.getDocument("UUID");
+            if (uuidDoc.containsKey("UUID")) {
+                byte[] uuidBytes = uuidDoc.getBinary("UUID").getData();
+                if (uuidBytes.length == 16) {
+                    ByteBuffer buf = ByteBuffer.wrap(uuidBytes);
+                    entity.uuid = new UUID(buf.getLong(), buf.getLong());
+                }
+            }
+        }
+        
+        return entity;
+    }
+    
+    /**
      * Create a generic entity at the specified position.
      * 
      * @param entityType Entity type identifier
