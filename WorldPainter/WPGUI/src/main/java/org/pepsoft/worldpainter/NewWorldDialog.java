@@ -848,8 +848,11 @@ public class NewWorldDialog extends WorldPainterDialog {
         if (! isHytalePlatform()) {
             return -1;
         }
-        int index = comboBoxSurfaceMaterial.getSelectedIndex();
-        return (index >= 0) ? index : -1;
+        Object selected = comboBoxSurfaceMaterial.getSelectedItem();
+        if (selected instanceof HytaleTerrain) {
+            return ((HytaleTerrain) selected).getLayerIndex();
+        }
+        return -1;
     }
 
     private void updateSeedLabels() {
@@ -900,10 +903,9 @@ public class NewWorldDialog extends WorldPainterDialog {
     }
 
     private static final class HytaleTileFactory implements TileFactory {
-        private HytaleTileFactory(TileFactory delegate, HytaleTerrain hytaleTerrain, int hytaleTerrainIndex) {
+        private HytaleTileFactory(TileFactory delegate, HytaleTerrain hytaleTerrain) {
             this.delegate = delegate;
             this.hytaleTerrain = hytaleTerrain;
-            this.hytaleTerrainIndex = hytaleTerrainIndex;
         }
 
         @Override
@@ -976,7 +978,7 @@ public class NewWorldDialog extends WorldPainterDialog {
                 for (int ty = 0; ty < TILE_SIZE; ty++) {
                     for (int tx = 0; tx < TILE_SIZE; tx++) {
                         tile.setTerrain(tx, ty, mt);
-                        org.pepsoft.worldpainter.hytale.HytaleTerrainLayer.setTerrainIndex(tile, tx, ty, hytaleTerrainIndex);
+                        org.pepsoft.worldpainter.hytale.HytaleTerrainLayer.setTerrainIndex(tile, tx, ty, hytaleTerrain.getLayerIndex());
                     }
                 }
             }
@@ -984,7 +986,6 @@ public class NewWorldDialog extends WorldPainterDialog {
 
         private final TileFactory delegate;
         private final HytaleTerrain hytaleTerrain;
-        private final int hytaleTerrainIndex;
         private static final long serialVersionUID = 1L;
     }
     
@@ -1051,7 +1052,7 @@ public class NewWorldDialog extends WorldPainterDialog {
             } else {
                 hytaleTerrain = null;
             }
-            return new HytaleTileFactory(tileFactory, hytaleTerrain, selectedHytaleTerrainIndex);
+            return new HytaleTileFactory(tileFactory, hytaleTerrain);
         }
         return tileFactory;
     }
