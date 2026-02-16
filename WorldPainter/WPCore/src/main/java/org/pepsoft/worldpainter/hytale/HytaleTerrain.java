@@ -633,7 +633,7 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         HytaleBlock.of("Soil_Grass_Dry"), 0xa89940);
     public static final HytaleTerrain FULL_GRASS = new HytaleTerrain("Full Grass",
         HytaleBlock.of("Soil_Grass_Full"), 0x3cb820);
-    public static final HytaleTerrain GRASS = new HytaleTerrain("Grass",
+    public static final HytaleTerrain GRASS = new HytaleTerrain("Soil Grass",
         HytaleBlock.of("Soil_Grass"), 0x59a52c);
     public static final HytaleTerrain GREEN_CRYSTAL = new HytaleTerrain("Green Crystal",
         HytaleBlock.of("Rock_Crystal_Green_Block"), 0x5aa964);
