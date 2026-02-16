@@ -3660,7 +3660,18 @@ public final class App extends JFrame implements BrushControl,
             terrainPanel.add(checkBoxSoloTerrain, constraints);
         }
 
-        terrainSearchField = new JTextField(14);
+        terrainSearchField = new JTextField(14) {
+            @Override
+            protected boolean processKeyBinding(KeyStroke ks, java.awt.event.KeyEvent e, int condition, boolean pressed) {
+                boolean result = super.processKeyBinding(ks, e, condition, pressed);
+                // When focused, always claim the binding was handled to prevent
+                // ancestor keybindings (like 'L' for rotate light) from firing
+                if (condition == JComponent.WHEN_FOCUSED) {
+                    return true;
+                }
+                return result;
+            }
+        };
         terrainSearchField.setToolTipText("Search terrains by name or block id");
         terrainSearchField.getDocument().addDocumentListener(new DocumentListener() {
             @Override
@@ -3676,29 +3687,6 @@ public final class App extends JFrame implements BrushControl,
             @Override
             public void changedUpdate(DocumentEvent e) {
                 updateTerrainButtonsForPlatform();
-            }
-        });
-        terrainSearchField.addFocusListener(new java.awt.event.FocusAdapter() {
-            private InputMap savedInputMap;
-
-            @Override
-            public void focusGained(java.awt.event.FocusEvent e) {
-                JRootPane rootPane = SwingUtilities.getRootPane(terrainSearchField);
-                if (rootPane != null) {
-                    savedInputMap = rootPane.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
-                    rootPane.setInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT, new InputMap());
-                }
-            }
-
-            @Override
-            public void focusLost(java.awt.event.FocusEvent e) {
-                if (savedInputMap != null) {
-                    JRootPane rootPane = SwingUtilities.getRootPane(terrainSearchField);
-                    if (rootPane != null) {
-                        rootPane.setInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT, savedInputMap);
-                    }
-                    savedInputMap = null;
-                }
             }
         });
         constraints.weightx = 1.0;
