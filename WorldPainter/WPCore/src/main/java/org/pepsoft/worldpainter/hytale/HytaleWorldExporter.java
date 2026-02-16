@@ -182,6 +182,9 @@ public class HytaleWorldExporter implements WorldExporter {
                     stats.put(DIM_NORMAL, exportDimension(effectiveWorldDir, dim0, progressReceiver));
                 }
                 
+                // Write resource files (after exportDimension so blockOffsetX/Z are set)
+                writeResourceFiles(effectiveWorldDir);
+                
                 // If we used a temp directory, move the result to the target location
                 if (useTempDir) {
                     if (progressReceiver != null) {
@@ -340,6 +343,44 @@ public class HytaleWorldExporter implements WorldExporter {
         Files.write(configFile.toPath(), json.getBytes(StandardCharsets.UTF_8));
         
         logger.debug("Wrote config.json to {}", configFile);
+    }
+    
+    /**
+     * Write resource files to the world's resources directory, including
+     * PrefabEditSession.json with the spawn point coordinates.
+     */
+    private void writeResourceFiles(File worldDir) throws IOException {
+        File resourcesDir = new File(worldDir, "resources");
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        
+        // PrefabEditSession.json - sets the world spawn point
+        Point spawnPoint = world.getSpawnPoint();
+        int spawnX = 0, spawnY = 0, spawnZ = 0;
+        if (spawnPoint != null) {
+            spawnX = spawnPoint.x + blockOffsetX;
+            spawnZ = spawnPoint.y + blockOffsetZ;
+            // Get terrain height at spawn point from dimension
+            Dimension dim0 = world.getDimension(NORMAL_DETAIL);
+            if (dim0 != null) {
+                int height = dim0.getIntHeightAt(spawnPoint.x, spawnPoint.y);
+                if (height >= 0) {
+                    spawnY = height + 1;
+                }
+            }
+        }
+        Map<String, Object> prefabEditSession = new LinkedHashMap<>();
+        prefabEditSession.put("SpawnPoint", new int[]{spawnX, spawnY, spawnZ});
+        prefabEditSession.put("LoadedPrefabMetadata", new Object[0]);
+        Files.write(new File(resourcesDir, "PrefabEditSession.json").toPath(),
+                gson.toJson(prefabEditSession).getBytes(StandardCharsets.UTF_8));
+        
+        // InstanceData.json
+        Map<String, Object> instanceData = new LinkedHashMap<>();
+        instanceData.put("HadPlayer", false);
+        Files.write(new File(resourcesDir, "InstanceData.json").toPath(),
+                gson.toJson(instanceData).getBytes(StandardCharsets.UTF_8));
+        
+        logger.info("Wrote resource files with spawn point ({}, {}, {})", spawnX, spawnY, spawnZ);
     }
     
     private byte[] uuidToBytes(UUID uuid) {
