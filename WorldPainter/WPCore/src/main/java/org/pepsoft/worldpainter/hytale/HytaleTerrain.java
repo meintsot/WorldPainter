@@ -609,7 +609,7 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         HytaleBlock.of("Rock_Crystal_Blue_Block"), 0x4d7fd6);
     public static final HytaleTerrain BLUE_ICE = new HytaleTerrain("Blue Ice",
         HytaleBlock.of("Rock_Ice"), 0xa0d0ff);
-    public static final HytaleTerrain BURNED_GRASS = new HytaleTerrain("Burned Grass",
+    public static final HytaleTerrain BURNED_GRASS = new HytaleTerrain("Soil Burnt Grass",
         HytaleBlock.of("Soil_Grass_Burnt"), 0x5c4020);
     public static final HytaleTerrain CALCITE = new HytaleTerrain("Calcite",
         HytaleBlock.of("Rock_Calcite"), 0xdbd7ca);
@@ -617,7 +617,7 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         HytaleBlock.of("Rock_Calcite_Cobble"), 0xcbc7ba);
     public static final HytaleTerrain CHALK = new HytaleTerrain("Chalk",
         HytaleBlock.of("Rock_Chalk"), 0xf8f8fa);
-    public static final HytaleTerrain COLD_GRASS = new HytaleTerrain("Cold Grass",
+    public static final HytaleTerrain COLD_GRASS = new HytaleTerrain("Soil Cold Grass",
         HytaleBlock.of("Soil_Grass_Cold"), 0x5e855a);
     public static final HytaleTerrain COLD_MAGMA = new HytaleTerrain("Cold Magma",
         HytaleBlock.of("Rock_Magma_Cooled"), 0x180808);
@@ -627,11 +627,11 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         HytaleBlock.of("Rock_Volcanic_Cracked_Lava"), 0x3a2020);
     public static final HytaleTerrain CYAN_CRYSTAL = new HytaleTerrain("Cyan Crystal",
         HytaleBlock.of("Rock_Crystal_Cyan_Block"), 0x4fc7cd);
-    public static final HytaleTerrain DEEP_GRASS = new HytaleTerrain("Deep Grass",
+    public static final HytaleTerrain DEEP_GRASS = new HytaleTerrain("Soil Deep Grass",
         HytaleBlock.of("Soil_Grass_Deep"), 0x1f6e12);
-    public static final HytaleTerrain DRY_GRASS = new HytaleTerrain("Dry Grass",
+    public static final HytaleTerrain DRY_GRASS = new HytaleTerrain("Soil Dry Grass",
         HytaleBlock.of("Soil_Grass_Dry"), 0xa89940);
-    public static final HytaleTerrain FULL_GRASS = new HytaleTerrain("Full Grass",
+    public static final HytaleTerrain FULL_GRASS = new HytaleTerrain("Soil Full Grass",
         HytaleBlock.of("Soil_Grass_Full"), 0x3cb820);
     public static final HytaleTerrain GRASS = new HytaleTerrain("Soil Grass",
         HytaleBlock.of("Soil_Grass"), 0x59a52c);
@@ -677,11 +677,11 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         HytaleBlock.of("Rock_Slate_Cobble"), 0x585c56);
     public static final HytaleTerrain STONE = new HytaleTerrain("Stone",
         HytaleBlock.of("Rock_Stone"), 0x808080);
-    public static final HytaleTerrain SUMMER_GRASS = new HytaleTerrain("Summer Grass",
+    public static final HytaleTerrain SUMMER_GRASS = new HytaleTerrain("Soil Sunny Grass",
         HytaleBlock.of("Soil_Grass_Sunny"), 0x8abf30);
     public static final HytaleTerrain VOLCANIC_ROCK = new HytaleTerrain("Volcanic Rock",
         HytaleBlock.of("Rock_Volcanic"), 0x2e282c);
-    public static final HytaleTerrain WET_GRASS = new HytaleTerrain("Wet Grass",
+    public static final HytaleTerrain WET_GRASS = new HytaleTerrain("Soil Wet Grass",
         HytaleBlock.of("Soil_Grass_Wet"), 0x38964a);
     public static final HytaleTerrain WHITE_CRYSTAL = new HytaleTerrain("White Crystal",
         HytaleBlock.of("Rock_Crystal_White_Block"), 0xf2f6ff);
@@ -1129,13 +1129,13 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         HytaleBlock.of("Plant_Grass_Rocky_Short"), 0x517343);
     public static final HytaleTerrain TALL_ROCKY_GRASS = new HytaleTerrain("Tall Rocky Grass",
         HytaleBlock.of("Plant_Grass_Rocky_Tall"), 0x6a863e);
-    public static final HytaleTerrain GRASS_PLANT = new HytaleTerrain("Grass",
+    public static final HytaleTerrain GRASS_PLANT = new HytaleTerrain("Sharp Grass",
         HytaleBlock.of("Plant_Grass_Sharp"), 0x4f7043);
     public static final HytaleTerrain OVERGROWN_SHARP_GRASS = new HytaleTerrain("Overgrown Sharp Grass",
         HytaleBlock.of("Plant_Grass_Sharp_Overgrown"), 0x42853e);
     public static final HytaleTerrain SHORT_SHARP_GRASS = new HytaleTerrain("Short Sharp Grass",
         HytaleBlock.of("Plant_Grass_Sharp_Short"), 0x339940);
-    public static final HytaleTerrain TALL_GRASS = new HytaleTerrain("Tall Grass",
+    public static final HytaleTerrain TALL_GRASS = new HytaleTerrain("Tall Sharp Grass",
         HytaleBlock.of("Plant_Grass_Sharp_Tall"), 0x18470e);
     public static final HytaleTerrain WILD_SHARP_GRASS = new HytaleTerrain("Wild Sharp Grass",
         HytaleBlock.of("Plant_Grass_Sharp_Wild"), 0x375c38);
