@@ -241,7 +241,10 @@ public class FillDialog extends WPDialogWithPaintSelection implements Listener, 
                 @Override
                 public String getName() {
                     if (radioButtonTerrain.isSelected()) {
-                        return "Filling with " + ((Terrain) comboBoxTerrain.getSelectedItem()).getName();
+                        Object selectedTerrain = comboBoxTerrain.getSelectedItem();
+                        return "Filling with " + (selectedTerrain instanceof HytaleTerrain
+                                ? ((HytaleTerrain) selectedTerrain).getName()
+                                : ((Terrain) selectedTerrain).getName());
                     } else if (radioButtonSetLayer.isSelected()) {
                         return "Filling with " + ((Layer) comboBoxSetLayer.getSelectedItem()).getName();
                     } else if (radioButtonClearLayer.isSelected()) {
@@ -329,25 +332,51 @@ public class FillDialog extends WPDialogWithPaintSelection implements Listener, 
     }
 
     private void fillWithTerrain(ProgressReceiver progressReceiver) throws OperationCancelled {
-        final Terrain terrain = (Terrain) comboBoxTerrain.getSelectedItem();
-        dimension.visitTilesForEditing().forFilter(filter).andDo(tile -> {
-            final int worldTileX = tile.getX() << TILE_SIZE_BITS;
-            final int worldTileY = tile.getY() << TILE_SIZE_BITS;
-            for (int x = 0; x < TILE_SIZE; x++) {
-                for (int y = 0; y < TILE_SIZE; y++) {
-                    boolean set;
-                    if (filter == null) {
-                        set = true;
-                    } else {
-                        float strength = filter.modifyStrength(worldTileX | x, worldTileY | y, 1.0f);
-                        set = (strength > 0.95f) || (Math.random() < strength);
-                    }
-                    if (set && (tile.getTerrain(x, y) != terrain)) {
-                        tile.setTerrain(x, y, terrain);
+        final Object selected = comboBoxTerrain.getSelectedItem();
+        if (selected instanceof HytaleTerrain) {
+            final HytaleTerrain hytaleTerrain = (HytaleTerrain) selected;
+            final int layerIndex = hytaleTerrain.getLayerIndex();
+            final Terrain fallback = org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.toMinecraftTerrain(hytaleTerrain);
+            dimension.visitTilesForEditing().forFilter(filter).andDo(tile -> {
+                final int worldTileX = tile.getX() << TILE_SIZE_BITS;
+                final int worldTileY = tile.getY() << TILE_SIZE_BITS;
+                for (int x = 0; x < TILE_SIZE; x++) {
+                    for (int y = 0; y < TILE_SIZE; y++) {
+                        boolean set;
+                        if (filter == null) {
+                            set = true;
+                        } else {
+                            float strength = filter.modifyStrength(worldTileX | x, worldTileY | y, 1.0f);
+                            set = (strength > 0.95f) || (Math.random() < strength);
+                        }
+                        if (set) {
+                            tile.setTerrain(x, y, fallback);
+                            org.pepsoft.worldpainter.hytale.HytaleTerrainLayer.setTerrainIndex(tile, x, y, layerIndex);
+                        }
                     }
                 }
-            }
-        }, progressReceiver);
+            }, progressReceiver);
+        } else {
+            final Terrain terrain = (Terrain) selected;
+            dimension.visitTilesForEditing().forFilter(filter).andDo(tile -> {
+                final int worldTileX = tile.getX() << TILE_SIZE_BITS;
+                final int worldTileY = tile.getY() << TILE_SIZE_BITS;
+                for (int x = 0; x < TILE_SIZE; x++) {
+                    for (int y = 0; y < TILE_SIZE; y++) {
+                        boolean set;
+                        if (filter == null) {
+                            set = true;
+                        } else {
+                            float strength = filter.modifyStrength(worldTileX | x, worldTileY | y, 1.0f);
+                            set = (strength > 0.95f) || (Math.random() < strength);
+                        }
+                        if (set && (tile.getTerrain(x, y) != terrain)) {
+                            tile.setTerrain(x, y, terrain);
+                        }
+                    }
+                }
+            }, progressReceiver);
+        }
     }
 
     private void fillWithLayer(ProgressReceiver progressReceiver) throws UnsupportedOperationException, OperationCancelled {
@@ -1112,7 +1141,7 @@ chunks:         for (int chunkX = 0; chunkX < TILE_SIZE; chunkX += 16) {
 
         final boolean hytalePlatform = org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(dimension.getWorld().getPlatform());
         comboBoxTerrain.setModel(new DefaultComboBoxModel(hytalePlatform
-                ? org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.deduplicateForHytaleUi(Terrain.getConfiguredValues())
+                ? HytaleTerrain.PICK_LIST
                 : Terrain.getConfiguredValues()));
         if (hytalePlatform) {
             comboBoxTerrain.setRenderer(new org.pepsoft.worldpainter.hytale.HytaleTerrainListCellRenderer(colourScheme));

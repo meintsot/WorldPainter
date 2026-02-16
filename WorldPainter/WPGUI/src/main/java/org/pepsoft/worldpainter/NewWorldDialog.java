@@ -941,6 +941,8 @@ public class NewWorldDialog extends WorldPainterDialog {
         @Override
         public void applyTheme(Tile tile, int x, int y) {
             delegate.applyTheme(tile, x, y);
+            // Clear HytaleTerrain layer so renderer/exporter falls back to fromMinecraftTerrain()
+            org.pepsoft.worldpainter.hytale.HytaleTerrainLayer.setTerrainIndex(tile, x, y, 0);
         }
 
         @Override
@@ -969,33 +971,15 @@ public class NewWorldDialog extends WorldPainterDialog {
             if (tile == null) {
                 return;
             }
-            // TODO: Add HytaleTerrain field to Tile class
-            // if (tile.hytaleTerrain == null) {
-            //     tile.hytaleTerrain = new short[TILE_SIZE * TILE_SIZE];
-            // }
-            // Arrays.fill(tile.hytaleTerrain, (short) hytaleTerrainIndex);
-
-            // Sync Minecraft terrain for preview
             if (hytaleTerrain != null) {
-                Terrain mt = mapHytaleToMinecraft(hytaleTerrain);
+                Terrain mt = org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.toMinecraftTerrain(hytaleTerrain);
                 for (int ty = 0; ty < TILE_SIZE; ty++) {
                     for (int tx = 0; tx < TILE_SIZE; tx++) {
                         tile.setTerrain(tx, ty, mt);
+                        org.pepsoft.worldpainter.hytale.HytaleTerrainLayer.setTerrainIndex(tile, tx, ty, hytaleTerrainIndex);
                     }
                 }
             }
-        }
-
-        private Terrain mapHytaleToMinecraft(HytaleTerrain ht) {
-            String name = ht.getName().toLowerCase();
-            if (name.contains("grass")) return Terrain.GRASS;
-            if (name.contains("dirt")) return Terrain.DIRT;
-            if (name.contains("sand")) return Terrain.SAND;
-            if (name.contains("stone")) return Terrain.STONE;
-            if (name.contains("water")) return Terrain.WATER;
-            if (name.contains("snow") || name.contains("ice")) return Terrain.SNOW;
-            if (name.contains("gravel")) return Terrain.GRAVEL;
-            return Terrain.GRASS;
         }
 
         private final TileFactory delegate;
