@@ -169,10 +169,7 @@ public class HytaleWorldExporter implements WorldExporter {
                     throw new IOException("Could not create resources directory");
                 }
                 
-                // Write config.json
-                writeWorldConfig(effectiveWorldDir);
-                
-                // Export dimensions
+                // Export dimensions (must come before writeWorldConfig so blockOffsetX/Z are set)
                 Map<Integer, ChunkFactory.Stats> stats = new HashMap<>();
                 Dimension dim0 = world.getDimension(NORMAL_DETAIL);
                 if (dim0 != null) {
@@ -182,7 +179,10 @@ public class HytaleWorldExporter implements WorldExporter {
                     stats.put(DIM_NORMAL, exportDimension(effectiveWorldDir, dim0, progressReceiver));
                 }
                 
-                // Write resource files (after exportDimension so blockOffsetX/Z are set)
+                // Write config.json (after exportDimension so blockOffsetX/Z are set for SpawnProvider)
+                writeWorldConfig(effectiveWorldDir);
+                
+                // Write resource files
                 writeResourceFiles(effectiveWorldDir);
                 
                 // If we used a temp directory, move the result to the target location
@@ -297,6 +297,29 @@ public class HytaleWorldExporter implements WorldExporter {
         final String gameplayConfig = world.getAttribute(HytaleWorldSettings.ATTRIBUTE_GAMEPLAY_CONFIG)
                 .orElse(HytaleWorldSettings.DEFAULT_GAMEPLAY_CONFIG);
 
+        // SpawnProvider - tells Hytale where players spawn
+        Point spawnPoint = world.getSpawnPoint();
+        if (spawnPoint != null) {
+            int spawnX = spawnPoint.x + blockOffsetX;
+            int spawnZ = spawnPoint.y + blockOffsetZ;
+            int spawnY = 0;
+            if (dim0 != null) {
+                int height = dim0.getIntHeightAt(spawnPoint.x, spawnPoint.y);
+                if (height >= 0) {
+                    spawnY = height + 1;
+                }
+            }
+            Map<String, Object> spawnProvider = new LinkedHashMap<>();
+            spawnProvider.put("Type", "Global");
+            Map<String, Object> spawnTransform = new LinkedHashMap<>();
+            spawnTransform.put("X", (double) spawnX);
+            spawnTransform.put("Y", (double) spawnY);
+            spawnTransform.put("Z", (double) spawnZ);
+            spawnProvider.put("SpawnPoint", spawnTransform);
+            config.put("SpawnProvider", spawnProvider);
+            logger.info("Set SpawnProvider in config.json at ({}, {}, {})", spawnX, spawnY, spawnZ);
+        }
+        
         config.put("ChunkConfig", new LinkedHashMap<>());
         config.put("IsTicking", true);
         config.put("IsBlockTicking", true);
