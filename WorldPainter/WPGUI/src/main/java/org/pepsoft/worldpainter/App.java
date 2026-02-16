@@ -3678,6 +3678,29 @@ public final class App extends JFrame implements BrushControl,
                 updateTerrainButtonsForPlatform();
             }
         });
+        terrainSearchField.addFocusListener(new java.awt.event.FocusAdapter() {
+            private InputMap savedInputMap;
+
+            @Override
+            public void focusGained(java.awt.event.FocusEvent e) {
+                JRootPane rootPane = SwingUtilities.getRootPane(terrainSearchField);
+                if (rootPane != null) {
+                    savedInputMap = rootPane.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
+                    rootPane.setInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT, new InputMap());
+                }
+            }
+
+            @Override
+            public void focusLost(java.awt.event.FocusEvent e) {
+                if (savedInputMap != null) {
+                    JRootPane rootPane = SwingUtilities.getRootPane(terrainSearchField);
+                    if (rootPane != null) {
+                        rootPane.setInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT, savedInputMap);
+                    }
+                    savedInputMap = null;
+                }
+            }
+        });
         constraints.weightx = 1.0;
         constraints.fill = HORIZONTAL;
         terrainPanel.add(terrainSearchField, constraints);
