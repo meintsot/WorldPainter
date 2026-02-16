@@ -64,6 +64,11 @@ public class WPTileProvider implements org.pepsoft.util.swing.TileProvider, Dime
         return unmodifiableSet(hiddenLayers);
     }
 
+    public void setPlatform(Platform platform) {
+        this.platform = platform;
+        tileRendererRef = createNewTileRendererRef();
+    }
+
     public boolean isHideAllLayers() {
         return hideAllLayers;
     }
@@ -334,6 +339,9 @@ public class WPTileProvider implements org.pepsoft.util.swing.TileProvider, Dime
                     tileRenderer.addHiddenLayers(hiddenLayers);
                 }
             }
+            if (platform != null) {
+                tileRenderer.setPlatform(platform);
+            }
             tileRenderer.setContourLines(contourLines);
             tileRenderer.setContourSeparation(contourSeparation);
             tileRenderer.setLightOrigin(lightOrigin);
@@ -372,6 +380,7 @@ public class WPTileProvider implements org.pepsoft.util.swing.TileProvider, Dime
 
     private int zoom = 0;
     private boolean hideAllLayers;
+    private Platform platform;
     private volatile ThreadLocal<TileRenderer> tileRendererRef;
 
     private static final Logger logger = LoggerFactory.getLogger(WPTileProvider.class);

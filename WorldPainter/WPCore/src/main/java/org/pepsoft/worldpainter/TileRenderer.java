@@ -87,6 +87,10 @@ public final class TileRenderer {
         return platform;
     }
 
+    public void setPlatform(Platform platform) {
+        this.platform = platform;
+    }
+
     public ColourScheme getColourScheme() {
         return colourScheme;
     }
@@ -521,7 +525,7 @@ public final class TileRenderer {
     private final int[][] heights = new int[3][3], deltas = new int[3][3], fluidHeights = new int[3][3], fluidDeltas = new int[3][3];
     private final boolean[] oppositesOverlap = new boolean[TILE_SIZE * TILE_SIZE];
     private final int zoom, waterColour, lavaColour, bedrockColour, notPresentColour, voidColour;;
-    private final Platform platform;
+    private Platform platform;
     private final TileProvider tileProvider, relatedTileProvider;
     private final Dimension dimensionRef;
     private final boolean renderCeilingIntersection, renderTunnelRoofIntersection;
