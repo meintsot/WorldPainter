@@ -34,7 +34,7 @@ java --add-opens java.desktop/sun.swing=ALL-UNNAMED ^
      --add-opens java.desktop/java.awt=ALL-UNNAMED ^
      --add-opens java.desktop/sun.awt=ALL-UNNAMED ^
      --add-opens java.base/java.lang=ALL-UNNAMED ^
-     -Xmx2G ^
+     -Xmx10G ^
      -jar "%JAR_FILE%"
 
 if %ERRORLEVEL% neq 0 (

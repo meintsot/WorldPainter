@@ -7,6 +7,7 @@ import org.pepsoft.minecraft.MinecraftCoords;
 import org.pepsoft.minecraft.TileEntity;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -583,7 +584,7 @@ public class HytaleChunk implements Chunk {
     public static class HytaleSection {
         // Use palette-based storage like Hytale does
         // For simplicity, we start with a direct material array and can optimize later
-        private final Material[] blocks;
+        private Material[] blocks;
         private final HytaleBlock[] hytaleBlocks;
         private final byte[] rotations; // Hytale rotation: 0-63 (6 bits: rx*16 + ry*4 + rz)
         private final byte[] fluidIds; // Fluid type: 0=empty, 1=water, 2=lava, etc.
@@ -603,7 +604,6 @@ public class HytaleChunk implements Chunk {
         private static final int SECTION_SIZE = CHUNK_SIZE * SECTION_HEIGHT * CHUNK_SIZE; // 32*32*32 = 32768
         
         public HytaleSection() {
-            blocks = new Material[SECTION_SIZE];
             hytaleBlocks = new HytaleBlock[SECTION_SIZE];
             rotations = new byte[SECTION_SIZE];
             fluidIds = new byte[SECTION_SIZE];
@@ -611,18 +611,11 @@ public class HytaleChunk implements Chunk {
             blockLight = new byte[SECTION_SIZE];
             skyLight = new byte[SECTION_SIZE];
             
-            // Initialize with air
+            // Initialize palette with air
             Material air = Material.AIR;
             palette.add(air);
             paletteIndex.put(air, 0);
-            for (int i = 0; i < SECTION_SIZE; i++) {
-                blocks[i] = air;
-                hytaleBlocks[i] = HytaleBlock.EMPTY;
-                rotations[i] = 0; // No rotation by default
-                fluidIds[i] = 0; // No fluid by default
-                fluidLevels[i] = 0;
-                skyLight[i] = 15; // Full sky light by default
-            }
+            Arrays.fill(skyLight, (byte) 15); // Full sky light by default
             
             // Initialize fluid palette with empty entry
             fluidPalette.add("Empty");
@@ -630,6 +623,9 @@ public class HytaleChunk implements Chunk {
         }
         
         public Material getMaterial(int x, int y, int z) {
+            if (blocks == null) {
+                return Material.AIR;
+            }
             return blocks[getIndex(x, y, z)];
         }
 
@@ -641,6 +637,10 @@ public class HytaleChunk implements Chunk {
             if (!paletteIndex.containsKey(material)) {
                 paletteIndex.put(material, palette.size());
                 palette.add(material);
+            }
+            if (blocks == null) {
+                blocks = new Material[SECTION_SIZE];
+                Arrays.fill(blocks, Material.AIR);
             }
             blocks[getIndex(x, y, z)] = material;
         }
@@ -812,8 +812,16 @@ public class HytaleChunk implements Chunk {
          * Check if all blocks are air (for optimization).
          */
         public boolean isEmpty() {
-            for (Material block : blocks) {
-                if (block != Material.AIR) {
+            if (blocks != null) {
+                for (Material block : blocks) {
+                    if (block != Material.AIR) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+            for (HytaleBlock block : hytaleBlocks) {
+                if (block != null && !block.isEmpty()) {
                     return false;
                 }
             }

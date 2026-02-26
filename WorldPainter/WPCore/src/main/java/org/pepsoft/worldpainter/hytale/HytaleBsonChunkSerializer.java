@@ -658,11 +658,14 @@ public class HytaleBsonChunkSerializer {
                 Map<Material, Integer> paletteIndex = new HashMap<>();
                 List<Material> palette = new ArrayList<>();
                 List<Integer> counts = new ArrayList<>();
-                int[] blockIndices = new int[blocks.length];
+                int sectionSize = (blocks != null) ? blocks.length : section.getHytaleBlocks().length;
+                int[] blockIndices = new int[sectionSize];
                 boolean allAir = true;
 
-                for (int i = 0; i < blocks.length; i++) {
-                    Material effective = toBlockMaterial(blocks[i]);
+                for (int i = 0; i < sectionSize; i++) {
+                    Material effective = (blocks != null)
+                            ? toBlockMaterial(blocks[i])
+                            : Material.AIR;
                     if (effective != Material.AIR) {
                         allAir = false;
                     }
@@ -997,11 +1000,13 @@ public class HytaleBsonChunkSerializer {
         boolean hasWaterFromBlocks = false;
         boolean hasLavaFromBlocks = false;
         boolean hasHytaleFluids = false;
-        for (Material block : blocks) {
-            if (block == Material.WATER) {
-                hasWaterFromBlocks = true;
-            } else if (block == Material.LAVA) {
-                hasLavaFromBlocks = true;
+        if (blocks != null) {
+            for (Material block : blocks) {
+                if (block == Material.WATER) {
+                    hasWaterFromBlocks = true;
+                } else if (block == Material.LAVA) {
+                    hasLavaFromBlocks = true;
+                }
             }
         }
         
@@ -1052,10 +1057,11 @@ public class HytaleBsonChunkSerializer {
                 buf.writeByte(paletteType);
                 
                 // Build indices array, combining explicit fluids and block-based water/lava
-                int[] indices = new int[blocks.length];
+                int sectionSize = (blocks != null) ? blocks.length : hytaleBlocks.length;
+                int[] indices = new int[sectionSize];
                 int[] counts = new int[palette.size()];
                 
-                for (int i = 0; i < blocks.length; i++) {
+                for (int i = 0; i < sectionSize; i++) {
                     int idx = 0;
                     
                     // First check explicit fluid storage
@@ -1064,10 +1070,10 @@ public class HytaleBsonChunkSerializer {
                         idx = paletteIndex.getOrDefault(fluidName, 0);
                     }
                     // Then check block materials for water/lava
-                    else if (blocks[i] == Material.WATER) {
+                    else if ((blocks != null) && (blocks[i] == Material.WATER)) {
                         idx = paletteIndex.getOrDefault(HytaleBlockMapping.HY_WATER, 0);
                     }
-                    else if (blocks[i] == Material.LAVA) {
+                    else if ((blocks != null) && (blocks[i] == Material.LAVA)) {
                         idx = paletteIndex.getOrDefault(HytaleBlockMapping.HY_LAVA, 0);
                     }
                     // Finally check Hytale blocks for fluids

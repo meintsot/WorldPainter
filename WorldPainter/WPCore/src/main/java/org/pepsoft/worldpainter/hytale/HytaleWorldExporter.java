@@ -191,7 +191,12 @@ public class HytaleWorldExporter implements WorldExporter {
                         progressReceiver.setMessage("Moving exported world to target directory...");
                     }
                     logger.info("Moving exported world from {} to {}", effectiveWorldDir, worldDir);
-                    copyDirectory(effectiveWorldDir.toPath(), worldDir.toPath());
+                    // Delete any existing target directory first so the move can succeed
+                    if (worldDir.exists()) {
+                        deleteRecursive(worldDir.toPath());
+                    }
+                    // Both paths are on the same drive, so this is a fast rename (no data copy)
+                    Files.move(effectiveWorldDir.toPath(), worldDir.toPath());
                 }
                 
                 // Record the export in the world history
@@ -482,25 +487,47 @@ public class HytaleWorldExporter implements WorldExporter {
             }
             
             logger.info("Processing {} regions for dimension {}", regions.size(), dimension.getName());
+            final boolean hasCustomObjects = hasCustomObjectLayers(dimension);
+            logger.info("Hytale custom object layers present: {}", hasCustomObjects);
             
             // Export region files with BSON-serialized chunk data
             File chunksDir = new File(worldDir, "chunks");
             
             List<Point> sortedRegions = new ArrayList<>(regions);
-            ExecutorService executor = createExecutorService("hytale-export", sortedRegions.size());
             ParallelProgressManager parallelProgressManager = (progressReceiver != null) 
                 ? new ParallelProgressManager(progressReceiver, regions.size()) : null;
             AtomicBoolean abort = new AtomicBoolean(false);
             RuntimeException[] exception = new RuntimeException[1];
             
             // Limit concurrent regions in memory to avoid OutOfMemoryError.
-            // Each Hytale region (32x32 chunks of 32x32x320 blocks) can consume significant memory.
+            // For Hytale exports each region can be very memory heavy, especially when writing to slow drives
+            // where generated data can stay in memory longer while waiting for I/O.
+            //
+            // Default is adaptive to target drive throughput and can be overridden with
+            // -Dorg.pepsoft.worldpainter.hytale.maxConcurrentRegions=N.
             final Runtime runtime = Runtime.getRuntime();
             final long maxMem = runtime.maxMemory();
-            final int maxConcurrentRegions = Math.max(1, (int) (maxMem / (512L * 1024 * 1024)));
+            Integer configured = Integer.getInteger("org.pepsoft.worldpainter.hytale.maxConcurrentRegions");
+            final long writeSpeedMBps = estimateDriveWriteSpeedMBps(baseDir);
+            final int adaptiveDefaultConcurrentRegions;
+            if (writeSpeedMBps >= 300L) {
+                adaptiveDefaultConcurrentRegions = 4;
+            } else if (writeSpeedMBps >= 150L) {
+                adaptiveDefaultConcurrentRegions = 3;
+            } else {
+                adaptiveDefaultConcurrentRegions = 2;
+            }
+            final int configuredMaxConcurrentRegions = (configured != null)
+                    ? Math.max(1, configured)
+                    : adaptiveDefaultConcurrentRegions;
+            final int maxByMemory = Math.max(1, (int) (maxMem / (1536L * 1024 * 1024)));
+            final int maxByContent = hasCustomObjects ? 1 : configuredMaxConcurrentRegions;
+            final int maxConcurrentRegions = Math.max(1,
+                Math.min(Math.min(maxByContent, maxByMemory), sortedRegions.size()));
             final Semaphore regionMemorySemaphore = new Semaphore(maxConcurrentRegions);
-            logger.info("Limiting concurrent region exports to {} (max memory: {} MB)", 
-                maxConcurrentRegions, maxMem / (1024 * 1024));
+            final ExecutorService executor = createExecutorService("hytale-export", maxConcurrentRegions);
+            logger.info("Limiting concurrent region exports to {} (configured: {}, adaptive default: {}, drive write: {} MB/s, memory cap: {}, max memory: {} MB)",
+                maxConcurrentRegions, configuredMaxConcurrentRegions, adaptiveDefaultConcurrentRegions, writeSpeedMBps, maxByMemory, maxMem / (1024 * 1024));
             
             try {
                 for (Point region : sortedRegions) {
@@ -528,7 +555,7 @@ public class HytaleWorldExporter implements WorldExporter {
                         }
                         
                         try {
-                            exportRegion(chunksDir, dimension, region, collectedStats, regionProgress);
+                            exportRegion(chunksDir, dimension, region, collectedStats, regionProgress, hasCustomObjects);
                         } catch (Throwable t) {
                             if (chainContains(t, ProgressReceiver.OperationCancelled.class)) {
                                 logger.debug("Operation cancelled on thread {}", Thread.currentThread().getName());
@@ -652,8 +679,9 @@ public class HytaleWorldExporter implements WorldExporter {
     /**
      * Export a single region (currently disabled - kept for future BSON implementation).
      */
-    private void exportRegion(File chunksDir, Dimension dimension, Point regionCoords, 
-            ChunkFactory.Stats stats, ProgressReceiver progressReceiver) throws IOException, ProgressReceiver.OperationCancelled {
+        private void exportRegion(File chunksDir, Dimension dimension, Point regionCoords,
+            ChunkFactory.Stats stats, ProgressReceiver progressReceiver, boolean retainChunksForCustomObjects)
+            throws IOException, ProgressReceiver.OperationCancelled {
         
         Path regionPath = chunksDir.toPath().resolve(HytaleRegionFile.getRegionFileName(regionCoords.x, regionCoords.y));
         
@@ -666,8 +694,7 @@ public class HytaleWorldExporter implements WorldExporter {
             // Each region contains 32x32 Hytale chunks
             int chunksExported = 0;
             int totalChunks = 32 * 32;
-            HytaleChunk[][] chunks = new HytaleChunk[32][32];
-            Map<Long, HytaleChunk> chunksByCoords = new HashMap<>();
+            Map<Long, HytaleChunk> chunksByCoords = retainChunksForCustomObjects ? new HashMap<>() : null;
             
             for (int localZ = 0; localZ < 32; localZ++) {
                 for (int localX = 0; localX < 32; localX++) {
@@ -705,8 +732,15 @@ public class HytaleWorldExporter implements WorldExporter {
                     
                     // Add entities (spawn markers, etc.)
                     addEntitiesToChunk(chunk, dimension, hyChunkX, hyChunkZ);
-                    chunks[localX][localZ] = chunk;
-                    chunksByCoords.put(chunkKey(hyChunkX, hyChunkZ), chunk);
+                    if (retainChunksForCustomObjects) {
+                        chunksByCoords.put(chunkKey(hyChunkX, hyChunkZ), chunk);
+                    } else {
+                        // Streaming path: write chunk immediately to keep memory footprint low.
+                        regionFile.writeChunk(localX, localZ, chunk);
+                        synchronized (stats) {
+                            stats.surfaceArea += HytaleChunk.CHUNK_SIZE * HytaleChunk.CHUNK_SIZE;
+                        }
+                    }
                     
                     chunksExported++;
                     if (progressReceiver != null && chunksExported % 32 == 0) {
@@ -715,19 +749,23 @@ public class HytaleWorldExporter implements WorldExporter {
                 }
             }
 
-            // Apply custom object layers after terrain generation so placement/collision checks can use the final surface.
-            applyCustomObjectLayers(dimension, regionCoords, chunksByCoords);
+            if (retainChunksForCustomObjects) {
+                // Apply custom object layers after terrain generation so placement/collision checks can use the final surface.
+                applyCustomObjectLayers(dimension, regionCoords, chunksByCoords);
 
-            // Write all populated chunks to disk.
-            for (int localZ = 0; localZ < 32; localZ++) {
-                for (int localX = 0; localX < 32; localX++) {
-                    HytaleChunk chunk = chunks[localX][localZ];
-                    if (chunk == null) {
-                        continue;
-                    }
-                    regionFile.writeChunk(localX, localZ, chunk);
-                    synchronized (stats) {
-                        stats.surfaceArea += HytaleChunk.CHUNK_SIZE * HytaleChunk.CHUNK_SIZE;
+                // Write retained chunks to disk.
+                for (int localZ = 0; localZ < 32; localZ++) {
+                    for (int localX = 0; localX < 32; localX++) {
+                        int hyChunkX = (regionCoords.x << 5) + localX;
+                        int hyChunkZ = (regionCoords.y << 5) + localZ;
+                        HytaleChunk chunk = chunksByCoords.get(chunkKey(hyChunkX, hyChunkZ));
+                        if (chunk == null) {
+                            continue;
+                        }
+                        regionFile.writeChunk(localX, localZ, chunk);
+                        synchronized (stats) {
+                            stats.surfaceArea += HytaleChunk.CHUNK_SIZE * HytaleChunk.CHUNK_SIZE;
+                        }
                     }
                 }
             }
@@ -736,6 +774,59 @@ public class HytaleWorldExporter implements WorldExporter {
         }
         
         logger.debug("Exported region {},{} to {}", regionCoords.x, regionCoords.y, regionPath);
+    }
+
+    private boolean hasCustomObjectLayers(Dimension dimension) {
+        Set<Layer> layers = dimension.getAllLayers(false);
+        if (layers.isEmpty()) {
+            return false;
+        }
+        for (Layer layer : layers) {
+            if (layer instanceof Bo2Layer) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private long estimateDriveWriteSpeedMBps(File baseDir) {
+        final long probeSizeBytes = 8L * 1024L * 1024L; // 8 MB
+        byte[] buffer = new byte[64 * 1024];
+        Path probeFile = null;
+        long startNanos;
+        long durationNanos;
+        try {
+            probeFile = Files.createTempFile(baseDir.toPath(), "wp-hytale-speed-", ".tmp");
+            startNanos = System.nanoTime();
+            try (java.io.OutputStream out = Files.newOutputStream(probeFile, java.nio.file.StandardOpenOption.WRITE,
+                    java.nio.file.StandardOpenOption.TRUNCATE_EXISTING)) {
+                long written = 0;
+                while (written < probeSizeBytes) {
+                    int toWrite = (int) Math.min(buffer.length, probeSizeBytes - written);
+                    out.write(buffer, 0, toWrite);
+                    written += toWrite;
+                }
+                out.flush();
+            }
+            durationNanos = System.nanoTime() - startNanos;
+            if (durationNanos <= 0) {
+                return 100;
+            }
+            long bytesPerSecond = (probeSizeBytes * 1_000_000_000L) / durationNanos;
+            long mbps = Math.max(1, bytesPerSecond / (1024L * 1024L));
+            return mbps;
+        } catch (IOException e) {
+            logger.debug("Could not estimate drive write speed for {}", baseDir, e);
+            return 100;
+        } finally {
+            if (probeFile != null) {
+                try {
+                    Files.deleteIfExists(probeFile);
+                } catch (IOException ignored) {
+                    // ignore probe cleanup failure
+                }
+            }
+        }
     }
     
     /**
