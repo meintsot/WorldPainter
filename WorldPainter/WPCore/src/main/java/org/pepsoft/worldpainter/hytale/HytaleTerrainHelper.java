@@ -181,7 +181,7 @@ public final class HytaleTerrainHelper {
         if (name.contains("clay")) return HytaleTerrain.STONE;
         if (name.contains("mud")) return HytaleTerrain.WET_GRASS;
         if (name.contains("podzol")) return HytaleTerrain.DEEP_GRASS;
-        if (name.contains("dirt") || name.contains("permadirt")) return HytaleTerrain.DEEP_GRASS;
+        if (name.contains("dirt") || name.contains("permadirt")) return HytaleTerrain.DIRT;
         if (name.contains("mycelium")) return HytaleTerrain.DEEP_GRASS;
         if (name.contains("magma")) return HytaleTerrain.COLD_MAGMA;
 
@@ -250,6 +250,11 @@ public final class HytaleTerrainHelper {
         map.put(HytaleTerrain.COLD_GRASS, Terrain.GRASS);
         map.put(HytaleTerrain.DRY_GRASS, Terrain.GRASS);
         map.put(HytaleTerrain.BURNED_GRASS, Terrain.PERMADIRT);
+        map.put(HytaleTerrain.DIRT, Terrain.DIRT);
+        map.put(HytaleTerrain.BURNT_DIRT, Terrain.PERMADIRT);
+        map.put(HytaleTerrain.COLD_DIRT, Terrain.DIRT);
+        map.put(HytaleTerrain.DRY_DIRT, Terrain.PERMADIRT);
+        map.put(HytaleTerrain.POISONED_DIRT, Terrain.PERMADIRT);
         map.put(HytaleTerrain.SAND, Terrain.SAND);
         map.put(HytaleTerrain.RED_SAND, Terrain.RED_SAND);
         map.put(HytaleTerrain.WHITE_SAND, Terrain.SAND);

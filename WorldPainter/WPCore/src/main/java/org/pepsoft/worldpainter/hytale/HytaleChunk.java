@@ -192,7 +192,8 @@ public class HytaleChunk implements Chunk {
         } else if (effective.isEmpty() && y == getHeight(x, z)) {
             int newHeight = 0;
             for (int h = y - 1; h >= 0; h--) {
-                if (!getHytaleBlock(x, h, z).isEmpty()) {
+                HytaleBlock hb = getHytaleBlock(x, h, z);
+                if (hb != null && !hb.isEmpty()) {
                     newHeight = h;
                     break;
                 }

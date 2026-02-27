@@ -1,6 +1,7 @@
 package org.pepsoft.worldpainter.hytale;
 
 import org.pepsoft.worldpainter.ColourScheme;
+import org.pepsoft.worldpainter.Tile;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -13,6 +14,7 @@ import java.io.ObjectStreamException;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -580,12 +582,21 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
     }
     
     /**
-     * On deserialization, substitute the canonical static instance if one exists
-     * with the same UUID, so that identity checks (==) work correctly.
+     * On deserialization, substitute the canonical static instance if one exists.
+     * First tries UUID match (exact name match), then falls back to block ID match
+     * to handle terrains that were renamed between saves.
      */
     private Object readResolve() throws ObjectStreamException {
+        // Fast path: exact UUID match (terrain name unchanged)
         for (HytaleTerrain t : ALL_TERRAINS) {
             if (t.id.equals(this.id)) {
+                return t;
+            }
+        }
+        // Fallback: match by block ID (handles renames like "Grass" → "Soil Grass")
+        if (this.block != null) {
+            HytaleTerrain t = BLOCK_ID_MAP.get(this.block.id);
+            if (t != null) {
                 return t;
             }
         }
@@ -629,6 +640,16 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         HytaleBlock.of("Rock_Crystal_Cyan_Block"), 0x4fc7cd);
     public static final HytaleTerrain DEEP_GRASS = new HytaleTerrain("Soil Deep Grass",
         HytaleBlock.of("Soil_Grass_Deep"), 0x1f6e12);
+    public static final HytaleTerrain DIRT = new HytaleTerrain("Soil Dirt",
+        HytaleBlock.of("Soil_Dirt"), 0x8b5a2b);
+    public static final HytaleTerrain BURNT_DIRT = new HytaleTerrain("Soil Burnt Dirt",
+        HytaleBlock.of("Soil_Dirt_Burnt"), 0x5a3a1b);
+    public static final HytaleTerrain COLD_DIRT = new HytaleTerrain("Soil Cold Dirt",
+        HytaleBlock.of("Soil_Dirt_Cold"), 0x6b5a4b);
+    public static final HytaleTerrain DRY_DIRT = new HytaleTerrain("Soil Dry Dirt",
+        HytaleBlock.of("Soil_Dirt_Dry"), 0x9b6a3b);
+    public static final HytaleTerrain POISONED_DIRT = new HytaleTerrain("Soil Poisoned Dirt",
+        HytaleBlock.of("Soil_Dirt_Poisoned"), 0x4a5a2b);
     public static final HytaleTerrain DRY_GRASS = new HytaleTerrain("Soil Dry Grass",
         HytaleBlock.of("Soil_Grass_Dry"), 0xa89940);
     public static final HytaleTerrain FULL_GRASS = new HytaleTerrain("Soil Full Grass",
@@ -1558,6 +1579,10 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
             VINE_RUG, YELLOW_MOSS_BLOCK, RED_MOSS_BLOCK,
             DARK_GREEN_MOSS_BLOCK, BLUE_MOSS_BLOCK, GREEN_MOSS_BLOCK
         ));
+        // Dirt variants (appended at end to preserve existing indices)
+        list.addAll(Arrays.asList(
+            DIRT, BURNT_DIRT, COLD_DIRT, DRY_DIRT, POISONED_DIRT
+        ));
 
         ALL_TERRAINS = list.toArray(new HytaleTerrain[0]);
         PICK_LIST = ALL_TERRAINS;
@@ -1616,6 +1641,109 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
             }
         }
         BLOCK_ID_MAP = Collections.unmodifiableMap(map);
+    }
+
+    // ----- V0 migration (pre-ef785f11 terrain list → current list) -----
+
+    /**
+     * Block IDs of terrains in the version-0 ALL_TERRAINS ordering (commit bb91b38d and earlier).
+     * Index 0 of this array corresponds to stored layer index 1.
+     */
+    private static final String[] V0_BLOCK_IDS = {
+        "Soil_Grass",            // old idx 1  → GRASS
+        "Soil_Dirt",             // old idx 2  → DIRT
+        "Soil_Dirt_Burnt",       // old idx 3  → BURNT_DIRT
+        "Soil_Dirt_Cold",        // old idx 4  → COLD_DIRT
+        "Soil_Dirt_Dry",         // old idx 5  → DRY_DIRT
+        "Soil_Dirt_Poisoned",    // old idx 6  → POISONED_DIRT
+        "Soil_Sand",             // old idx 7  → SAND
+        "Soil_Sand_Red",         // old idx 8  → RED_SAND
+        "Soil_Sand_White",       // old idx 9  → WHITE_SAND
+        "Soil_Sand_Ashen",       // old idx 10 → ASHEN_SAND
+        "Soil_Snow",             // old idx 11 → fallback: ICE (removed)
+        "Soil_Gravel",           // old idx 12 → fallback: SHALE (removed)
+        "Soil_Gravel_Mossy",     // old idx 13 → fallback: MOSSY_STONE (removed)
+        "Soil_Clay",             // old idx 14 → fallback: STONE (removed)
+        "Soil_Mud",              // old idx 15 → fallback: DIRT (removed)
+        "Soil_Mud_Dry",          // old idx 16 → fallback: DRY_DIRT (removed)
+        "Soil_Leaves",           // old idx 17 → fallback: GRASS (removed)
+        "Rock_Stone",            // old idx 18 → STONE
+        "Rock_Stone_Mossy",      // old idx 19 → MOSSY_STONE
+        "Rock_Stone_Cobble",     // old idx 20 → fallback: SHALE_COBBLE (removed)
+        "Rock_Stone_Cobble_Mossy",// old idx 21 → fallback: MOSSY_STONE (removed)
+        "Rock_Sandstone",        // old idx 22 → SANDSTONE
+        "Rock_Sandstone_Red",    // old idx 23 → RED_SANDSTONE
+        "Rock_Sandstone_White",  // old idx 24 → WHITE_SANDSTONE
+        "Rock_Shale",            // old idx 25 → SHALE
+        "Rock_Slate",            // old idx 26 → SLATE
+        "Rock_Basalt",           // old idx 27 → BASALT
+        "Rock_Aqua",             // old idx 28 → AQUA_STONE
+        "Rock_Marble",           // old idx 29 → MARBLE
+        "Rock_Quartzite",        // old idx 30 → QUARTZITE
+        "Rock_Calcite",          // old idx 31 → CALCITE
+        "Rock_Chalk",            // old idx 32 → CHALK
+        "Rock_Salt",             // old idx 33 → SALT_BLOCK
+        "Rock_Volcanic",         // old idx 34 → VOLCANIC_ROCK
+        "Rock_Magma_Cooled",     // old idx 35 → COLD_MAGMA
+        "Rock_Ice",              // old idx 36 → BLUE_ICE
+        "Rock_Ice_Permafrost",   // old idx 37 → fallback: BLUE_ICE (removed)
+        "Rock_Bedrock",          // old idx 38 → fallback: BASALT (removed)
+        "Water_Source",          // old idx 39 → fallback: 0/clear (removed)
+        "Lava_Source",           // old idx 40 → fallback: VOLCANIC_ROCK (removed)
+    };
+
+    /** Resolved terrain objects for V0 migration, indexed by (old layer index - 1). */
+    private static final HytaleTerrain[] V0_MIGRATION_MAP;
+    static {
+        V0_MIGRATION_MAP = new HytaleTerrain[V0_BLOCK_IDS.length];
+        for (int i = 0; i < V0_BLOCK_IDS.length; i++) {
+            HytaleTerrain t = BLOCK_ID_MAP.get(V0_BLOCK_IDS[i]);
+            if (t == null) {
+                // Explicit fallbacks for block IDs removed from the current list
+                switch (V0_BLOCK_IDS[i]) {
+                    case "Soil_Snow":             t = ICE;           break;
+                    case "Soil_Gravel":           t = SHALE;         break;
+                    case "Soil_Gravel_Mossy":     t = MOSSY_STONE;   break;
+                    case "Soil_Clay":             t = STONE;         break;
+                    case "Soil_Mud":              t = DIRT;          break;
+                    case "Soil_Mud_Dry":          t = DRY_DIRT;      break;
+                    case "Soil_Leaves":           t = GRASS;         break;
+                    case "Rock_Stone_Cobble":     t = SHALE_COBBLE;  break;
+                    case "Rock_Stone_Cobble_Mossy": t = MOSSY_STONE; break;
+                    case "Rock_Ice_Permafrost":   t = ICE;           break;
+                    case "Rock_Bedrock":          t = BASALT;        break;
+                    case "Water_Source":          t = null;          break; // clear
+                    case "Lava_Source":           t = VOLCANIC_ROCK; break;
+                    default:                      t = STONE;         break;
+                }
+            }
+            V0_MIGRATION_MAP[i] = t;
+        }
+    }
+
+    /**
+     * Migrate per-pixel terrain indices in all tiles from the pre-ef785f11
+     * ordering (version 0, 40-terrain list) to the current ordering.
+     * Only tiles that actually have Hytale terrain data are touched.
+     * Called from {@code Dimension.readObject} when {@code wpVersion < 11}.
+     */
+    public static void migrateV0TerrainIndices(Collection<? extends Tile> tiles) {
+        for (Tile tile : tiles) {
+            if (!HytaleTerrainLayer.hasTerrainData(tile)) {
+                continue;
+            }
+            for (int y = 0; y < 128; y++) {
+                for (int x = 0; x < 128; x++) {
+                    int oldIndex = HytaleTerrainLayer.getTerrainIndex(tile, x, y);
+                    if (oldIndex < 1 || oldIndex > V0_MIGRATION_MAP.length) {
+                        continue;
+                    }
+                    HytaleTerrain newTerrain = V0_MIGRATION_MAP[oldIndex - 1];
+                    int newIndex = (newTerrain != null) ? newTerrain.getLayerIndex() : 0;
+                    HytaleTerrainLayer.setTerrainIndex(tile, x, y, newIndex);
+                }
+            }
+        }
     }
 
     // ----- Static factory methods -----

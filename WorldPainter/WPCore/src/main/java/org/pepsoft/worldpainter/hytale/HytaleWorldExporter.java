@@ -50,6 +50,7 @@ import static org.pepsoft.minecraft.Constants.MC_WATER;
 import static org.pepsoft.worldpainter.Constants.*;
 import static org.pepsoft.worldpainter.DefaultPlugin.HYTALE;
 import static org.pepsoft.worldpainter.Dimension.Anchor.NORMAL_DETAIL;
+import static org.pepsoft.worldpainter.Dimension.Anchor.NORMAL_DETAIL_CEILING;
 import static org.pepsoft.worldpainter.Dimension.Role.DETAIL;
 import static org.pepsoft.worldpainter.util.ThreadUtils.chooseThreadCountForExport;
 
@@ -176,7 +177,7 @@ public class HytaleWorldExporter implements WorldExporter {
                     if (progressReceiver != null) {
                         progressReceiver.setMessage("Exporting Overworld to Hytale format");
                     }
-                    stats.put(DIM_NORMAL, exportDimension(effectiveWorldDir, dim0, progressReceiver));
+                    stats.put(DIM_NORMAL, exportDimension(effectiveWorldDir, dim0, selectedTiles, progressReceiver));
                 }
                 
                 // Write config.json (after exportDimension so blockOffsetX/Z are set for SpawnProvider)
@@ -425,7 +426,7 @@ public class HytaleWorldExporter implements WorldExporter {
     /**
      * Export a dimension by exporting each region in parallel.
      */
-    private ChunkFactory.Stats exportDimension(File worldDir, Dimension dimension, ProgressReceiver progressReceiver) 
+    private ChunkFactory.Stats exportDimension(File worldDir, Dimension dimension, Set<Point> selectedTiles, ProgressReceiver progressReceiver) 
             throws ProgressReceiver.OperationCancelled {
         return doWithMdcContext(() -> {
             if (progressReceiver != null) {
@@ -439,7 +440,11 @@ public class HytaleWorldExporter implements WorldExporter {
             // In Hytale: region = 32x32 chunks, chunk = 32x32 blocks
             // WorldPainter tile = 128x128 blocks = 4x4 Hytale chunks
             Set<Point> regions = new HashSet<>();
-            Set<Point> tileCoords = dimension.getTileCoords();
+            Set<Point> allTileCoords = dimension.getTileCoords();
+            // If the user made a tile selection, restrict to those tiles only
+            Set<Point> tileCoords = (selectedTiles != null)
+                ? allTileCoords.stream().filter(selectedTiles::contains).collect(java.util.stream.Collectors.toSet())
+                : allTileCoords;
             
             // Calculate the center offset to ensure terrain is centered at world origin (0,0)
             // This way players spawn on the WorldPainter terrain instead of Hytale-generated void
@@ -489,7 +494,13 @@ public class HytaleWorldExporter implements WorldExporter {
             logger.info("Processing {} regions for dimension {}", regions.size(), dimension.getName());
             final boolean hasCustomObjects = hasCustomObjectLayers(dimension);
             logger.info("Hytale custom object layers present: {}", hasCustomObjects);
-            
+
+            final Dimension ceilingDimension = world.getDimension(NORMAL_DETAIL_CEILING);
+            if (ceilingDimension != null) {
+                logger.info("Ceiling dimension found; will export ceiling terrain at ceilingHeight={}",
+                    dimension.getCeilingHeight());
+            }
+
             // Export region files with BSON-serialized chunk data
             File chunksDir = new File(worldDir, "chunks");
             
@@ -508,7 +519,7 @@ public class HytaleWorldExporter implements WorldExporter {
             final Runtime runtime = Runtime.getRuntime();
             final long maxMem = runtime.maxMemory();
             Integer configured = Integer.getInteger("org.pepsoft.worldpainter.hytale.maxConcurrentRegions");
-            final long writeSpeedMBps = estimateDriveWriteSpeedMBps(baseDir);
+            final long writeSpeedMBps = estimateDriveWriteSpeedMBps(worldDir);
             final int adaptiveDefaultConcurrentRegions;
             if (writeSpeedMBps >= 300L) {
                 adaptiveDefaultConcurrentRegions = 4;
@@ -555,7 +566,7 @@ public class HytaleWorldExporter implements WorldExporter {
                         }
                         
                         try {
-                            exportRegion(chunksDir, dimension, region, collectedStats, regionProgress, hasCustomObjects);
+                            exportRegion(chunksDir, dimension, ceilingDimension, region, collectedStats, regionProgress, hasCustomObjects);
                         } catch (Throwable t) {
                             if (chainContains(t, ProgressReceiver.OperationCancelled.class)) {
                                 logger.debug("Operation cancelled on thread {}", Thread.currentThread().getName());
@@ -677,9 +688,9 @@ public class HytaleWorldExporter implements WorldExporter {
     }
     
     /**
-     * Export a single region (currently disabled - kept for future BSON implementation).
+     * Export a single region.
      */
-        private void exportRegion(File chunksDir, Dimension dimension, Point regionCoords,
+        private void exportRegion(File chunksDir, Dimension dimension, Dimension ceilingDimension, Point regionCoords,
             ChunkFactory.Stats stats, ProgressReceiver progressReceiver, boolean retainChunksForCustomObjects)
             throws IOException, ProgressReceiver.OperationCancelled {
         
@@ -729,7 +740,18 @@ public class HytaleWorldExporter implements WorldExporter {
                     // Fill chunk with terrain data from WorldPainter
                     // Pass original block coordinates so tile lookups work correctly
                     populateChunkFromTile(chunk, dimension, tile, originalBlockX, originalBlockZ);
-                    
+
+                    // Paint ceiling terrain hanging from above, if a ceiling dimension exists
+                    if (ceilingDimension != null) {
+                        int ceilingTileX = originalBlockX >> 7;
+                        int ceilingTileZ = originalBlockZ >> 7;
+                        Tile ceilingTile = ceilingDimension.getTile(ceilingTileX, ceilingTileZ);
+                        if (ceilingTile != null) {
+                            populateCeilingIntoChunk(chunk, ceilingDimension, ceilingTile,
+                                originalBlockX, originalBlockZ, dimension.getCeilingHeight());
+                        }
+                    }
+
                     // Add entities (spawn markers, etc.)
                     addEntitiesToChunk(chunk, dimension, hyChunkX, hyChunkZ);
                     if (retainChunksForCustomObjects) {
@@ -1028,6 +1050,70 @@ public class HytaleWorldExporter implements WorldExporter {
             worldBlockX, worldBlockZ, minHeight, maxHeight, minWaterLevel, maxWaterLevel, waterColumns);
     }
     
+    /**
+     * Populate a chunk with ceiling terrain, inverted from the ceiling dimension.
+     * Blocks hang downward from {@code ceilingHeight - 1} (bedrock lid) based on
+     * the painted height in the ceiling tile. The gap between the surface and the
+     * ceiling is left as {@link HytaleBlock#EMPTY} (void/air).
+     */
+    private void populateCeilingIntoChunk(HytaleChunk chunk, Dimension ceilingDimension, Tile ceilingTile,
+            int worldBlockX, int worldBlockZ, int ceilingHeight) {
+        long seed = ceilingDimension.getMinecraftSeed();
+        int chunkMaxHeight = chunk.getMaxHeight();
+
+        for (int localX = 0; localX < HytaleChunk.CHUNK_SIZE; localX++) {
+            for (int localZ = 0; localZ < HytaleChunk.CHUNK_SIZE; localZ++) {
+                int worldX = worldBlockX + localX;
+                int worldZ = worldBlockZ + localZ;
+                int tileLocalX = worldX & 0x7F;
+                int tileLocalZ = worldZ & 0x7F;
+
+                // Bedrock lid at the very top of the ceiling
+                int topY = ceilingHeight - 1;
+                if (topY >= 0 && topY < chunkMaxHeight) {
+                    chunk.setHytaleBlock(localX, topY, localZ, HytaleBlock.BEDROCK);
+                }
+
+                int hangDepth = ceilingTile.getIntHeight(tileLocalX, tileLocalZ);
+                if (hangDepth <= 0) continue;
+
+                Terrain localTerrain = ceilingTile.getTerrain(tileLocalX, tileLocalZ);
+                boolean isCustomTerrain = localTerrain.isCustom();
+                MixedMaterial customMaterial = isCustomTerrain
+                    ? Terrain.getCustomMaterial(localTerrain.getCustomTerrainIndex())
+                    : null;
+                int htIndex = HytaleTerrainLayer.getTerrainIndex(ceilingTile, tileLocalX, tileLocalZ);
+                HytaleTerrain hytaleTerrain;
+                if (htIndex > 0) {
+                    hytaleTerrain = HytaleTerrain.getByLayerIndex(htIndex);
+                } else {
+                    hytaleTerrain = isCustomTerrain ? null : HytaleTerrainHelper.fromMinecraftTerrain(localTerrain);
+                }
+
+                // depth 0 = bottom-most (visible) hanging block; increases toward the bedrock lid
+                // worldY = ceilingHeight - 1 - hangDepth + depth
+                for (int depth = 0; depth < hangDepth; depth++) {
+                    int y = ceilingHeight - 1 - hangDepth + depth;
+                    if (y < 0 || y >= chunkMaxHeight) continue;
+
+                    HytaleBlock block;
+                    if (isCustomTerrain && customMaterial != null) {
+                        Material mat = customMaterial.getMaterial(seed, worldX, worldZ, depth);
+                        block = HytaleBlockMapping.toHytaleBlock(mat);
+                    } else if (hytaleTerrain != null) {
+                        block = hytaleTerrain.getBlock(seed, worldX, worldZ, depth);
+                    } else {
+                        block = HytaleBlock.STONE;
+                    }
+
+                    if (!block.isEmpty() && !block.isFluid()) {
+                        chunk.setHytaleBlock(localX, y, localZ, block);
+                    }
+                }
+            }
+        }
+    }
+
     /**
      * Add entities to a chunk, including player spawn markers.
      * 
