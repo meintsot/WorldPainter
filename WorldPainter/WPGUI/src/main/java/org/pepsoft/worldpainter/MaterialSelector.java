@@ -19,8 +19,11 @@ import java.awt.event.FocusAdapter;
 import java.awt.event.FocusEvent;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Vector;
 
@@ -49,6 +52,7 @@ public class MaterialSelector extends javax.swing.JPanel {
         Vector<String> minecraftNames = new Vector<>(Material.getAllSimpleNamesForNamespace(Material.MINECRAFT));
         Collections.sort(minecraftNames);
         comboBoxMinecraftName.setModel(new DefaultComboBoxModel<>(minecraftNames));
+        allPrimaryNames = new ArrayList<>(minecraftNames);
         
         Vector<String> namespaces = new Vector<>(Material.getAllNamespaces());
         Collections.sort(namespaces);
@@ -63,6 +67,20 @@ public class MaterialSelector extends javax.swing.JPanel {
             }
         }
         comboBoxBlockType.setModel(new DefaultComboBoxModel<>(blockIds));
+
+        // Add search/filter panel at index 0 (before jPanel1) so the user can quickly filter the primary block name list
+        filterField = new JTextField();
+        filterField.setToolTipText("Type to filter block names");
+        filterField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            @Override public void insertUpdate(javax.swing.event.DocumentEvent e) { filterPrimaryNames(); }
+            @Override public void removeUpdate(javax.swing.event.DocumentEvent e) { filterPrimaryNames(); }
+            @Override public void changedUpdate(javax.swing.event.DocumentEvent e) { filterPrimaryNames(); }
+        });
+        filterPanel = new JPanel(new BorderLayout(4, 2));
+        filterPanel.setBorder(BorderFactory.createEmptyBorder(4, 6, 2, 6));
+        filterPanel.add(new JLabel("Filter:"), BorderLayout.WEST);
+        filterPanel.add(filterField, BorderLayout.CENTER);
+        add(filterPanel, 0);
     }
     
     public void setMaterial(Material material) {
@@ -136,10 +154,11 @@ public class MaterialSelector extends javax.swing.JPanel {
         legacyMode = ! platform.capabilities.contains(NAME_BASED);
         hytaleMode = HytaleTerrainHelper.isHytale(platform);
         if (legacyMode) {
-            remove(0);
+            remove(1); // jPanel1 is at index 1; filterPanel was inserted at index 0
             ((TitledBorder) jScrollPane1.getBorder()).setTitle("Modern properties");
+            filterPanel.setVisible(false);
         } else {
-            remove(1);
+            remove(2); // jPanel2 is at index 2; filterPanel was inserted at index 0
         }
         if (hytaleMode) {
             // Register all Hytale blocks as Material objects
@@ -150,6 +169,7 @@ public class MaterialSelector extends javax.swing.JPanel {
             // Populate the main combo with Hytale block names
             Vector<String> hytaleNames = new Vector<>(HytaleBlockRegistry.getAllBlockNames());
             comboBoxMinecraftName.setModel(new DefaultComboBoxModel<>(hytaleNames));
+            allPrimaryNames = new ArrayList<>(hytaleNames);
             // Display friendly names (underscores replaced with spaces) in the dropdown
             comboBoxMinecraftName.setRenderer(new javax.swing.DefaultListCellRenderer() {
                 @Override
@@ -847,6 +867,38 @@ public class MaterialSelector extends javax.swing.JPanel {
     private Material material;
     private String namespace, simpleName;
     private Map<String, String> properties;
+    private JPanel filterPanel;
+    private JTextField filterField;
+    private List<String> allPrimaryNames;
 
     private static final Logger logger = LoggerFactory.getLogger(MaterialSelector.class);
+
+    /**
+     * Filters the primary block name combo box based on the current text in {@link #filterField}.
+     * Matching is case-insensitive and checks both the raw block name and (for Hytale) the
+     * human-readable display name. The currently selected material is preserved if it still
+     * matches the filter.
+     */
+    private void filterPrimaryNames() {
+        if (programmaticChange || allPrimaryNames == null) return;
+        String query = filterField.getText().trim().toLowerCase(Locale.ROOT);
+        String currentSelection = (String) comboBoxMinecraftName.getSelectedItem();
+        programmaticChange = true;
+        try {
+            Vector<String> filtered = new Vector<>();
+            for (String name : allPrimaryNames) {
+                if (query.isEmpty()
+                        || name.toLowerCase(Locale.ROOT).contains(query)
+                        || (hytaleMode && HytaleBlockRegistry.formatDisplayName(name).toLowerCase(Locale.ROOT).contains(query))) {
+                    filtered.add(name);
+                }
+            }
+            comboBoxMinecraftName.setModel(new DefaultComboBoxModel<>(filtered));
+            if (currentSelection != null && filtered.contains(currentSelection)) {
+                comboBoxMinecraftName.setSelectedItem(currentSelection);
+            }
+        } finally {
+            programmaticChange = false;
+        }
+    }
 }
