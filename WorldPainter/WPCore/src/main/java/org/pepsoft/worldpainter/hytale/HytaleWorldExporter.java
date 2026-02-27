@@ -748,7 +748,8 @@ public class HytaleWorldExporter implements WorldExporter {
                         Tile ceilingTile = ceilingDimension.getTile(ceilingTileX, ceilingTileZ);
                         if (ceilingTile != null) {
                             populateCeilingIntoChunk(chunk, ceilingDimension, ceilingTile,
-                                originalBlockX, originalBlockZ, dimension.getCeilingHeight());
+                                originalBlockX, originalBlockZ, dimension.getCeilingHeight(),
+                                ceilingDimension.isBottomless());
                         }
                     }
 
@@ -941,8 +942,10 @@ public class HytaleWorldExporter implements WorldExporter {
                 chunk.setEnvironment(localX, localZ, environment);
                 chunk.setTint(localX, localZ, tint);
                 
-                // Bottom layer - bedrock
-                chunk.setHytaleBlock(localX, 0, localZ, HytaleBlock.BEDROCK);
+                // Bottom layer - bedrock (unless the dimension is bottomless)
+                if (!dimension.isBottomless()) {
+                    chunk.setHytaleBlock(localX, 0, localZ, HytaleBlock.BEDROCK);
+                }
                 
                 if (isCustomTerrain && customMaterial != null) {
                     // Custom terrain: resolve blocks through MixedMaterial → Material → HytaleBlock
@@ -1057,7 +1060,7 @@ public class HytaleWorldExporter implements WorldExporter {
      * ceiling is left as {@link HytaleBlock#EMPTY} (void/air).
      */
     private void populateCeilingIntoChunk(HytaleChunk chunk, Dimension ceilingDimension, Tile ceilingTile,
-            int worldBlockX, int worldBlockZ, int ceilingHeight) {
+            int worldBlockX, int worldBlockZ, int ceilingHeight, boolean bottomless) {
         long seed = ceilingDimension.getMinecraftSeed();
         int chunkMaxHeight = chunk.getMaxHeight();
 
@@ -1068,10 +1071,12 @@ public class HytaleWorldExporter implements WorldExporter {
                 int tileLocalX = worldX & 0x7F;
                 int tileLocalZ = worldZ & 0x7F;
 
-                // Bedrock lid at the very top of the ceiling
-                int topY = ceilingHeight - 1;
-                if (topY >= 0 && topY < chunkMaxHeight) {
-                    chunk.setHytaleBlock(localX, topY, localZ, HytaleBlock.BEDROCK);
+                // Bedrock lid at the very top of the ceiling (unless bottomless)
+                if (!bottomless) {
+                    int topY = ceilingHeight - 1;
+                    if (topY >= 0 && topY < chunkMaxHeight) {
+                        chunk.setHytaleBlock(localX, topY, localZ, HytaleBlock.BEDROCK);
+                    }
                 }
 
                 int hangDepth = ceilingTile.getIntHeight(tileLocalX, tileLocalZ);

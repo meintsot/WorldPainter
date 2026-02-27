@@ -157,7 +157,7 @@ public final class HytaleTerrainHelper {
         if (name.contains("sand")) return HytaleTerrain.SAND;
 
         // Snow/Ice
-        if (name.contains("snow")) return HytaleTerrain.ICE;
+        if (name.contains("snow")) return HytaleTerrain.SNOW;
         if (name.contains("ice")) return HytaleTerrain.ICE;
 
         // Rock types
@@ -177,7 +177,7 @@ public final class HytaleTerrainHelper {
         if (name.equals("rock") || name.equals("stone")) return HytaleTerrain.STONE;
 
         // Earth
-        if (name.contains("gravel")) return HytaleTerrain.STONE;
+        if (name.contains("gravel")) return HytaleTerrain.GRAVEL;
         if (name.contains("clay")) return HytaleTerrain.STONE;
         if (name.contains("mud")) return HytaleTerrain.WET_GRASS;
         if (name.contains("podzol")) return HytaleTerrain.DEEP_GRASS;

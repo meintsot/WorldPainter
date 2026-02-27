@@ -191,10 +191,26 @@ public class HytaleBlockRegistry {
         return null;
     }
 
-    /** Format a block ID for display (replace underscores with spaces). */
+    /**
+     * Format a block ID for display. Uses the curated HytaleTerrain name when
+     * available, otherwise falls back to replacing underscores with spaces.
+     */
     public static String formatDisplayName(String blockId) {
-        return blockId.replace('_', ' ');
+        if (terrainNameMap == null) {
+            Map<String, String> map = new HashMap<>();
+            for (HytaleTerrain t : HytaleTerrain.PICK_LIST) {
+                HytaleBlock block = t.getBlock();
+                if (block != null) {
+                    map.putIfAbsent(block.id, t.getName());
+                }
+            }
+            terrainNameMap = map;
+        }
+        String curated = terrainNameMap.get(blockId);
+        return (curated != null) ? curated : blockId.replace('_', ' ');
     }
+
+    private static volatile Map<String, String> terrainNameMap;
 
     /**
      * Get the colour for a Hytale block ID, looking up from HytaleTerrain data.

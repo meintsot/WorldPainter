@@ -940,7 +940,20 @@ public final class App extends JFrame implements BrushControl,
         if ((! loadedFromBackup) && (! loadedFromAutosave)) {
             lastSelectedFile = file;
         } else {
+            // Try to recover the original save file from the world's history
             lastSelectedFile = null;
+            List<HistoryEntry> history = newWorld.getHistory();
+            for (int i = history.size() - 1; i >= 0; i--) {
+                HistoryEntry entry = history.get(i);
+                if (entry.key == HistoryEntry.WORLD_SAVED && entry.args != null && entry.args.length > 0) {
+                    File originalFile = (File) entry.args[0];
+                    if (originalFile.isFile()) {
+                        lastSelectedFile = originalFile;
+                        logger.info("Recovered original save file from history: {}", originalFile);
+                    }
+                    break;
+                }
+            }
         }
 
         // Log an event

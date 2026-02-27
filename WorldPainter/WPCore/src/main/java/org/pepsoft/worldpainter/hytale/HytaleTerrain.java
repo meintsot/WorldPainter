@@ -1393,6 +1393,22 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
     public static final HytaleTerrain GREEN_MOSS_BLOCK = new HytaleTerrain("Green Moss Block",
         HytaleBlock.of("Plant_Moss_Block_Green"), 0x2e9446);
 
+    // ===== GRAVEL =====
+    public static final HytaleTerrain GRAVEL = new HytaleTerrain("Gravel",
+        HytaleBlock.of("Soil_Gravel"), 0x909090);
+    public static final HytaleTerrain MOSSY_GRAVEL = new HytaleTerrain("Mossy Gravel",
+        HytaleBlock.of("Soil_Gravel_Mossy"), 0x708060);
+    public static final HytaleTerrain SAND_GRAVEL = new HytaleTerrain("Sand Gravel",
+        HytaleBlock.of("Soil_Gravel_Sand"), 0xb0a880);
+    public static final HytaleTerrain RED_SAND_GRAVEL = new HytaleTerrain("Red Sand Gravel",
+        HytaleBlock.of("Soil_Gravel_Sand_Red"), 0xb08060);
+    public static final HytaleTerrain WHITE_SAND_GRAVEL = new HytaleTerrain("White Sand Gravel",
+        HytaleBlock.of("Soil_Gravel_Sand_White"), 0xd0c8b0);
+
+    // ===== SNOW =====
+    public static final HytaleTerrain SNOW = new HytaleTerrain("Snow",
+        HytaleBlock.of("Soil_Snow"), 0xfffafa);
+
     // ===== PICK LIST (all terrains in display order as requested by builder team) =====
 
     /** Array of terrains shown on the main Terrain tab in Hytale mode. */
@@ -1583,6 +1599,12 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         list.addAll(Arrays.asList(
             DIRT, BURNT_DIRT, COLD_DIRT, DRY_DIRT, POISONED_DIRT
         ));
+        // Gravel variants (appended at end to preserve existing indices)
+        list.addAll(Arrays.asList(
+            GRAVEL, MOSSY_GRAVEL, SAND_GRAVEL, RED_SAND_GRAVEL, WHITE_SAND_GRAVEL
+        ));
+        // Snow (appended at end to preserve existing indices)
+        list.add(SNOW);
 
         ALL_TERRAINS = list.toArray(new HytaleTerrain[0]);
         PICK_LIST = ALL_TERRAINS;
