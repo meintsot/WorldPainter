@@ -386,11 +386,19 @@ public final class TileRenderer {
                     HytaleTerrain hytaleTerrain;
                     if (htIndex > 0) {
                         hytaleTerrain = HytaleTerrain.getByLayerIndex(htIndex);
+                        colour = 0xff000000 | hytaleTerrain.getEffectiveColour();
                     } else {
                         Terrain terrain = tile.getTerrain(x, y);
-                        hytaleTerrain = HytaleTerrainHelper.fromMinecraftTerrain(terrain);
+                        if (terrain.isCustom()) {
+                            // Custom materials (MixedMaterial) have their own colour;
+                            // use the same path as Minecraft mode so the user's chosen
+                            // colour is respected
+                            colour = terrain.getColour(seed, worldX, worldY, height, intHeight, platform, colourScheme);
+                        } else {
+                            hytaleTerrain = HytaleTerrainHelper.fromMinecraftTerrain(terrain);
+                            colour = 0xff000000 | hytaleTerrain.getEffectiveColour();
+                        }
                     }
-                    colour = 0xff000000 | hytaleTerrain.getEffectiveColour();
                 } else {
                     Terrain terrain = tile.getTerrain(x, y);
                     if (topLayersRelativeToTerrain
