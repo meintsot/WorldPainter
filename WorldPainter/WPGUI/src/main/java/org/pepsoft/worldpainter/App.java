@@ -1805,12 +1805,24 @@ public final class App extends JFrame implements BrushControl,
         Runnable refilter = () -> {
             String q = searchField.getText().trim().toLowerCase(Locale.ROOT);
             model.clear();
-            for (org.pepsoft.worldpainter.hytale.HytaleTerrain terrain : all) {
-                if (q.isEmpty()
-                        || terrain.getName().toLowerCase(Locale.ROOT).contains(q)
-                        || ((terrain.getBlock() != null) && terrain.getBlock().id.toLowerCase(Locale.ROOT).contains(q))) {
-                    model.addElement(terrain);
+            if (q.isEmpty()) {
+                all.forEach(model::addElement);
+            } else {
+                // Rank results: exact > starts-with > word-starts-with > contains-name > contains-blockId
+                List<org.pepsoft.worldpainter.hytale.HytaleTerrain> matches = new ArrayList<>();
+                for (org.pepsoft.worldpainter.hytale.HytaleTerrain terrain : all) {
+                    String name = terrain.getName().toLowerCase(Locale.ROOT);
+                    String blockId = (terrain.getBlock() != null) ? terrain.getBlock().id.toLowerCase(Locale.ROOT).replace('_', ' ') : "";
+                    if (name.contains(q) || blockId.contains(q)) {
+                        matches.add(terrain);
+                    }
                 }
+                matches.sort((a, b) -> {
+                    int ra = searchRank(a.getName().toLowerCase(Locale.ROOT), q);
+                    int rb = searchRank(b.getName().toLowerCase(Locale.ROOT), q);
+                    return Integer.compare(ra, rb);
+                });
+                matches.forEach(model::addElement);
             }
             if (! model.isEmpty()) {
                 list.setSelectedIndex(0);
@@ -1871,10 +1883,21 @@ public final class App extends JFrame implements BrushControl,
         Runnable refilter = () -> {
             String q = searchField.getText().trim().toLowerCase(Locale.ROOT);
             model.clear();
-            for (MixedMaterial material : materials) {
-                if (q.isEmpty() || material.getName().toLowerCase(Locale.ROOT).contains(q)) {
-                    model.addElement(material);
+            if (q.isEmpty()) {
+                materials.forEach(model::addElement);
+            } else {
+                List<MixedMaterial> matches = new ArrayList<>();
+                for (MixedMaterial material : materials) {
+                    if (material.getName().toLowerCase(Locale.ROOT).contains(q)) {
+                        matches.add(material);
+                    }
                 }
+                matches.sort((a, b) -> {
+                    int ra = searchRank(a.getName().toLowerCase(Locale.ROOT), q);
+                    int rb = searchRank(b.getName().toLowerCase(Locale.ROOT), q);
+                    return Integer.compare(ra, rb);
+                });
+                matches.forEach(model::addElement);
             }
             if (! model.isEmpty()) {
                 list.setSelectedIndex(0);
@@ -1910,6 +1933,25 @@ public final class App extends JFrame implements BrushControl,
         dialog.setLocationRelativeTo(parent);
         dialog.getRootPane().setDefaultButton(selectButton);
         dialog.setVisible(true);
+    }
+
+    /**
+     * Rank a name against a search query (lower = better match).
+     * Both name and query must already be lower-cased.
+     */
+    private static int searchRank(String name, String query) {
+        if (name.equals(query)) return 0;                          // exact
+        if (name.startsWith(query)) return 1;                      // starts with
+        // check if any word in the name starts with the query
+        int idx = name.indexOf(' ');
+        while (idx >= 0) {
+            if (name.startsWith(query, idx + 1)) return 2;
+            idx = name.indexOf(' ', idx + 1);
+        }
+        // earlier occurrence in the name is better
+        int pos = name.indexOf(query);
+        if (pos >= 0) return 3 + pos;
+        return 1000; // fallback (matched via block ID only)
     }
 
     public void showHelp(Component component) {
