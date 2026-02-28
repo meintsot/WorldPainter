@@ -372,6 +372,7 @@ public class FillDialog extends WPDialogWithPaintSelection implements Listener, 
                         }
                         if (set && (tile.getTerrain(x, y) != terrain)) {
                             tile.setTerrain(x, y, terrain);
+                            org.pepsoft.worldpainter.hytale.HytaleTerrainLayer.setTerrainIndex(tile, x, y, 0);
                         }
                     }
                 }

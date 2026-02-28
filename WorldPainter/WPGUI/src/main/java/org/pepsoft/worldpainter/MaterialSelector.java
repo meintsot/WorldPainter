@@ -885,20 +885,54 @@ public class MaterialSelector extends javax.swing.JPanel {
         String currentSelection = (String) comboBoxMinecraftName.getSelectedItem();
         programmaticChange = true;
         try {
-            Vector<String> filtered = new Vector<>();
-            for (String name : allPrimaryNames) {
-                if (query.isEmpty()
-                        || name.toLowerCase(Locale.ROOT).contains(query)
-                        || (hytaleMode && HytaleBlockRegistry.formatDisplayName(name).toLowerCase(Locale.ROOT).contains(query))) {
-                    filtered.add(name);
+            if (query.isEmpty()) {
+                comboBoxMinecraftName.setModel(new DefaultComboBoxModel<>(new Vector<>(allPrimaryNames)));
+            } else {
+                // Collect matching names with their search rank
+                List<Map.Entry<String, Integer>> ranked = new ArrayList<>();
+                for (String name : allPrimaryNames) {
+                    String lower = name.toLowerCase(Locale.ROOT);
+                    String display = hytaleMode ? HytaleBlockRegistry.formatDisplayName(name).toLowerCase(Locale.ROOT) : lower;
+                    int rank = Integer.MAX_VALUE;
+                    if (lower.contains(query) || display.contains(query)) {
+                        rank = Math.min(searchRank(lower, query), searchRank(display, query));
+                    }
+                    if (rank < Integer.MAX_VALUE) {
+                        ranked.add(new java.util.AbstractMap.SimpleEntry<>(name, rank));
+                    }
                 }
+                ranked.sort(java.util.Comparator.comparingInt(Map.Entry::getValue));
+                Vector<String> filtered = new Vector<>();
+                for (Map.Entry<String, Integer> e : ranked) {
+                    filtered.add(e.getKey());
+                }
+                comboBoxMinecraftName.setModel(new DefaultComboBoxModel<>(filtered));
             }
-            comboBoxMinecraftName.setModel(new DefaultComboBoxModel<>(filtered));
-            if (currentSelection != null && filtered.contains(currentSelection)) {
-                comboBoxMinecraftName.setSelectedItem(currentSelection);
+            if (currentSelection != null) {
+                DefaultComboBoxModel<String> model = (DefaultComboBoxModel<String>) comboBoxMinecraftName.getModel();
+                if (model.getIndexOf(currentSelection) >= 0) {
+                    comboBoxMinecraftName.setSelectedItem(currentSelection);
+                }
             }
         } finally {
             programmaticChange = false;
         }
+    }
+
+    /**
+     * Rank a name against a search query (lower = better match).
+     * Both name and query must already be lower-cased.
+     */
+    private static int searchRank(String name, String query) {
+        if (name.equals(query)) return 0;
+        if (name.startsWith(query)) return 1;
+        int idx = name.indexOf(' ');
+        while (idx >= 0) {
+            if (name.startsWith(query, idx + 1)) return 2;
+            idx = name.indexOf(' ', idx + 1);
+        }
+        int pos = name.indexOf(query);
+        if (pos >= 0) return 3 + pos;
+        return 1000;
     }
 }
