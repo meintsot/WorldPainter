@@ -29,6 +29,7 @@ import static org.pepsoft.worldpainter.Constants.*;
 import static org.pepsoft.worldpainter.DefaultPlugin.ATTRIBUTE_MC_VERSION;
 import static org.pepsoft.worldpainter.Dimension.Role.CAVE_FLOOR;
 import static org.pepsoft.worldpainter.layers.exporters.ResourcesExporter.ResourcesExporterSettings.defaultSettings;
+import org.pepsoft.worldpainter.hytale.HytaleTerrainHelper;
 
 /**
  *
@@ -118,7 +119,10 @@ public class ResourcesExporter extends AbstractLayerExporter<Resources> implemen
                                         : (noiseGenerators[i].getPerlinNoise(dx, dy, dz) >= chance))) {
 //                                counts[oreType]++;
                                 final Material existingMaterial = chunk.getMaterial(x, y, z);
-                                if (existingMaterial.isNamed(MC_DEEPSLATE) && ORE_TO_DEEPSLATE_VARIANT.containsKey(activeMaterials[i].name)) {
+                                if (existingMaterial.name != null && existingMaterial.name.startsWith("hytale:")) {
+                                    // Hytale: match ore variant to host rock type
+                                    chunk.setMaterial(x, y, z, matchHytaleOreToRock(activeMaterials[i], existingMaterial));
+                                } else if (existingMaterial.isNamed(MC_DEEPSLATE) && ORE_TO_DEEPSLATE_VARIANT.containsKey(activeMaterials[i].name)) {
                                     chunk.setMaterial(x, y, z, ORE_TO_DEEPSLATE_VARIANT.get(activeMaterials[i].name));
                                 } else if (nether && (activeMaterials[i].isNamed(MC_GOLD_ORE))) {
                                     chunk.setMaterial(x, y, z, NETHER_GOLD_ORE);
@@ -142,6 +146,35 @@ public class ResourcesExporter extends AbstractLayerExporter<Resources> implemen
     }
 
 //  TODO: resource frequenties onderzoeken met Statistics tool!
+
+    /**
+     * Match a Hytale ore to the rock type it's being placed into.
+     * E.g., if placing Ore_Iron_Stone into Rock_Basalt, use Ore_Iron_Basalt instead.
+     */
+    private static Material matchHytaleOreToRock(Material ore, Material hostRock) {
+        if (ore.name == null || hostRock.name == null) return ore;
+        String oreName = ore.name.startsWith("hytale:") ? ore.name.substring(7) : ore.name;
+        String rockName = hostRock.name.startsWith("hytale:") ? hostRock.name.substring(7) : hostRock.name;
+        
+        // Extract the ore metal and try to match to rock type
+        // Ore format: Ore_{Metal}_{RockType} e.g. Ore_Iron_Stone
+        if (!oreName.startsWith("Ore_")) return ore;
+        int secondUnderscore = oreName.indexOf('_', 4);
+        if (secondUnderscore < 0) return ore;
+        String metal = oreName.substring(4, secondUnderscore);
+        
+        // Map host rock to its base type for ore variant matching
+        String rockType = "Stone"; // default
+        if (rockName.contains("Basalt")) rockType = "Basalt";
+        else if (rockName.contains("Sandstone")) rockType = "Sandstone";
+        else if (rockName.contains("Shale")) rockType = "Shale";
+        else if (rockName.contains("Slate")) rockType = "Slate";
+        else if (rockName.contains("Volcanic") || rockName.contains("Magma")) rockType = "Volcanic";
+        
+        String matchedOreName = "hytale:Ore_" + metal + "_" + rockType;
+        // Get the matched variant for the host rock type
+        return Material.get(matchedOreName);
+    }
 
     private final Material[] activeMaterials;
     private final PerlinNoise[] noiseGenerators;
@@ -246,9 +279,13 @@ public class ResourcesExporter extends AbstractLayerExporter<Resources> implemen
 
         @Override
         public void setPlatform(Platform newPlatform) {
+            if (HytaleTerrainHelper.isHytale(newPlatform)) {
+                // Hytale ores don't have MC version constraints
+                return;
+            }
             final Version mcVersion = newPlatform.getAttribute(ATTRIBUTE_MC_VERSION);
             settings.forEach(((material, settings) -> {
-                if (! mcVersion.isAtLeast(VERSION_MAP.get(material))) {
+                if (VERSION_MAP.containsKey(material) && ! mcVersion.isAtLeast(VERSION_MAP.get(material))) {
                     settings.chance = 0;
                 }
             }));
@@ -269,6 +306,12 @@ public class ResourcesExporter extends AbstractLayerExporter<Resources> implemen
         public static ResourcesExporterSettings defaultSettings(Platform platform, Dimension.Anchor anchor, int minHeight, int maxHeight) {
             final Random random = new Random();
             final Map<Material, ResourceSettings> settings = new HashMap<>();
+            
+            // Hytale ore generation - ores are biome-specific in Hytale, embedded in rock layers
+            if (HytaleTerrainHelper.isHytale(platform)) {
+                return defaultHytaleSettings(minHeight, maxHeight, random);
+            }
+            
             final Version mcVersion = platform.getAttribute(ATTRIBUTE_MC_VERSION);
             switch (anchor.dim) {
                 case DIM_NORMAL:
@@ -332,6 +375,49 @@ public class ResourcesExporter extends AbstractLayerExporter<Resources> implemen
             return result;
         }
         
+        /**
+         * Default ore settings for Hytale worlds.
+         * Hytale ores are zone-specific (each ore type appears in specific biome zones),
+         * embedded in various rock types. This provides a reasonable default for
+         * WorldPainter's resources layer when painting on a Hytale world.
+         *
+         * Ore types: Iron, Copper, Gold, Silver, Cobalt, Mithril, Adamantite, Thorium, Onyxium
+         * Each ore has variants for different rock types (Stone, Basalt, Shale, Slate, etc.)
+         * Common ores (Iron, Copper) spawn at all depths; rare ores (Adamantite, Mithril) only deep.
+         */
+        private static ResourcesExporterSettings defaultHytaleSettings(int minHeight, int maxHeight, Random random) {
+            final Map<Material, ResourceSettings> settings = new LinkedHashMap<>();
+            // Hytale ores - using Stone variant as default (rock-type matched ores handled in export)
+            // Iron - common, all zones, all depths
+            settings.put(Material.get("hytale:Ore_Iron_Stone"),
+                new ResourceSettings(Material.get("hytale:Ore_Iron_Stone"), minHeight, maxHeight - 1, 6, random.nextLong()));
+            // Copper - common, zones 1-2, shallow to mid
+            settings.put(Material.get("hytale:Ore_Copper_Stone"),
+                new ResourceSettings(Material.get("hytale:Ore_Copper_Stone"), minHeight, 128, 4, random.nextLong()));
+            // Gold - uncommon, zones 1-3
+            settings.put(Material.get("hytale:Ore_Gold_Stone"),
+                new ResourceSettings(Material.get("hytale:Ore_Gold_Stone"), minHeight, 64, 2, random.nextLong()));
+            // Silver - uncommon, zones 2-3
+            settings.put(Material.get("hytale:Ore_Silver_Stone"),
+                new ResourceSettings(Material.get("hytale:Ore_Silver_Stone"), minHeight, 64, 2, random.nextLong()));
+            // Cobalt - rare, zones 2-4
+            settings.put(Material.get("hytale:Ore_Cobalt_Stone"),
+                new ResourceSettings(Material.get("hytale:Ore_Cobalt_Stone"), minHeight, 48, 1, random.nextLong()));
+            // Thorium - rare, zone 4
+            settings.put(Material.get("hytale:Ore_Thorium_Stone"),
+                new ResourceSettings(Material.get("hytale:Ore_Thorium_Stone"), minHeight, 48, 1, random.nextLong()));
+            // Mithril - very rare, deep, zone 3-4
+            settings.put(Material.get("hytale:Ore_Mithril_Stone"),
+                new ResourceSettings(Material.get("hytale:Ore_Mithril_Stone"), minHeight, 32, 1, random.nextLong()));
+            // Adamantite - very rare, very deep, zone 4
+            settings.put(Material.get("hytale:Ore_Adamantite_Stone"),
+                new ResourceSettings(Material.get("hytale:Ore_Adamantite_Stone"), minHeight, 24, 1, random.nextLong()));
+            // Onyxium - extremely rare, deepest levels
+            settings.put(Material.get("hytale:Ore_Onyxium_Stone"),
+                new ResourceSettings(Material.get("hytale:Ore_Onyxium_Stone"), minHeight, 16, 1, random.nextLong()));
+            return new ResourcesExporterSettings(settings);
+        }
+
         private static void putResource(Version mcVersion, Map<Material, ResourceSettings> settings, Material material, int minHeight, int maxHeight, int chance, long seedOffset) {
             settings.put(material, new ResourceSettings(material, minHeight, maxHeight, mcVersion.isAtLeast(VERSION_MAP.get(material)) ? chance : 0, seedOffset));
         }

@@ -5730,11 +5730,21 @@ public final class App extends JFrame implements BrushControl,
         brushOptions.setPlatform(platform);
         infoPanel.setPlatform(platform);
         updateTerrainButtonsForPlatform();
-        // TODO actually why not support these:
-        setEnabled(Caves.INSTANCE, (! caveFloor) && (! floatingFloor), "Caves not supported in Custom Cave/Tunnel floor dimensions");
-        setEnabled(Caverns.INSTANCE, (! caveFloor) && (! floatingFloor), "Caverns not supported in Custom Cave/Tunnel floor dimensions");
-        setEnabled(Chasms.INSTANCE, (! caveFloor) && (! floatingFloor), "Chasms not supported in Custom Cave/Tunnel floor dimensions");
         setEnabled(ReadOnly.INSTANCE, anchor.equals(NORMAL_DETAIL), "Read Only layer not applicable");
+
+        // Hytale-specific layer visibility
+        final boolean isHytalePlatform = org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(platform);
+        // These layers are Minecraft-only (hide for Hytale)
+        setEnabled(Caves.INSTANCE, (! caveFloor) && (! floatingFloor) && (! isHytalePlatform), isHytalePlatform ? "Caves not supported for Hytale worlds" : "Caves not supported in Custom Cave/Tunnel floor dimensions");
+        setEnabled(Caverns.INSTANCE, (! caveFloor) && (! floatingFloor) && (! isHytalePlatform), isHytalePlatform ? "Caverns not supported for Hytale worlds" : "Caverns not supported in Custom Cave/Tunnel floor dimensions");
+        setEnabled(Chasms.INSTANCE, (! caveFloor) && (! floatingFloor) && (! isHytalePlatform), isHytalePlatform ? "Chasms not supported for Hytale worlds" : "Chasms not supported in Custom Cave/Tunnel floor dimensions");
+        setEnabled(DeciduousForest.INSTANCE, ! isHytalePlatform, "Deciduous Forest not applicable for Hytale worlds");
+        setEnabled(PineForest.INSTANCE, ! isHytalePlatform, "Pine Forest not applicable for Hytale worlds");
+        setEnabled(SwampLand.INSTANCE, ! isHytalePlatform, "Swamp not applicable for Hytale worlds");
+        setEnabled(Jungle.INSTANCE, ! isHytalePlatform, "Jungle not applicable for Hytale worlds");
+        // Hytale-only layers (hide for Minecraft)
+        setEnabled(org.pepsoft.worldpainter.hytale.HytaleEntityLayer.INSTANCE, isHytalePlatform, "Entities layer is only for Hytale worlds");
+        setEnabled(org.pepsoft.worldpainter.hytale.HytalePrefabLayer.INSTANCE, isHytalePlatform, "Hytale Prefabs layer is only for Hytale worlds");
     }
 
     private void setEnabled(Layer layer, boolean enabled, String toolTipText) {

@@ -24,6 +24,7 @@ import static org.pepsoft.minecraft.Constants.MC_SNOW;
 import static org.pepsoft.minecraft.Constants.MC_WATER;
 import static org.pepsoft.minecraft.Material.*;
 import static org.pepsoft.worldpainter.exporting.SecondPassLayerExporter.Stage.ADD_FEATURES;
+import org.pepsoft.worldpainter.hytale.HytaleTerrainHelper;
 
 /**
  * @author pepijn
@@ -44,6 +45,9 @@ public class FrostExporter extends AbstractLayerExporter<Frost> implements Secon
         final boolean frostEverywhere = settings.isFrostEverywhere();
         final int mode = settings.getMode();
         final boolean snowUnderTrees = settings.isSnowUnderTrees();
+        final boolean isHytale = HytaleTerrainHelper.isHytale(platform);
+        final Material hytaleSnow = isHytale ? Material.get("hytale:Soil_Snow") : null;
+        final Material hytaleIce = isHytale ? Material.get("hytale:Rock_Ice") : null;
         final Random random = new Random(); // Only used for random snow height, so it's not a big deal if it's different every time
         String customNoSnowOnIds = System.getProperty("org.pepsoft.worldpainter.noSnowOn");
         if ((customNoSnowOnIds != null) && (! customNoSnowOnIds.trim().isEmpty())) {
@@ -59,7 +63,7 @@ public class FrostExporter extends AbstractLayerExporter<Frost> implements Secon
                         Material material = minecraftWorld.getMaterialAt(x, y, height);
                         if ((material.isNamed(MC_WATER) && (material.getProperty(LAYERS, 0) == 0))
                                 || (material.containsWater() && material.insubstantial)) {
-                            minecraftWorld.setMaterialAt(x, y, height, ICE);
+                            minecraftWorld.setMaterialAt(x, y, height, isHytale ? hytaleIce : ICE);
                             // Remove insubstantial blocks above, assuming they are plants we cut in half
                             for (int dz = height + 1; dz <= highestNonAirBlock; dz++) {
                                 if (minecraftWorld.getMaterialAt(x, y, dz).insubstantial) {
@@ -129,6 +133,11 @@ public class FrostExporter extends AbstractLayerExporter<Frost> implements Secon
     private void placeSnow(MinecraftWorld minecraftWorld, int x, int y, int height, int layers) {
         if ((layers < 1) || (layers > 8)) {
             throw new IllegalArgumentException("layers " + layers);
+        }
+        if (HytaleTerrainHelper.isHytale(platform)) {
+            // Hytale snow is a simple block without layer variants
+            minecraftWorld.setMaterialAt(x, y, height + 1, Material.get("hytale:Soil_Snow"));
+            return;
         }
         Material existingMaterial = minecraftWorld.getMaterialAt(x, y, height + 1);
         if (existingMaterial.isNamed(MC_SNOW)) {
