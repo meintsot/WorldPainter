@@ -2,16 +2,20 @@ package org.pepsoft.worldpainter.platforms;
 
 import org.pepsoft.minecraft.Chunk;
 import org.pepsoft.minecraft.ChunkStore;
+import org.pepsoft.minecraft.MinecraftCoords;
 import org.pepsoft.worldpainter.*;
 import org.pepsoft.worldpainter.exporting.*;
 import org.pepsoft.worldpainter.hytale.*;
+import org.pepsoft.worldpainter.importing.MapImporter;
 import org.pepsoft.worldpainter.plugins.BlockBasedPlatformProvider;
+import org.pepsoft.worldpainter.plugins.MapImporterProvider;
 import org.pepsoft.worldpainter.plugins.PlatformProvider;
 
 import javax.swing.*;
 import java.io.File;
 import java.io.IOException;
 import java.util.Collections;
+import java.util.Set;
 
 import static org.pepsoft.util.IconUtils.loadUnscaledImage;
 import static org.pepsoft.util.IconUtils.scaleIcon;
@@ -27,7 +31,7 @@ import static org.pepsoft.worldpainter.DefaultPlugin.HYTALE;
  * - IndexedStorageFile format with Zstd compression
  * - String-based block IDs like "hytale:stone"
  */
-public class HytalePlatformProvider extends AbstractPlatformProvider implements BlockBasedPlatformProvider {
+public class HytalePlatformProvider extends AbstractPlatformProvider implements BlockBasedPlatformProvider, MapImporterProvider {
     
     public HytalePlatformProvider() {
         super(Version.VERSION, Collections.singletonList(HYTALE), "HytalePlatformProvider");
@@ -125,6 +129,14 @@ public class HytalePlatformProvider extends AbstractPlatformProvider implements 
         return super.isCompatible(platform, world);
     }
     
+    // MapImporterProvider implementation
+
+    @Override
+    public MapImporter getImporter(File dir, TileFactory tileFactory, Set<MinecraftCoords> chunksToSkip,
+                                   MapImporter.ReadOnlyOption readOnlyOption, Set<Integer> dimensionsToImport) {
+        return new HytaleMapImporter(dir, tileFactory, chunksToSkip, readOnlyOption);
+    }
+
     // Use a generic world icon - a Hytale-specific icon can be added later
     public static final Icon ICON = new ImageIcon(scaleIcon(loadUnscaledImage("org/pepsoft/worldpainter/mapexplorer/maproot.png"), 16));
 }

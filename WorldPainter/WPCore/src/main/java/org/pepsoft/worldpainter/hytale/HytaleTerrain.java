@@ -1606,8 +1606,27 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         // Snow (appended at end to preserve existing indices)
         list.add(SNOW);
 
+        // Save the curated list for UI pickers BEFORE extending with auto-generated terrains
+        PICK_LIST = list.toArray(new HytaleTerrain[0]);
+
+        // Auto-register all remaining blocks from HytaleBlockRegistry that don't
+        // already have a curated HytaleTerrain. These "import-only" terrains are
+        // included in ALL_TERRAINS (so they get layer indices and render correctly)
+        // but excluded from PICK_LIST (so the UI terrain pickers stay clean).
+        Set<String> curatedBlockIds = new HashSet<>();
+        for (HytaleTerrain t : list) {
+            if (t.block != null) {
+                curatedBlockIds.add(t.block.id);
+            }
+        }
+        for (String blockName : HytaleBlockRegistry.getAllBlockNames()) {
+            if (!curatedBlockIds.contains(blockName)) {
+                String displayName = blockName.replace('_', ' ');
+                list.add(new HytaleTerrain(displayName, HytaleBlock.of(blockName), null));
+            }
+        }
+
         ALL_TERRAINS = list.toArray(new HytaleTerrain[0]);
-        PICK_LIST = ALL_TERRAINS;
     }
 
     public static HytaleTerrain[] getAdditionalTerrainsForCustomPicker() {

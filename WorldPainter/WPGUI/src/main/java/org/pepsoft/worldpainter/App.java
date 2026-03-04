@@ -35,6 +35,7 @@ import org.pepsoft.worldpainter.history.WorldHistoryDialog;
 import org.pepsoft.worldpainter.importing.CustomItemsTreeModel;
 import org.pepsoft.worldpainter.importing.ImportCustomItemsDialog;
 import org.pepsoft.worldpainter.importing.ImportMaskDialog;
+import org.pepsoft.worldpainter.importing.HytaleMapImportDialog;
 import org.pepsoft.worldpainter.importing.MapImportDialog;
 import org.pepsoft.worldpainter.layers.*;
 import org.pepsoft.worldpainter.layers.exporters.AnnotationsExporter;
@@ -2811,6 +2812,21 @@ public final class App extends JFrame implements BrushControl,
         }
     }
     
+    private void importHytaleWorld() {
+        if (! saveIfNecessary()) {
+            return;
+        }
+        HytaleMapImportDialog dialog = new HytaleMapImportDialog(this);
+        dialog.setVisible(true);
+        if (! dialog.isCancelled()) {
+            World2 importedWorld = dialog.getImportedWorld();
+            if (importedWorld != null) {
+                setWorld(importedWorld, true);
+                lastSelectedFile = null;
+            }
+        }
+    }
+
     public void importHeightMap(File preselectedFile) {
         if (! saveIfNecessary()) {
             return;
