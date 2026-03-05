@@ -30,7 +30,7 @@ public class HytaleEntityLayer extends Layer {
 
     private HytaleEntityLayer() {
         super("org.pepsoft.hytale.Entity",
-              "Hytale Entities",
+              "Entities",
               "Control NPC/entity spawn density for Hytale worlds",
               DataSize.NIBBLE, true, 80, 'n');
     }

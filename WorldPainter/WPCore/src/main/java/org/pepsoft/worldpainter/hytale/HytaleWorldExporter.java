@@ -110,15 +110,15 @@ public class HytaleWorldExporter implements WorldExporter {
                 throw new IllegalArgumentException("If a tile selection is active then exactly one dimension must be selected");
             }
             
-            // Create world directory
-            File worldDir = new File(baseDir, FileUtils.sanitiseName(name));
-            logger.info("Exporting world {} to Hytale map at {}", world.getName(), worldDir);
+            // Create save directory (full Hytale save structure)
+            File saveDir = new File(baseDir, FileUtils.sanitiseName(name));
+            logger.info("Exporting world {} to Hytale save at {}", world.getName(), saveDir);
             
-            if (worldDir.isDirectory()) {
+            if (saveDir.isDirectory()) {
                 if (backupDir != null) {
                     logger.info("Directory already exists; backing up to {}", backupDir);
-                    if (!worldDir.renameTo(backupDir)) {
-                        throw new FileInUseException("Could not move " + worldDir + " to " + backupDir);
+                    if (!saveDir.renameTo(backupDir)) {
+                        throw new FileInUseException("Could not move " + saveDir + " to " + backupDir);
                     }
                 } else {
                     throw new IllegalStateException("Directory already exists and no backup directory specified");
@@ -145,29 +145,44 @@ public class HytaleWorldExporter implements WorldExporter {
                 logger.warn("Could not determine file stores, exporting directly to target", e);
             }
             
-            File effectiveWorldDir;
+            File effectiveSaveDir;
             Path tempDir = null;
             if (useTempDir) {
                 tempDir = Files.createTempDirectory(baseDir.toPath(), "wp-hytale-export-");
-                effectiveWorldDir = tempDir.resolve(FileUtils.sanitiseName(name)).toFile();
+                effectiveSaveDir = tempDir.resolve(FileUtils.sanitiseName(name)).toFile();
             } else {
-                effectiveWorldDir = worldDir;
+                effectiveSaveDir = saveDir;
             }
             
             try {
-                // Create directory structure
-                if (!effectiveWorldDir.mkdirs()) {
-                    throw new IOException("Could not create directory: " + effectiveWorldDir);
+                // Create full Hytale save directory structure:
+                // saveDir/config.json              (server config)
+                // saveDir/bans.json                (empty bans list)
+                // saveDir/permissions.json          (default permissions)
+                // saveDir/whitelist.json            (disabled whitelist)
+                // saveDir/universe/memories.json    (empty memories)
+                // saveDir/universe/players/         (empty players dir)
+                // saveDir/universe/worlds/default/  (the actual world)
+                //   config.json, chunks/, resources/
+                if (!effectiveSaveDir.mkdirs()) {
+                    throw new IOException("Could not create directory: " + effectiveSaveDir);
                 }
                 
-                File chunksDir = new File(effectiveWorldDir, "chunks");
+                File actualWorldDir = new File(new File(new File(effectiveSaveDir, "universe"), "worlds"), "default");
+                
+                File chunksDir = new File(actualWorldDir, "chunks");
                 if (!chunksDir.mkdirs()) {
                     throw new IOException("Could not create chunks directory");
                 }
                 
-                File resourcesDir = new File(effectiveWorldDir, "resources");
+                File resourcesDir = new File(actualWorldDir, "resources");
                 if (!resourcesDir.mkdirs()) {
                     throw new IOException("Could not create resources directory");
+                }
+                
+                File playersDir = new File(new File(effectiveSaveDir, "universe"), "players");
+                if (!playersDir.mkdirs()) {
+                    throw new IOException("Could not create players directory");
                 }
                 
                 // Export dimensions (must come before writeWorldConfig so blockOffsetX/Z are set)
@@ -177,31 +192,35 @@ public class HytaleWorldExporter implements WorldExporter {
                     if (progressReceiver != null) {
                         progressReceiver.setMessage("Exporting Overworld to Hytale format");
                     }
-                    stats.put(DIM_NORMAL, exportDimension(effectiveWorldDir, dim0, selectedTiles, progressReceiver));
+                    stats.put(DIM_NORMAL, exportDimension(actualWorldDir, dim0, selectedTiles, progressReceiver));
                 }
                 
-                // Write config.json (after exportDimension so blockOffsetX/Z are set for SpawnProvider)
-                writeWorldConfig(effectiveWorldDir);
+                // Write world-level config.json (after exportDimension so blockOffsetX/Z are set for SpawnProvider)
+                writeWorldConfig(actualWorldDir, name);
                 
-                // Write resource files
-                writeResourceFiles(effectiveWorldDir);
+                // Write world resource files
+                writeResourceFiles(actualWorldDir);
+                
+                // Write server-level config and boilerplate files
+                writeServerConfig(effectiveSaveDir);
+                writeServerBoilerplate(effectiveSaveDir);
                 
                 // If we used a temp directory, move the result to the target location
                 if (useTempDir) {
                     if (progressReceiver != null) {
                         progressReceiver.setMessage("Moving exported world to target directory...");
                     }
-                    logger.info("Moving exported world from {} to {}", effectiveWorldDir, worldDir);
+                    logger.info("Moving exported world from {} to {}", effectiveSaveDir, saveDir);
                     // Delete any existing target directory first so the move can succeed
-                    if (worldDir.exists()) {
-                        deleteRecursive(worldDir.toPath());
+                    if (saveDir.exists()) {
+                        deleteRecursive(saveDir.toPath());
                     }
                     // Both paths are on the same drive, so this is a fast rename (no data copy)
-                    Files.move(effectiveWorldDir.toPath(), worldDir.toPath());
+                    Files.move(effectiveSaveDir.toPath(), saveDir.toPath());
                 }
                 
                 // Record the export in the world history
-                world.addHistoryEntry(HistoryEntry.WORLD_EXPORTED_FULL, name, worldDir);
+                world.addHistoryEntry(HistoryEntry.WORLD_EXPORTED_FULL, name, saveDir);
                 
                 // Log event
                 Configuration config = Configuration.getInstance();
@@ -269,7 +288,7 @@ public class HytaleWorldExporter implements WorldExporter {
     /**
      * Write the Hytale world config.json file.
      */
-    private void writeWorldConfig(File worldDir) throws IOException {
+    private void writeWorldConfig(File worldDir, String displayName) throws IOException {
         Dimension dim0 = world.getDimension(NORMAL_DETAIL);
         
         Map<String, Object> config = new LinkedHashMap<>();
@@ -282,6 +301,7 @@ public class HytaleWorldExporter implements WorldExporter {
         uuidMap.put("$type", "04");
         config.put("UUID", uuidMap);
         
+        config.put("DisplayName", displayName);
         config.put("Seed", dim0 != null ? dim0.getMinecraftSeed() : System.currentTimeMillis());
         
         // Use Void world gen so Hytale doesn't generate its own terrain
@@ -410,6 +430,66 @@ public class HytaleWorldExporter implements WorldExporter {
                 gson.toJson(instanceData).getBytes(StandardCharsets.UTF_8));
         
         logger.info("Wrote resource files with spawn point ({}, {}, {})", spawnX, spawnY, spawnZ);
+    }
+    
+    /**
+     * Write the server-level config.json for the Hytale save.
+     */
+    private void writeServerConfig(File saveDir) throws IOException {
+        Map<String, Object> config = new LinkedHashMap<>();
+        config.put("SkipModValidationForVersion", null);
+        
+        Map<String, Object> backup = new LinkedHashMap<>();
+        backup.put("Enabled", true);
+        backup.put("FrequencyMinutes", 30);
+        backup.put("Directory", "backup");
+        backup.put("MaxCount", 5);
+        backup.put("ArchiveMaxCount", 5);
+        config.put("Backup", backup);
+        
+        config.put("Version", 4);
+        config.put("Mods", new LinkedHashMap<>());
+        
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        Files.write(new File(saveDir, "config.json").toPath(),
+                gson.toJson(config).getBytes(StandardCharsets.UTF_8));
+        logger.debug("Wrote server config.json to {}", saveDir);
+    }
+    
+    /**
+     * Write boilerplate files for the Hytale save (bans, permissions, whitelist, memories).
+     */
+    private void writeServerBoilerplate(File saveDir) throws IOException {
+        // bans.json - empty list
+        Files.write(new File(saveDir, "bans.json").toPath(),
+                "[]".getBytes(StandardCharsets.UTF_8));
+        
+        // permissions.json - default with OP group
+        Map<String, Object> permissions = new LinkedHashMap<>();
+        permissions.put("users", new LinkedHashMap<>());
+        Map<String, Object> groups = new LinkedHashMap<>();
+        groups.put("Default", new String[0]);
+        groups.put("OP", new String[]{"*"});
+        permissions.put("groups", groups);
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        Files.write(new File(saveDir, "permissions.json").toPath(),
+                gson.toJson(permissions).getBytes(StandardCharsets.UTF_8));
+        
+        // whitelist.json - disabled
+        Map<String, Object> whitelist = new LinkedHashMap<>();
+        whitelist.put("enabled", false);
+        whitelist.put("list", new String[0]);
+        Files.write(new File(saveDir, "whitelist.json").toPath(),
+                gson.toJson(whitelist).getBytes(StandardCharsets.UTF_8));
+        
+        // universe/memories.json - empty memories
+        File universeDir = new File(saveDir, "universe");
+        Map<String, Object> memories = new LinkedHashMap<>();
+        memories.put("Memories", new Object[0]);
+        Files.write(new File(universeDir, "memories.json").toPath(),
+                gson.toJson(memories).getBytes(StandardCharsets.UTF_8));
+        
+        logger.debug("Wrote server boilerplate files to {}", saveDir);
     }
     
     private byte[] uuidToBytes(UUID uuid) {
@@ -860,6 +940,14 @@ public class HytaleWorldExporter implements WorldExporter {
         int waterLevel = tile.getWaterLevel(0, 0);
         Terrain terrain = tile.getTerrain(0, 0);
         long seed = dimension.getMinecraftSeed();
+
+        // Collect specific prefab layers for this dimension
+        List<HytaleSpecificPrefabLayer> specificPrefabLayers = new ArrayList<>();
+        for (Layer layer : dimension.getAllLayers(false)) {
+            if (layer instanceof HytaleSpecificPrefabLayer) {
+                specificPrefabLayers.add((HytaleSpecificPrefabLayer) layer);
+            }
+        }
         
         // Track water placement for debugging (log first occurrence)
         boolean waterLogged = false;
@@ -1039,6 +1127,15 @@ public class HytaleWorldExporter implements WorldExporter {
                     if (prefabPath != null) {
                         chunk.addPrefabMarker(localX, height + 1, localZ,
                             HytalePrefabLayer.PREFAB_NAMES[prefabLayerValue], prefabPath);
+                    }
+                }
+
+                // ── Specific Prefab Layers ───────────────────────────
+                for (HytaleSpecificPrefabLayer spLayer : specificPrefabLayers) {
+                    if (tile.getBitLayerValue(spLayer, tileLocalX, tileLocalZ)) {
+                        PrefabFileEntry selected = spLayer.selectPrefab(worldX, worldZ);
+                        chunk.addPrefabMarker(localX, height + 1, localZ,
+                            selected.getDisplayName(), selected.getRelativePath());
                     }
                 }
                 

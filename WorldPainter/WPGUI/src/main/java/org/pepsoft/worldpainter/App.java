@@ -476,6 +476,7 @@ public final class App extends JFrame implements BrushControl,
             // Remove the existing custom object layers and save the list of custom layers to the dimension to preserve
             // layers which aren't currently in use
             saveCustomLayers();
+            clearPrefabLayerButtons();
             if (! customLayerController.paletteManager.isEmpty()) {
                 boolean visibleLayersChanged = false;
                 final Set<String> hiddenPalettes = new HashSet<>();
@@ -585,8 +586,13 @@ public final class App extends JFrame implements BrushControl,
             }
                 
             // Add the custom object layers from the world
+            clearPrefabLayerButtons();
             StringBuilder warnings = new StringBuilder();
             for (CustomLayer customLayer: dimension.getCustomLayers()) {
+                if (customLayer instanceof org.pepsoft.worldpainter.hytale.HytaleSpecificPrefabLayer) {
+                    addPrefabLayerButton((org.pepsoft.worldpainter.hytale.HytaleSpecificPrefabLayer) customLayer);
+                    continue;
+                }
                 if (customLayer.isHide()) {
                     layersWithNoButton.add(customLayer);
                 } else {
@@ -2987,6 +2993,14 @@ public final class App extends JFrame implements BrushControl,
 
         dockingManager.addFrame(new DockableFrameBuilder(createAnnotationsPanel(), "Annotations", DOCK_SIDE_WEST, 3).build());
 
+        prefabsPanelFrame = new DockableFrameBuilder(createPrefabsPanel(), "Prefabs", DOCK_SIDE_WEST, 3).scrollable().build();
+        dockingManager.addFrame(prefabsPanelFrame);
+        dockingManager.hideFrame(prefabsPanelFrame.getKey());
+
+        entitiesPanelFrame = new DockableFrameBuilder(createEntitiesPanel(), "Entities", DOCK_SIDE_WEST, 3).build();
+        dockingManager.addFrame(entitiesPanelFrame);
+        dockingManager.hideFrame(entitiesPanelFrame.getKey());
+
         dockingManager.addFrame(new DockableFrameBuilder(createBrushPanel(), "Brushes", DOCK_SIDE_EAST, 1).build());
 
         if (customBrushes.containsKey(CUSTOM_BRUSHES_DEFAULT_TITLE)) {
@@ -3465,12 +3479,25 @@ public final class App extends JFrame implements BrushControl,
         LayoutUtils.addRowOfComponents(layerPanel, constraints, terrainComponents);
         LayoutUtils.addRowOfComponents(layerPanel, constraints, createLayerButton(FLUIDS_AS_LAYER, (char) 0, false, false));
         for (Layer layer: layers) {
+            // Skip layers that have their own dedicated panels
+            if (layer == org.pepsoft.worldpainter.hytale.HytalePrefabLayer.INSTANCE
+                    || layer == org.pepsoft.worldpainter.hytale.HytaleEntityLayer.INSTANCE) {
+                continue;
+            }
             LayoutUtils.addRowOfComponents(layerPanel, constraints, createLayerButton(layer, layer.getMnemonic()));
         }
         if (! config.isEasyMode()) {
             LayoutUtils.addRowOfComponents(layerPanel, constraints, createLayerButton(Populate.INSTANCE, 'p'));
         }
         LayoutUtils.addRowOfComponents(layerPanel, constraints, createLayerButton(ReadOnly.INSTANCE, 'o'));
+
+        // Container for dynamically added specific prefab layer rows
+        customPrefabLayerRowsPanel = new JPanel(new GridBagLayout());
+        constraints.gridwidth = GridBagConstraints.REMAINDER;
+        constraints.weightx = 1.0;
+        constraints.fill = GridBagConstraints.HORIZONTAL;
+        layerPanel.add(customPrefabLayerRowsPanel, constraints);
+        constraints.fill = GridBagConstraints.NONE;
 
         final JButton addLayerButton = new JButton(loadScaledIcon("plus"));
         addLayerButton.setToolTipText(strings.getString("add.a.custom.layer"));
@@ -3700,6 +3727,319 @@ public final class App extends JFrame implements BrushControl,
         layerPanel.putClientProperty(KEY_ICON, ICON_ANNOTATIONS);
 
         return layerPanel;
+    }
+
+    private JPanel createPrefabsPanel() {
+        final JPanel panel = new JPanel();
+        panel.setLayout(new GridBagLayout());
+        GridBagConstraints constraints = new GridBagConstraints();
+        constraints.insets = new Insets(1, 1, 1, 1);
+
+        constraints.anchor = GridBagConstraints.FIRST_LINE_START;
+        constraints.weightx = 0.0;
+        JCheckBox checkBox = new JCheckBox("Show:");
+        checkBox.setHorizontalTextPosition(SwingConstants.LEADING);
+        checkBox.setSelected(true);
+        checkBox.setToolTipText("Uncheck to hide prefab markers from view");
+        checkBox.addActionListener(e -> {
+            if (checkBox.isSelected()) {
+                hiddenLayers.remove(org.pepsoft.worldpainter.hytale.HytalePrefabLayer.INSTANCE);
+            } else {
+                hiddenLayers.add(org.pepsoft.worldpainter.hytale.HytalePrefabLayer.INSTANCE);
+            }
+            updateLayerVisibility();
+        });
+        constraints.gridwidth = 1;
+        panel.add(checkBox, constraints);
+
+        JCheckBox soloCheckBox = new JCheckBox("Solo:");
+        soloCheckBox.setHorizontalTextPosition(SwingConstants.LEADING);
+        soloCheckBox.setToolTipText("<html>Check to show <em>only</em> prefab markers</html>");
+        soloCheckBox.addActionListener(new SoloCheckboxHandler(soloCheckBox, org.pepsoft.worldpainter.hytale.HytalePrefabLayer.INSTANCE));
+        layerSoloCheckBoxes.put(org.pepsoft.worldpainter.hytale.HytalePrefabLayer.INSTANCE, soloCheckBox);
+        constraints.gridwidth = GridBagConstraints.REMAINDER;
+        panel.add(soloCheckBox, constraints);
+
+        JPanel grid = new JPanel(new GridLayout(0, 2, 2, 2));
+        for (int i = 1; i < org.pepsoft.worldpainter.hytale.HytalePrefabLayer.PREFAB_COUNT; i++) {
+            final int categoryValue = i;
+            int argb = org.pepsoft.worldpainter.hytale.HytalePrefabLayer.PREFAB_COLORS[i];
+            int rgb = argb & 0x00FFFFFF;
+            JToggleButton button = new JToggleButton(org.pepsoft.worldpainter.hytale.HytalePrefabLayer.PREFAB_NAMES[i],
+                    createScaledColourIcon(rgb));
+            button.setToolTipText(org.pepsoft.worldpainter.hytale.HytalePrefabLayer.PREFAB_NAMES[i]);
+            button.setMargin(App.BUTTON_INSETS);
+            button.setHorizontalAlignment(SwingConstants.LEFT);
+            if (categoryValue == 1) {
+                button.setSelected(true);
+            }
+            paintButtonGroup.add(button);
+            button.addItemListener(e -> {
+                if (e.getStateChange() == ItemEvent.SELECTED) {
+                    paintUpdater = () -> {
+                        paint = createDiscreteLayerPaint(org.pepsoft.worldpainter.hytale.HytalePrefabLayer.INSTANCE, categoryValue);
+                        paintChanged();
+                    };
+                    paintUpdater.updatePaint();
+                }
+            });
+            button.putClientProperty(KEY_PAINT_ID, createDiscreteLayerPaintId(org.pepsoft.worldpainter.hytale.HytalePrefabLayer.INSTANCE, categoryValue));
+            grid.add(button);
+        }
+        panel.add(grid, constraints);
+
+        layerControls.put(org.pepsoft.worldpainter.hytale.HytalePrefabLayer.INSTANCE, new LayerControls(org.pepsoft.worldpainter.hytale.HytalePrefabLayer.INSTANCE, checkBox, soloCheckBox));
+
+        // ── Specific Prefabs section ─────────────────────────────
+        constraints.gridwidth = GridBagConstraints.REMAINDER;
+        constraints.fill = GridBagConstraints.HORIZONTAL;
+        constraints.weightx = 1.0;
+        panel.add(new JSeparator(), constraints);
+
+        JLabel specificLabel = new JLabel("Specific Prefabs");
+        specificLabel.setFont(specificLabel.getFont().deriveFont(Font.BOLD));
+        panel.add(specificLabel, constraints);
+
+        // Search field
+        JTextField searchField = new JTextField();
+        searchField.setToolTipText("Search prefabs by name, category, or path");
+        panel.add(searchField, constraints);
+
+        // Prefab list model — populated lazily once HytaleAssets is found
+        specificPrefabListModel = new DefaultListModel<>();
+        specificPrefabSearchField = searchField;
+
+        JList<org.pepsoft.worldpainter.hytale.PrefabFileEntry> prefabList = new JList<>(specificPrefabListModel);
+        prefabList.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+        prefabList.setVisibleRowCount(10);
+        prefabList.setCellRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (value instanceof org.pepsoft.worldpainter.hytale.PrefabFileEntry) {
+                    setText(value.toString());
+                }
+                return this;
+            }
+        });
+
+        // Search filtering
+        searchField.getDocument().addDocumentListener(new DocumentListener() {
+            @Override public void insertUpdate(DocumentEvent e)  { filterPrefabList(); }
+            @Override public void removeUpdate(DocumentEvent e)  { filterPrefabList(); }
+            @Override public void changedUpdate(DocumentEvent e) { filterPrefabList(); }
+        });
+
+        JScrollPane scrollPane = new JScrollPane(prefabList);
+        scrollPane.setMinimumSize(new java.awt.Dimension(0, 200));
+        scrollPane.setPreferredSize(new java.awt.Dimension(0, 300));
+        constraints.fill = GridBagConstraints.BOTH;
+        constraints.weighty = 1.0;
+        panel.add(scrollPane, constraints);
+        constraints.fill = GridBagConstraints.HORIZONTAL;
+        constraints.weighty = 0;
+
+        // Create Layer button
+        JButton createLayerButton = new JButton("Create Layer from Selection");
+        createLayerButton.setToolTipText("Create a new paintable layer from the selected prefabs");
+        createLayerButton.addActionListener(e -> {
+            java.util.List<org.pepsoft.worldpainter.hytale.PrefabFileEntry> selected = prefabList.getSelectedValuesList();
+            if (selected.isEmpty()) {
+                showMessageDialog(this, "Please select one or more prefabs from the list.", "No Selection", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            if (getDimension() == null) {
+                Toolkit.getDefaultToolkit().beep();
+                return;
+            }
+            org.pepsoft.worldpainter.hytale.CreatePrefabLayerDialog dialog =
+                new org.pepsoft.worldpainter.hytale.CreatePrefabLayerDialog(this, selected);
+            dialog.setVisible(true);
+            org.pepsoft.worldpainter.hytale.HytaleSpecificPrefabLayer layer = dialog.getLayer();
+            if (layer != null) {
+                addPrefabLayerButton(layer);
+            }
+        });
+        panel.add(createLayerButton, constraints);
+
+
+
+        specificPrefabStatusLabel = new JLabel("");
+        specificPrefabStatusLabel.setForeground(Color.GRAY);
+        panel.add(specificPrefabStatusLabel, constraints);
+
+        panel.putClientProperty(KEY_ICON, new ImageIcon(org.pepsoft.worldpainter.hytale.HytalePrefabLayer.INSTANCE.getIcon()));
+
+        return panel;
+    }
+
+    /**
+     * Add a specific prefab layer as a row in the Layers panel (with Show/Solo
+     * checkboxes) and track it for persistence.
+     */
+    void addPrefabLayerButton(org.pepsoft.worldpainter.hytale.HytaleSpecificPrefabLayer layer) {
+        createdPrefabLayersList.add(layer);
+        addPrefabLayerRow(layer);
+    }
+
+    private void addPrefabLayerRow(org.pepsoft.worldpainter.hytale.HytaleSpecificPrefabLayer layer) {
+        List<Component> row = createLayerButton(layer, (char) 0);
+        // Find the toggle button (last component) and add right-click to remove
+        Component lastComp = row.get(row.size() - 1);
+        if (lastComp instanceof JToggleButton) {
+            JToggleButton button = (JToggleButton) lastComp;
+            button.addMouseListener(new java.awt.event.MouseAdapter() {
+                @Override
+                public void mousePressed(java.awt.event.MouseEvent e) {
+                    if (e.isPopupTrigger()) showPopup(e);
+                }
+                @Override
+                public void mouseReleased(java.awt.event.MouseEvent e) {
+                    if (e.isPopupTrigger()) showPopup(e);
+                }
+                private void showPopup(java.awt.event.MouseEvent e) {
+                    JPopupMenu popup = new JPopupMenu();
+                    JMenuItem removeItem = new JMenuItem("Remove layer");
+                    removeItem.addActionListener(ev -> removePrefabLayer(layer));
+                    popup.add(removeItem);
+                    popup.show(button, e.getX(), e.getY());
+                }
+            });
+        }
+        GridBagConstraints c = new GridBagConstraints();
+        c.insets = new Insets(1, 1, 1, 1);
+        c.anchor = GridBagConstraints.WEST;
+        LayoutUtils.addRowOfComponents(customPrefabLayerRowsPanel, c, row);
+        customPrefabLayerRowsPanel.revalidate();
+        customPrefabLayerRowsPanel.repaint();
+    }
+
+    private void removePrefabLayer(org.pepsoft.worldpainter.hytale.HytaleSpecificPrefabLayer layer) {
+        if (showConfirmDialog(this, "Remove layer \"" + layer.getName() + "\"?", "Confirm Removal", YES_NO_OPTION) == YES_OPTION) {
+            createdPrefabLayersList.remove(layer);
+            layerRemoved(layer);
+            rebuildPrefabLayerRows();
+            if (getDimension() != null) {
+                getDimension().clearLayerData(layer);
+            }
+            deselectPaint();
+        }
+    }
+
+    private void rebuildPrefabLayerRows() {
+        customPrefabLayerRowsPanel.removeAll();
+        for (org.pepsoft.worldpainter.hytale.HytaleSpecificPrefabLayer layer : createdPrefabLayersList) {
+            addPrefabLayerRow(layer);
+        }
+        customPrefabLayerRowsPanel.revalidate();
+        customPrefabLayerRowsPanel.repaint();
+    }
+
+    void clearPrefabLayerButtons() {
+        for (org.pepsoft.worldpainter.hytale.HytaleSpecificPrefabLayer layer : createdPrefabLayersList) {
+            layerRemoved(layer);
+        }
+        createdPrefabLayersList.clear();
+        if (customPrefabLayerRowsPanel != null) {
+            customPrefabLayerRowsPanel.removeAll();
+            customPrefabLayerRowsPanel.revalidate();
+            customPrefabLayerRowsPanel.repaint();
+        }
+    }
+
+    /**
+     * Refresh the specific prefabs list after HytaleAssets directory has been discovered.
+     * Called when switching to a Hytale platform world.
+     */
+    private void updateSpecificPrefabsList() {
+        java.io.File assetsDir = org.pepsoft.worldpainter.hytale.HytaleTerrain.getHytaleAssetsDir();
+        java.io.File serverDir = (assetsDir != null) ? new java.io.File(assetsDir, "Server") : null;
+        if (serverDir != null && serverDir.isDirectory()) {
+            if (discoveredPrefabs.isEmpty()) {
+                discoveredPrefabs = org.pepsoft.worldpainter.hytale.HytalePrefabDiscovery.discoverPrefabs(serverDir);
+            }
+            specificPrefabStatusLabel.setText(discoveredPrefabs.size() + " prefabs found");
+        } else {
+            discoveredPrefabs = java.util.Collections.emptyList();
+            specificPrefabStatusLabel.setText("<html><i>No HytaleAssets found. Specific prefabs unavailable.</i></html>");
+        }
+        filterPrefabList();
+    }
+
+    private void filterPrefabList() {
+        String query = (specificPrefabSearchField != null) ? specificPrefabSearchField.getText().trim() : "";
+        specificPrefabListModel.clear();
+        for (org.pepsoft.worldpainter.hytale.PrefabFileEntry entry : discoveredPrefabs) {
+            if (query.isEmpty() || entry.matchesSearch(query)) {
+                specificPrefabListModel.addElement(entry);
+            }
+        }
+    }
+
+    private JPanel createEntitiesPanel() {
+        final JPanel panel = new JPanel();
+        panel.setLayout(new GridBagLayout());
+        GridBagConstraints constraints = new GridBagConstraints();
+        constraints.insets = new Insets(1, 1, 1, 1);
+
+        constraints.anchor = GridBagConstraints.FIRST_LINE_START;
+        constraints.weightx = 0.0;
+        JCheckBox checkBox = new JCheckBox("Show:");
+        checkBox.setHorizontalTextPosition(SwingConstants.LEADING);
+        checkBox.setSelected(true);
+        checkBox.setToolTipText("Uncheck to hide entity spawn density from view");
+        checkBox.addActionListener(e -> {
+            if (checkBox.isSelected()) {
+                hiddenLayers.remove(org.pepsoft.worldpainter.hytale.HytaleEntityLayer.INSTANCE);
+            } else {
+                hiddenLayers.add(org.pepsoft.worldpainter.hytale.HytaleEntityLayer.INSTANCE);
+            }
+            updateLayerVisibility();
+        });
+        constraints.gridwidth = 1;
+        panel.add(checkBox, constraints);
+
+        JCheckBox soloCheckBox = new JCheckBox("Solo:");
+        soloCheckBox.setHorizontalTextPosition(SwingConstants.LEADING);
+        soloCheckBox.setToolTipText("<html>Check to show <em>only</em> entity spawn density</html>");
+        soloCheckBox.addActionListener(new SoloCheckboxHandler(soloCheckBox, org.pepsoft.worldpainter.hytale.HytaleEntityLayer.INSTANCE));
+        layerSoloCheckBoxes.put(org.pepsoft.worldpainter.hytale.HytaleEntityLayer.INSTANCE, soloCheckBox);
+        constraints.gridwidth = GridBagConstraints.REMAINDER;
+        panel.add(soloCheckBox, constraints);
+
+        JPanel grid = new JPanel(new GridLayout(0, 2, 2, 2));
+        for (int i = 1; i < org.pepsoft.worldpainter.hytale.HytaleEntityLayer.DENSITY_COUNT; i++) {
+            final int densityValue = i;
+            int argb = org.pepsoft.worldpainter.hytale.HytaleEntityLayer.DENSITY_COLORS[i];
+            int rgb = argb & 0x00FFFFFF;
+            JToggleButton button = new JToggleButton(org.pepsoft.worldpainter.hytale.HytaleEntityLayer.DENSITY_NAMES[i],
+                    createScaledColourIcon(rgb));
+            button.setToolTipText(org.pepsoft.worldpainter.hytale.HytaleEntityLayer.DENSITY_NAMES[i]);
+            button.setMargin(App.BUTTON_INSETS);
+            button.setHorizontalAlignment(SwingConstants.LEFT);
+            if (densityValue == 1) {
+                button.setSelected(true);
+            }
+            paintButtonGroup.add(button);
+            button.addItemListener(e -> {
+                if (e.getStateChange() == ItemEvent.SELECTED) {
+                    paintUpdater = () -> {
+                        paint = createDiscreteLayerPaint(org.pepsoft.worldpainter.hytale.HytaleEntityLayer.INSTANCE, densityValue);
+                        paintChanged();
+                    };
+                    paintUpdater.updatePaint();
+                }
+            });
+            button.putClientProperty(KEY_PAINT_ID, createDiscreteLayerPaintId(org.pepsoft.worldpainter.hytale.HytaleEntityLayer.INSTANCE, densityValue));
+            grid.add(button);
+        }
+        panel.add(grid, constraints);
+
+        layerControls.put(org.pepsoft.worldpainter.hytale.HytaleEntityLayer.INSTANCE, new LayerControls(org.pepsoft.worldpainter.hytale.HytaleEntityLayer.INSTANCE, checkBox, soloCheckBox));
+
+        panel.putClientProperty(KEY_ICON, new ImageIcon(org.pepsoft.worldpainter.hytale.HytaleEntityLayer.INSTANCE.getIcon()));
+
+        return panel;
     }
 
     @Nullable
@@ -5730,11 +6070,38 @@ public final class App extends JFrame implements BrushControl,
         brushOptions.setPlatform(platform);
         infoPanel.setPlatform(platform);
         updateTerrainButtonsForPlatform();
-        // TODO actually why not support these:
-        setEnabled(Caves.INSTANCE, (! caveFloor) && (! floatingFloor), "Caves not supported in Custom Cave/Tunnel floor dimensions");
-        setEnabled(Caverns.INSTANCE, (! caveFloor) && (! floatingFloor), "Caverns not supported in Custom Cave/Tunnel floor dimensions");
-        setEnabled(Chasms.INSTANCE, (! caveFloor) && (! floatingFloor), "Chasms not supported in Custom Cave/Tunnel floor dimensions");
         setEnabled(ReadOnly.INSTANCE, anchor.equals(NORMAL_DETAIL), "Read Only layer not applicable");
+
+        // Platform-specific layer visibility: fully hide layers that don't apply
+        final boolean isHytalePlatform = org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(platform);
+        // Minecraft-only layers: hidden for Hytale
+        setLayerHidden(Caves.INSTANCE, isHytalePlatform);
+        setLayerHidden(Caverns.INSTANCE, isHytalePlatform);
+        setLayerHidden(Chasms.INSTANCE, isHytalePlatform);
+        setLayerHidden(DeciduousForest.INSTANCE, isHytalePlatform);
+        setLayerHidden(PineForest.INSTANCE, isHytalePlatform);
+        setLayerHidden(SwampLand.INSTANCE, isHytalePlatform);
+        setLayerHidden(Jungle.INSTANCE, isHytalePlatform);
+        // Hytale-only layers: hidden for Minecraft
+        setLayerHidden(org.pepsoft.worldpainter.hytale.HytaleEntityLayer.INSTANCE, ! isHytalePlatform);
+        setLayerHidden(org.pepsoft.worldpainter.hytale.HytalePrefabLayer.INSTANCE, ! isHytalePlatform);
+        // Populate is Minecraft-only (tells MC to generate vegetation/ores); no effect on Hytale
+        setLayerHidden(Populate.INSTANCE, isHytalePlatform);
+        // Show/hide Hytale-only dockable frames
+        if (isHytalePlatform) {
+            dockingManager.showFrame(prefabsPanelFrame.getKey());
+            dockingManager.showFrame(entitiesPanelFrame.getKey());
+            updateSpecificPrefabsList();
+        } else {
+            dockingManager.hideFrame(prefabsPanelFrame.getKey());
+            dockingManager.hideFrame(entitiesPanelFrame.getKey());
+        }
+        // Dimension-specific enable/disable for visible (non-hidden) layers
+        if (! isHytalePlatform) {
+            setEnabled(Caves.INSTANCE, (! caveFloor) && (! floatingFloor), "Caves not supported in Custom Cave/Tunnel floor dimensions");
+            setEnabled(Caverns.INSTANCE, (! caveFloor) && (! floatingFloor), "Caverns not supported in Custom Cave/Tunnel floor dimensions");
+            setEnabled(Chasms.INSTANCE, (! caveFloor) && (! floatingFloor), "Chasms not supported in Custom Cave/Tunnel floor dimensions");
+        }
     }
 
     private void setEnabled(Layer layer, boolean enabled, String toolTipText) {
@@ -5746,6 +6113,13 @@ public final class App extends JFrame implements BrushControl,
                 deselectPaint();
             }
             layerControls.disable(toolTipText);
+        }
+    }
+
+    private void setLayerHidden(Layer layer, boolean hidden) {
+        final LayerControls lc = this.layerControls.get(layer);
+        if (lc != null) {
+            lc.setHidden(hidden);
         }
     }
 
@@ -5921,15 +6295,15 @@ public final class App extends JFrame implements BrushControl,
 
     private void saveCustomLayers() {
         if (dimension != null) {
+            final List<CustomLayer> customLayers = new ArrayList<>();
             if (! customLayerController.paletteManager.isEmpty()) {
-                final List<CustomLayer> customLayers = new ArrayList<>();
                 for (Palette palette: customLayerController.paletteManager.getPalettes()) {
                     customLayers.addAll(palette.getLayers());
                 }
-                dimension.setCustomLayers(customLayers);
-            } else {
-                dimension.setCustomLayers(emptyList());
             }
+            // Also include prefab layers managed in the Prefabs panel
+            customLayers.addAll(createdPrefabLayersList);
+            dimension.setCustomLayers(customLayers.isEmpty() ? emptyList() : customLayers);
         }
     }
 
@@ -7163,6 +7537,14 @@ public final class App extends JFrame implements BrushControl,
     private BiomesViewerFrame biomesViewerFrame;
     private BiomesPanel biomesPanel;
     private DockableFrame biomesPanelFrame;
+    private DockableFrame prefabsPanelFrame;
+    private DockableFrame entitiesPanelFrame;
+    private DefaultListModel<org.pepsoft.worldpainter.hytale.PrefabFileEntry> specificPrefabListModel;
+    private java.util.List<org.pepsoft.worldpainter.hytale.PrefabFileEntry> discoveredPrefabs = java.util.Collections.emptyList();
+    private JTextField specificPrefabSearchField;
+    private JLabel specificPrefabStatusLabel;
+    private JPanel customPrefabLayerRowsPanel;
+    private final java.util.List<org.pepsoft.worldpainter.hytale.HytaleSpecificPrefabLayer> createdPrefabLayersList = new ArrayList<>();
     private Filter filter, toolFilter;
     private boolean hideAbout, hidePreferences, hideExit;
     private PaintUpdater paintUpdater = () -> {
@@ -7392,6 +7774,66 @@ public final class App extends JFrame implements BrushControl,
         }
 
         /**
+         * Hide or show the layer controls. Hidden controls are invisible and
+         * collapse to zero height in the panel layout.
+         *
+         * @param hidden Whether the controls should be hidden.
+         */
+        void setHidden(boolean hidden) {
+            if (this.hidden == hidden) return;
+            this.hidden = hidden;
+            doOnEventThread(() -> {
+                if (hidden) {
+                    if ((paint instanceof LayerPaint) && ((LayerPaint) paint).getLayer().equals(layer)) {
+                        deselectPaint();
+                    }
+                    if ((soloCheckBox != null) && soloCheckBox.isSelected()) {
+                        soloCheckBox.setSelected(false);
+                        soloLayer = null;
+                        updateLayerVisibility();
+                    }
+                }
+                Component[] comps = {checkBox, soloCheckBox, control};
+                for (Component comp : comps) {
+                    if (comp == null) continue;
+                    Container parent = comp.getParent();
+                    if (parent == null) continue;
+                    java.awt.LayoutManager lm = parent.getLayout();
+                    if (lm instanceof GridBagLayout) {
+                        GridBagLayout gbl = (GridBagLayout) lm;
+                        GridBagConstraints gbc = gbl.getConstraints(comp);
+                        if (hidden) {
+                            gbc.insets = new Insets(0, 0, 0, 0);
+                            gbc.ipadx = 0;
+                            gbc.ipady = 0;
+                        } else {
+                            gbc.insets = new Insets(1, 1, 1, 1);
+                        }
+                        gbl.setConstraints(comp, gbc);
+                    }
+                    if (hidden) {
+                        comp.setPreferredSize(new java.awt.Dimension(0, 0));
+                        comp.setMinimumSize(new java.awt.Dimension(0, 0));
+                        comp.setMaximumSize(new java.awt.Dimension(0, 0));
+                    } else {
+                        comp.setPreferredSize(null);
+                        comp.setMinimumSize(null);
+                        comp.setMaximumSize(null);
+                    }
+                    comp.setVisible(! hidden);
+                }
+                if (control != null && control.getParent() != null) {
+                    control.getParent().revalidate();
+                    control.getParent().repaint();
+                }
+            });
+        }
+
+        boolean isHidden() {
+            return hidden;
+        }
+
+        /**
          * Indicate whether the "solo" checkbox for the layer is currently
          * checked.
          *
@@ -7420,6 +7862,7 @@ public final class App extends JFrame implements BrushControl,
         protected final JCheckBox soloCheckBox;
         protected final JComponent control;
         protected final String defaultCheckBoxToolTip, defaultSoloCheckBoxToolTip, defaultButtonToolTip;
+        private boolean hidden;
     }
 
     public enum Mode { WORLDPAINTER, MINECRAFTMAPEDITOR }
