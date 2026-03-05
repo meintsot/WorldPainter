@@ -119,6 +119,10 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
     public static void setHytaleAssetsDir(File dir) {
         hytaleAssetsDir = dir;
     }
+
+    public static File getHytaleAssetsDir() {
+        return hytaleAssetsDir;
+    }
     
     /**
      * Get an icon for this terrain, preferring the actual block texture from HytaleAssets.

@@ -21,8 +21,8 @@ public class HytalePrefabLayer extends Layer {
 
     private HytalePrefabLayer() {
         super("org.pepsoft.hytale.Prefab",
-              "Hytale Prefabs",
-              "Place Hytale prefab structures (trees, monuments, dungeons, etc.)",
+              "Prefabs",
+              "Place prefab structures (trees, monuments, dungeons, etc.)",
               DataSize.NIBBLE, true, 90, 'f');
     }
 

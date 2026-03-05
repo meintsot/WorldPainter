@@ -61,7 +61,9 @@ public class HytaleRoundTripTest {
         assertTrue("Exported world directory should exist", exportedWorldDir.isDirectory());
 
         // 3. Verify export produced region files
-        File chunksDir = new File(exportedWorldDir, "chunks");
+        // After restructuring: chunks are under universe/worlds/default/
+        File actualWorldDir = new File(new File(new File(exportedWorldDir, "universe"), "worlds"), "default");
+        File chunksDir = new File(actualWorldDir, "chunks");
         assertTrue("chunks directory should exist", chunksDir.isDirectory());
         File[] regionFiles = chunksDir.listFiles((dir, name) -> name.endsWith(".region.bin"));
         assertNotNull(regionFiles);
@@ -71,7 +73,7 @@ public class HytaleRoundTripTest {
         TileFactory importTileFactory = TileFactoryFactory.createNoiseTileFactory(
             0, Terrain.GRASS, 0, 320, 58, 62, false, true, 20, 1.0);
         HytaleMapImporter importer = new HytaleMapImporter(
-            exportedWorldDir, importTileFactory, null, MapImporter.ReadOnlyOption.NONE);
+            actualWorldDir, importTileFactory, null, MapImporter.ReadOnlyOption.NONE);
         World2 importedWorld = importer.doImport(null);
 
         // 5. Verify imported terrain preserved
