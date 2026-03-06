@@ -3,11 +3,13 @@ package org.pepsoft.worldpainter.hytale;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
+import org.pepsoft.minecraft.MinecraftCoords;
 import org.pepsoft.worldpainter.*;
 import org.pepsoft.worldpainter.exporting.WorldExportSettings;
 import org.pepsoft.worldpainter.importing.MapImporter;
 
 import java.io.File;
+import java.util.Set;
 
 import static org.junit.Assert.*;
 import static org.pepsoft.worldpainter.Constants.*;
@@ -91,6 +93,82 @@ public class HytaleRoundTripTest {
                 assertEquals("HytaleTerrain index should be preserved through round-trip",
                     HytaleTerrain.STONE.getLayerIndex(), terrainIndex);
             }
+        }
+    }
+
+    @Test
+    public void chunkStoreOnlyEnumeratesPresentChunks() throws Exception {
+        File worldDir = tempDir.newFolder("sparse_hytale_world");
+
+        HytaleChunkStore writer = new HytaleChunkStore(worldDir, 0, 320);
+        writer.saveChunk(new HytaleChunk(0, 0, 0, 320));
+        writer.saveChunk(new HytaleChunk(31, 31, 0, 320));
+        writer.flush();
+        writer.close();
+
+        HytaleChunkStore reader = new HytaleChunkStore(worldDir, 0, 320);
+        try {
+            Set<MinecraftCoords> chunkCoords = reader.getChunkCoords();
+            assertEquals("Sparse region should only report the written chunks", 2, chunkCoords.size());
+            assertEquals("Chunk count should match actual occupied chunk slots", 2, reader.getChunkCount());
+            assertTrue(chunkCoords.contains(new MinecraftCoords(0, 0)));
+            assertTrue(chunkCoords.contains(new MinecraftCoords(31, 31)));
+        } finally {
+            reader.close();
+        }
+    }
+
+    @Test
+    public void testExportDoesNotIncludeUnselectedNeighborTiles() throws Exception {
+        World2 world = new World2(HYTALE, 0, 320);
+        world.setName("SelectedTileOnly");
+        world.setCreateGoodiesChest(false);
+
+        long seed = 42L;
+        TileFactory tileFactory = TileFactoryFactory.createFlatTileFactory(
+            seed, Terrain.GRASS, 0, 320, 64, 62, false, false);
+        Dimension.Anchor anchor = new Dimension.Anchor(DIM_NORMAL, Dimension.Role.DETAIL, false, 0);
+        Dimension dim = new Dimension(world, "Surface", seed, tileFactory, anchor);
+        dim.setEventsInhibited(true);
+
+        Tile selectedTile = tileFactory.createTile(0, 0);
+        Tile unselectedTile = tileFactory.createTile(1, 0);
+        for (int x = 0; x < 128; x++) {
+            for (int z = 0; z < 128; z++) {
+                selectedTile.setHeight(x, z, 64);
+                selectedTile.setTerrain(x, z, Terrain.STONE);
+                HytaleTerrainLayer.setTerrainIndex(selectedTile, x, z, HytaleTerrain.STONE.getLayerIndex());
+
+                unselectedTile.setHeight(x, z, 70);
+                unselectedTile.setTerrain(x, z, Terrain.DIRT);
+                HytaleTerrainLayer.setTerrainIndex(unselectedTile, x, z, HytaleTerrain.DIRT.getLayerIndex());
+            }
+        }
+        dim.addTile(selectedTile);
+        dim.addTile(unselectedTile);
+        dim.setEventsInhibited(false);
+        world.addDimension(dim);
+
+        WorldExportSettings exportSettings = new WorldExportSettings(
+            java.util.Collections.singleton(DIM_NORMAL),
+            java.util.Collections.singleton(new Point(0, 0)),
+            null);
+
+        File exportBaseDir = tempDir.newFolder("selected_tile_export");
+        HytaleWorldExporter exporter = new HytaleWorldExporter(world, exportSettings);
+        exporter.export(exportBaseDir, "SelectedTileOnly", null, null);
+
+        File actualWorldDir = new File(new File(new File(new File(exportBaseDir, "SelectedTileOnly"), "universe"), "worlds"), "default");
+        HytaleChunkStore chunkStore = new HytaleChunkStore(actualWorldDir, 0, 320);
+        try {
+            Set<MinecraftCoords> chunkCoords = chunkStore.getChunkCoords();
+            assertEquals("One selected WorldPainter tile should export exactly 4x4 Hytale chunks", 16, chunkCoords.size());
+            for (MinecraftCoords coords : chunkCoords) {
+                assertTrue("Selected tile should stay within chunk x range 0-3 but found " + coords.x, (coords.x >= 0) && (coords.x < 4));
+                assertTrue("Selected tile should stay within chunk z range 0-3 but found " + coords.z, (coords.z >= 0) && (coords.z < 4));
+            }
+        } finally {
+            chunkStore.close();
         }
     }
 }

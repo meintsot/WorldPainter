@@ -646,7 +646,7 @@ public class HytaleWorldExporter implements WorldExporter {
                         }
                         
                         try {
-                            exportRegion(chunksDir, dimension, ceilingDimension, region, collectedStats, regionProgress, hasCustomObjects);
+                            exportRegion(chunksDir, dimension, ceilingDimension, tileCoords, region, collectedStats, regionProgress, hasCustomObjects);
                         } catch (Throwable t) {
                             if (chainContains(t, ProgressReceiver.OperationCancelled.class)) {
                                 logger.debug("Operation cancelled on thread {}", Thread.currentThread().getName());
@@ -770,7 +770,7 @@ public class HytaleWorldExporter implements WorldExporter {
     /**
      * Export a single region.
      */
-        private void exportRegion(File chunksDir, Dimension dimension, Dimension ceilingDimension, Point regionCoords,
+        private void exportRegion(File chunksDir, Dimension dimension, Dimension ceilingDimension, Set<Point> tileCoords, Point regionCoords,
             ChunkFactory.Stats stats, ProgressReceiver progressReceiver, boolean retainChunksForCustomObjects)
             throws IOException, ProgressReceiver.OperationCancelled {
         
@@ -807,6 +807,11 @@ public class HytaleWorldExporter implements WorldExporter {
                     int tileX = originalBlockX >> 7; // / 128
                     int tileZ = originalBlockZ >> 7;
                     
+                    if (!tileCoords.contains(new Point(tileX, tileZ))) {
+                        chunksExported++;
+                        continue;
+                    }
+
                     Tile tile = dimension.getTile(tileX, tileZ);
                     if (tile == null) {
                         // No data for this chunk

@@ -29,12 +29,21 @@ public class HytaleChunkStore implements ChunkStore {
     @Override
     public int getChunkCount() {
         int count = 0;
-        if (chunksDir.isDirectory()) {
-            File[] regionFiles = chunksDir.listFiles((dir, name) -> name.endsWith(".region.bin"));
-            if (regionFiles != null) {
-                // Each region can have up to 32x32 = 1024 chunks
-                // This is an estimate - actual count would require opening each file
-                count = regionFiles.length * 1024;
+        for (Point regionCoords : getRegionCoords()) {
+            try {
+                HytaleRegionFile region = getRegionFile(regionCoords.x, regionCoords.y, false);
+                if (region == null) {
+                    continue;
+                }
+                for (int localZ = 0; localZ < 32; localZ++) {
+                    for (int localX = 0; localX < 32; localX++) {
+                        if (region.hasChunk(localX, localZ)) {
+                            count++;
+                        }
+                    }
+                }
+            } catch (IOException e) {
+                throw new RuntimeException("Error counting chunks in region " + regionCoords.x + "," + regionCoords.y, e);
             }
         }
         return count;
@@ -43,38 +52,25 @@ public class HytaleChunkStore implements ChunkStore {
     @Override
     public Set<MinecraftCoords> getChunkCoords() {
         Set<MinecraftCoords> coords = new HashSet<>();
-        if (!chunksDir.isDirectory()) {
-            return coords;
-        }
-        
-        File[] regionFiles = chunksDir.listFiles((dir, name) -> name.endsWith(".region.bin"));
-        if (regionFiles == null) {
-            return coords;
-        }
-        
-        for (File regionFile : regionFiles) {
-            String name = regionFile.getName();
-            // Parse region coordinates from filename: x.z.region.bin
-            String[] parts = name.split("\\.");
-            if (parts.length >= 3) {
-                try {
-                    int regionX = Integer.parseInt(parts[0]);
-                    int regionZ = Integer.parseInt(parts[1]);
-                    
-                    // Add all potential chunk coordinates in this region
-                    for (int localZ = 0; localZ < 32; localZ++) {
-                        for (int localX = 0; localX < 32; localX++) {
-                            int chunkX = (regionX << 5) + localX;
-                            int chunkZ = (regionZ << 5) + localZ;
+        for (Point regionCoords : getRegionCoords()) {
+            try {
+                HytaleRegionFile region = getRegionFile(regionCoords.x, regionCoords.y, false);
+                if (region == null) {
+                    continue;
+                }
+                for (int localZ = 0; localZ < 32; localZ++) {
+                    for (int localX = 0; localX < 32; localX++) {
+                        if (region.hasChunk(localX, localZ)) {
+                            int chunkX = (regionCoords.x << 5) + localX;
+                            int chunkZ = (regionCoords.y << 5) + localZ;
                             coords.add(new MinecraftCoords(chunkX, chunkZ));
                         }
                     }
-                } catch (NumberFormatException e) {
-                    // Skip invalid filename
                 }
+            } catch (IOException e) {
+                throw new RuntimeException("Error enumerating chunks in region " + regionCoords.x + "," + regionCoords.y, e);
             }
         }
-        
         return coords;
     }
     
@@ -213,5 +209,31 @@ public class HytaleChunkStore implements ChunkStore {
         }
         
         return region;
+    }
+
+    private Set<Point> getRegionCoords() {
+        Set<Point> regionCoords = new HashSet<>();
+        if (!chunksDir.isDirectory()) {
+            return regionCoords;
+        }
+
+        File[] regionFiles = chunksDir.listFiles((dir, name) -> name.endsWith(".region.bin"));
+        if (regionFiles == null) {
+            return regionCoords;
+        }
+
+        for (File regionFile : regionFiles) {
+            String[] parts = regionFile.getName().split("\\.");
+            if (parts.length < 3) {
+                continue;
+            }
+            try {
+                regionCoords.add(new Point(Integer.parseInt(parts[0]), Integer.parseInt(parts[1])));
+            } catch (NumberFormatException e) {
+                // Skip invalid filename
+            }
+        }
+
+        return regionCoords;
     }
 }
