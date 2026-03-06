@@ -12,7 +12,11 @@ import org.pepsoft.worldpainter.App;
 import org.pepsoft.worldpainter.ColourScheme;
 import org.pepsoft.worldpainter.Configuration;
 import org.pepsoft.worldpainter.DefaultPlugin;
+import org.pepsoft.worldpainter.MaterialSelector;
 import org.pepsoft.worldpainter.Platform;
+import org.pepsoft.worldpainter.WorldPainterDialog;
+import org.pepsoft.worldpainter.hytale.HytaleBlockPalette;
+import org.pepsoft.worldpainter.hytale.HytaleBlockRegistry;
 import org.pepsoft.worldpainter.layers.AbstractLayerEditor;
 import org.pepsoft.worldpainter.layers.Bo2Layer;
 import org.pepsoft.worldpainter.layers.exporters.ExporterSettings;
@@ -26,6 +30,8 @@ import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import javax.vecmath.Point3i;
 import java.awt.*;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
@@ -1059,17 +1065,39 @@ public class Bo2LayerEditor extends AbstractLayerEditor<Bo2Layer> implements Lis
         JPanel panel = new JPanel(new BorderLayout(5, 5));
         panel.setBorder(BorderFactory.createTitledBorder("Block Mappings (Minecraft \u2192 Hytale)"));
 
+        JLabel hintLabel = new JLabel("Click a Minecraft or Hytale block to choose it from a searchable picker.");
+        panel.add(hintLabel, BorderLayout.NORTH);
+
         blockMappingTableModel = new javax.swing.table.DefaultTableModel(
             new String[]{"Minecraft Block", "Hytale Block"}, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
-                return column == 1; // Only Hytale column is editable
+                return false;
             }
         };
         blockMappingTable = new JTable(blockMappingTableModel);
         blockMappingTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         blockMappingTable.getTableHeader().setReorderingAllowed(false);
         blockMappingTable.setRowHeight(22);
+        blockMappingTable.setDefaultRenderer(Object.class, new BlockMappingCellRenderer());
+        blockMappingTable.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                int row = blockMappingTable.rowAtPoint(e.getPoint());
+                int column = blockMappingTable.columnAtPoint(e.getPoint());
+                if ((row != -1) && (column != -1)) {
+                    editBlockMapping(row, column);
+                }
+            }
+        });
+        blockMappingTable.addMouseMotionListener(new MouseAdapter() {
+            @Override
+            public void mouseMoved(MouseEvent e) {
+                int row = blockMappingTable.rowAtPoint(e.getPoint());
+                int column = blockMappingTable.columnAtPoint(e.getPoint());
+                blockMappingTable.setCursor(((row != -1) && (column != -1)) ? Cursor.getPredefinedCursor(Cursor.HAND_CURSOR) : Cursor.getDefaultCursor());
+            }
+        });
 
         JScrollPane scrollPane = new JScrollPane(blockMappingTable);
         scrollPane.setPreferredSize(new java.awt.Dimension(0, 180));
@@ -1158,10 +1186,132 @@ public class Bo2LayerEditor extends AbstractLayerEditor<Bo2Layer> implements Lis
             String mc = (String) blockMappingTableModel.getValueAt(row, 0);
             String hy = (String) blockMappingTableModel.getValueAt(row, 1);
             if (mc != null && hy != null && !mc.isEmpty() && !hy.isEmpty()) {
-                mappings.put(mc, hy);
+                String defaultHytale = org.pepsoft.worldpainter.hytale.HytaleBlockMapping.toHytale(Material.get(mc));
+                if (! hy.equals(defaultHytale)) {
+                    mappings.put(mc, hy);
+                }
             }
         }
         return mappings;
+    }
+
+    private void editBlockMapping(int row, int column) {
+        if ((row < 0) || (row >= blockMappingTableModel.getRowCount())) {
+            return;
+        }
+        if (column == 0) {
+            String currentMinecraft = (String) blockMappingTableModel.getValueAt(row, 0);
+            String selectedMinecraft = chooseMinecraftBlock(currentMinecraft);
+            if ((selectedMinecraft != null) && (! selectedMinecraft.equals(currentMinecraft))) {
+                String currentHytale = (String) blockMappingTableModel.getValueAt(row, 1);
+                String defaultHytale = org.pepsoft.worldpainter.hytale.HytaleBlockMapping.toHytale(Material.get(selectedMinecraft));
+                String previousDefault = org.pepsoft.worldpainter.hytale.HytaleBlockMapping.toHytale(Material.get(currentMinecraft));
+                blockMappingTableModel.setValueAt(selectedMinecraft, row, 0);
+                if ((currentHytale == null) || currentHytale.equals(previousDefault)) {
+                    blockMappingTableModel.setValueAt(defaultHytale, row, 1);
+                }
+            }
+        } else if (column == 1) {
+            String currentHytale = (String) blockMappingTableModel.getValueAt(row, 1);
+            String selectedHytale = chooseHytaleBlock(currentHytale);
+            if (selectedHytale != null) {
+                blockMappingTableModel.setValueAt(selectedHytale, row, 1);
+            }
+        }
+    }
+
+    private String chooseMinecraftBlock(String currentMinecraft) {
+        Window owner = SwingUtilities.getWindowAncestor(this);
+        JDialog dialog = new WorldPainterDialog(owner);
+        dialog.setTitle("Select Minecraft Block");
+
+        MaterialSelector materialSelector = new MaterialSelector();
+        materialSelector.setPlatform(DefaultPlugin.JAVA_ANVIL);
+        materialSelector.setExtendedBlockIds(true);
+        materialSelector.setMaterial(Material.get((currentMinecraft != null) ? currentMinecraft : "minecraft:stone"));
+
+        final String[] result = {null};
+        JButton okButton = new JButton("OK");
+        okButton.addActionListener(event -> {
+            Material selected = materialSelector.getMaterial();
+            result[0] = (selected != null) ? selected.name : null;
+            dialog.dispose();
+        });
+
+        JButton cancelButton = new JButton("Cancel");
+        cancelButton.addActionListener(event -> dialog.dispose());
+
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        buttonPanel.add(okButton);
+        buttonPanel.add(cancelButton);
+
+        dialog.getContentPane().add(materialSelector, BorderLayout.CENTER);
+        dialog.getContentPane().add(buttonPanel, BorderLayout.SOUTH);
+        dialog.getRootPane().setDefaultButton(okButton);
+        dialog.pack();
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+
+        return result[0];
+    }
+
+    private String chooseHytaleBlock(String currentHytale) {
+        Window owner = SwingUtilities.getWindowAncestor(this);
+        JDialog dialog = new WorldPainterDialog(owner);
+        dialog.setTitle("Select Hytale Block");
+
+        HytaleBlockRegistry.ensureMaterialsRegistered();
+        HytaleBlockPalette palette = new HytaleBlockPalette(false);
+        if (currentHytale != null) {
+            palette.setSelectedBlock(currentHytale);
+        }
+
+        final String[] result = {null};
+        JButton okButton = new JButton("OK");
+        okButton.addActionListener(event -> {
+            org.pepsoft.worldpainter.hytale.HytaleBlock selected = palette.getSelectedBlock();
+            result[0] = (selected != null) ? selected.id : null;
+            dialog.dispose();
+        });
+
+        JButton cancelButton = new JButton("Cancel");
+        cancelButton.addActionListener(event -> dialog.dispose());
+
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        buttonPanel.add(okButton);
+        buttonPanel.add(cancelButton);
+
+        dialog.getContentPane().add(palette, BorderLayout.CENTER);
+        dialog.getContentPane().add(buttonPanel, BorderLayout.SOUTH);
+        dialog.getRootPane().setDefaultButton(okButton);
+        dialog.pack();
+        dialog.setLocationRelativeTo(this);
+        dialog.setVisible(true);
+
+        return result[0];
+    }
+
+    private static String formatMinecraftBlockName(String blockName) {
+        if (blockName == null) {
+            return "";
+        }
+        String display = blockName.startsWith("minecraft:") ? blockName.substring(10) : blockName;
+        return display.replace('_', ' ');
+    }
+
+    private static class BlockMappingCellRenderer extends javax.swing.table.DefaultTableCellRenderer {
+        @Override
+        public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
+            JLabel label = (JLabel) super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+            String raw = (value instanceof String) ? (String) value : "";
+            label.setToolTipText(raw);
+            if (column == 0) {
+                label.setText(formatMinecraftBlockName(raw));
+            } else {
+                label.setText(HytaleBlockRegistry.formatDisplayName(raw));
+            }
+            return label;
+        }
     }
 
     private final DefaultListModel<WPObject> listModel;

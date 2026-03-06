@@ -252,6 +252,11 @@ public class HytaleBlockMapping {
                     return hytale;
                 }
             }
+
+            hytale = inferHytaleFromName(mcName);
+            if (hytale != null) {
+                return hytale;
+            }
         }
         
         // Fallback based on block type ID for legacy materials
@@ -280,6 +285,162 @@ public class HytaleBlockMapping {
             case 82: return HY_CLAY;
             default: return HY_STONE; // Default fallback
         }
+    }
+
+    private static String inferHytaleFromName(String mcName) {
+        String normalised = mcName.startsWith("minecraft:") ? mcName.substring(10) : mcName;
+
+        if (normalised.contains("water")) {
+            return HY_WATER;
+        }
+        if (normalised.contains("lava")) {
+            return HY_LAVA;
+        }
+        if (normalised.contains("leaves") || normalised.contains("leaf")) {
+            return inferLeaves(normalised);
+        }
+        if (normalised.contains("log") || normalised.contains("wood") || normalised.contains("stem") || normalised.contains("hyphae") || normalised.contains("trunk")) {
+            return inferLog(normalised);
+        }
+        if (isWoodConstruction(normalised)) {
+            return inferPlanks(normalised);
+        }
+        if (normalised.contains("sandstone")) {
+            return normalised.contains("red") ? HY_SANDSTONE_RED : HY_SANDSTONE;
+        }
+        if (normalised.contains("deepslate") || normalised.contains("slate")) {
+            return HY_SLATE;
+        }
+        if (normalised.contains("granite")) {
+            return HY_SHALE;
+        }
+        if (normalised.contains("diorite") || normalised.contains("quartz")) {
+            return HY_QUARTZITE;
+        }
+        if (normalised.contains("andesite")) {
+            return HY_SLATE;
+        }
+        if (normalised.contains("basalt")) {
+            return HY_BASALT;
+        }
+        if (normalised.contains("tuff") || normalised.contains("blackstone")) {
+            return HY_VOLCANIC;
+        }
+        if (normalised.contains("mud")) {
+            return HY_MUD;
+        }
+        if (normalised.contains("clay") || normalised.contains("terracotta")) {
+            return HY_CLAY;
+        }
+        if (normalised.contains("snow")) {
+            return HY_SNOW;
+        }
+        if (normalised.contains("ice")) {
+            return HY_ICE;
+        }
+        if (normalised.contains("gravel")) {
+            return HY_GRAVEL;
+        }
+        if (normalised.contains("sand")) {
+            return normalised.contains("red") ? HY_SAND_RED : HY_SAND;
+        }
+        if (normalised.contains("cobblestone")) {
+            return normalised.contains("moss") ? HY_COBBLESTONE_MOSSY : HY_COBBLESTONE;
+        }
+        if (normalised.contains("moss")) {
+            return HY_STONE_MOSSY;
+        }
+        if (normalised.contains("grass")) {
+            return normalised.contains("block") ? HY_GRASS_BLOCK : HY_GRASS_PLANT;
+        }
+        if (normalised.contains("fern")) {
+            return HY_FERN;
+        }
+        if (normalised.contains("flower") || normalised.contains("tulip") || normalised.contains("daisy") || normalised.contains("poppy") || normalised.contains("orchid")) {
+            return HY_FLOWER;
+        }
+        if (normalised.contains("cactus")) {
+            return HY_CACTUS;
+        }
+
+        return null;
+    }
+
+    private static boolean isWoodConstruction(String name) {
+        return name.contains("planks")
+                || name.contains("stairs")
+                || name.contains("slab")
+                || name.contains("fence")
+                || name.contains("gate")
+                || name.contains("door")
+                || name.contains("trapdoor")
+                || name.contains("button")
+                || name.contains("pressure_plate")
+                || name.contains("sign")
+                || name.contains("hanging_sign")
+                || name.contains("boat")
+                || name.contains("bookshelf")
+                || name.contains("chest")
+                || name.contains("barrel")
+                || name.contains("ladder")
+                || name.contains("crafting_table")
+                || name.contains("mosaic")
+                || name.contains("bamboo_block")
+                || name.contains("bamboo_planks");
+    }
+
+    private static String inferLog(String name) {
+        if (name.contains("birch")) {
+            return HY_BIRCH_LOG;
+        }
+        if (name.contains("spruce") || name.contains("fir")) {
+            return HY_FIR_LOG;
+        }
+        if (name.contains("jungle") || name.contains("mangrove")) {
+            return HY_JUNGLE_LOG;
+        }
+        if (name.contains("acacia") || name.contains("palm")) {
+            return HY_PALM_LOG;
+        }
+        if (name.contains("cherry") || name.contains("maple")) {
+            return HY_MAPLE_LOG;
+        }
+        if (name.contains("dark_oak") || name.contains("oak")) {
+            return HY_OAK_LOG;
+        }
+        if (name.contains("bamboo")) {
+            return HY_JUNGLE_LOG;
+        }
+        return HY_OAK_LOG;
+    }
+
+    private static String inferLeaves(String name) {
+        if (name.contains("birch")) {
+            return HY_BIRCH_LEAVES;
+        }
+        if (name.contains("spruce") || name.contains("fir")) {
+            return HY_FIR_LEAVES;
+        }
+        if (name.contains("jungle") || name.contains("mangrove")) {
+            return HY_JUNGLE_LEAVES;
+        }
+        if (name.contains("acacia") || name.contains("palm")) {
+            return HY_PALM_LEAVES;
+        }
+        if (name.contains("cherry") || name.contains("maple")) {
+            return HY_MAPLE_LEAVES;
+        }
+        return HY_OAK_LEAVES;
+    }
+
+    private static String inferPlanks(String name) {
+        if (name.contains("spruce") || name.contains("birch") || name.contains("fir") || name.contains("bamboo")) {
+            return HY_SOFTWOOD_PLANKS;
+        }
+        if (name.contains("oak") || name.contains("dark_oak") || name.contains("jungle") || name.contains("acacia") || name.contains("mangrove") || name.contains("cherry")) {
+            return HY_HARDWOOD_PLANKS;
+        }
+        return HY_HARDWOOD_PLANKS;
     }
     
     /**
