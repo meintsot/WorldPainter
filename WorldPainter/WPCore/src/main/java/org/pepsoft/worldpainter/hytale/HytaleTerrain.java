@@ -118,6 +118,7 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
      */
     public static void setHytaleAssetsDir(File dir) {
         hytaleAssetsDir = dir;
+        HytaleBlockRegistry.initialize((dir != null) ? dir.toPath() : null);
     }
 
     public static File getHytaleAssetsDir() {

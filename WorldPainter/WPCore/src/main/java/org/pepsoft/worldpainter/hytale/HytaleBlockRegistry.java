@@ -1,10 +1,16 @@
 package org.pepsoft.worldpainter.hytale;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import org.pepsoft.minecraft.Material;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -85,8 +91,8 @@ public class HytaleBlockRegistry {
     /** Singleton instance. */
     private static HytaleBlockRegistry instance;
 
-    /** Whether Material objects have been registered. */
-    private static volatile boolean materialsRegistered = false;
+    /** Tracks which Hytale material names have already been realised. */
+    private static final Set<String> registeredMaterialNames = ConcurrentHashMap.newKeySet();
 
     /** Path to HytaleAssets directory (optional). */
     private Path assetsPath;
@@ -103,11 +109,17 @@ public class HytaleBlockRegistry {
     /** Blocks organized by legacy string category (for backward compat). */
     private final Map<String, List<String>> blocksByLegacyCategory = new LinkedHashMap<>();
 
+    /** Blocks organized by enum category for UI display. */
+    private final Map<Category, List<String>> blocksByCategory = new EnumMap<>(Category.class);
+
     /** Next available index for new blocks. */
     private int nextIndex = 0;
 
     /** Whether the registry has been loaded. */
     private boolean loaded = false;
+
+    /** Cached sorted list of all block names in the live registry. */
+    private volatile List<String> allBlockNamesSorted;
 
     /**
      * Get the singleton instance, initializing with the comprehensive block list.
@@ -124,10 +136,7 @@ public class HytaleBlockRegistry {
      * Initialize the registry with a HytaleAssets path (optional).
      */
     public static synchronized boolean initialize(Path assetsPath) {
-        getInstance(); // Ensure defaults loaded
-        instance.assetsPath = assetsPath;
-        instance.loaded = true;
-        return true;
+        return getInstance().reloadFromAssets(assetsPath);
     }
 
     /**
@@ -135,16 +144,11 @@ public class HytaleBlockRegistry {
      * the "hytale" namespace. Safe to call multiple times; only registers once.
      */
     public static synchronized void ensureMaterialsRegistered() {
-        if (materialsRegistered) {
-            return;
-        }
-        getInstance(); // Ensure block defs loaded
-        for (Map.Entry<Category, List<String>> entry : BLOCKS_BY_CATEGORY.entrySet()) {
-            for (String name : entry.getValue()) {
+        for (String name : getAllBlockNames()) {
+            if (registeredMaterialNames.add(name)) {
                 Material.get(HYTALE_NAMESPACE + ":" + name);
             }
         }
-        materialsRegistered = true;
         logger.info("Registered {} Hytale block types as Materials", getAllBlockNames().size());
     }
 
@@ -159,21 +163,12 @@ public class HytaleBlockRegistry {
 
     /** Get all block names for a given category, sorted alphabetically. */
     public static List<String> getBlockNames(Category category) {
-        return Collections.unmodifiableList(
-                BLOCKS_BY_CATEGORY.getOrDefault(category, Collections.emptyList()));
+        return getInstance().getBlockNamesInternal(category);
     }
 
     /** Get all block names across all categories, sorted alphabetically. */
     public static List<String> getAllBlockNames() {
-        if (allBlockNamesSorted == null) {
-            List<String> all = new ArrayList<>();
-            for (List<String> names : BLOCKS_BY_CATEGORY.values()) {
-                all.addAll(names);
-            }
-            Collections.sort(all);
-            allBlockNamesSorted = Collections.unmodifiableList(all);
-        }
-        return allBlockNamesSorted;
+        return getInstance().getAllBlockNamesInternal();
     }
 
     /** Get total block count. */
@@ -183,12 +178,7 @@ public class HytaleBlockRegistry {
 
     /** Find the category for a block name, or null if not found. */
     public static Category getCategoryForBlock(String blockName) {
-        for (Map.Entry<Category, List<String>> entry : BLOCKS_BY_CATEGORY.entrySet()) {
-            if (entry.getValue().contains(blockName)) {
-                return entry.getKey();
-            }
-        }
-        return null;
+        return getInstance().findCategoryForBlock(blockName);
     }
 
     /**
@@ -242,13 +232,23 @@ public class HytaleBlockRegistry {
 
     /** Register a block definition (backward compat). */
     public void registerBlock(BlockDefinition def) {
-        blocks.put(def.id, def);
-        if (!idToIndex.containsKey(def.id)) {
-            int index = nextIndex++;
-            idToIndex.put(def.id, index);
-            indexToId.put(index, def.id);
+        registerBlock(def, inferCategory(def.id, def.category));
+    }
+
+    private void registerBlock(BlockDefinition def, Category category) {
+        if (blocks.containsKey(def.id)) {
+            return;
         }
-        blocksByLegacyCategory.computeIfAbsent(def.category, k -> new ArrayList<>()).add(def.id);
+        def.category = toLegacyCategory(category);
+        blocks.put(def.id, def);
+        int index = nextIndex++;
+        idToIndex.put(def.id, index);
+        indexToId.put(index, def.id);
+        blocksByLegacyCategory.computeIfAbsent(def.category, key -> new ArrayList<>()).add(def.id);
+        blocksByLegacyCategory.get(def.category).sort(String::compareTo);
+        blocksByCategory.computeIfAbsent(category, key -> new ArrayList<>()).add(def.id);
+        blocksByCategory.get(category).sort(String::compareTo);
+        allBlockNamesSorted = null;
     }
 
     /** Get block definition by ID. */
@@ -316,11 +316,255 @@ public class HytaleBlockRegistry {
                 def.hardness = 1.0f;
                 def.lightEmission = 0;
                 def.canRotate = cat == Category.WOOD_NATURAL || cat == Category.WOOD_PLANKS;
-                registerBlock(def);
+                registerBlock(def, cat);
             }
         }
         loaded = true;
         logger.info("Loaded {} comprehensive Hytale block definitions", blocks.size());
+    }
+
+    private synchronized boolean reloadFromAssets(Path assetsPath) {
+        this.assetsPath = assetsPath;
+        reset();
+        loadComprehensiveDefaults();
+        boolean loadedFromAssets = loadAssetBlockTypes(assetsPath);
+        loaded = true;
+        return loadedFromAssets;
+    }
+
+    private void reset() {
+        blocks.clear();
+        idToIndex.clear();
+        indexToId.clear();
+        blocksByLegacyCategory.clear();
+        blocksByCategory.clear();
+        nextIndex = 0;
+        loaded = false;
+        allBlockNamesSorted = null;
+    }
+
+    private boolean loadAssetBlockTypes(Path rootPath) {
+        if (rootPath == null) {
+            return false;
+        }
+        Path blockTypeListDir = rootPath.resolve("Server").resolve("BlockTypeList");
+        if (! Files.isDirectory(blockTypeListDir)) {
+            logger.debug("No Hytale BlockTypeList directory found at {}", blockTypeListDir);
+            return false;
+        }
+
+        int added = 0;
+        File[] files = blockTypeListDir.toFile().listFiles((dir, name) -> name.endsWith(".json"));
+        if (files == null) {
+            return false;
+        }
+        Arrays.sort(files, Comparator.comparing(File::getName));
+        for (File file : files) {
+            added += loadAssetBlockTypeFile(file);
+        }
+        if (added > 0) {
+            logger.info("Loaded {} additional Hytale block definitions from {}", added, blockTypeListDir);
+        }
+        return added > 0;
+    }
+
+    private int loadAssetBlockTypeFile(File file) {
+        int added = 0;
+        try (Reader reader = new BufferedReader(new InputStreamReader(new FileInputStream(file), StandardCharsets.UTF_8))) {
+            JsonElement rootElement = JsonParser.parseReader(reader);
+            if ((rootElement == null) || (! rootElement.isJsonObject())) {
+                return 0;
+            }
+            JsonObject root = rootElement.getAsJsonObject();
+            JsonArray blocksArray = root.getAsJsonArray("Blocks");
+            if (blocksArray == null) {
+                return 0;
+            }
+            for (JsonElement element : blocksArray) {
+                if (! element.isJsonPrimitive()) {
+                    continue;
+                }
+                String blockId = element.getAsString();
+                if ((blockId == null) || blockId.isEmpty() || blocks.containsKey(blockId)) {
+                    continue;
+                }
+                Category category = inferCategory(blockId, null);
+                BlockDefinition def = new BlockDefinition();
+                def.id = blockId;
+                def.displayName = blockId.replace('_', ' ');
+                def.category = toLegacyCategory(category);
+                def.material = guessMaterial(category);
+                def.drawType = guessDrawType(category);
+                def.opacity = guessOpacity(category);
+                def.group = def.category;
+                def.hardness = 1.0f;
+                def.lightEmission = 0;
+                def.canRotate = category == Category.WOOD_NATURAL || category == Category.WOOD_PLANKS;
+                registerBlock(def, category);
+                added++;
+            }
+        } catch (Exception e) {
+            logger.warn("Could not load Hytale block definitions from {}", file, e);
+        }
+        return added;
+    }
+
+    private List<String> getAllBlockNamesInternal() {
+        List<String> cached = allBlockNamesSorted;
+        if (cached == null) {
+            List<String> all = new ArrayList<>(blocks.keySet());
+            Collections.sort(all);
+            cached = Collections.unmodifiableList(all);
+            allBlockNamesSorted = cached;
+        }
+        return cached;
+    }
+
+    private List<String> getBlockNamesInternal(Category category) {
+        List<String> names = blocksByCategory.get(category);
+        if (names == null) {
+            return Collections.emptyList();
+        }
+        return Collections.unmodifiableList(names);
+    }
+
+    private Category findCategoryForBlock(String blockName) {
+        for (Map.Entry<Category, List<String>> entry : blocksByCategory.entrySet()) {
+            if (entry.getValue().contains(blockName)) {
+                return entry.getKey();
+            }
+        }
+        return null;
+    }
+
+    private static Category inferCategory(String blockId, String legacyCategory) {
+        if (blockId == null) {
+            return fromLegacyCategory(legacyCategory);
+        }
+        if (blockId.startsWith("Ore_")) {
+            return Category.ORE;
+        }
+        if (blockId.startsWith("Wood_")) {
+            return isWoodConstruction(blockId) ? Category.WOOD_PLANKS : Category.WOOD_NATURAL;
+        }
+        if (blockId.startsWith("Plant_Leaves_")) {
+            return Category.LEAVES;
+        }
+        if (blockId.startsWith("Plant_Grass_")) {
+            return Category.GRASS_PLANTS;
+        }
+        if (blockId.startsWith("Plant_Flower_") || blockId.startsWith("Plant_Sunflower_") || blockId.startsWith("Plant_Lavender_")) {
+            return Category.FLOWERS;
+        }
+        if (blockId.startsWith("Plant_Fern") || blockId.equals("Plant_Fern")) {
+            return Category.FERNS;
+        }
+        if (blockId.startsWith("Plant_Bush_") || blockId.startsWith("Plant_Bramble_")) {
+            return Category.BUSHES;
+        }
+        if (blockId.startsWith("Plant_Cactus_")) {
+            return Category.CACTUS;
+        }
+        if (blockId.startsWith("Plant_Moss_") || blockId.startsWith("Plant_Vine_") || blockId.equals("Plant_Barnacles")) {
+            return Category.MOSS_VINES;
+        }
+        if (blockId.startsWith("Plant_Crop_Mushroom_")) {
+            return Category.MUSHROOMS;
+        }
+        if (blockId.startsWith("Plant_Crop_") || blockId.equals("Plant_Hay_Bundle")) {
+            return Category.CROPS;
+        }
+        if (blockId.startsWith("Plant_Coral_")) {
+            return Category.CORAL;
+        }
+        if (blockId.startsWith("Plant_Seaweed_")) {
+            return Category.SEAWEED;
+        }
+        if (blockId.startsWith("Plant_Sapling_") || blockId.startsWith("Plant_Seeds_") || blockId.startsWith("Plant_Fruit_")
+                || blockId.startsWith("Plant_Reeds_") || blockId.startsWith("Plant_Roots_") || blockId.equals("Plant_Test_Tree_Block")) {
+            return Category.SAPLINGS_FRUITS;
+        }
+        if (blockId.startsWith("Rubble_")) {
+            return Category.RUBBLE;
+        }
+        if (blockId.startsWith("Deco_") || blockId.startsWith("Kweebec_")) {
+            return Category.DECORATION;
+        }
+        if (blockId.startsWith("Cloth_")) {
+            return Category.CLOTH;
+        }
+        if (blockId.startsWith("Soil_Hive")) {
+            return Category.HIVE;
+        }
+        if (blockId.startsWith("Rock_Runic_") || blockId.startsWith("LightStone")) {
+            return Category.RUNIC;
+        }
+        if (blockId.startsWith("Fluid_")) {
+            return Category.FLUID;
+        }
+        if (blockId.equals("Empty") || blockId.startsWith("Editor_") || blockId.startsWith("Portal_") || blockId.startsWith("Rail") || blockId.startsWith("Trap_")) {
+            return Category.SPECIAL;
+        }
+        if (blockId.startsWith("Soil_Clay")) {
+            return Category.CLAY;
+        }
+        if (blockId.startsWith("Soil_Snow") || blockId.startsWith("Rock_Ice")) {
+            return Category.SNOW_ICE;
+        }
+        if (blockId.startsWith("Soil_Gravel") || blockId.startsWith("Soil_Pebbles")) {
+            return Category.GRAVEL;
+        }
+        if (blockId.startsWith("Soil_Sand")) {
+            return Category.SAND;
+        }
+        if (blockId.startsWith("Soil_")) {
+            return Category.SOIL;
+        }
+        if (blockId.startsWith("Rock_Crystal_") || blockId.startsWith("Rock_Gem_")) {
+            return Category.CRYSTAL_GEM;
+        }
+        if (blockId.startsWith("Rock_")) {
+            return isRockConstruction(blockId) ? Category.ROCK_CONSTRUCTION : Category.ROCK;
+        }
+        return fromLegacyCategory(legacyCategory);
+    }
+
+    private static Category fromLegacyCategory(String legacyCategory) {
+        if (legacyCategory == null) {
+            return Category.SPECIAL;
+        }
+        switch (legacyCategory) {
+            case "Soil": return Category.SOIL;
+            case "Rock": return Category.ROCK;
+            case "Ore": return Category.ORE;
+            case "Wood": return Category.WOOD_PLANKS;
+            case "Plant": return Category.GRASS_PLANTS;
+            case "Decoration": return Category.DECORATION;
+            case "Cloth": return Category.CLOTH;
+            case "Fluid": return Category.FLUID;
+            default: return Category.SPECIAL;
+        }
+    }
+
+    private static boolean isRockConstruction(String blockId) {
+        return blockId.contains("_Brick")
+                || blockId.contains("_Cobble")
+                || blockId.contains("_Roof")
+                || blockId.contains("_Wall")
+                || blockId.contains("_Beam")
+                || blockId.contains("_Stairs")
+                || blockId.contains("_Half")
+                || blockId.contains("_Decorative")
+                || blockId.contains("_Ornate")
+                || blockId.contains("_Pillar_")
+                || blockId.contains("_Smooth");
+    }
+
+    private static boolean isWoodConstruction(String blockId) {
+        return blockId.contains("_Planks")
+                || blockId.contains("_Fence")
+                || blockId.contains("_Gate")
+                || blockId.contains("_Roof");
     }
 
     private String toLegacyCategory(Category cat) {
@@ -371,7 +615,6 @@ public class HytaleBlockRegistry {
     // Comprehensive block registry data (static)
     // =========================================================================
 
-    private static List<String> allBlockNamesSorted;
     private static final Map<Category, List<String>> BLOCKS_BY_CATEGORY = new LinkedHashMap<>();
 
     static {
