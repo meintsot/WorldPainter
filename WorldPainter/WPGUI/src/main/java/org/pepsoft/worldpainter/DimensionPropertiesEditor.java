@@ -545,59 +545,61 @@ public class DimensionPropertiesEditor extends javax.swing.JPanel {
 
         if (mode != DEFAULT_SETTINGS) {
             // resources
-            ResourcesExporterSettings resourcesSettings = (ResourcesExporterSettings) dimension.getLayerSettings(Resources.INSTANCE);
-            if (resourcesSettings == null) {
-                resourcesSettings = ResourcesExporterSettings.defaultSettings(platform, dimension.getAnchor(), dimension.getMinHeight(), dimension.getMaxHeight());
+            if (hasMinecraftStyleResourcesEditor()) {
+                ResourcesExporterSettings resourcesSettings = (ResourcesExporterSettings) dimension.getLayerSettings(Resources.INSTANCE);
+                if (resourcesSettings == null) {
+                    resourcesSettings = ResourcesExporterSettings.defaultSettings(platform, dimension.getAnchor(), dimension.getMinHeight(), dimension.getMaxHeight());
+                }
+                if (jCheckBox8.isSelected()) {
+                    int minimumLevel = jSlider4.getValue();
+                    resourcesSettings.setMinimumLevel(minimumLevel);
+                } else {
+                    resourcesSettings.setMinimumLevel(0);
+                }
+                resourcesSettings.setChance(GOLD_ORE, (Integer) spinnerGoldChance.getValue());
+                resourcesSettings.setMinLevel(GOLD_ORE, (Integer) spinnerGoldMinLevel.getValue());
+                resourcesSettings.setMaxLevel(GOLD_ORE, (Integer) spinnerGoldMaxLevel.getValue());
+                resourcesSettings.setChance(IRON_ORE, (Integer) spinnerIronChance.getValue());
+                resourcesSettings.setMinLevel(IRON_ORE, (Integer) spinnerIronMinLevel.getValue());
+                resourcesSettings.setMaxLevel(IRON_ORE, (Integer) spinnerIronMaxLevel.getValue());
+                resourcesSettings.setChance(COAL, (Integer) spinnerCoalChance.getValue());
+                resourcesSettings.setMinLevel(COAL, (Integer) spinnerCoalMinLevel.getValue());
+                resourcesSettings.setMaxLevel(COAL, (Integer) spinnerCoalMaxLevel.getValue());
+                resourcesSettings.setChance(LAPIS_LAZULI_ORE, (Integer) spinnerLapisChance.getValue());
+                resourcesSettings.setMinLevel(LAPIS_LAZULI_ORE, (Integer) spinnerLapisMinLevel.getValue());
+                resourcesSettings.setMaxLevel(LAPIS_LAZULI_ORE, (Integer) spinnerLapisMaxLevel.getValue());
+                resourcesSettings.setChance(DIAMOND_ORE, (Integer) spinnerDiamondChance.getValue());
+                resourcesSettings.setMinLevel(DIAMOND_ORE, (Integer) spinnerDiamondMinLevel.getValue());
+                resourcesSettings.setMaxLevel(DIAMOND_ORE, (Integer) spinnerDiamondMaxLevel.getValue());
+                resourcesSettings.setChance(REDSTONE_ORE, (Integer) spinnerRedstoneChance.getValue());
+                resourcesSettings.setMinLevel(REDSTONE_ORE, (Integer) spinnerRedstoneMinLevel.getValue());
+                resourcesSettings.setMaxLevel(REDSTONE_ORE, (Integer) spinnerRedstoneMaxLevel.getValue());
+                resourcesSettings.setChance(STATIONARY_WATER, (Integer) spinnerWaterChance.getValue());
+                resourcesSettings.setMinLevel(STATIONARY_WATER, (Integer) spinnerWaterMinLevel.getValue());
+                resourcesSettings.setMaxLevel(STATIONARY_WATER, (Integer) spinnerWaterMaxLevel.getValue());
+                resourcesSettings.setChance(STATIONARY_LAVA, (Integer) spinnerLavaChance.getValue());
+                resourcesSettings.setMinLevel(STATIONARY_LAVA, (Integer) spinnerLavaMinLevel.getValue());
+                resourcesSettings.setMaxLevel(STATIONARY_LAVA, (Integer) spinnerLavaMaxLevel.getValue());
+                resourcesSettings.setChance(DIRT, (Integer) spinnerDirtChance.getValue());
+                resourcesSettings.setMinLevel(DIRT, (Integer) spinnerDirtMinLevel.getValue());
+                resourcesSettings.setMaxLevel(DIRT, (Integer) spinnerDirtMaxLevel.getValue());
+                resourcesSettings.setChance(GRAVEL, (Integer) spinnerGravelChance.getValue());
+                resourcesSettings.setMinLevel(GRAVEL, (Integer) spinnerGravelMinLevel.getValue());
+                resourcesSettings.setMaxLevel(GRAVEL, (Integer) spinnerGravelMaxLevel.getValue());
+                resourcesSettings.setChance(EMERALD_ORE, (Integer) spinnerEmeraldChance.getValue());
+                resourcesSettings.setMinLevel(EMERALD_ORE, (Integer) spinnerEmeraldMinLevel.getValue());
+                resourcesSettings.setMaxLevel(EMERALD_ORE, (Integer) spinnerEmeraldMaxLevel.getValue());
+                resourcesSettings.setChance(QUARTZ_ORE, (Integer) spinnerQuartzChance.getValue());
+                resourcesSettings.setMinLevel(QUARTZ_ORE, (Integer) spinnerQuartzMinLevel.getValue());
+                resourcesSettings.setMaxLevel(QUARTZ_ORE, (Integer) spinnerQuartzMaxLevel.getValue());
+                resourcesSettings.setChance(COPPER_ORE, (Integer) spinnerCopperChance.getValue());
+                resourcesSettings.setMinLevel(COPPER_ORE, (Integer) spinnerCopperMinLevel.getValue());
+                resourcesSettings.setMaxLevel(COPPER_ORE, (Integer) spinnerCopperMaxLevel.getValue());
+                resourcesSettings.setChance(ANCIENT_DEBRIS, (Integer) spinnerAncientDebrisChance.getValue());
+                resourcesSettings.setMinLevel(ANCIENT_DEBRIS, (Integer) spinnerAncientDebrisMinLevel.getValue());
+                resourcesSettings.setMaxLevel(ANCIENT_DEBRIS, (Integer) spinnerAncientDebrisMaxLevel.getValue());
+                dimension.setLayerSettings(Resources.INSTANCE, resourcesSettings);
             }
-            if (jCheckBox8.isSelected()) {
-                int minimumLevel = jSlider4.getValue();
-                resourcesSettings.setMinimumLevel(minimumLevel);
-            } else {
-                resourcesSettings.setMinimumLevel(0);
-            }
-            resourcesSettings.setChance(GOLD_ORE, (Integer) spinnerGoldChance.getValue());
-            resourcesSettings.setMinLevel(GOLD_ORE, (Integer) spinnerGoldMinLevel.getValue());
-            resourcesSettings.setMaxLevel(GOLD_ORE, (Integer) spinnerGoldMaxLevel.getValue());
-            resourcesSettings.setChance(IRON_ORE, (Integer) spinnerIronChance.getValue());
-            resourcesSettings.setMinLevel(IRON_ORE, (Integer) spinnerIronMinLevel.getValue());
-            resourcesSettings.setMaxLevel(IRON_ORE, (Integer) spinnerIronMaxLevel.getValue());
-            resourcesSettings.setChance(COAL, (Integer) spinnerCoalChance.getValue());
-            resourcesSettings.setMinLevel(COAL, (Integer) spinnerCoalMinLevel.getValue());
-            resourcesSettings.setMaxLevel(COAL, (Integer) spinnerCoalMaxLevel.getValue());
-            resourcesSettings.setChance(LAPIS_LAZULI_ORE, (Integer) spinnerLapisChance.getValue());
-            resourcesSettings.setMinLevel(LAPIS_LAZULI_ORE, (Integer) spinnerLapisMinLevel.getValue());
-            resourcesSettings.setMaxLevel(LAPIS_LAZULI_ORE, (Integer) spinnerLapisMaxLevel.getValue());
-            resourcesSettings.setChance(DIAMOND_ORE, (Integer) spinnerDiamondChance.getValue());
-            resourcesSettings.setMinLevel(DIAMOND_ORE, (Integer) spinnerDiamondMinLevel.getValue());
-            resourcesSettings.setMaxLevel(DIAMOND_ORE, (Integer) spinnerDiamondMaxLevel.getValue());
-            resourcesSettings.setChance(REDSTONE_ORE, (Integer) spinnerRedstoneChance.getValue());
-            resourcesSettings.setMinLevel(REDSTONE_ORE, (Integer) spinnerRedstoneMinLevel.getValue());
-            resourcesSettings.setMaxLevel(REDSTONE_ORE, (Integer) spinnerRedstoneMaxLevel.getValue());
-            resourcesSettings.setChance(STATIONARY_WATER, (Integer) spinnerWaterChance.getValue());
-            resourcesSettings.setMinLevel(STATIONARY_WATER, (Integer) spinnerWaterMinLevel.getValue());
-            resourcesSettings.setMaxLevel(STATIONARY_WATER, (Integer) spinnerWaterMaxLevel.getValue());
-            resourcesSettings.setChance(STATIONARY_LAVA, (Integer) spinnerLavaChance.getValue());
-            resourcesSettings.setMinLevel(STATIONARY_LAVA, (Integer) spinnerLavaMinLevel.getValue());
-            resourcesSettings.setMaxLevel(STATIONARY_LAVA, (Integer) spinnerLavaMaxLevel.getValue());
-            resourcesSettings.setChance(DIRT, (Integer) spinnerDirtChance.getValue());
-            resourcesSettings.setMinLevel(DIRT, (Integer) spinnerDirtMinLevel.getValue());
-            resourcesSettings.setMaxLevel(DIRT, (Integer) spinnerDirtMaxLevel.getValue());
-            resourcesSettings.setChance(GRAVEL, (Integer) spinnerGravelChance.getValue());
-            resourcesSettings.setMinLevel(GRAVEL, (Integer) spinnerGravelMinLevel.getValue());
-            resourcesSettings.setMaxLevel(GRAVEL, (Integer) spinnerGravelMaxLevel.getValue());
-            resourcesSettings.setChance(EMERALD_ORE, (Integer) spinnerEmeraldChance.getValue());
-            resourcesSettings.setMinLevel(EMERALD_ORE, (Integer) spinnerEmeraldMinLevel.getValue());
-            resourcesSettings.setMaxLevel(EMERALD_ORE, (Integer) spinnerEmeraldMaxLevel.getValue());
-            resourcesSettings.setChance(QUARTZ_ORE, (Integer) spinnerQuartzChance.getValue());
-            resourcesSettings.setMinLevel(QUARTZ_ORE, (Integer) spinnerQuartzMinLevel.getValue());
-            resourcesSettings.setMaxLevel(QUARTZ_ORE, (Integer) spinnerQuartzMaxLevel.getValue());
-            resourcesSettings.setChance(COPPER_ORE, (Integer) spinnerCopperChance.getValue());
-            resourcesSettings.setMinLevel(COPPER_ORE, (Integer) spinnerCopperMinLevel.getValue());
-            resourcesSettings.setMaxLevel(COPPER_ORE, (Integer) spinnerCopperMaxLevel.getValue());
-            resourcesSettings.setChance(ANCIENT_DEBRIS, (Integer) spinnerAncientDebrisChance.getValue());
-            resourcesSettings.setMinLevel(ANCIENT_DEBRIS, (Integer) spinnerAncientDebrisMinLevel.getValue());
-            resourcesSettings.setMaxLevel(ANCIENT_DEBRIS, (Integer) spinnerAncientDebrisMaxLevel.getValue());
-            dimension.setLayerSettings(Resources.INSTANCE, resourcesSettings);
         }
         
         // annotations
@@ -958,7 +960,7 @@ public class DimensionPropertiesEditor extends javax.swing.JPanel {
         checkBoxSmoothSnow.setSelected((frostSettings.getMode() == 2) || (frostSettings.getMode() == 3));
         checkBoxSnowUnderTrees.setSelected(frostSettings.isSnowUnderTrees());
 
-        if (mode != DEFAULT_SETTINGS) {
+        if ((mode != DEFAULT_SETTINGS) && hasMinecraftStyleResourcesEditor()) {
             // resources
             ResourcesExporterSettings resourcesSettings = (ResourcesExporterSettings) dimension.getLayerSettings(Resources.INSTANCE);
             if (resourcesSettings == null) {
@@ -1348,7 +1350,14 @@ public class DimensionPropertiesEditor extends javax.swing.JPanel {
         if (JOptionPane.showConfirmDialog(this, "Do you want to reset the resource settings to Minecraft-like defaults?", "Confirm Resources Reset", YES_NO_OPTION) != YES_OPTION) {
             return;
         }
+        if (! hasMinecraftStyleResourcesEditor()) {
+            return;
+        }
         loadResourceSettings(ResourcesExporterSettings.defaultSettings(platform, dimension.getAnchor(), dimension.getMinHeight(), dimension.getMaxHeight()), dimension.getMinHeight(), dimension.getMaxHeight());
+    }
+
+    private boolean hasMinecraftStyleResourcesEditor() {
+        return ! org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(platform);
     }
 
     /**
