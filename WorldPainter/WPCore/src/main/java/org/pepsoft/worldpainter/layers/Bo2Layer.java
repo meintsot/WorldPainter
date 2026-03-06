@@ -16,7 +16,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  *
@@ -87,6 +89,25 @@ public class Bo2Layer extends CustomLayer {
         this.randomDisplacement = randomDisplacement;
     }
 
+    /**
+     * Get custom Minecraft→Hytale block mappings for this layer.
+     * Used during Hytale export to override default block conversions.
+     *
+     * @return Map of Minecraft block ID to Hytale block ID, or {@code null} if using defaults
+     */
+    public Map<String, String> getHytaleBlockMappings() {
+        return hytaleBlockMappings;
+    }
+
+    /**
+     * Set custom Minecraft→Hytale block mappings for this layer.
+     *
+     * @param hytaleBlockMappings Map of Minecraft block ID to Hytale block ID, or {@code null} to use defaults
+     */
+    public void setHytaleBlockMappings(Map<String, String> hytaleBlockMappings) {
+        this.hytaleBlockMappings = hytaleBlockMappings;
+    }
+
     @Override
     public String getType() {
         return "Custom Objects";
@@ -98,6 +119,9 @@ public class Bo2Layer extends CustomLayer {
     public Bo2Layer clone() {
         Bo2Layer clone = (Bo2Layer) super.clone();
         clone.objectProvider = objectProvider.clone();
+        if (hytaleBlockMappings != null) {
+            clone.hytaleBlockMappings = new HashMap<>(hytaleBlockMappings);
+        }
         return clone;
     }
 
@@ -125,6 +149,7 @@ public class Bo2Layer extends CustomLayer {
     private List<File> files = Collections.emptyList();
     private int density = 20;
     private int gridX = 1, gridY = 1, randomDisplacement = 0;
+    private Map<String, String> hytaleBlockMappings;
 
     private static final long serialVersionUID = 1L;
 }

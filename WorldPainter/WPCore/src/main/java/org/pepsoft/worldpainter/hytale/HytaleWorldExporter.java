@@ -1281,6 +1281,7 @@ public class HytaleWorldExporter implements WorldExporter {
                 continue;
             }
             Bo2Layer bo2Layer = (Bo2Layer) layer;
+            regionWorld.setActiveBlockMappings(bo2Layer.getHytaleBlockMappings());
             Bo2LayerExporter exporter = bo2Layer.getExporter(dimension, platform, dimension.getLayerSettings(bo2Layer));
             if (exporter == null) {
                 continue;
@@ -1310,6 +1311,10 @@ public class HytaleWorldExporter implements WorldExporter {
             this.blockOffsetZ = blockOffsetZ;
             this.minHeight = minHeight;
             this.maxHeight = maxHeight;
+        }
+
+        void setActiveBlockMappings(java.util.Map<String, String> mappings) {
+            this.activeBlockMappings = mappings;
         }
 
         @Override
@@ -1402,7 +1407,7 @@ public class HytaleWorldExporter implements WorldExporter {
                 return;
             }
 
-            HytaleBlock block = HytaleBlockMapping.toHytaleBlock(material);
+            HytaleBlock block = HytaleBlockMapping.toHytaleBlock(material, activeBlockMappings);
             if (block.isFluid()) {
                 location.chunk.setHytaleBlock(location.localX, height, location.localZ, HytaleBlock.EMPTY);
                 section.setFluid(location.localX, localY, location.localZ, block.id, 1);
@@ -1522,6 +1527,7 @@ public class HytaleWorldExporter implements WorldExporter {
         private final Map<Long, HytaleChunk> chunksByCoords;
         private final int blockOffsetX, blockOffsetZ;
         private final int minHeight, maxHeight;
+        private java.util.Map<String, String> activeBlockMappings;
 
         private static final class Location {
             private Location(HytaleChunk chunk, int localX, int localZ) {

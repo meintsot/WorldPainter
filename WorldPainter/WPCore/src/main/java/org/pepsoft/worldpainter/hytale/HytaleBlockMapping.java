@@ -367,6 +367,48 @@ public class HytaleBlockMapping {
         Integer explicitRotation = getExplicitRotation(material);
         return (explicitRotation != null) ? HytaleBlock.of(hytaleId, explicitRotation) : HytaleBlock.of(hytaleId);
     }
+
+    /**
+     * Convert a Material to a Hytale block ID, checking custom overrides first.
+     *
+     * @param material  The Minecraft material to convert
+     * @param overrides Custom Minecraft→Hytale mappings (may be {@code null})
+     * @return The Hytale block ID string
+     */
+    public static String toHytale(Material material, java.util.Map<String, String> overrides) {
+        if (overrides != null && material != null && material.name != null) {
+            String mcName = material.name;
+            String override = overrides.get(mcName);
+            if (override != null) {
+                return override;
+            }
+            if (!mcName.startsWith("minecraft:")) {
+                override = overrides.get("minecraft:" + mcName);
+                if (override != null) {
+                    return override;
+                }
+            } else {
+                override = overrides.get(mcName.substring(10));
+                if (override != null) {
+                    return override;
+                }
+            }
+        }
+        return toHytale(material);
+    }
+
+    /**
+     * Convert a Material to a HytaleBlock, checking custom overrides first.
+     *
+     * @param material  The Minecraft material to convert
+     * @param overrides Custom Minecraft→Hytale mappings (may be {@code null})
+     * @return A HytaleBlock representing the mapped equivalent
+     */
+    public static HytaleBlock toHytaleBlock(Material material, java.util.Map<String, String> overrides) {
+        String hytaleId = toHytale(material, overrides);
+        Integer explicitRotation = getExplicitRotation(material);
+        return (explicitRotation != null) ? HytaleBlock.of(hytaleId, explicitRotation) : HytaleBlock.of(hytaleId);
+    }
     
     /**
      * Convert a WorldPainter Material to a HytaleBlock with rotation.

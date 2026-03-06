@@ -11,6 +11,7 @@ import org.pepsoft.util.DesktopUtils;
 import org.pepsoft.worldpainter.App;
 import org.pepsoft.worldpainter.ColourScheme;
 import org.pepsoft.worldpainter.Configuration;
+import org.pepsoft.worldpainter.DefaultPlugin;
 import org.pepsoft.worldpainter.Platform;
 import org.pepsoft.worldpainter.layers.AbstractLayerEditor;
 import org.pepsoft.worldpainter.layers.Bo2Layer;
@@ -149,6 +150,9 @@ public class Bo2LayerEditor extends AbstractLayerEditor<Bo2Layer> implements Lis
         spinnerRandomOffset.setValue(layer.getRandomDisplacement());
         
         refreshLeafDecaySettings();
+        if (isHytaleWorld) {
+            populateBlockMappings();
+        }
         
         settingsChanged();
     }
@@ -188,6 +192,25 @@ public class Bo2LayerEditor extends AbstractLayerEditor<Bo2Layer> implements Lis
     public void setContext(LayerEditorContext context) {
         super.setContext(context);
         colourScheme = context.getColourScheme();
+        try {
+            isHytaleWorld = context.getDimension().getWorld().getPlatform() == DefaultPlugin.HYTALE;
+        } catch (Exception e) {
+            isHytaleWorld = false;
+        }
+    }
+
+    @Override
+    public JComponent getComponent() {
+        if (isHytaleWorld) {
+            if (wrapperPanel == null) {
+                wrapperPanel = new JPanel(new BorderLayout());
+                wrapperPanel.add(this, BorderLayout.CENTER);
+                blockMappingPanel = createBlockMappingPanel();
+                wrapperPanel.add(blockMappingPanel, BorderLayout.SOUTH);
+            }
+            return wrapperPanel;
+        }
+        return this;
     }
         
     // ListSelectionListener
@@ -232,6 +255,9 @@ public class Bo2LayerEditor extends AbstractLayerEditor<Bo2Layer> implements Lis
         layer.setGridX((Integer) spinnerGrid.getValue());
         layer.setGridY((Integer) spinnerGrid.getValue());
         layer.setRandomDisplacement((Integer) spinnerRandomOffset.getValue());
+        if (isHytaleWorld && blockMappingTableModel != null) {
+            layer.setHytaleBlockMappings(collectMappingsFromTable());
+        }
         return layer;
     }
 
@@ -308,6 +334,9 @@ public class Bo2LayerEditor extends AbstractLayerEditor<Bo2Layer> implements Lis
                 }
                 settingsChanged();
                 refreshLeafDecaySettings();
+                if (isHytaleWorld) {
+                    populateBlockMappings();
+                }
                 if (checkForNameOnlyMaterials && (! nameOnlyMaterialsNames.isEmpty())) {
                     String message;
                     if (nameOnlyMaterialsNames.size() > 4) {
@@ -362,6 +391,9 @@ public class Bo2LayerEditor extends AbstractLayerEditor<Bo2Layer> implements Lis
         }
         settingsChanged();
         refreshLeafDecaySettings();
+        if (isHytaleWorld) {
+            populateBlockMappings();
+        }
     }
 
     private void reloadObjects() {
@@ -1021,9 +1053,127 @@ public class Bo2LayerEditor extends AbstractLayerEditor<Bo2Layer> implements Lis
     private javax.swing.JSpinner spinnerRandomOffset;
     // End of variables declaration//GEN-END:variables
 
+    // --- Block Mapping Panel for Hytale worlds ---
+
+    private JPanel createBlockMappingPanel() {
+        JPanel panel = new JPanel(new BorderLayout(5, 5));
+        panel.setBorder(BorderFactory.createTitledBorder("Block Mappings (Minecraft \u2192 Hytale)"));
+
+        blockMappingTableModel = new javax.swing.table.DefaultTableModel(
+            new String[]{"Minecraft Block", "Hytale Block"}, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return column == 1; // Only Hytale column is editable
+            }
+        };
+        blockMappingTable = new JTable(blockMappingTableModel);
+        blockMappingTable.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        blockMappingTable.getTableHeader().setReorderingAllowed(false);
+        blockMappingTable.setRowHeight(22);
+
+        JScrollPane scrollPane = new JScrollPane(blockMappingTable);
+        scrollPane.setPreferredSize(new java.awt.Dimension(0, 180));
+        panel.add(scrollPane, BorderLayout.CENTER);
+
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 2));
+        JButton scanButton = new JButton("Scan Objects");
+        scanButton.setToolTipText("Re-scan all objects for Minecraft blocks and update mappings");
+        scanButton.addActionListener(e -> populateBlockMappings());
+        buttonPanel.add(scanButton);
+
+        JButton resetButton = new JButton("Reset to Defaults");
+        resetButton.setToolTipText("Reset all mappings to the default Minecraft \u2192 Hytale conversion");
+        resetButton.addActionListener(e -> resetMappingsToDefaults());
+        buttonPanel.add(resetButton);
+
+        panel.add(buttonPanel, BorderLayout.SOUTH);
+
+        return panel;
+    }
+
+    private void populateBlockMappings() {
+        if (blockMappingTableModel == null) {
+            return;
+        }
+        // Collect existing custom mappings from the table before clearing
+        Map<String, String> existingCustom = collectMappingsFromTable();
+
+        // Also load saved mappings from the layer
+        Map<String, String> savedMappings = (layer != null) ? layer.getHytaleBlockMappings() : null;
+
+        // Scan all objects for unique Minecraft materials
+        java.util.TreeMap<String, String> mappings = new java.util.TreeMap<>();
+        for (int i = 0; i < listModel.getSize(); i++) {
+            WPObject object = listModel.getElementAt(i);
+            Point3i dim = object.getDimensions();
+            for (int x = 0; x < dim.x; x++) {
+                for (int y = 0; y < dim.y; y++) {
+                    for (int z = 0; z < dim.z; z++) {
+                        if (object.getMask(x, y, z)) {
+                            Material material = object.getMaterial(x, y, z);
+                            if (material != null && material != Material.AIR && material.name != null) {
+                                String mcName = material.name;
+                                if (!mcName.startsWith("hytale:") && !mappings.containsKey(mcName)) {
+                                    // Priority: existing table edits > saved layer mappings > defaults
+                                    String hytale = existingCustom.get(mcName);
+                                    if (hytale == null && savedMappings != null) {
+                                        hytale = savedMappings.get(mcName);
+                                    }
+                                    if (hytale == null) {
+                                        hytale = org.pepsoft.worldpainter.hytale.HytaleBlockMapping.toHytale(material);
+                                    }
+                                    mappings.put(mcName, hytale);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        blockMappingTableModel.setRowCount(0);
+        for (Map.Entry<String, String> entry : mappings.entrySet()) {
+            blockMappingTableModel.addRow(new Object[]{entry.getKey(), entry.getValue()});
+        }
+    }
+
+    private void resetMappingsToDefaults() {
+        if (blockMappingTableModel == null) {
+            return;
+        }
+        for (int row = 0; row < blockMappingTableModel.getRowCount(); row++) {
+            String mcName = (String) blockMappingTableModel.getValueAt(row, 0);
+            Material material = Material.get(mcName);
+            String defaultHytale = org.pepsoft.worldpainter.hytale.HytaleBlockMapping.toHytale(material);
+            blockMappingTableModel.setValueAt(defaultHytale, row, 1);
+        }
+    }
+
+    private Map<String, String> collectMappingsFromTable() {
+        Map<String, String> mappings = new java.util.LinkedHashMap<>();
+        if (blockMappingTableModel == null) {
+            return mappings;
+        }
+        for (int row = 0; row < blockMappingTableModel.getRowCount(); row++) {
+            String mc = (String) blockMappingTableModel.getValueAt(row, 0);
+            String hy = (String) blockMappingTableModel.getValueAt(row, 1);
+            if (mc != null && hy != null && !mc.isEmpty() && !hy.isEmpty()) {
+                mappings.put(mc, hy);
+            }
+        }
+        return mappings;
+    }
+
     private final DefaultListModel<WPObject> listModel;
     private final NumberFormat numberFormat = NumberFormat.getInstance();
     private ColourScheme colourScheme;
+
+    // Block mapping fields for Hytale worlds
+    private boolean isHytaleWorld;
+    private JPanel wrapperPanel;
+    private JPanel blockMappingPanel;
+    private javax.swing.table.DefaultTableModel blockMappingTableModel;
+    private JTable blockMappingTable;
 
     private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(Bo2LayerEditor.class);
     private static final long serialVersionUID = 1L;
