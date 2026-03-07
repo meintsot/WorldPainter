@@ -2,6 +2,8 @@ package org.pepsoft.worldpainter.hytale;
 
 import org.pepsoft.worldpainter.ColourScheme;
 import org.pepsoft.worldpainter.Tile;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -54,6 +56,7 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
     private static final float TOP_FACE_SHADE = 1.0f;
     private static final float LEFT_FACE_SHADE = 0.90f;
     private static final float RIGHT_FACE_SHADE = 0.74f;
+    private static final Logger logger = LoggerFactory.getLogger(HytaleTerrain.class);
     
     /**
      * Create a simple single-block terrain with a deterministic UUID based on the name.
@@ -166,6 +169,14 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
     }
     
     private BufferedImage loadOrCreateIcon() {
+        List<String> generatedIconCandidates = (block != null)
+                ? getGeneratedIconCandidates(block.id)
+                : Collections.emptyList();
+        BufferedImage generatedIcon = loadGeneratedItemIcon(generatedIconCandidates);
+        if (generatedIcon != null) {
+            return generatedIcon;
+        }
+
         BlockFaceTextures textures = loadBlockFaceTextures();
         if (textures != null) {
             BufferedImage topTexture = (textures.top != null) ? textures.top : textures.side;
@@ -174,6 +185,8 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
                 return renderIsometricIcon(topTexture, sideTexture);
             }
         }
+
+        logMissingIconOnce(generatedIconCandidates);
 
         // No block-specific texture found. Generate a solid-colour isometric cube
         // from the terrain's effective colour so every terrain gets a unique 3D icon
@@ -187,6 +200,27 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
             }
         }
         return renderIsometricIcon(solidTexture, solidTexture);
+    }
+
+    /**
+     * Try to load a pre-generated 2D item icon for this block from HytaleAssets.
+     */
+    private BufferedImage loadGeneratedItemIcon(List<String> candidates) {
+        if ((hytaleAssetsDir == null) || (block == null)) {
+            return null;
+        }
+
+        for (File iconsDir : getIconDirs()) {
+            Map<String, File> iconIndex = indexFlatPngFiles(iconsDir);
+            if (iconIndex.isEmpty()) {
+                continue;
+            }
+            BufferedImage iconImage = loadTexture(iconIndex, candidates);
+            if (iconImage != null) {
+                return iconImage;
+            }
+        }
+        return null;
     }
     
     /**
@@ -272,9 +306,30 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         return texturesDir.isDirectory() ? texturesDir : null;
     }
 
+    private List<File> getIconDirs() {
+        if ((hytaleAssetsDir == null) || (block == null)) {
+            return Collections.emptyList();
+        }
+
+        List<File> iconDirs = new ArrayList<>(3);
+        addDirIfPresent(iconDirs, "Common" + File.separator + "Icons" + File.separator + "ItemsGenerated");
+        addDirIfPresent(iconDirs, "Common" + File.separator + "Icons" + File.separator + "Items");
+        addDirIfPresent(iconDirs, "Common" + File.separator + "Items");
+        return iconDirs;
+    }
+
+    private void addDirIfPresent(List<File> dirs, String relativePath) {
+        File dir = new File(hytaleAssetsDir, relativePath);
+        if (dir.isDirectory()) {
+            dirs.add(dir);
+        }
+    }
+
     /** Cached texture file index — built once, reused for all terrains. */
     private static volatile Map<String, File> cachedTextureIndex;
     private static volatile File cachedTextureIndexDir;
+    private static final Map<File, Map<String, File>> CACHED_ICON_INDEXES = Collections.synchronizedMap(new HashMap<>());
+    private static final Set<String> LOGGED_MISSING_ICON_BLOCKS = Collections.synchronizedSet(new HashSet<>());
 
     private Map<String, File> indexTextureFiles(File texturesDir) {
         // Return cached index if it was built for the same directory.
@@ -294,6 +349,295 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         cachedTextureIndex = index;
         cachedTextureIndexDir = texturesDir;
         return index;
+    }
+
+    private Map<String, File> indexFlatPngFiles(File directory) {
+        Map<String, File> cachedIndex = CACHED_ICON_INDEXES.get(directory);
+        if (cachedIndex != null) {
+            return cachedIndex;
+        }
+
+        File[] files = directory.listFiles();
+        if (files == null) {
+            return Collections.emptyMap();
+        }
+
+        Map<String, File> index = new HashMap<>(files.length * 2);
+        for (File file : files) {
+            if (file.isFile() && file.getName().toLowerCase(Locale.ROOT).endsWith(".png")) {
+                index.putIfAbsent(file.getName().toLowerCase(Locale.ROOT), file);
+            }
+        }
+        CACHED_ICON_INDEXES.put(directory, index);
+        return index;
+    }
+
+    private List<String> getGeneratedIconCandidates(String blockId) {
+        LinkedHashSet<String> candidates = new LinkedHashSet<>();
+        addGeneratedIconCandidates(blockId, candidates);
+        addGeneratedPlantIconVariants(blockId, candidates);
+        addGeneratedPlantFamilyVariants(blockId, candidates);
+        addGeneratedReedsAndSeaweedVariants(blockId, candidates);
+
+        if (blockId.endsWith("_Source")) {
+            addGeneratedIconCandidates("Fluid_" + blockId.substring(0, blockId.length() - "_Source".length()), candidates);
+        }
+        if (blockId.endsWith("_Block")) {
+            addGeneratedIconCandidates(blockId.substring(0, blockId.length() - "_Block".length()), candidates);
+        }
+
+        for (String prefix : new String[] { "Rock_", "Soil_" }) {
+            if (blockId.startsWith(prefix)) {
+                addGeneratedIconCandidates(blockId.substring(prefix.length()), candidates);
+            }
+        }
+
+        if (blockId.contains("Poisoned")) {
+            addGeneratedIconCandidates(blockId.replace("Poisoned", "Poisonned"), candidates);
+            addGeneratedIconCandidates(blockId.replace("Poisoned", "Poison"), candidates);
+        }
+        if (blockId.contains("Cyan")) {
+            addGeneratedIconCandidates(blockId.replace("Cyan", "SkyBlue"), candidates);
+        }
+        if (blockId.contains("Gray")) {
+            addGeneratedIconCandidates(blockId.replace("Gray", "Grey"), candidates);
+        }
+        if (blockId.startsWith("Plant_")) {
+            addGeneratedIconCandidates(blockId.substring("Plant_".length()), candidates);
+        }
+        if (blockId.contains("_Crop_")) {
+            addGeneratedIconCandidates(blockId.replace("_Crop_", "_"), candidates);
+        }
+
+        return new ArrayList<>(candidates);
+    }
+
+    private void addGeneratedIconCandidates(String base, Collection<String> candidates) {
+        candidates.add(base + ".png");
+    }
+
+    private void addGeneratedPlantIconVariants(String blockId, Collection<String> candidates) {
+        if (blockId.startsWith("Plant_Leaves_")) {
+            String suffix = blockId.substring("Plant_Leaves_".length());
+            addGeneratedIconCandidates("Plant_" + suffix + "_Leaves", candidates);
+        }
+        if (blockId.startsWith("Plant_Sapling_")) {
+            String suffix = blockId.substring("Plant_Sapling_".length());
+            addGeneratedIconCandidates("Plant_" + suffix + "_Sapling", candidates);
+        }
+    }
+
+    private void addGeneratedPlantFamilyVariants(String blockId, Collection<String> candidates) {
+        switch (blockId) {
+            case "Plant_Leaves_Palm_Arid":
+                addGeneratedIconCandidates("Plant_Bush_Arid_Palm", candidates);
+                addGeneratedIconCandidates("Plant_Palm_Leaves", candidates);
+                break;
+            case "Plant_Leaves_Rhododendron":
+                addGeneratedIconCandidates("Plant_Rhododendron_Pink_Leaves", candidates);
+                break;
+            case "Plant_Leaves_Fir_Red":
+                addGeneratedIconCandidates("Plant_Fir_Leaves_Red", candidates);
+                addGeneratedIconCandidates("Plant_Leaves_Fir_Tip", candidates);
+                break;
+            case "Plant_Leaves_Autumn_Floor":
+                addGeneratedIconCandidates("Soil_Leaves_Autumn", candidates);
+                addGeneratedIconCandidates("Plant_Floor_Leaves", candidates);
+                addGeneratedIconCandidates("Plant_Autumn_Leaves", candidates);
+                break;
+            case "Plant_Leaves_Palm_Oasis":
+                addGeneratedIconCandidates("Plant_Palm_Giant_Leaves", candidates);
+                addGeneratedIconCandidates("Plant_Palm_Giant_Leaves_Green", candidates);
+                break;
+            case "Plant_Leaves_Goldentree":
+                addGeneratedIconCandidates("Plant_Autumn_Leaves", candidates);
+                addGeneratedIconCandidates("Soil_Leaves_Autumn", candidates);
+                break;
+            case "Plant_Leaves_Jungle":
+                addGeneratedIconCandidates("Plant_Tropical_Leaves", candidates);
+                addGeneratedIconCandidates("Plant_Bush_Jungle", candidates);
+                break;
+            case "Plant_Bramble_Dry_Sandthorn":
+                addGeneratedIconCandidates("Plant_Bramble_Sandthorn", candidates);
+                addGeneratedIconCandidates("Plant_Bramble_Dry", candidates);
+                break;
+            case "Plant_Bramble_Dry_Twisted":
+                addGeneratedIconCandidates("Plant_Bramble_Dry", candidates);
+                addGeneratedIconCandidates("Plant_Bramble_Moss_Twisted", candidates);
+                break;
+            case "Plant_Bush":
+                addGeneratedIconCandidates("Plant_Bush_Green", candidates);
+                break;
+            case "Plant_Bush_Arid_Sharp":
+                addGeneratedIconCandidates("Plant_Bush_Arid", candidates);
+                break;
+            case "Plant_Bush_Dead_Twisted":
+                addGeneratedIconCandidates("Plant_Bush_Dead", candidates);
+                break;
+            case "Plant_Bush_Dead_Tall":
+                addGeneratedIconCandidates("Plant_Bush_Dead_Large", candidates);
+                addGeneratedIconCandidates("Plant_Bush_Dead", candidates);
+                break;
+            case "Plant_Bush_Winter_Sharp":
+            case "Plant_Bush_Winter":
+                addGeneratedIconCandidates("Plant_Bush_Winter_Snow", candidates);
+                addGeneratedIconCandidates("Plant_Bush_Winter_Red", candidates);
+                break;
+            case "Plant_Crop_Berry_Winter_Block":
+                addGeneratedIconCandidates("Plant_Bush_Winter_Berry", candidates);
+                break;
+            case "Plant_Crop_Mushroom_Cap_Green":
+                addGeneratedIconCandidates("Plant_Crop_Mushroom_Block_Green", candidates);
+                addGeneratedIconCandidates("Plant_Mushroom_Green", candidates);
+                break;
+            case "Plant_Crop_Mushroom_Cap_Poison":
+                addGeneratedIconCandidates("Plant_Crop_Mushroom_Allium_Poison", candidates);
+                break;
+            case "Plant_Crop_Mushroom_Common_Lime":
+                addGeneratedIconCandidates("Plant_Crop_Mushroom_Puffy_Lime", candidates);
+                break;
+            case "Plant_Crop_Mushroom_Glowing_Orange":
+                addGeneratedIconCandidates("Plant_Crop_Mushroom_Glowcap_Orange", candidates);
+                break;
+            case "Plant_Crop_Mushroom_Glowing_Red":
+                addGeneratedIconCandidates("Plant_Crop_Mushroom_Blood_Cap", candidates);
+                break;
+            case "Plant_Crop_Mushroom_Glowing_Violet":
+                addGeneratedIconCandidates("Plant_Crop_Mushroom_Glowcap_Purple", candidates);
+                addGeneratedIconCandidates("Plant_Crop_Mushroom_Glowing_Purple", candidates);
+                break;
+            case "Plant_Fern_Winter":
+                addGeneratedIconCandidates("Plant_Fern", candidates);
+                break;
+            case "Plant_Flower_Common_Grey":
+            case "Plant_Flower_Common_Grey2":
+                addGeneratedIconCandidates("Plant_Flower_Bushy_Grey", candidates);
+                break;
+            case "Plant_Flower_Common_Lime":
+                addGeneratedIconCandidates("Plant_Flower_Common_Lime2", candidates);
+                break;
+            case "Plant_Flower_Common_Orange":
+                addGeneratedIconCandidates("Plant_Flower_Common_Chrysanthemum", candidates);
+                addGeneratedIconCandidates("Plant_Flower_Common_Orange2", candidates);
+                break;
+            case "Plant_Flower_Common_Poisoned2":
+                addGeneratedIconCandidates("Plant_Flower_Common_Poisoned", candidates);
+                break;
+            case "Plant_Flower_Tall_Blue":
+                addGeneratedIconCandidates("Plant_Flower_Tall_Delphinium", candidates);
+                break;
+            case "Plant_Lavender_Stage_0":
+                addGeneratedIconCandidates("Plant_Seeds_Lavender", candidates);
+                break;
+            case "Plant_Sunflower_Stage_0":
+                addGeneratedIconCandidates("Plant_Seeds_Sunflower", candidates);
+                break;
+            case "Plant_Grass_Gnarled_Short":
+                addGeneratedIconCandidates("Plant_Grass_Small_Gnarled", candidates);
+                break;
+            case "Plant_Grass_Lush":
+                addGeneratedIconCandidates("Plant_Grass_Bushy", candidates);
+                break;
+            case "Plant_Grass_Lush_Short":
+                addGeneratedIconCandidates("Plant_Grass_Short", candidates);
+                break;
+            case "Plant_Grass_Lush_Tall":
+                addGeneratedIconCandidates("Plant_Grass_Tall", candidates);
+                break;
+            case "Plant_Grass_Sharp":
+                addGeneratedIconCandidates("Plant_Grass_Sharp_Wild", candidates);
+                break;
+            case "Plant_Grass_Sharp_Tall":
+                addGeneratedIconCandidates("Plant_Grass_Sharp_Overgrown", candidates);
+                break;
+            case "Plant_Grass_Snowy":
+                addGeneratedIconCandidates("Plant_Grass_Winter", candidates);
+                break;
+            case "Plant_Grass_Snowy_Short":
+                addGeneratedIconCandidates("Plant_Grass_Winter_Short", candidates);
+                break;
+            case "Plant_Grass_Winter_Tall":
+                addGeneratedIconCandidates("Plant_Grass_Winter", candidates);
+                addGeneratedIconCandidates("Plant_Grass_Winter_Bushy", candidates);
+                break;
+            case "Plant_Grass_Arid":
+                addGeneratedIconCandidates("Plant_Grass_Dry", candidates);
+                break;
+            case "Plant_Grass_Arid_Short":
+                addGeneratedIconCandidates("Plant_Grass_Dry_Short", candidates);
+                break;
+            case "Plant_Grass_Arid_Tall":
+                addGeneratedIconCandidates("Plant_Grass_Dry_Tall", candidates);
+                addGeneratedIconCandidates("Plant_Grass_Savannah_Bushy", candidates);
+                break;
+            case "Plant_Moss_Green":
+                addGeneratedIconCandidates("Plant_Moss", candidates);
+                break;
+            case "Plant_Moss_Cave_Blue":
+                addGeneratedIconCandidates("Plant_Moss_Blue_Cave", candidates);
+                break;
+            case "Plant_Moss_Cave_Green":
+                addGeneratedIconCandidates("Plant_Moss_Green_Cave", candidates);
+                addGeneratedIconCandidates("Plant_Moss_Cave_Green_Dark", candidates);
+                break;
+            case "Plant_Moss_Cave_Yellow":
+                addGeneratedIconCandidates("Plant_Moss_Yellow_Cave", candidates);
+                break;
+            case "Plant_Moss_Rug_Lime":
+                addGeneratedIconCandidates("Plant_Moss_Rug_Green", candidates);
+                break;
+            case "Plant_Moss_Short_Blue":
+                addGeneratedIconCandidates("Plant_Moss_Blue_Short", candidates);
+                break;
+            case "Plant_Moss_Short_Green":
+                addGeneratedIconCandidates("Plant_Moss_Short", candidates);
+                break;
+            case "Plant_Moss_Short_Yellow":
+                addGeneratedIconCandidates("Plant_Moss_Yellow_Short", candidates);
+                break;
+            default:
+                break;
+        }
+    }
+
+    private void addGeneratedReedsAndSeaweedVariants(String blockId, Collection<String> candidates) {
+        if (blockId.equals("Plant_Reeds_Marsh") || blockId.equals("Plant_Reeds_Water")) {
+            addGeneratedIconCandidates("Plant_Reeds", candidates);
+        }
+        if (blockId.equals("Plant_Reeds_Wet")) {
+            addGeneratedIconCandidates("Plants_Reeds_Wet", candidates);
+        }
+        if (blockId.startsWith("Plant_Seaweed_Grass_")) {
+            String suffix = blockId.substring("Plant_Seaweed_Grass_".length());
+            switch (suffix) {
+                case "Green":
+                case "Green_Bulbs":
+                case "Bulbs":
+                    addGeneratedIconCandidates("Plant_Seaweed_Glow_" + suffix, candidates);
+                    break;
+                case "Short":
+                case "Stack":
+                case "Tall":
+                    addGeneratedIconCandidates("Plant_Seaweed_" + suffix, candidates);
+                    break;
+                default:
+                    break;
+            }
+            if (suffix.equals("Bulbs")) {
+                addGeneratedIconCandidates("Plant_Seaweed_Glow_Green_Bulbs", candidates);
+            }
+        }
+    }
+
+    private void logMissingIconOnce(List<String> generatedIconCandidates) {
+        if ((block == null) || (! LOGGED_MISSING_ICON_BLOCKS.add(block.id))) {
+            return;
+        }
+        logger.warn("No Hytale icon found for block {} (terrain {}). Checked generated icon dirs under {} with candidates {} and found no matching block textures; using colour fallback.",
+                block.id,
+                name,
+                (hytaleAssetsDir != null) ? hytaleAssetsDir.getAbsolutePath() : "<unset>",
+                generatedIconCandidates);
     }
 
     private void addTextureCandidates(String base, List<String> topCandidates, List<String> sideCandidates) {
