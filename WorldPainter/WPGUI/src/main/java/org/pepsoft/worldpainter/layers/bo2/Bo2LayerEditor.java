@@ -12,7 +12,6 @@ import org.pepsoft.worldpainter.App;
 import org.pepsoft.worldpainter.ColourScheme;
 import org.pepsoft.worldpainter.Configuration;
 import org.pepsoft.worldpainter.DefaultPlugin;
-import org.pepsoft.worldpainter.MaterialSelector;
 import org.pepsoft.worldpainter.Platform;
 import org.pepsoft.worldpainter.WorldPainterDialog;
 import org.pepsoft.worldpainter.hytale.HytaleBlockPalette;
@@ -1063,13 +1062,13 @@ public class Bo2LayerEditor extends AbstractLayerEditor<Bo2Layer> implements Lis
 
     private JPanel createBlockMappingPanel() {
         JPanel panel = new JPanel(new BorderLayout(5, 5));
-        panel.setBorder(BorderFactory.createTitledBorder("Block Mappings (Minecraft \u2192 Hytale)"));
+        panel.setBorder(BorderFactory.createTitledBorder("Block Mappings (Loaded Block \u2192 Hytale)"));
 
-        JLabel hintLabel = new JLabel("Click a Minecraft or Hytale block to choose it from a searchable picker.");
+        JLabel hintLabel = new JLabel("Loaded blocks are read-only. Click the Hytale block column to choose replacements from a searchable picker.");
         panel.add(hintLabel, BorderLayout.NORTH);
 
         blockMappingTableModel = new javax.swing.table.DefaultTableModel(
-            new String[]{"Minecraft Block", "Hytale Block"}, 0) {
+            new String[]{"Loaded Block", "Hytale Block"}, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
                 return false;
@@ -1085,7 +1084,7 @@ public class Bo2LayerEditor extends AbstractLayerEditor<Bo2Layer> implements Lis
             public void mouseClicked(MouseEvent e) {
                 int row = blockMappingTable.rowAtPoint(e.getPoint());
                 int column = blockMappingTable.columnAtPoint(e.getPoint());
-                if ((row != -1) && (column != -1)) {
+                if ((row != -1) && (column == 1)) {
                     editBlockMapping(row, column);
                 }
             }
@@ -1095,7 +1094,7 @@ public class Bo2LayerEditor extends AbstractLayerEditor<Bo2Layer> implements Lis
             public void mouseMoved(MouseEvent e) {
                 int row = blockMappingTable.rowAtPoint(e.getPoint());
                 int column = blockMappingTable.columnAtPoint(e.getPoint());
-                blockMappingTable.setCursor(((row != -1) && (column != -1)) ? Cursor.getPredefinedCursor(Cursor.HAND_CURSOR) : Cursor.getDefaultCursor());
+                blockMappingTable.setCursor(((row != -1) && (column == 1)) ? Cursor.getPredefinedCursor(Cursor.HAND_CURSOR) : Cursor.getDefaultCursor());
             }
         });
 
@@ -1129,7 +1128,7 @@ public class Bo2LayerEditor extends AbstractLayerEditor<Bo2Layer> implements Lis
         // Also load saved mappings from the layer
         Map<String, String> savedMappings = (layer != null) ? layer.getHytaleBlockMappings() : null;
 
-        // Scan all objects for unique Minecraft materials
+        // Scan all objects for unique source materials so both schematics and Hytale prefabs can be remapped.
         java.util.TreeMap<String, String> mappings = new java.util.TreeMap<>();
         for (int i = 0; i < listModel.getSize(); i++) {
             WPObject object = listModel.getElementAt(i);
@@ -1140,17 +1139,17 @@ public class Bo2LayerEditor extends AbstractLayerEditor<Bo2Layer> implements Lis
                         if (object.getMask(x, y, z)) {
                             Material material = object.getMaterial(x, y, z);
                             if (material != null && material != Material.AIR && material.name != null) {
-                                String mcName = material.name;
-                                if (!mcName.startsWith("hytale:") && !mappings.containsKey(mcName)) {
+                                String sourceBlock = material.name;
+                                if (!mappings.containsKey(sourceBlock)) {
                                     // Priority: existing table edits > saved layer mappings > defaults
-                                    String hytale = existingCustom.get(mcName);
+                                    String hytale = existingCustom.get(sourceBlock);
                                     if (hytale == null && savedMappings != null) {
-                                        hytale = savedMappings.get(mcName);
+                                        hytale = savedMappings.get(sourceBlock);
                                     }
                                     if (hytale == null) {
-                                        hytale = org.pepsoft.worldpainter.hytale.HytaleBlockMapping.toHytale(material);
+                                        hytale = getDefaultHytaleBlock(sourceBlock);
                                     }
-                                    mappings.put(mcName, hytale);
+                                    mappings.put(sourceBlock, hytale);
                                 }
                             }
                         }
@@ -1170,9 +1169,8 @@ public class Bo2LayerEditor extends AbstractLayerEditor<Bo2Layer> implements Lis
             return;
         }
         for (int row = 0; row < blockMappingTableModel.getRowCount(); row++) {
-            String mcName = (String) blockMappingTableModel.getValueAt(row, 0);
-            Material material = Material.get(mcName);
-            String defaultHytale = org.pepsoft.worldpainter.hytale.HytaleBlockMapping.toHytale(material);
+            String sourceBlock = (String) blockMappingTableModel.getValueAt(row, 0);
+            String defaultHytale = getDefaultHytaleBlock(sourceBlock);
             blockMappingTableModel.setValueAt(defaultHytale, row, 1);
         }
     }
@@ -1186,7 +1184,7 @@ public class Bo2LayerEditor extends AbstractLayerEditor<Bo2Layer> implements Lis
             String mc = (String) blockMappingTableModel.getValueAt(row, 0);
             String hy = (String) blockMappingTableModel.getValueAt(row, 1);
             if (mc != null && hy != null && !mc.isEmpty() && !hy.isEmpty()) {
-                String defaultHytale = org.pepsoft.worldpainter.hytale.HytaleBlockMapping.toHytale(Material.get(mc));
+                String defaultHytale = getDefaultHytaleBlock(mc);
                 if (! hy.equals(defaultHytale)) {
                     mappings.put(mc, hy);
                 }
@@ -1199,60 +1197,13 @@ public class Bo2LayerEditor extends AbstractLayerEditor<Bo2Layer> implements Lis
         if ((row < 0) || (row >= blockMappingTableModel.getRowCount())) {
             return;
         }
-        if (column == 0) {
-            String currentMinecraft = (String) blockMappingTableModel.getValueAt(row, 0);
-            String selectedMinecraft = chooseMinecraftBlock(currentMinecraft);
-            if ((selectedMinecraft != null) && (! selectedMinecraft.equals(currentMinecraft))) {
-                String currentHytale = (String) blockMappingTableModel.getValueAt(row, 1);
-                String defaultHytale = org.pepsoft.worldpainter.hytale.HytaleBlockMapping.toHytale(Material.get(selectedMinecraft));
-                String previousDefault = org.pepsoft.worldpainter.hytale.HytaleBlockMapping.toHytale(Material.get(currentMinecraft));
-                blockMappingTableModel.setValueAt(selectedMinecraft, row, 0);
-                if ((currentHytale == null) || currentHytale.equals(previousDefault)) {
-                    blockMappingTableModel.setValueAt(defaultHytale, row, 1);
-                }
-            }
-        } else if (column == 1) {
+        if (column == 1) {
             String currentHytale = (String) blockMappingTableModel.getValueAt(row, 1);
             String selectedHytale = chooseHytaleBlock(currentHytale);
             if (selectedHytale != null) {
                 blockMappingTableModel.setValueAt(selectedHytale, row, 1);
             }
         }
-    }
-
-    private String chooseMinecraftBlock(String currentMinecraft) {
-        Window owner = SwingUtilities.getWindowAncestor(this);
-        JDialog dialog = new WorldPainterDialog(owner);
-        dialog.setTitle("Select Minecraft Block");
-
-        MaterialSelector materialSelector = new MaterialSelector();
-        materialSelector.setPlatform(DefaultPlugin.JAVA_ANVIL);
-        materialSelector.setExtendedBlockIds(true);
-        materialSelector.setMaterial(Material.get((currentMinecraft != null) ? currentMinecraft : "minecraft:stone"));
-
-        final String[] result = {null};
-        JButton okButton = new JButton("OK");
-        okButton.addActionListener(event -> {
-            Material selected = materialSelector.getMaterial();
-            result[0] = (selected != null) ? selected.name : null;
-            dialog.dispose();
-        });
-
-        JButton cancelButton = new JButton("Cancel");
-        cancelButton.addActionListener(event -> dialog.dispose());
-
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        buttonPanel.add(okButton);
-        buttonPanel.add(cancelButton);
-
-        dialog.getContentPane().add(materialSelector, BorderLayout.CENTER);
-        dialog.getContentPane().add(buttonPanel, BorderLayout.SOUTH);
-        dialog.getRootPane().setDefaultButton(okButton);
-        dialog.pack();
-        dialog.setLocationRelativeTo(this);
-        dialog.setVisible(true);
-
-        return result[0];
     }
 
     private String chooseHytaleBlock(String currentHytale) {
@@ -1291,6 +1242,20 @@ public class Bo2LayerEditor extends AbstractLayerEditor<Bo2Layer> implements Lis
         return result[0];
     }
 
+    static String getDefaultHytaleBlock(String sourceBlock) {
+        return org.pepsoft.worldpainter.hytale.HytaleBlockMapping.toHytale(Material.get(sourceBlock));
+    }
+
+    static String formatSourceBlockName(String blockName) {
+        if (blockName == null) {
+            return "";
+        }
+        if (blockName.startsWith(HytaleBlockRegistry.HYTALE_NAMESPACE + ":")) {
+            return "Hytale: " + HytaleBlockRegistry.formatDisplayName(blockName.substring(HytaleBlockRegistry.HYTALE_NAMESPACE.length() + 1));
+        }
+        return formatMinecraftBlockName(blockName);
+    }
+
     private static String formatMinecraftBlockName(String blockName) {
         if (blockName == null) {
             return "";
@@ -1306,7 +1271,7 @@ public class Bo2LayerEditor extends AbstractLayerEditor<Bo2Layer> implements Lis
             String raw = (value instanceof String) ? (String) value : "";
             label.setToolTipText(raw);
             if (column == 0) {
-                label.setText(formatMinecraftBlockName(raw));
+                label.setText(formatSourceBlockName(raw));
             } else {
                 label.setText(HytaleBlockRegistry.formatDisplayName(raw));
             }

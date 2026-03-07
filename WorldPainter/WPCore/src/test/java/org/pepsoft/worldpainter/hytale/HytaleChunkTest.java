@@ -92,6 +92,15 @@ public class HytaleChunkTest {
         assertEquals("Empty", HytaleBlockMapping.toHytale(Material.WATER));
         assertEquals("Rock_Bedrock", HytaleBlockMapping.toHytale(Material.BEDROCK));
     }
+
+    @Test
+    public void testOverrideMappingSupportsNativeHytaleSourceBlocks() {
+        Material material = Material.get("hytale:Wood_Oak_Trunk");
+
+        assertEquals("Wood_Oak_Trunk", HytaleBlockMapping.toHytale(material));
+        assertEquals("Wood_Oak_Branch", HytaleBlockMapping.toHytale(material,
+                java.util.Collections.singletonMap("hytale:Wood_Oak_Trunk", "Wood_Oak_Branch")));
+    }
     
     @Test
     public void testNumericIdMapping() {

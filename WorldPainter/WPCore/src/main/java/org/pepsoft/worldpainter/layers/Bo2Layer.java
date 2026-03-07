@@ -90,19 +90,19 @@ public class Bo2Layer extends CustomLayer {
     }
 
     /**
-     * Get custom Minecraft→Hytale block mappings for this layer.
+     * Get custom source-block→Hytale block mappings for this layer.
      * Used during Hytale export to override default block conversions.
      *
-     * @return Map of Minecraft block ID to Hytale block ID, or {@code null} if using defaults
+     * @return Map of source block ID to Hytale block ID, or {@code null} if using defaults
      */
     public Map<String, String> getHytaleBlockMappings() {
         return hytaleBlockMappings;
     }
 
     /**
-     * Set custom Minecraft→Hytale block mappings for this layer.
+     * Set custom source-block→Hytale block mappings for this layer.
      *
-     * @param hytaleBlockMappings Map of Minecraft block ID to Hytale block ID, or {@code null} to use defaults
+     * @param hytaleBlockMappings Map of source block ID to Hytale block ID, or {@code null} to use defaults
      */
     public void setHytaleBlockMappings(Map<String, String> hytaleBlockMappings) {
         this.hytaleBlockMappings = hytaleBlockMappings;
