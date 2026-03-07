@@ -85,7 +85,8 @@ public class FrostExporter extends AbstractLayerExporter<Frost> implements Secon
                             } else {
                                 // Replace any insubstantial surface vegetation with snow. The old special-casing for
                                 // tall grass/fern misses Hytale plants, which leaves frost visible only on water.
-                                if (previousMaterial.empty || previousMaterial.insubstantial || (previousMaterial == SNOW)) {
+                                if (previousMaterial.empty || previousMaterial.insubstantial || (previousMaterial == SNOW)
+                                        || (isHytale && previousMaterial.isNamed("hytale:Soil_Snow"))) {
                                     if ((mode == FrostSettings.MODE_SMOOTH_AT_ALL_ELEVATIONS)
                                             || (height == dimension.getIntHeightAt(x, y))) {
                                         // Only vary the snow thickness if we're at surface height, otherwise it looks
@@ -135,6 +136,10 @@ public class FrostExporter extends AbstractLayerExporter<Frost> implements Secon
             throw new IllegalArgumentException("layers " + layers);
         }
         if (HytaleTerrainHelper.isHytale(platform)) {
+            if (minecraftWorld.getMaterialAt(x, y, height).isNamed("hytale:Soil_Snow")
+                    || minecraftWorld.getMaterialAt(x, y, height + 1).isNamed("hytale:Soil_Snow")) {
+                return;
+            }
             // Hytale snow is a simple block without layer variants
             minecraftWorld.setMaterialAt(x, y, height + 1, Material.get("hytale:Soil_Snow"));
             return;
