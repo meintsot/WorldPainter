@@ -29,11 +29,14 @@ if not defined JAR_FILE (
 echo Starting WorldPainter (Hytale Edition)...
 echo.
 
+if not defined WP_MAX_THREADS set "WP_MAX_THREADS=1"
+
 java --add-opens java.desktop/sun.swing=ALL-UNNAMED ^
      --add-opens java.desktop/javax.swing.plaf.basic=ALL-UNNAMED ^
      --add-opens java.desktop/java.awt=ALL-UNNAMED ^
      --add-opens java.desktop/sun.awt=ALL-UNNAMED ^
      --add-opens java.base/java.lang=ALL-UNNAMED ^
+    -Dorg.pepsoft.worldpainter.threads=%WP_MAX_THREADS% ^
      -Xmx10G ^
      -jar "%JAR_FILE%"
 

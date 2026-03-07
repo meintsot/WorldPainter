@@ -104,4 +104,21 @@ public class HytalePrefabDiscoveryTest {
         long birchCount = all.stream().filter(e -> e.matchesSearch("birch")).count();
         assertEquals(1, birchCount);
     }
+
+    @Test
+    public void testBundledPrefabCatalogLoads() {
+        List<PrefabFileEntry> entries = HytalePrefabDiscovery.loadBundledPrefabs();
+
+        assertFalse(entries.isEmpty());
+
+        PrefabFileEntry first = entries.get(0);
+        assertNotNull(first.getDisplayName());
+        assertFalse(first.getDisplayName().isEmpty());
+        assertNotNull(first.getCategory());
+        assertFalse(first.getCategory().isEmpty());
+        assertNotNull(first.getSubCategory());
+        assertFalse(first.getSubCategory().isEmpty());
+        assertTrue(first.getRelativePath().startsWith("Prefabs/"));
+        assertTrue(first.getRelativePath().endsWith(".prefab.json"));
+    }
 }

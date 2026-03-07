@@ -162,7 +162,7 @@ public class DefaultPlugin extends AbstractPlugin implements LayerProvider {
             Arrays.asList(SURVIVAL, CREATIVE, ADVENTURE),
             Arrays.asList(DEFAULT),
             Arrays.asList(DIM_NORMAL),
-            EnumSet.of(BLOCK_BASED, NAME_BASED, SEED, NAMED_BIOMES, SET_SPAWN_POINT),
+            EnumSet.of(BLOCK_BASED, NAME_BASED, SEED, NAMED_BIOMES, SET_SPAWN_POINT, PRECALCULATED_LIGHT),
             ATTRIBUTE_MC_VERSION, new org.pepsoft.util.Version(0, 0, 1));
 
     /**

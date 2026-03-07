@@ -597,10 +597,9 @@ public class HytaleBsonChunkSerializer {
                     buf.writeByte(PALETTE_TYPE_EMPTY);
                     // Rotation section - use shared method
                     writeRotationSection(buf, section);
-                    // Local light (calculated from heightmap)
-                    writeCalculatedSkyLightData(buf, chunk, sectionY);
-                    // Global light (same as local for now)
-                    writeCalculatedSkyLightData(buf, chunk, sectionY);
+                    byte[] lightData = createCalculatedLightData(chunk, sectionY);
+                    buf.writeBytes(lightData);
+                    buf.writeBytes(lightData);
                     // Change counters
                     buf.writeShort(0);
                     buf.writeShort(0);
@@ -647,8 +646,9 @@ public class HytaleBsonChunkSerializer {
 
                     writeRotationSection(buf, section);
 
-                    writeCalculatedSkyLightData(buf, chunk, sectionY);
-                    writeCalculatedSkyLightData(buf, chunk, sectionY);
+                    byte[] lightData = createCalculatedLightData(chunk, sectionY);
+                    buf.writeBytes(lightData);
+                    buf.writeBytes(lightData);
 
                     buf.writeShort(0);
                     buf.writeShort(0);
@@ -687,10 +687,9 @@ public class HytaleBsonChunkSerializer {
                 buf.writeByte(PALETTE_TYPE_EMPTY);
                 // Rotation section - use shared method
                 writeRotationSection(buf, section);
-                // Local light (calculated from heightmap)
-                writeCalculatedSkyLightData(buf, chunk, sectionY);
-                // Global light (same as local for now)
-                writeCalculatedSkyLightData(buf, chunk, sectionY);
+                byte[] lightData = createCalculatedLightData(chunk, sectionY);
+                buf.writeBytes(lightData);
+                buf.writeBytes(lightData);
                 // Change counters
                 buf.writeShort(0);
                 buf.writeShort(0);
@@ -748,11 +747,9 @@ public class HytaleBsonChunkSerializer {
                 // Rotation section - write actual rotations if present
                 writeRotationSection(buf, section);
 
-                // Local light (calculated from heightmap)
-                writeCalculatedSkyLightData(buf, chunk, sectionY);
-
-                // Global light (same as local for now)
-                writeCalculatedSkyLightData(buf, chunk, sectionY);
+                byte[] lightData = createCalculatedLightData(chunk, sectionY);
+                buf.writeBytes(lightData);
+                buf.writeBytes(lightData);
 
                 // Change counters
                 buf.writeShort(0);
@@ -896,54 +893,53 @@ public class HytaleBsonChunkSerializer {
      * @param chunk The chunk containing heightmap data.
      * @param sectionY The section index (0-9).
      */
+    private static byte[] createCalculatedLightData(HytaleChunk chunk, int sectionY) {
+        ByteBuf lightBuffer = ByteBufAllocator.DEFAULT.buffer();
+        try {
+            writeCalculatedSkyLightData(lightBuffer, chunk, sectionY);
+            byte[] lightData = new byte[lightBuffer.readableBytes()];
+            lightBuffer.readBytes(lightData);
+            return lightData;
+        } finally {
+            lightBuffer.release();
+        }
+    }
+
     private static void writeCalculatedSkyLightData(ByteBuf buf, HytaleChunk chunk, int sectionY) {
+        HytaleChunkLightDataBuilder builder = null;
+        boolean hasAnyLight = false;
+        boolean fullSky = true;
         int sectionBaseY = sectionY * HytaleChunk.SECTION_HEIGHT;
-        int sectionTopY = sectionBaseY + HytaleChunk.SECTION_HEIGHT - 1;
-        
-        // Check if entire section is above or below terrain for optimization
-        // Heightmap = topmost solid block (e.g., Y=62)
-        // Skylight applies to blocks AT and ABOVE heightmap (>= height)
-        // So Y=62 (surface) and Y=63+ (air above) all get skylight
-        boolean allAbove = true;
-        boolean allBelow = true;
-        
-        for (int x = 0; x < HytaleChunk.CHUNK_SIZE; x++) {
+        for (int localY = 0; localY < HytaleChunk.SECTION_HEIGHT; localY++) {
+            int worldY = sectionBaseY + localY;
             for (int z = 0; z < HytaleChunk.CHUNK_SIZE; z++) {
-                int height = chunk.getHeight(x, z);
-                // Section is all above/at if its base is at or above all terrain
-                if (sectionBaseY < height) {
-                    allAbove = false;
-                }
-                // Section is all below if its top ends below all terrain
-                if (sectionTopY >= height) {
-                    allBelow = false;
+                for (int x = 0; x < HytaleChunk.CHUNK_SIZE; x++) {
+                    int blockLight = chunk.getBlockLightLevel(x, worldY, z);
+                    int skyLight = chunk.getSkyLightLevel(x, worldY, z);
+                    if (blockLight != 0 || skyLight != 0) {
+                        hasAnyLight = true;
+                    }
+                    if (blockLight != 0 || skyLight != 15) {
+                        fullSky = false;
+                    }
+                    if (blockLight != 0 || skyLight != 15) {
+                        if (builder == null) {
+                            builder = new HytaleChunkLightDataBuilder((short) 0);
+                        }
+                        builder.setLight(x, localY, z, blockLight, blockLight, blockLight, skyLight);
+                    }
                 }
             }
         }
-        
-        if (allAbove) {
-            // Entire section is at or above terrain - full skylight
+        if (!hasAnyLight) {
+            writeEmptyLightData(buf);
+            return;
+        }
+        if (fullSky) {
             writeFullSkyLightData(buf);
             return;
         }
-        
-        if (allBelow) {
-            // Entire section is below terrain - no skylight
-            short noLight = HytaleChunkLightDataBuilder.NO_LIGHT;
-            buf.writeShort(0); // changeId
-            buf.writeBoolean(true); // hasData
-            buf.writeInt(17); // octree length
-            buf.writeByte(0); // mask: no children
-            for (int i = 0; i < 8; i++) {
-                buf.writeShort(noLight);
-            }
-            return;
-        }
-        
-        // Mixed section - write simplified lighting
-        // To avoid octree pointer bugs, write full bright sky for now
-        // TODO: Implement proper per-block lighting when octree builder is stable
-        writeFullSkyLightData(buf);
+        builder.serialize(buf);
     }
 
     /**

@@ -401,13 +401,15 @@ public final class App extends JFrame implements BrushControl,
             view.setLightOrigin(config.getDefaultLightOrigin());
 
             if (config.isEasyMode()) {
-                boolean imported = world.getImportedFrom() != null;
-                ACTION_EXPORT_WORLD.setEnabled(!imported);
-                ACTION_MERGE_WORLD.setEnabled(imported);
+                final boolean imported = world.getImportedFrom() != null;
+                final boolean hytalePlatform = isHytaleWorldLoaded();
+                ACTION_EXPORT_WORLD.setEnabled((! imported) || hytalePlatform);
+                ACTION_MERGE_WORLD.setEnabled(imported && (! hytalePlatform));
             } else {
                 ACTION_EXPORT_WORLD.setEnabled(true);
-                ACTION_MERGE_WORLD.setEnabled(true);
+                ACTION_MERGE_WORLD.setEnabled(! isHytaleWorldLoaded());
             }
+            updatePlatformActionLabels();
 
             if (! PlatformManager.getInstance().getAllPlatforms().contains(world.getPlatform())) {
                 beepAndShowWarning(this, "This world is set to a map format (\"" + world.getPlatform().displayName + "\") that is unknown and unsupported.\n" +
@@ -3955,13 +3957,20 @@ public final class App extends JFrame implements BrushControl,
         java.io.File assetsDir = org.pepsoft.worldpainter.hytale.HytaleTerrain.getHytaleAssetsDir();
         java.io.File serverDir = (assetsDir != null) ? new java.io.File(assetsDir, "Server") : null;
         if (serverDir != null && serverDir.isDirectory()) {
-            if (discoveredPrefabs.isEmpty()) {
-                discoveredPrefabs = org.pepsoft.worldpainter.hytale.HytalePrefabDiscovery.discoverPrefabs(serverDir);
+            discoveredPrefabs = org.pepsoft.worldpainter.hytale.HytalePrefabDiscovery.discoverPrefabs(serverDir);
+            if (! discoveredPrefabs.isEmpty()) {
+                specificPrefabStatusLabel.setText(discoveredPrefabs.size() + " prefabs found from local HytaleAssets");
+            } else {
+                discoveredPrefabs = org.pepsoft.worldpainter.hytale.HytalePrefabDiscovery.loadBundledPrefabs();
+                specificPrefabStatusLabel.setText(discoveredPrefabs.isEmpty()
+                    ? "<html><i>No prefabs available.</i></html>"
+                    : "<html><i>Using bundled prefab catalog; local HytaleAssets has no Prefabs directory.</i></html>");
             }
-            specificPrefabStatusLabel.setText(discoveredPrefabs.size() + " prefabs found");
         } else {
-            discoveredPrefabs = java.util.Collections.emptyList();
-            specificPrefabStatusLabel.setText("<html><i>No HytaleAssets found. Specific prefabs unavailable.</i></html>");
+            discoveredPrefabs = org.pepsoft.worldpainter.hytale.HytalePrefabDiscovery.loadBundledPrefabs();
+            specificPrefabStatusLabel.setText(discoveredPrefabs.isEmpty()
+                ? "<html><i>No HytaleAssets found. Specific prefabs unavailable.</i></html>"
+                : "<html><i>Using bundled prefab catalog; local HytaleAssets not required for the prefab list.</i></html>");
         }
         filterPrefabList();
     }
@@ -4567,7 +4576,7 @@ public final class App extends JFrame implements BrushControl,
         if (! config.isEasyMode()) {
             menuItem = new JMenuItem(ACTION_IMPORT_MAP);
             menuItem.setMnemonic('m');
-            menuItem.setText("From Minecraft map...");
+            menuItem.setText(getImportSourceMenuText());
             JMenu subMenu = new JMenu(strings.getString("import"));
             subMenu.setMnemonic('i');
             subMenu.add(menuItem);
@@ -5380,7 +5389,12 @@ public final class App extends JFrame implements BrushControl,
             JMenuItem menuItem = (JMenuItem) menuElement;
             if (((! (menuItem.getAction() instanceof BetterAction)) || (! ((BetterAction) menuItem.getAction()).isLogEvent()))
                     && (! menuItem.getText().equals("Existing Minecraft map..."))
-                    && (! menuItem.getText().equals("Merge World..."))) {
+                    && (! menuItem.getText().equals("Existing Hytale world..."))
+                    && (! menuItem.getText().equals("From Minecraft map..."))
+                    && (! menuItem.getText().equals("From Hytale world..."))
+                    && (! menuItem.getText().equals("Merge World..."))
+                    && (! menuItem.getText().equals("Merge with Minecraft map..."))
+                    && (! menuItem.getText().equals("Merge into Hytale world..."))) {
                 if (key.startsWith("menu.File.RecentlyusedWorlds.")) {
                     menuItem.addActionListener(e -> eventLogger.logEvent(new EventVO("menu.File.RecentlyusedWorlds").addTimestamp()));
                 } else {
@@ -6905,6 +6919,30 @@ public final class App extends JFrame implements BrushControl,
             importWorld();
         }
     };
+
+    private void updatePlatformActionLabels() {
+        final boolean hytalePlatform = isHytaleWorldLoaded();
+        ACTION_EXPORT_WORLD.putValue(Action.NAME, hytalePlatform ? "Export as Hytale world..." : strings.getString("export.as.minecraft.map") + "...");
+        ACTION_EXPORT_WORLD.putValue(Action.SHORT_DESCRIPTION, hytalePlatform ? "Export the world to a Hytale world" : strings.getString("export.the.world.to.a.minecraft.map"));
+        ACTION_IMPORT_MAP.putValue(Action.NAME, hytalePlatform ? "Existing Hytale world..." : strings.getString("existing.minecraft.map") + "...");
+        ACTION_IMPORT_MAP.putValue(Action.SHORT_DESCRIPTION, hytalePlatform
+            ? "Import the landscape of an existing Hytale world. Export writes a new Hytale world; merge-back is not supported yet."
+                : "Import the landscape of an existing Minecraft map. Use Merge to merge your changes.");
+        ACTION_MERGE_WORLD.putValue(Action.NAME, hytalePlatform ? "Merge into Hytale world..." : strings.getString("merge.world") + "...");
+        ACTION_MERGE_WORLD.putValue(Action.SHORT_DESCRIPTION, hytalePlatform
+            ? "Merging changes back into imported Hytale worlds is not supported yet."
+            : "Merge the changes in a previously Imported world back to the original Minecraft map.");
+    }
+
+        private boolean isHytaleWorldLoaded() {
+        return (world != null) && org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(world.getPlatform());
+        }
+
+    private String getImportSourceMenuText() {
+        return isHytaleWorldLoaded()
+                ? "From Hytale world..."
+                : "From Minecraft map...";
+    }
 
     private final BetterAction ACTION_MERGE_WORLD = new BetterAction("mergeWorld", strings.getString("merge.world") + "...", false) {
         {

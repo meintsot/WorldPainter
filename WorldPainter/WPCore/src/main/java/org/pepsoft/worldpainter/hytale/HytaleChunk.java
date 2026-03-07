@@ -627,7 +627,8 @@ public class HytaleChunk implements Chunk {
             if (blocks == null) {
                 return Material.AIR;
             }
-            return blocks[getIndex(x, y, z)];
+            Material material = blocks[getIndex(x, y, z)];
+            return (material != null) ? material : Material.AIR;
         }
 
         public HytaleBlock getHytaleBlock(int x, int y, int z) {
@@ -639,9 +640,34 @@ public class HytaleChunk implements Chunk {
                 paletteIndex.put(material, palette.size());
                 palette.add(material);
             }
+            if (material == Material.AIR && blocks == null) {
+                return;
+            }
             if (blocks == null) {
                 blocks = new Material[SECTION_SIZE];
-                Arrays.fill(blocks, Material.AIR);
+            }
+            blocks[getIndex(x, y, z)] = material;
+        }
+
+        public void resetMaterialView() {
+            blocks = null;
+            palette.clear();
+            paletteIndex.clear();
+            palette.add(Material.AIR);
+            paletteIndex.put(Material.AIR, 0);
+        }
+
+        public void setMaterialForLighting(int x, int y, int z, Material material) {
+            if (material == Material.AIR && blocks == null) {
+                return;
+            }
+            if (blocks == null) {
+                resetMaterialView();
+                blocks = new Material[SECTION_SIZE];
+            }
+            if (!paletteIndex.containsKey(material)) {
+                paletteIndex.put(material, palette.size());
+                palette.add(material);
             }
             blocks[getIndex(x, y, z)] = material;
         }
@@ -815,7 +841,7 @@ public class HytaleChunk implements Chunk {
         public boolean isEmpty() {
             if (blocks != null) {
                 for (Material block : blocks) {
-                    if (block != Material.AIR) {
+                    if ((block != null) && (block != Material.AIR)) {
                         return false;
                     }
                 }

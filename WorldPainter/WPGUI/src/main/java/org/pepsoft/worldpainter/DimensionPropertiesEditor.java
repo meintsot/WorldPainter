@@ -260,12 +260,17 @@ public class DimensionPropertiesEditor extends javax.swing.JPanel {
     private void setPlatform(Platform platform) {
         this.platform = platform;
         platformProvider = PlatformManager.getInstance().getPlatformProvider(platform);
+        final boolean hytalePlatform = org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(platform);
         if (platform.capabilities.contains(POPULATE)) {
             checkBoxPopulate.setSelected(dimension.isPopulate());
         } else {
             checkBoxPopulate.setSelected(false);
             checkBoxPopulate.setToolTipText("Automatic population not support by format " + platform);
         }
+        jLabel7.setText(hytalePlatform ? "Hytale settings:" : "Minecraft settings:");
+        jLabel44.setText(hytalePlatform ? "(Hytale default: 62)" : "(Minecraft default: 62)");
+        jButton1.setToolTipText(hytalePlatform ? "Reset the resource settings to Hytale-compatible defaults" : "Reset the resource settings to Minecraft-like defaults");
+        checkBoxPopulate.setText(hytalePlatform ? "Allow Hytale to populate the entire terrain" : "Allow Minecraft to populate the entire terrain");
         Generator generator = (Generator) comboBoxGenerator.getSelectedItem();
         comboBoxGenerator.setModel(new DefaultComboBoxModel<>(platform.supportedGenerators.toArray(new Generator[platform.supportedGenerators.size()])));
         if (platform.supportedGenerators.contains(generator)) {
@@ -1347,7 +1352,10 @@ public class DimensionPropertiesEditor extends javax.swing.JPanel {
     }
 
     private void resetResources() {
-        if (JOptionPane.showConfirmDialog(this, "Do you want to reset the resource settings to Minecraft-like defaults?", "Confirm Resources Reset", YES_NO_OPTION) != YES_OPTION) {
+        final boolean hytalePlatform = org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(platform);
+        if (JOptionPane.showConfirmDialog(this,
+                hytalePlatform ? "Do you want to reset the resource settings to Hytale-compatible defaults?" : "Do you want to reset the resource settings to Minecraft-like defaults?",
+                "Confirm Resources Reset", YES_NO_OPTION) != YES_OPTION) {
             return;
         }
         if (! hasMinecraftStyleResourcesEditor()) {

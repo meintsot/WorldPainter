@@ -239,6 +239,9 @@ public class HytaleBlockRegistry {
         if (blocks.containsKey(def.id)) {
             return;
         }
+        if (def.lightEmission <= 0) {
+            def.lightEmission = inferLightEmission(def.id);
+        }
         def.category = toLegacyCategory(category);
         blocks.put(def.id, def);
         int index = nextIndex++;
@@ -254,6 +257,14 @@ public class HytaleBlockRegistry {
     /** Get block definition by ID. */
     public BlockDefinition getBlock(String id) {
         return blocks.get(id);
+    }
+
+    public int getLightEmission(String id) {
+        BlockDefinition definition = blocks.get(id);
+        if (definition != null && definition.lightEmission > 0) {
+            return definition.lightEmission;
+        }
+        return inferLightEmission(id);
     }
 
     /** Get numeric index for a block ID. */
@@ -609,6 +620,31 @@ public class HytaleBlockRegistry {
             case LEAVES: case BUSHES: case MOSS_VINES: return "SemiTransparent";
             default: return "Opaque";
         }
+    }
+
+    private int inferLightEmission(String blockId) {
+        if (blockId == null || blockId.isEmpty()) {
+            return 0;
+        }
+        if (blockId.contains("Lava") || blockId.contains("_Torch") || blockId.contains("_Lantern") || blockId.contains("_Lamp")) {
+            return 15;
+        }
+        if (blockId.contains("Glow") || blockId.contains("Glowing") || blockId.contains("Light")) {
+            return 12;
+        }
+        if (blockId.contains("Magma")) {
+            return 3;
+        }
+        if (blockId.contains("Cracked_Lava")) {
+            return 12;
+        }
+        if (blockId.startsWith("Rock_Crystal_") || blockId.startsWith("Rock_Gem_") || blockId.contains("_Crystal")) {
+            return 10;
+        }
+        if (blockId.contains("Fire")) {
+            return 14;
+        }
+        return 0;
     }
 
     // =========================================================================

@@ -1,6 +1,14 @@
 package org.pepsoft.worldpainter.hytale;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -11,6 +19,48 @@ import java.util.List;
  */
 public final class HytalePrefabDiscovery {
     private HytalePrefabDiscovery() {} // utility class
+
+    /**
+     * Load the prefab catalog bundled with WorldPainter so the prefab tab remains
+     * usable even when HytaleAssets is not available locally.
+     */
+    public static List<PrefabFileEntry> loadBundledPrefabs() {
+        List<PrefabFileEntry> cached = bundledPrefabs;
+        if (cached != null) {
+            return cached;
+        }
+
+        try (InputStream inputStream = HytalePrefabDiscovery.class.getResourceAsStream(BUNDLED_PREFABS_RESOURCE)) {
+            if (inputStream == null) {
+                logger.warn("Bundled prefab catalog {} not found", BUNDLED_PREFABS_RESOURCE);
+                bundledPrefabs = Collections.emptyList();
+                return bundledPrefabs;
+            }
+
+            List<PrefabFileEntry> entries = new ArrayList<>();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (line.isEmpty() || line.startsWith("#")) {
+                        continue;
+                    }
+                    String[] parts = line.split("\t", 4);
+                    if (parts.length != 4) {
+                        logger.warn("Ignoring malformed bundled prefab catalog line: {}", line);
+                        continue;
+                    }
+                    entries.add(new PrefabFileEntry(parts[0], parts[1], parts[2], parts[3]));
+                }
+            }
+
+            bundledPrefabs = Collections.unmodifiableList(entries);
+            return bundledPrefabs;
+        } catch (IOException e) {
+            logger.warn("Could not read bundled prefab catalog", e);
+            bundledPrefabs = Collections.emptyList();
+            return bundledPrefabs;
+        }
+    }
 
     /**
      * Discover all .prefab.json files under {@code baseDir/Prefabs/}.
@@ -70,4 +120,9 @@ public final class HytalePrefabDiscovery {
     private static String getRelativePath(File base, File file) {
         return base.toPath().relativize(file.toPath()).toString();
     }
+
+    private static volatile List<PrefabFileEntry> bundledPrefabs;
+
+    private static final String BUNDLED_PREFABS_RESOURCE = "/org/pepsoft/worldpainter/hytale/bundled-prefabs.tsv";
+    private static final Logger logger = LoggerFactory.getLogger(HytalePrefabDiscovery.class);
 }
