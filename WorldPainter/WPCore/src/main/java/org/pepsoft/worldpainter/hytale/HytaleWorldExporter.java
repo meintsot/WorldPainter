@@ -22,8 +22,10 @@ import org.pepsoft.worldpainter.history.HistoryEntry;
 import org.pepsoft.worldpainter.layers.Bo2Layer;
 import org.pepsoft.worldpainter.layers.Layer;
 import org.pepsoft.worldpainter.layers.Biome;
+import org.pepsoft.worldpainter.layers.Frost;
 import org.pepsoft.worldpainter.layers.FloodWithLava;
 import org.pepsoft.worldpainter.layers.bo2.Bo2LayerExporter;
+import org.pepsoft.worldpainter.layers.exporters.FrostExporter;
 import org.pepsoft.worldpainter.util.FileInUseException;
 import org.pepsoft.worldpainter.vo.AttributeKeyVO;
 import org.pepsoft.worldpainter.vo.EventVO;
@@ -874,6 +876,8 @@ public class HytaleWorldExporter implements WorldExporter {
                 }
             }
 
+            applyFrostLayer(dimension, regionCoords, chunksByCoords);
+
             if (retainChunksForCustomObjects) {
                 // Apply custom object layers after terrain generation so placement/collision checks can use the final surface.
                 applyCustomObjectLayers(dimension, regionCoords, chunksByCoords);
@@ -1321,6 +1325,30 @@ public class HytaleWorldExporter implements WorldExporter {
                 logger.error("Error applying custom object layer '{}' in region {},{}",
                         bo2Layer.getName(), regionCoords.x, regionCoords.y, e);
             }
+        }
+    }
+
+    private void applyFrostLayer(Dimension dimension, Point regionCoords, Map<Long, HytaleChunk> chunksByCoords) {
+        final FrostExporter.FrostSettings frostSettings = (FrostExporter.FrostSettings) dimension.getLayerSettings(Frost.INSTANCE);
+        final boolean frostPainted = dimension.getAllLayers(false).contains(Frost.INSTANCE);
+        if ((! frostPainted) && ((frostSettings == null) || (! frostSettings.isApplyEverywhere()))) {
+            return;
+        }
+
+        final int regionSize = HytaleChunk.CHUNK_SIZE * 32;
+        final Rectangle exportedArea = new Rectangle(
+                (regionCoords.x << 10) - blockOffsetX,
+                (regionCoords.y << 10) - blockOffsetZ,
+                regionSize,
+                regionSize);
+
+        final HytaleRegionMinecraftWorld regionWorld = new HytaleRegionMinecraftWorld(chunksByCoords, blockOffsetX, blockOffsetZ,
+                dimension.getMinHeight(), dimension.getMaxHeight());
+        final FrostExporter exporter = new FrostExporter(dimension, platform, frostSettings);
+        try {
+            exporter.addFeatures(exportedArea, exportedArea, regionWorld);
+        } catch (RuntimeException e) {
+            logger.error("Error applying frost layer in region {},{}", regionCoords.x, regionCoords.y, e);
         }
     }
 

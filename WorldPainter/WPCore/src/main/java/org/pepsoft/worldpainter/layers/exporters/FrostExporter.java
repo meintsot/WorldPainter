@@ -73,7 +73,7 @@ public class FrostExporter extends AbstractLayerExporter<Frost> implements Secon
                                 }
                             }
                             break;
-                        } else if (material.canSupportSnow) {
+                        } else if (isFrostableSurface(material)) {
                             if ((material.leafBlock) || (material.sustainsLeaves)) {
                                 if (previousMaterial.empty) {
                                     minecraftWorld.setMaterialAt(x, y, height + 1, SNOW);
@@ -83,9 +83,9 @@ public class FrostExporter extends AbstractLayerExporter<Frost> implements Secon
                                     break;
                                 }
                             } else {
-                                // Obliterate tall grass, 'cause there is too much of it, and leaving it in would look
-                                // strange. Also replace existing snow, as we might want to place thicker snow
-                                if (previousMaterial.empty || (previousMaterial == GRASS) || (previousMaterial == FERN) || (previousMaterial == SNOW)) {
+                                // Replace any insubstantial surface vegetation with snow. The old special-casing for
+                                // tall grass/fern misses Hytale plants, which leaves frost visible only on water.
+                                if (previousMaterial.empty || previousMaterial.insubstantial || (previousMaterial == SNOW)) {
                                     if ((mode == FrostSettings.MODE_SMOOTH_AT_ALL_ELEVATIONS)
                                             || (height == dimension.getIntHeightAt(x, y))) {
                                         // Only vary the snow thickness if we're at surface height, otherwise it looks
@@ -145,6 +145,12 @@ public class FrostExporter extends AbstractLayerExporter<Frost> implements Secon
             layers = Math.max(layers, existingMaterial.getProperty(LAYERS));
         }
         minecraftWorld.setMaterialAt(x, y, height + 1, SNOW.withProperty(LAYERS, layers));
+    }
+
+    private boolean isFrostableSurface(Material material) {
+        return material.leafBlock
+                || material.sustainsLeaves
+                || ((! material.empty) && (! material.insubstantial) && (! material.containsWater()));
     }
 
     public static class FrostSettings implements ExporterSettings {
