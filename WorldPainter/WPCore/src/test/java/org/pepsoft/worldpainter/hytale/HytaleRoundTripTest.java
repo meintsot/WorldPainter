@@ -12,6 +12,7 @@ import java.awt.Point;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.EnumSet;
 import java.util.Set;
 
 import static org.junit.Assert.*;
@@ -215,6 +216,46 @@ public class HytaleRoundTripTest {
         } finally {
             chunkStore.close();
         }
+    }
+
+    @Test
+    public void exportCanSkipLightingDuringTestExport() throws Exception {
+        World2 world = new World2(HYTALE, 0, 320);
+        world.setName("SkipLightingExport");
+        world.setCreateGoodiesChest(false);
+
+        long seed = 123L;
+        TileFactory tileFactory = TileFactoryFactory.createFlatTileFactory(
+            seed, Terrain.GRASS, 0, 320, 64, 62, false, false);
+        Dimension.Anchor anchor = new Dimension.Anchor(DIM_NORMAL, Dimension.Role.DETAIL, false, 0);
+        Dimension dim = new Dimension(world, "Surface", seed, tileFactory, anchor);
+        dim.setEventsInhibited(true);
+
+        Tile tile = tileFactory.createTile(0, 0);
+        for (int x = 0; x < 128; x++) {
+            for (int z = 0; z < 128; z++) {
+                tile.setHeight(x, z, 20);
+                tile.setTerrain(x, z, Terrain.STONE);
+                HytaleTerrainLayer.setTerrainIndex(tile, x, z, HytaleTerrain.STONE.getLayerIndex());
+            }
+        }
+
+        dim.addTile(tile);
+        dim.setEventsInhibited(false);
+        world.addDimension(dim);
+
+        File exportBaseDir = tempDir.newFolder("skip_lighting_export");
+        WorldExportSettings exportSettings = new WorldExportSettings(null, null,
+            EnumSet.of(WorldExportSettings.Step.LIGHTING));
+        new HytaleWorldExporter(world, exportSettings).export(exportBaseDir, "SkipLightingExport", null, null);
+
+        File chunksDir = new File(
+            new File(new File(new File(exportBaseDir, "SkipLightingExport"), "universe"), "worlds"),
+            "default/chunks");
+        assertTrue("Skipping lighting should still produce Hytale chunk output", chunksDir.isDirectory());
+        File[] regionFiles = chunksDir.listFiles((dir, name) -> name.endsWith(".region.bin"));
+        assertNotNull(regionFiles);
+        assertTrue("Skipping lighting should not abort export", regionFiles.length > 0);
     }
 
     @Test

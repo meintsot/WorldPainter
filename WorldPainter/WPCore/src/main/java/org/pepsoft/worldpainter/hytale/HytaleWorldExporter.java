@@ -1348,6 +1348,9 @@ public class HytaleWorldExporter implements WorldExporter {
         if (chunksByCoords.isEmpty()) {
             return;
         }
+        if (! BlockPropertiesCalculator.isBlockPropertiesPassNeeded(platform, worldExportSettings, HYTALE_LIGHTING_SETTINGS)) {
+            return;
+        }
         if (progressReceiver != null) {
             progressReceiver.setMessage("Calculating Hytale lighting");
         }
