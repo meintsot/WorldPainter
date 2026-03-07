@@ -648,11 +648,12 @@ public final class Configuration implements Serializable, EventLogger, Minecraft
     }
 
     public synchronized Platform getDefaultPlatform() {
-        return Platform.getById(defaultPlatformId);
+        final Platform platform = Platform.getById(defaultPlatformId);
+        return (platform != null) ? platform : HYTALE;
     }
 
     public synchronized void setDefaultPlatform(Platform defaultPlatform) {
-        this.defaultPlatformId = defaultPlatform.id;
+        this.defaultPlatformId = (defaultPlatform != null) ? defaultPlatform.id : HYTALE.id;
     }
 
     public synchronized boolean isAutosaveEnabled() {
@@ -1120,6 +1121,9 @@ public final class Configuration implements Serializable, EventLogger, Minecraft
         if (version < 25) {
             upgradeDefaultPlatform();
         }
+        if ((defaultPlatformId == null) || DEFAULT_PLATFORM.id.equals(defaultPlatformId)) {
+            defaultPlatformId = HYTALE.id;
+        }
         version = CURRENT_VERSION;
 
         if (defaultTerrainAndLayerSettings.getLayerSettings(Resources.INSTANCE) != null) {
@@ -1317,7 +1321,7 @@ public final class Configuration implements Serializable, EventLogger, Minecraft
     private Map<Platform, File> exportDirectories;
     private boolean autosaveEnabled = true;
     private int autosaveDelay = 60000, autosaveInterval = 600000; // One minute delay; ten minutes interval
-    private String defaultPlatformId = DEFAULT_PLATFORM.id;
+    private String defaultPlatformId = HYTALE.id;
     private Map<String, File> exportDirectoriesById = new HashMap<>();
     @Deprecated
     private boolean snapshotWarningDisplayed, beta118WarningDisplayed;

@@ -154,7 +154,7 @@ public class ExportProgressDialog extends MultiProgressDialog<Map<Integer, Chunk
                 dumpStats(sb, stats, height);
             }
         }
-        if (backupDir.isDirectory()) {
+        if ((backupDir != null) && backupDir.isDirectory()) {
             sb.append("<br>Backup of existing map created in:<br>").append(backupDir);
         }
         if ((acknowledgedWarnings != null) && (! acknowledgedWarnings.trim().isEmpty())) {
@@ -167,7 +167,7 @@ public class ExportProgressDialog extends MultiProgressDialog<Map<Integer, Chunk
 
     @Override
     protected String getCancellationMessage() {
-        return "Export cancelled by user.\n\nThe partially exported map is now probably corrupted!\nYou should delete it, or export the map again." + (backupDir.isDirectory() ? ("\n\nBackup of existing map created in:\n" + backupDir) : "");
+        return "Export cancelled by user.\n\nThe partially exported map is now probably corrupted!\nYou should delete it, or export the map again." + (((backupDir != null) && backupDir.isDirectory()) ? ("\n\nBackup of existing map created in:\n" + backupDir) : "");
     }
 
     @Override

@@ -114,16 +114,7 @@ public class HytaleWorldExporter implements WorldExporter {
     
     @Override
     public File selectBackupDir(File worldDir) throws IOException {
-        File baseDir = worldDir.getParentFile();
-        File backupsDir = new File(baseDir, "backups");
-        if ((!backupsDir.isDirectory()) && (!backupsDir.mkdirs())) {
-            backupsDir = new File(System.getProperty("user.home"), "WorldPainter Backups");
-            if ((!backupsDir.isDirectory()) && (!backupsDir.mkdirs())) {
-                throw new IOException("Could not create " + backupsDir);
-            }
-        }
-        String timestamp = new java.text.SimpleDateFormat("yyyyMMddHHmmss").format(new Date());
-        return new File(backupsDir, worldDir.getName() + "." + timestamp);
+        return null;
     }
     
     @Override
@@ -142,13 +133,17 @@ public class HytaleWorldExporter implements WorldExporter {
             logger.info("Exporting world {} to Hytale save at {}", world.getName(), saveDir);
             
             if (saveDir.isDirectory()) {
-                if (backupDir != null) {
-                    logger.info("Directory already exists; backing up to {}", backupDir);
-                    if (!saveDir.renameTo(backupDir)) {
-                        throw new FileInUseException("Could not move " + saveDir + " to " + backupDir);
-                    }
-                } else {
-                    throw new IllegalStateException("Directory already exists and no backup directory specified");
+                logger.info("Directory already exists; deleting previous Hytale export at {}", saveDir);
+                deleteRecursive(saveDir.toPath());
+            } else if (saveDir.exists()) {
+                throw new IllegalStateException("Target path exists but is not a directory: " + saveDir);
+            }
+
+            if ((backupDir != null) && backupDir.exists()) {
+                try {
+                    deleteRecursive(backupDir.toPath());
+                } catch (IOException e) {
+                    logger.debug("Could not remove unused backup path {}", backupDir, e);
                 }
             }
             
@@ -467,11 +462,7 @@ public class HytaleWorldExporter implements WorldExporter {
         config.put("SkipModValidationForVersion", null);
         
         Map<String, Object> backup = new LinkedHashMap<>();
-        backup.put("Enabled", true);
-        backup.put("FrequencyMinutes", 30);
-        backup.put("Directory", "backup");
-        backup.put("MaxCount", 5);
-        backup.put("ArchiveMaxCount", 5);
+        backup.put("Enabled", false);
         config.put("Backup", backup);
         
         config.put("Version", 4);

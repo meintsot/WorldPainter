@@ -693,6 +693,7 @@ public final class App extends JFrame implements BrushControl,
                 // resized docks:
                 view.componentResized(new ComponentEvent(view, COMPONENT_RESIZED));
             }
+            activateLayersPanel();
 
             if (! refreshTerrainMode()) {
                 view.refreshTiles();
@@ -3025,6 +3026,7 @@ public final class App extends JFrame implements BrushControl,
         } else {
             dockingManager.resetToDefault();
         }
+        activateLayersPanel();
 
         MouseAdapter viewListener = new MouseAdapter() {
             @Override
@@ -6110,11 +6112,18 @@ public final class App extends JFrame implements BrushControl,
             dockingManager.hideFrame(prefabsPanelFrame.getKey());
             dockingManager.hideFrame(entitiesPanelFrame.getKey());
         }
+        activateLayersPanel();
         // Dimension-specific enable/disable for visible (non-hidden) layers
         if (! isHytalePlatform) {
             setEnabled(Caves.INSTANCE, (! caveFloor) && (! floatingFloor), "Caves not supported in Custom Cave/Tunnel floor dimensions");
             setEnabled(Caverns.INSTANCE, (! caveFloor) && (! floatingFloor), "Caverns not supported in Custom Cave/Tunnel floor dimensions");
             setEnabled(Chasms.INSTANCE, (! caveFloor) && (! floatingFloor), "Chasms not supported in Custom Cave/Tunnel floor dimensions");
+        }
+    }
+
+    private void activateLayersPanel() {
+        if (dockingManager != null) {
+            dockingManager.activateFrame("layers");
         }
     }
 

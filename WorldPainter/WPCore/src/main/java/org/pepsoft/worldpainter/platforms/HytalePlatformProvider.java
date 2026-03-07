@@ -89,7 +89,7 @@ public class HytalePlatformProvider extends AbstractPlatformProvider implements 
     
     @Override
     public File selectBackupDir(File exportDir) throws IOException {
-        return new File(exportDir.getParentFile(), "backups");
+        return null;
     }
     
     @Override
