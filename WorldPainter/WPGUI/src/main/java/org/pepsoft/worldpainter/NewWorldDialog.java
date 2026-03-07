@@ -794,7 +794,7 @@ public class NewWorldDialog extends WorldPainterDialog {
             new java.io.File(System.getProperty("user.home"), "Desktop" + java.io.File.separator + "WorldPainter" + java.io.File.separator + "HytaleAssets"),
         };
         for (java.io.File candidate : candidates) {
-            if (candidate.isDirectory() && new java.io.File(candidate, "Common" + java.io.File.separator + "BlockTextures").isDirectory()) {
+            if (HytaleTerrain.hasUsableAssetsDir(candidate)) {
                 HytaleTerrain.setHytaleAssetsDir(candidate);
                 return;
             }

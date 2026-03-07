@@ -127,6 +127,19 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
     public static File getHytaleAssetsDir() {
         return hytaleAssetsDir;
     }
+
+    public static boolean hasUsableAssetsDir(File dir) {
+        if ((dir == null) || (!dir.isDirectory())) {
+            return false;
+        }
+        return new File(dir, "Common" + File.separator + "Icons" + File.separator + "ItemsGenerated").isDirectory()
+                || new File(dir, "Common" + File.separator + "Icons" + File.separator + "Items").isDirectory()
+                || new File(dir, "Common" + File.separator + "Items").isDirectory()
+                || new File(dir, "Common" + File.separator + "BlockTextures").isDirectory()
+                || new File(dir, "Server" + File.separator + "BlockTypeList").isDirectory()
+                || new File(dir, "Server" + File.separator + "GameplayConfigs").isDirectory()
+                || new File(dir, "Common" + File.separator + "UI" + File.separator + "WorldMap" + File.separator + "MapMarkers").isDirectory();
+    }
     
     /**
      * Get an icon for this terrain, preferring the actual block texture from HytaleAssets.

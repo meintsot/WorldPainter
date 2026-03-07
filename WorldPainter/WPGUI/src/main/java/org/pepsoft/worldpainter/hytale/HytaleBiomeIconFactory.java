@@ -289,8 +289,7 @@ public final class HytaleBiomeIconFactory {
                     new File(System.getProperty("user.home"), "Desktop" + File.separator + "WorldPainter" + File.separator + "HytaleAssets")
             };
             for (File candidate : candidates) {
-                final File blockTextures = new File(candidate, "Common" + File.separator + "BlockTextures");
-                if (candidate.isDirectory() && blockTextures.isDirectory()) {
+                if (HytaleTerrain.hasUsableAssetsDir(candidate)) {
                     assetsRoot = candidate;
                     HytaleTerrain.setHytaleAssetsDir(candidate);
                     break;
@@ -300,8 +299,7 @@ public final class HytaleBiomeIconFactory {
                 final String sysProp = System.getProperty("org.pepsoft.worldpainter.hytaleAssetsDir");
                 if (sysProp != null) {
                     final File candidate = new File(sysProp);
-                    final File blockTextures = new File(candidate, "Common" + File.separator + "BlockTextures");
-                    if (candidate.isDirectory() && blockTextures.isDirectory()) {
+                    if (HytaleTerrain.hasUsableAssetsDir(candidate)) {
                         assetsRoot = candidate;
                         HytaleTerrain.setHytaleAssetsDir(candidate);
                     }

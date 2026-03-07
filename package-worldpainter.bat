@@ -112,6 +112,19 @@ echo [INFO] Build succeeded. Copying fat JAR to dist folder...
 set "DIST_DIR=%SCRIPT_DIR%dist"
 if not exist "%DIST_DIR%" mkdir "%DIST_DIR%"
 
+set "HYTALE_ASSETS_DIR=%SCRIPT_DIR%HytaleAssets"
+if not exist "%HYTALE_ASSETS_DIR%\manifest.json" (
+    set "HYTALE_ASSETS_DIR=%PROJECT_DIR%..\HytaleAssets"
+)
+
+if not exist "%HYTALE_ASSETS_DIR%\manifest.json" (
+    echo [ERROR] Could not find HytaleAssets folder.
+    echo         Expected it next to this script or next to the WorldPainter project folder.
+    popd
+    pause
+    exit /b 1
+)
+
 set "FAT_JAR="
 for %%f in (WPGUI\target\WPGUI-*-full.jar) do set "FAT_JAR=%%f"
 
@@ -123,6 +136,23 @@ if not defined FAT_JAR (
 )
 
 copy /Y "%FAT_JAR%" "%DIST_DIR%\" >nul
+
+echo [INFO] Refreshing packaged HytaleAssets subset...
+if exist "%DIST_DIR%\HytaleAssets" rmdir /S /Q "%DIST_DIR%\HytaleAssets"
+mkdir "%DIST_DIR%\HytaleAssets" >nul 2>&1
+
+call :copy_dir "%HYTALE_ASSETS_DIR%\Common\Icons\ItemsGenerated" "%DIST_DIR%\HytaleAssets\Common\Icons\ItemsGenerated"
+call :copy_dir "%HYTALE_ASSETS_DIR%\Common\Icons\Items" "%DIST_DIR%\HytaleAssets\Common\Icons\Items"
+call :copy_dir "%HYTALE_ASSETS_DIR%\Common\Items" "%DIST_DIR%\HytaleAssets\Common\Items"
+call :copy_dir "%HYTALE_ASSETS_DIR%\Common\UI\WorldMap\MapMarkers" "%DIST_DIR%\HytaleAssets\Common\UI\WorldMap\MapMarkers"
+call :copy_dir "%HYTALE_ASSETS_DIR%\Server\BlockTypeList" "%DIST_DIR%\HytaleAssets\Server\BlockTypeList"
+call :copy_dir "%HYTALE_ASSETS_DIR%\Server\GameplayConfigs" "%DIST_DIR%\HytaleAssets\Server\GameplayConfigs"
+if errorlevel 1 (
+    echo [ERROR] Failed to copy the curated HytaleAssets subset into dist.
+    popd
+    pause
+    exit /b 1
+)
 popd
 
 echo.
@@ -137,10 +167,18 @@ echo   To distribute to your team:
 echo   1. Zip the "dist" folder
 echo   2. Share via Google Drive / Discord / etc.
 echo   3. Team members need only JDK 17 installed
-echo   4. They double-click run-worldpainter.bat
+echo   4. Share the entire dist folder, including the packaged HytaleAssets subset
+echo   5. They double-click run-worldpainter.bat
 echo.
 echo ============================================
 
 endlocal
 pause
+exit /b 0
+
+:copy_dir
+if exist "%~1" (
+    xcopy "%~1" "%~2\" /E /I /Y >nul
+    if errorlevel 1 exit /b 1
+)
 exit /b 0

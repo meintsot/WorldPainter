@@ -4295,7 +4295,7 @@ public final class App extends JFrame implements BrushControl,
     }
     
     /**
-     * Auto-discover and set the HytaleAssets directory for block texture loading.
+    * Auto-discover and set the HytaleAssets directory for Hytale icon and metadata loading.
      * Searches common locations relative to the working directory and user home.
      */
     private void initHytaleAssetsDir() {
@@ -4310,7 +4310,7 @@ public final class App extends JFrame implements BrushControl,
             new java.io.File(System.getProperty("user.home"), "Desktop" + java.io.File.separator + "WorldPainter" + java.io.File.separator + "HytaleAssets"),
         };
         for (java.io.File candidate : candidates) {
-            if (candidate.isDirectory() && new java.io.File(candidate, "Common" + java.io.File.separator + "BlockTextures").isDirectory()) {
+            if (org.pepsoft.worldpainter.hytale.HytaleTerrain.hasUsableAssetsDir(candidate)) {
                 org.pepsoft.worldpainter.hytale.HytaleTerrain.setHytaleAssetsDir(candidate);
                 logger.info("Found HytaleAssets at: {}", candidate.getAbsolutePath());
                 return;
@@ -4326,7 +4326,7 @@ public final class App extends JFrame implements BrushControl,
                 return;
             }
         }
-        logger.warn("HytaleAssets directory not found — terrain buttons will use fallback colours");
+        logger.warn("HytaleAssets directory not found — Hytale icons will use fallbacks and some metadata will be unavailable");
     }
     
     private boolean hytaleAssetsDirInitialized = false;
