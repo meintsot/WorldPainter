@@ -554,6 +554,13 @@ public class HytaleBlockMapping {
                     return override;
                 }
             }
+
+            // If leaves were remapped to a different Hytale tree family, make the supporting wood follow that family
+            // so imported Minecraft trees do not end up with mismatched canopies.
+            String supportingWoodOverride = inferSupportingWoodOverride(material, overrides);
+            if (supportingWoodOverride != null) {
+                return supportingWoodOverride;
+            }
         }
         return toHytale(material);
     }
@@ -605,6 +612,79 @@ public class HytaleBlockMapping {
             // Ignore invalid explicit rotation property
         }
         return null;
+    }
+
+    private static String inferSupportingWoodOverride(Material material, java.util.Map<String, String> overrides) {
+        if ((material == null) || (material.name == null) || (overrides == null) || (!material.sustainsLeaves)) {
+            return null;
+        }
+        String normalisedName = material.name.startsWith("minecraft:") ? material.name.substring(10) : material.name;
+        String sourceLeavesName = inferSourceLeavesName(normalisedName);
+        if (sourceLeavesName == null) {
+            return null;
+        }
+
+        String leafOverride = overrides.get(sourceLeavesName);
+        if ((leafOverride == null) && (!sourceLeavesName.startsWith("minecraft:"))) {
+            leafOverride = overrides.get("minecraft:" + sourceLeavesName);
+        }
+        if ((leafOverride == null) || (!leafOverride.startsWith("Plant_Leaves_"))) {
+            return null;
+        }
+
+        return inferWoodVariantForLeafFamily(leafOverride.substring("Plant_Leaves_".length()), normalisedName, material);
+    }
+
+    private static String inferSourceLeavesName(String normalisedWoodName) {
+        if ((normalisedWoodName == null)
+                || normalisedWoodName.contains("crimson")
+                || normalisedWoodName.contains("warped")) {
+            return null;
+        }
+        if (normalisedWoodName.endsWith("_log")) {
+            return normalisedWoodName.substring(0, normalisedWoodName.length() - 4) + "_leaves";
+        }
+        if (normalisedWoodName.endsWith("_wood")) {
+            return normalisedWoodName.substring(0, normalisedWoodName.length() - 5) + "_leaves";
+        }
+        if (normalisedWoodName.endsWith("_trunk")) {
+            return normalisedWoodName.substring(0, normalisedWoodName.length() - 6) + "_leaves";
+        }
+        return null;
+    }
+
+    private static String inferWoodVariantForLeafFamily(String leafFamily, String sourceWoodName, Material sourceMaterial) {
+        if ((leafFamily == null) || leafFamily.isEmpty()) {
+            return null;
+        }
+        boolean fullTrunk = sourceWoodName.endsWith("_wood");
+        String axis = sourceMaterial.getProperty("axis");
+        boolean horizontalBranch = (axis != null) && (!axis.equals("y"));
+
+        for (String candidateFamily : getCandidateTreeFamilies(leafFamily)) {
+            if (horizontalBranch) {
+                String branchId = "Wood_" + candidateFamily + "_Branch_Long";
+                if (HytaleBlockRegistry.getInstance().contains(branchId)) {
+                    return branchId;
+                }
+            }
+            String trunkId = "Wood_" + candidateFamily + (fullTrunk ? "_Trunk_Full" : "_Trunk");
+            if (HytaleBlockRegistry.getInstance().contains(trunkId)) {
+                return trunkId;
+            }
+        }
+        return null;
+    }
+
+    private static java.util.List<String> getCandidateTreeFamilies(String leafFamily) {
+        java.util.List<String> families = new java.util.ArrayList<>();
+        String candidate = leafFamily;
+        while ((candidate != null) && (!candidate.isEmpty())) {
+            families.add(candidate);
+            int separator = candidate.lastIndexOf('_');
+            candidate = (separator > 0) ? candidate.substring(0, separator) : null;
+        }
+        return families;
     }
     
     /**

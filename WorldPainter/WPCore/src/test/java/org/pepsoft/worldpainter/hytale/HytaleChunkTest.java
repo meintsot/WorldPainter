@@ -101,6 +101,22 @@ public class HytaleChunkTest {
         assertEquals("Wood_Oak_Branch", HytaleBlockMapping.toHytale(material,
                 java.util.Collections.singletonMap("hytale:Wood_Oak_Trunk", "Wood_Oak_Branch")));
     }
+
+    @Test
+    public void testLeafFamilyOverrideRemapsSupportingTreeWood() {
+        java.util.Map<String, String> overrides = java.util.Collections.singletonMap("minecraft:oak_leaves", "Plant_Leaves_Azure");
+
+        assertEquals("Wood_Azure_Trunk", HytaleBlockMapping.toHytale(Material.get("minecraft:oak_log"), overrides));
+        assertEquals("Wood_Azure_Trunk_Full", HytaleBlockMapping.toHytale(Material.get("minecraft:oak_wood"), overrides));
+    }
+
+    @Test
+    public void testLeafFamilyOverrideRemapsHorizontalLogsToBranches() {
+        java.util.Map<String, String> overrides = java.util.Collections.singletonMap("minecraft:oak_leaves", "Plant_Leaves_Azure");
+        Material horizontalLog = Material.get("minecraft:oak_log").withProperty("axis", "x");
+
+        assertEquals("Wood_Azure_Branch_Long", HytaleBlockMapping.toHytale(horizontalLog, overrides));
+    }
     
     @Test
     public void testNumericIdMapping() {
