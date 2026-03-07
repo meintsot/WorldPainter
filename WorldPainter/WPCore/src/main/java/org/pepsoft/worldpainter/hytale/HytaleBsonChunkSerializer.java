@@ -597,9 +597,9 @@ public class HytaleBsonChunkSerializer {
                     buf.writeByte(PALETTE_TYPE_EMPTY);
                     // Rotation section - use shared method
                     writeRotationSection(buf, section);
-                    byte[] lightData = createCalculatedLightData(chunk, sectionY);
-                    buf.writeBytes(lightData);
-                    buf.writeBytes(lightData);
+                    byte[] localLightData = createCalculatedLightData(chunk, sectionY);
+                    buf.writeBytes(localLightData);
+                    writeEmptyLightData(buf);
                     // Change counters
                     buf.writeShort(0);
                     buf.writeShort(0);
@@ -646,9 +646,9 @@ public class HytaleBsonChunkSerializer {
 
                     writeRotationSection(buf, section);
 
-                    byte[] lightData = createCalculatedLightData(chunk, sectionY);
-                    buf.writeBytes(lightData);
-                    buf.writeBytes(lightData);
+                    byte[] localLightData = createCalculatedLightData(chunk, sectionY);
+                    buf.writeBytes(localLightData);
+                    writeEmptyLightData(buf);
 
                     buf.writeShort(0);
                     buf.writeShort(0);
@@ -687,9 +687,9 @@ public class HytaleBsonChunkSerializer {
                 buf.writeByte(PALETTE_TYPE_EMPTY);
                 // Rotation section - use shared method
                 writeRotationSection(buf, section);
-                byte[] lightData = createCalculatedLightData(chunk, sectionY);
-                buf.writeBytes(lightData);
-                buf.writeBytes(lightData);
+                byte[] localLightData = createCalculatedLightData(chunk, sectionY);
+                buf.writeBytes(localLightData);
+                writeEmptyLightData(buf);
                 // Change counters
                 buf.writeShort(0);
                 buf.writeShort(0);
@@ -747,9 +747,9 @@ public class HytaleBsonChunkSerializer {
                 // Rotation section - write actual rotations if present
                 writeRotationSection(buf, section);
 
-                byte[] lightData = createCalculatedLightData(chunk, sectionY);
-                buf.writeBytes(lightData);
-                buf.writeBytes(lightData);
+                byte[] localLightData = createCalculatedLightData(chunk, sectionY);
+                buf.writeBytes(localLightData);
+                writeEmptyLightData(buf);
 
                 // Change counters
                 buf.writeShort(0);
@@ -907,39 +907,45 @@ public class HytaleBsonChunkSerializer {
 
     private static void writeCalculatedSkyLightData(ByteBuf buf, HytaleChunk chunk, int sectionY) {
         HytaleChunkLightDataBuilder builder = null;
-        boolean hasAnyLight = false;
-        boolean fullSky = true;
-        int sectionBaseY = sectionY * HytaleChunk.SECTION_HEIGHT;
-        for (int localY = 0; localY < HytaleChunk.SECTION_HEIGHT; localY++) {
-            int worldY = sectionBaseY + localY;
-            for (int z = 0; z < HytaleChunk.CHUNK_SIZE; z++) {
-                for (int x = 0; x < HytaleChunk.CHUNK_SIZE; x++) {
-                    int blockLight = chunk.getBlockLightLevel(x, worldY, z);
-                    int skyLight = chunk.getSkyLightLevel(x, worldY, z);
-                    if (blockLight != 0 || skyLight != 0) {
-                        hasAnyLight = true;
-                    }
-                    if (blockLight != 0 || skyLight != 15) {
-                        fullSky = false;
-                    }
-                    if (blockLight != 0 || skyLight != 15) {
-                        if (builder == null) {
-                            builder = new HytaleChunkLightDataBuilder((short) 0);
+        try {
+            boolean hasAnyLight = false;
+            boolean fullSky = true;
+            int sectionBaseY = sectionY * HytaleChunk.SECTION_HEIGHT;
+            for (int localY = 0; localY < HytaleChunk.SECTION_HEIGHT; localY++) {
+                int worldY = sectionBaseY + localY;
+                for (int z = 0; z < HytaleChunk.CHUNK_SIZE; z++) {
+                    for (int x = 0; x < HytaleChunk.CHUNK_SIZE; x++) {
+                        int blockLight = chunk.getBlockLightLevel(x, worldY, z);
+                        int skyLight = (worldY >= chunk.getHeight(x, z)) ? 15 : 0;
+                        if (blockLight != 0 || skyLight != 0) {
+                            hasAnyLight = true;
                         }
-                        builder.setLight(x, localY, z, blockLight, blockLight, blockLight, skyLight);
+                        if (blockLight != 0 || skyLight != 15) {
+                            fullSky = false;
+                        }
+                        if (blockLight != 0 || skyLight != 15) {
+                            if (builder == null) {
+                                builder = new HytaleChunkLightDataBuilder((short) 0);
+                            }
+                            builder.setLight(x, localY, z, blockLight, blockLight, blockLight, skyLight);
+                        }
                     }
                 }
             }
+            if (!hasAnyLight) {
+                writeEmptyLightData(buf);
+                return;
+            }
+            if (fullSky) {
+                writeFullSkyLightData(buf);
+                return;
+            }
+            builder.serialize(buf);
+        } finally {
+            if (builder != null) {
+                builder.release();
+            }
         }
-        if (!hasAnyLight) {
-            writeEmptyLightData(buf);
-            return;
-        }
-        if (fullSky) {
-            writeFullSkyLightData(buf);
-            return;
-        }
-        builder.serialize(buf);
     }
 
     /**

@@ -169,11 +169,28 @@ public class HytaleChunkLightDataBuilder {
         buf.writeBoolean(hasLight);
         
         if (hasLight) {
-            // Compact the octree (remove unused segments, collapse uniform subtrees)
-            ByteBuf compacted = compactOctree();
-            buf.writeInt(compacted.readableBytes());
-            buf.writeBytes(compacted);
-            compacted.release();
+            ByteBuf serialized = ByteBufAllocator.DEFAULT.buffer();
+            try {
+                serializeOctree(serialized, 0);
+                buf.writeInt(serialized.readableBytes());
+                buf.writeBytes(serialized);
+            } finally {
+                serialized.release();
+            }
+        }
+    }
+
+    private void serializeOctree(ByteBuf out, int segmentIndex) {
+        int pointer = segmentIndex * NODE_SIZE;
+        byte mask = light.getByte(pointer);
+        out.writeByte(mask);
+        for (int i = 0; i < TREE_SIZE; i++) {
+            int value = light.getUnsignedShort(pointer + 1 + i * 2);
+            if ((mask & (1 << i)) != 0) {
+                serializeOctree(out, value);
+            } else {
+                out.writeShort(value);
+            }
         }
     }
     

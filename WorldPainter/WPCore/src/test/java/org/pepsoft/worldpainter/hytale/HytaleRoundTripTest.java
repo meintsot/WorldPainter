@@ -8,6 +8,7 @@ import org.pepsoft.worldpainter.*;
 import org.pepsoft.worldpainter.exporting.WorldExportSettings;
 import org.pepsoft.worldpainter.importing.MapImporter;
 
+import java.awt.Point;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -208,9 +209,51 @@ public class HytaleRoundTripTest {
         File actualWorldDir = new File(new File(new File(new File(exportBaseDir, "LightingExport"), "universe"), "worlds"), "default");
         HytaleChunkStore chunkStore = new HytaleChunkStore(actualWorldDir, 0, 320);
         try {
-            HytaleChunk chunk = chunkStore.getChunk(0, 0);
+            HytaleChunk chunk = (HytaleChunk) chunkStore.getChunk(0, 0);
             assertNotNull(chunk);
             assertTrue("Emissive terrain should populate block light", chunk.getBlockLightLevel(0, 1, 0) > 0);
+        } finally {
+            chunkStore.close();
+        }
+    }
+
+    @Test
+    public void exportKeepsSurfaceBlocksSkyLit() throws Exception {
+        World2 world = new World2(HYTALE, 0, 320);
+        world.setName("SurfaceSkyLightExport");
+        world.setCreateGoodiesChest(false);
+
+        long seed = 101L;
+        TileFactory tileFactory = TileFactoryFactory.createFlatTileFactory(
+            seed, Terrain.GRASS, 0, 320, 64, 62, false, false);
+        Dimension.Anchor anchor = new Dimension.Anchor(DIM_NORMAL, Dimension.Role.DETAIL, false, 0);
+        Dimension dim = new Dimension(world, "Surface", seed, tileFactory, anchor);
+        dim.setEventsInhibited(true);
+
+        Tile tile = tileFactory.createTile(0, 0);
+        for (int x = 0; x < 128; x++) {
+            for (int z = 0; z < 128; z++) {
+                tile.setHeight(x, z, 20);
+                tile.setTerrain(x, z, Terrain.STONE);
+                HytaleTerrainLayer.setTerrainIndex(tile, x, z, HytaleTerrain.STONE.getLayerIndex());
+            }
+        }
+
+        dim.addTile(tile);
+        dim.setEventsInhibited(false);
+        world.addDimension(dim);
+
+        File exportBaseDir = tempDir.newFolder("surface_skylight_export");
+        new HytaleWorldExporter(world, new WorldExportSettings()).export(exportBaseDir, "SurfaceSkyLightExport", null, null);
+
+        File actualWorldDir = new File(new File(new File(new File(exportBaseDir, "SurfaceSkyLightExport"), "universe"), "worlds"), "default");
+        HytaleChunkStore chunkStore = new HytaleChunkStore(actualWorldDir, 0, 320);
+        try {
+            HytaleChunk chunk = (HytaleChunk) chunkStore.getChunk(0, 0);
+            assertNotNull(chunk);
+            int surfaceY = chunk.getHeight(0, 0);
+            assertTrue("Exported test chunk should contain terrain", surfaceY > 0);
+            assertEquals("Surface blocks should remain sky lit in exported Hytale chunks", 15, chunk.getSkyLightLevel(0, surfaceY, 0));
         } finally {
             chunkStore.close();
         }

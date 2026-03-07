@@ -615,8 +615,7 @@ public class HytaleRegionFile implements Closeable {
             // Read rotation section
             readRotationSection(buf, section);
             
-            // Skip light data (2x ChunkLightData + 2x change counters)
-            // We don't need to restore light data - it will be recalculated
+            readSectionLightData(buf, section);
             
         } catch (Exception e) {
             logger.debug("Error reading block section data (may be partial): {}", e.getMessage());
@@ -691,7 +690,102 @@ public class HytaleRegionFile implements Closeable {
                 skipPaletteSection(buf, rotType);
             }
         }
-        // Skip remaining (light data + counters)
+        readSectionLightData(buf, null);
+    }
+
+    private void readSectionLightData(ByteBuf buf, HytaleChunk.HytaleSection section) {
+        ByteBuf localLight = null;
+        ByteBuf globalLight = null;
+        try {
+            localLight = readChunkLightData(buf);
+            globalLight = readChunkLightData(buf);
+            if (buf.readableBytes() >= 2) {
+                buf.readShort();
+            }
+            if (buf.readableBytes() >= 2) {
+                buf.readShort();
+            }
+            if (section == null) {
+                return;
+            }
+            ByteBuf effectiveLight = (globalLight != null) ? globalLight : localLight;
+            if (effectiveLight == null) {
+                return;
+            }
+            for (int idx = 0; idx < SECTION_VOLUME; idx++) {
+                short light = getLightRaw(effectiveLight, idx, 0, 0);
+                int y = idx >> 10;
+                int z = (idx >> 5) & 31;
+                int x = idx & 31;
+                int red = light & 0xF;
+                int green = (light >> 4) & 0xF;
+                int blue = (light >> 8) & 0xF;
+                int sky = (light >> 12) & 0xF;
+                section.setBlockLight(x, y, z, Math.max(red, Math.max(green, blue)));
+                section.setSkyLight(x, y, z, sky);
+            }
+        } finally {
+            if (localLight != null) {
+                localLight.release();
+            }
+            if (globalLight != null) {
+                globalLight.release();
+            }
+        }
+    }
+
+    private ByteBuf readChunkLightData(ByteBuf buf) {
+        if (buf.readableBytes() < 3) {
+            return null;
+        }
+        buf.readShort();
+        boolean hasLight = buf.readBoolean();
+        if (!hasLight) {
+            return null;
+        }
+        if (buf.readableBytes() < 4) {
+            return null;
+        }
+        int length = buf.readInt();
+        if (buf.readableBytes() < length) {
+            buf.skipBytes(buf.readableBytes());
+            return null;
+        }
+        ByteBuf from = buf.readSlice(length);
+        ByteBuf flat = Unpooled.buffer(Math.max(17, length * 2));
+        flat.writerIndex(17);
+        deserializeLightOctree(from, flat, 0, 0);
+        return flat;
+    }
+
+    private int deserializeLightOctree(ByteBuf from, ByteBuf to, int position, int segmentIndex) {
+        byte mask = from.readByte();
+        to.setByte(position * 17, mask);
+        for (int i = 0; i < 8; i++) {
+            int value;
+            if ((mask & (1 << i)) != 0) {
+                int nextSegmentIndex = ++segmentIndex;
+                to.writerIndex((nextSegmentIndex + 1) * 17);
+                value = nextSegmentIndex;
+                segmentIndex = deserializeLightOctree(from, to, value, nextSegmentIndex);
+            } else {
+                value = from.readShort() & 0xFFFF;
+            }
+            to.setShort(position * 17 + 1 + i * 2, value);
+        }
+        return segmentIndex;
+    }
+
+    private short getLightRaw(ByteBuf flatTree, int index, int segmentIndex, int depth) {
+        int position = segmentIndex * 17;
+        byte mask = flatTree.getByte(position);
+        int childIndex = (index >> (12 - depth)) & 7;
+        int childOffset = position + 1 + childIndex * 2;
+        int value = flatTree.getUnsignedShort(childOffset);
+        if ((mask & (1 << childIndex)) != 0) {
+            return getLightRaw(flatTree, index, value, depth + 3);
+        }
+        return (short) value;
     }
     
     /**
