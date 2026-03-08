@@ -3000,9 +3000,10 @@ public final class App extends JFrame implements BrushControl,
         dockingManager.addFrame(prefabsPanelFrame);
         dockingManager.hideFrame(prefabsPanelFrame.getKey());
 
-        entitiesPanelFrame = new DockableFrameBuilder(createEntitiesPanel(), "Entities", DOCK_SIDE_WEST, 3).build();
-        dockingManager.addFrame(entitiesPanelFrame);
-        dockingManager.hideFrame(entitiesPanelFrame.getKey());
+        // Entities panel is experimental — hidden for now
+        // entitiesPanelFrame = new DockableFrameBuilder(createEntitiesPanel(), "Entities", DOCK_SIDE_WEST, 3).build();
+        // dockingManager.addFrame(entitiesPanelFrame);
+        // dockingManager.hideFrame(entitiesPanelFrame.getKey());
 
         dockingManager.addFrame(new DockableFrameBuilder(createBrushPanel(), "Brushes", DOCK_SIDE_EAST, 1).build());
 
@@ -6099,18 +6100,18 @@ public final class App extends JFrame implements BrushControl,
         setLayerHidden(SwampLand.INSTANCE, isHytalePlatform);
         setLayerHidden(Jungle.INSTANCE, isHytalePlatform);
         // Hytale-only layers: hidden for Minecraft
-        setLayerHidden(org.pepsoft.worldpainter.hytale.HytaleEntityLayer.INSTANCE, ! isHytalePlatform);
+        setLayerHidden(org.pepsoft.worldpainter.hytale.HytaleEntityLayer.INSTANCE, true); // experimental — always hidden for now
         setLayerHidden(org.pepsoft.worldpainter.hytale.HytalePrefabLayer.INSTANCE, ! isHytalePlatform);
         // Populate is Minecraft-only (tells MC to generate vegetation/ores); no effect on Hytale
         setLayerHidden(Populate.INSTANCE, isHytalePlatform);
         // Show/hide Hytale-only dockable frames
         if (isHytalePlatform) {
             dockingManager.showFrame(prefabsPanelFrame.getKey());
-            dockingManager.showFrame(entitiesPanelFrame.getKey());
+            // entitiesPanelFrame hidden — experimental
             updateSpecificPrefabsList();
         } else {
             dockingManager.hideFrame(prefabsPanelFrame.getKey());
-            dockingManager.hideFrame(entitiesPanelFrame.getKey());
+            // entitiesPanelFrame hidden — experimental
         }
         activateLayersPanel();
         // Dimension-specific enable/disable for visible (non-hidden) layers
