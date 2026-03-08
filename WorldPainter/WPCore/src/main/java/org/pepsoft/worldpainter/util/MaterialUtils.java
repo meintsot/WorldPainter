@@ -98,6 +98,7 @@ public class MaterialUtils {
                 } else if (layer instanceof Resources) {
                     Set<String> nameOnlyMaterialsForLayer = new HashSet<>();
                     ResourcesExporterSettings settings = (ResourcesExporterSettings) dimension.getLayerSettings(Resources.INSTANCE);
+                    if (settings == null) continue;
                     for (Material material: settings.getMaterials()) {
                         if (settings.getChance(material) > 0) {
                             if (material.blockType == -1) {

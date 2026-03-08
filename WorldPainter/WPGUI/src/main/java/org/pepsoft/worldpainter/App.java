@@ -6099,6 +6099,7 @@ public final class App extends JFrame implements BrushControl,
         setLayerHidden(PineForest.INSTANCE, isHytalePlatform);
         setLayerHidden(SwampLand.INSTANCE, isHytalePlatform);
         setLayerHidden(Jungle.INSTANCE, isHytalePlatform);
+        setLayerHidden(Resources.INSTANCE, isHytalePlatform);
         // Hytale-only layers: hidden for Minecraft
         setLayerHidden(org.pepsoft.worldpainter.hytale.HytaleEntityLayer.INSTANCE, true); // experimental — always hidden for now
         setLayerHidden(org.pepsoft.worldpainter.hytale.HytalePrefabLayer.INSTANCE, ! isHytalePlatform);

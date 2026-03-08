@@ -615,7 +615,7 @@ public class NewWorldDialog extends WorldPainterDialog {
         final Dimension dimension;
         dimension = new Dimension(world, anchor.getDefaultName(), minecraftSeed, tileFactory, anchor);
         final ResourcesExporterSettings resourcesSettings = (ResourcesExporterSettings) dimension.getLayerSettings(Resources.INSTANCE);
-        if (anchor.invert) {
+        if (resourcesSettings != null && anchor.invert) {
             // Ceiling dimension; invert min and max levels:
             final int maxZ = dimension.getMaxHeight() + dimension.getMinHeight() - 1;
             for (Material material: resourcesSettings.getMaterials()) {
@@ -668,10 +668,15 @@ public class NewWorldDialog extends WorldPainterDialog {
         if (anchor.role == MASTER) {
             dimension.setScale(scale);
         }
-        if (baseDimension != null) {
-            resourcesSettings.setMinimumLevel(((ResourcesExporterSettings) baseDimension.getLayerSettings(Resources.INSTANCE)).getMinimumLevel());
-        } else {
-            resourcesSettings.setMinimumLevel(config.getDefaultResourcesMinimumLevel());
+        if (resourcesSettings != null) {
+            if (baseDimension != null) {
+                ResourcesExporterSettings baseResourcesSettings = (ResourcesExporterSettings) baseDimension.getLayerSettings(Resources.INSTANCE);
+                if (baseResourcesSettings != null) {
+                    resourcesSettings.setMinimumLevel(baseResourcesSettings.getMinimumLevel());
+                }
+            } else {
+                resourcesSettings.setMinimumLevel(config.getDefaultResourcesMinimumLevel());
+            }
         }
         dimension.setBorderLevel(waterHeight);
         dimension.setCoverSteepTerrain(defaults.isCoverSteepTerrain());

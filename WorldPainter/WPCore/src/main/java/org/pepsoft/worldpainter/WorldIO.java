@@ -189,7 +189,9 @@ public class WorldIO {
                     dim0.setSubsurfaceMaterial(Terrain.STONE);
                 } else {
                     dim0.setSubsurfaceMaterial(subsurfaceMaterial);
-                    resourcesSettings.setMinimumLevel(0);
+                    if (resourcesSettings != null) {
+                        resourcesSettings.setMinimumLevel(0);
+                    }
                 }
 
                 TileFactory tileFactory = dim0.getTileFactory();

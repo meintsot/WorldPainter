@@ -98,7 +98,9 @@ public class Dimension extends InstanceKeeper implements TileProvider, Serializa
         this.maxHeight = tileFactory.getMaxHeight();
         ceilingHeight = maxHeight;
         if (init) {
-            layerSettings.put(Resources.INSTANCE, ResourcesExporterSettings.defaultSettings(world.getPlatform(), anchor, minHeight, maxHeight));
+            if (! org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(world.getPlatform())) {
+                layerSettings.put(Resources.INSTANCE, ResourcesExporterSettings.defaultSettings(world.getPlatform(), anchor, minHeight, maxHeight));
+            }
             topLayerDepthNoise = new PerlinNoise(seed + TOP_LAYER_DEPTH_SEED_OFFSET);
             if (anchor.role == DETAIL) {
                 switch (anchor.dim) {

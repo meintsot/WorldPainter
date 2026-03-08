@@ -159,7 +159,10 @@ public final class WorldFactory {
             for (Map.Entry<Layer, ExporterSettings> entry: defaults.getAllLayerSettings().entrySet()) {
                 dim0.setLayerSettings(entry.getKey(), entry.getValue().clone());
             }
-            ((ResourcesExporter.ResourcesExporterSettings) dim0.getLayerSettings(Resources.INSTANCE)).setMinimumLevel(config.getDefaultResourcesMinimumLevel());
+            ResourcesExporter.ResourcesExporterSettings resourcesSettings = (ResourcesExporter.ResourcesExporterSettings) dim0.getLayerSettings(Resources.INSTANCE);
+            if (resourcesSettings != null) {
+                resourcesSettings.setMinimumLevel(config.getDefaultResourcesMinimumLevel());
+            }
             dim0.setGridEnabled(config.isDefaultGridEnabled());
             dim0.setGridSize(config.getDefaultGridSize());
             dim0.setContoursEnabled(config.isDefaultContoursEnabled());
@@ -248,7 +251,10 @@ public final class WorldFactory {
             for (Map.Entry<Layer, ExporterSettings> entry: defaults.getAllLayerSettings().entrySet()) {
                 dim0.setLayerSettings(entry.getKey(), entry.getValue().clone());
             }
-            ((ResourcesExporter.ResourcesExporterSettings) dim0.getLayerSettings(Resources.INSTANCE)).setMinimumLevel(config.getDefaultResourcesMinimumLevel());
+            ResourcesExporter.ResourcesExporterSettings resourcesSettings2 = (ResourcesExporter.ResourcesExporterSettings) dim0.getLayerSettings(Resources.INSTANCE);
+            if (resourcesSettings2 != null) {
+                resourcesSettings2.setMinimumLevel(config.getDefaultResourcesMinimumLevel());
+            }
             FrostExporter.FrostSettings frostSettings = (FrostExporter.FrostSettings) dim0.getLayerSettings(Frost.INSTANCE);
             if (frostSettings == null) {
                 frostSettings = new FrostExporter.FrostSettings();

@@ -106,7 +106,10 @@ public class HeightMapImporter {
         for (Map.Entry<Layer, ExporterSettings> entry: defaults.getAllLayerSettings().entrySet()) {
             dimension.setLayerSettings(entry.getKey(), entry.getValue().clone());
         }
-        ((ResourcesExporter.ResourcesExporterSettings) dimension.getLayerSettings(Resources.INSTANCE)).setMinimumLevel(config.getDefaultResourcesMinimumLevel());
+        ResourcesExporter.ResourcesExporterSettings resourcesSettings = (ResourcesExporter.ResourcesExporterSettings) dimension.getLayerSettings(Resources.INSTANCE);
+        if (resourcesSettings != null) {
+            resourcesSettings.setMinimumLevel(config.getDefaultResourcesMinimumLevel());
+        }
 
         dimension.setGridEnabled(config.isDefaultGridEnabled());
         dimension.setGridSize(config.getDefaultGridSize());
