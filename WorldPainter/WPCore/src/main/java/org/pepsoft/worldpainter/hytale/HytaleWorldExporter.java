@@ -6,6 +6,7 @@ import org.pepsoft.minecraft.Chunk;
 import org.pepsoft.minecraft.ChunkFactory;
 import org.pepsoft.minecraft.Entity;
 import org.pepsoft.minecraft.Material;
+import org.pepsoft.minecraft.MinecraftCoords;
 import org.pepsoft.minecraft.TileEntity;
 import org.pepsoft.util.FileUtils;
 import org.pepsoft.util.ParallelProgressManager;
@@ -98,6 +99,9 @@ public class HytaleWorldExporter implements WorldExporter {
     // Offset to center terrain at world origin (computed during export)
     private int blockOffsetX = 0;
     private int blockOffsetZ = 0;
+    
+    // Prefab paster for inlining prefab blocks during export (initialized at export time)
+    private HytalePrefabPaster prefabPaster;
     
     public HytaleWorldExporter(World2 world, WorldExportSettings exportSettings) {
         this.world = world;
@@ -206,6 +210,9 @@ public class HytaleWorldExporter implements WorldExporter {
                 if (!playersDir.mkdirs()) {
                     throw new IOException("Could not create players directory");
                 }
+                
+                // Initialize prefab paster for inlining prefab blocks into chunk data
+                prefabPaster = new HytalePrefabPaster(HytaleTerrain.getHytaleAssetsDir());
                 
                 // Export dimensions (must come before writeWorldConfig so blockOffsetX/Z are set)
                 Map<Integer, ChunkFactory.Stats> stats = new HashMap<>();
@@ -1143,8 +1150,12 @@ public class HytaleWorldExporter implements WorldExporter {
                 if (prefabLayerValue > 0 && prefabLayerValue < HytalePrefabLayer.PREFAB_PATHS.length) {
                     String prefabPath = HytalePrefabLayer.PREFAB_PATHS[prefabLayerValue];
                     if (prefabPath != null) {
-                        chunk.addPrefabMarker(localX, height + 1, localZ,
-                            HytalePrefabLayer.PREFAB_NAMES[prefabLayerValue], prefabPath);
+                        // Paste prefab blocks inline (Hytale reads blocks, not markers)
+                        if (!prefabPaster.paste(chunk, localX, height + 1, localZ, worldX, worldZ, prefabPath)) {
+                            // Fallback: keep marker for debugging if paste failed
+                            chunk.addPrefabMarker(localX, height + 1, localZ,
+                                HytalePrefabLayer.PREFAB_NAMES[prefabLayerValue], prefabPath);
+                        }
                     }
                 }
 
@@ -1152,8 +1163,12 @@ public class HytaleWorldExporter implements WorldExporter {
                 for (HytaleSpecificPrefabLayer spLayer : specificPrefabLayers) {
                     if (tile.getBitLayerValue(spLayer, tileLocalX, tileLocalZ)) {
                         PrefabFileEntry selected = spLayer.selectPrefab(worldX, worldZ);
-                        chunk.addPrefabMarker(localX, height + 1, localZ,
-                            selected.getDisplayName(), selected.getRelativePath());
+                        // Paste prefab blocks inline (Hytale reads blocks, not markers)
+                        if (!prefabPaster.paste(chunk, localX, height + 1, localZ, worldX, worldZ, selected.getRelativePath())) {
+                            // Fallback: keep marker for debugging if paste failed
+                            chunk.addPrefabMarker(localX, height + 1, localZ,
+                                selected.getDisplayName(), selected.getRelativePath());
+                        }
                     }
                 }
                 
