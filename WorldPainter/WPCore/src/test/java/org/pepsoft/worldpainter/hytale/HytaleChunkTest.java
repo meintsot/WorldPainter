@@ -103,19 +103,12 @@ public class HytaleChunkTest {
     }
 
     @Test
-    public void testLeafFamilyOverrideRemapsSupportingTreeWood() {
+    public void testLeafOverrideDoesNotRemapWood() {
+        // Overriding leaves to azure should NOT change the wood mapping.
+        // Hytale's TreeWoodAndLeaves BlockSet supports mixed tree types.
         java.util.Map<String, String> overrides = java.util.Collections.singletonMap("minecraft:oak_leaves", "Plant_Leaves_Azure");
 
-        assertEquals("Wood_Azure_Trunk", HytaleBlockMapping.toHytale(Material.get("minecraft:oak_log"), overrides));
-        assertEquals("Wood_Azure_Trunk_Full", HytaleBlockMapping.toHytale(Material.get("minecraft:oak_wood"), overrides));
-    }
-
-    @Test
-    public void testLeafFamilyOverrideRemapsHorizontalLogsToBranches() {
-        java.util.Map<String, String> overrides = java.util.Collections.singletonMap("minecraft:oak_leaves", "Plant_Leaves_Azure");
-        Material horizontalLog = Material.get("minecraft:oak_log").withProperty("axis", "x");
-
-        assertEquals("Wood_Azure_Branch_Long", HytaleBlockMapping.toHytale(horizontalLog, overrides));
+        assertEquals("Wood_Oak_Trunk", HytaleBlockMapping.toHytale(Material.get("minecraft:oak_log"), overrides));
     }
     
     @Test

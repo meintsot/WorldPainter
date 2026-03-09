@@ -555,12 +555,9 @@ public class HytaleBlockMapping {
                 }
             }
 
-            // If leaves were remapped to a different Hytale tree family, make the supporting wood follow that family
-            // so imported Minecraft trees do not end up with mismatched canopies.
-            String supportingWoodOverride = inferSupportingWoodOverride(material, overrides);
-            if (supportingWoodOverride != null) {
-                return supportingWoodOverride;
-            }
+            // Leaf-family wood remapping removed: Hytale's TreeWoodAndLeaves BlockSet
+            // contains ALL leaf and wood types, so any leaf can be supported by any wood.
+            // Mixed trees (e.g., Plant_Leaves_Azure + Wood_Oak_Trunk) work correctly.
         }
         return toHytale(material);
     }

@@ -127,7 +127,8 @@ public class HytaleBsonChunkSerializer {
         
         ByteBuf buf = ByteBufAllocator.DEFAULT.buffer();
         try {
-            // needsPhysics (boolean)
+            // needsPhysics (boolean) — false; the game computes support
+            // values on-demand when blocks are disturbed
             buf.writeBoolean(false);
             
             // height (ShortBytePalette) - 32x32 heightmap
@@ -446,6 +447,14 @@ public class HytaleBsonChunkSerializer {
     
     /**
      * Create ChunkColumn BSON with 10 section holders.
+     *
+     * <p>Block physics support values are left at 0 (no data). Hytale's runtime
+     * computes correct support values on-demand when blocks are disturbed.
+     * Pre-computing values causes cascading corrections on first interaction
+     * because the runtime's steady-state differs from any static BFS computation
+     * (e.g., leaves directly supported by wood get value 0 via SATISFIES_SUPPORT,
+     * not a propagated distance).
+     *
      * Format from ChunkColumn.CODEC:
      * - "Sections": array of 10 Holder documents
      */
@@ -455,7 +464,7 @@ public class HytaleBsonChunkSerializer {
         
         HytaleChunk.HytaleSection[] chunkSections = chunk.getSections();
         for (int i = 0; i < HytaleChunk.SECTION_COUNT; i++) {
-            sections.add(createSectionHolderBson(chunkSections[i], i, chunk));
+            sections.add(createSectionHolderBson(chunkSections[i], i, chunk, null));
         }
         
         doc.put("Sections", sections);
@@ -470,16 +479,17 @@ public class HytaleBsonChunkSerializer {
      * @param section The section data.
      * @param sectionY The section index (0-9).
      * @param chunk The parent chunk, needed for heightmap-based lighting.
+     * @param supportData Precomputed nibble-packed support values for this section (16384 bytes), or null if empty.
      */
-    private static BsonDocument createSectionHolderBson(HytaleChunk.HytaleSection section, int sectionY, HytaleChunk chunk) {
+    private static BsonDocument createSectionHolderBson(HytaleChunk.HytaleSection section, int sectionY, HytaleChunk chunk, byte[] supportData) {
         BsonDocument holder = new BsonDocument();
         BsonDocument components = new BsonDocument();
         
         // Add ChunkSection (empty marker component)
         components.put(COMP_CHUNK_SECTION, createChunkSectionBson());
         
-        // Add BlockPhysics (empty)
-        components.put(COMP_BLOCK_PHYSICS, createBlockPhysicsBson());
+        // Add BlockPhysics with precomputed support values
+        components.put(COMP_BLOCK_PHYSICS, createBlockPhysicsBson(supportData));
         
         // Add FluidSection
         components.put(COMP_FLUID_SECTION, createFluidSectionBson(section));
@@ -498,25 +508,47 @@ public class HytaleBsonChunkSerializer {
         // ChunkSection has no data fields in its codec
         return new BsonDocument();
     }
+
+
     
     /**
-     * Create BlockPhysics BSON.
-     * Format: { "Data": [false] } for empty (no support data)
+     * Create BlockPhysics BSON with precomputed support data.
+     *
+     * <p>Support values control Hytale's block physics cascade system:
+     * <ul>
+     *   <li>0 = no support / air — block breaks when disturbed if it has support requirements</li>
+     *   <li>1-14 = propagated support distance from a support provider</li>
+     *   <li>15 (IS_DECO) = decorative — exempt from physics checks</li>
+     * </ul>
+     *
+     * @param supportData Nibble-packed support values (16384 bytes), or null for empty section.
      */
-    private static BsonDocument createBlockPhysicsBson() {
+    private static BsonDocument createBlockPhysicsBson(byte[] supportData) {
         BsonDocument doc = new BsonDocument();
-        
-        ByteBuf buf = ByteBufAllocator.DEFAULT.buffer(1);
-        try {
-            buf.writeBoolean(false); // no support data
-            
-            byte[] data = new byte[buf.readableBytes()];
-            buf.readBytes(data);
-            doc.put("Data", new BsonBinary(data));
-        } finally {
-            buf.release();
+
+        if (supportData == null) {
+            ByteBuf buf = ByteBufAllocator.DEFAULT.buffer(1);
+            try {
+                buf.writeBoolean(false);
+                byte[] data = new byte[buf.readableBytes()];
+                buf.readBytes(data);
+                doc.put("Data", new BsonBinary(data));
+            } finally {
+                buf.release();
+            }
+        } else {
+            ByteBuf buf = ByteBufAllocator.DEFAULT.buffer(1 + supportData.length);
+            try {
+                buf.writeBoolean(true);
+                buf.writeBytes(supportData);
+                byte[] data = new byte[buf.readableBytes()];
+                buf.readBytes(data);
+                doc.put("Data", new BsonBinary(data));
+            } finally {
+                buf.release();
+            }
         }
-        
+
         return doc;
     }
     
