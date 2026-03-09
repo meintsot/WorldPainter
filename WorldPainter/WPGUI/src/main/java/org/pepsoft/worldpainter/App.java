@@ -3765,45 +3765,12 @@ public final class App extends JFrame implements BrushControl,
         constraints.gridwidth = GridBagConstraints.REMAINDER;
         panel.add(soloCheckBox, constraints);
 
-        JPanel grid = new JPanel(new GridLayout(0, 2, 2, 2));
-        for (int i = 1; i < org.pepsoft.worldpainter.hytale.HytalePrefabLayer.PREFAB_COUNT; i++) {
-            final int categoryValue = i;
-            int argb = org.pepsoft.worldpainter.hytale.HytalePrefabLayer.PREFAB_COLORS[i];
-            int rgb = argb & 0x00FFFFFF;
-            JToggleButton button = new JToggleButton(org.pepsoft.worldpainter.hytale.HytalePrefabLayer.PREFAB_NAMES[i],
-                    createScaledColourIcon(rgb));
-            button.setToolTipText(org.pepsoft.worldpainter.hytale.HytalePrefabLayer.PREFAB_NAMES[i]);
-            button.setMargin(App.BUTTON_INSETS);
-            button.setHorizontalAlignment(SwingConstants.LEFT);
-            if (categoryValue == 1) {
-                button.setSelected(true);
-            }
-            paintButtonGroup.add(button);
-            button.addItemListener(e -> {
-                if (e.getStateChange() == ItemEvent.SELECTED) {
-                    paintUpdater = () -> {
-                        paint = createDiscreteLayerPaint(org.pepsoft.worldpainter.hytale.HytalePrefabLayer.INSTANCE, categoryValue);
-                        paintChanged();
-                    };
-                    paintUpdater.updatePaint();
-                }
-            });
-            button.putClientProperty(KEY_PAINT_ID, createDiscreteLayerPaintId(org.pepsoft.worldpainter.hytale.HytalePrefabLayer.INSTANCE, categoryValue));
-            grid.add(button);
-        }
-        panel.add(grid, constraints);
-
         layerControls.put(org.pepsoft.worldpainter.hytale.HytalePrefabLayer.INSTANCE, new LayerControls(org.pepsoft.worldpainter.hytale.HytalePrefabLayer.INSTANCE, checkBox, soloCheckBox));
 
-        // ── Specific Prefabs section ─────────────────────────────
+        // ── Prefab search & selection ────────────────────────────
         constraints.gridwidth = GridBagConstraints.REMAINDER;
         constraints.fill = GridBagConstraints.HORIZONTAL;
         constraints.weightx = 1.0;
-        panel.add(new JSeparator(), constraints);
-
-        JLabel specificLabel = new JLabel("Specific Prefabs");
-        specificLabel.setFont(specificLabel.getFont().deriveFont(Font.BOLD));
-        panel.add(specificLabel, constraints);
 
         // Search field
         JTextField searchField = new JTextField();
