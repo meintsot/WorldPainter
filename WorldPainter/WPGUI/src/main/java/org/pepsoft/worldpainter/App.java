@@ -3834,7 +3834,12 @@ public final class App extends JFrame implements BrushControl,
         });
         panel.add(createLayerButton, constraints);
 
-
+        // "Locate Assets..." button — visible when assets not yet found
+        locateAssetsButton = new JButton("Locate Assets...");
+        locateAssetsButton.setToolTipText("Browse for your HytaleAssets folder or Hytale launcher install directory");
+        locateAssetsButton.addActionListener(e -> browseForHytaleAssetsDir());
+        locateAssetsButton.setVisible(false);
+        panel.add(locateAssetsButton, constraints);
 
         specificPrefabStatusLabel = new JLabel("");
         specificPrefabStatusLabel.setForeground(Color.GRAY);
@@ -3926,21 +3931,27 @@ public final class App extends JFrame implements BrushControl,
     private void updateSpecificPrefabsList() {
         java.io.File assetsDir = org.pepsoft.worldpainter.hytale.HytaleTerrain.getHytaleAssetsDir();
         java.io.File serverDir = (assetsDir != null) ? new java.io.File(assetsDir, "Server") : null;
+        boolean assetsAvailable = false;
         if (serverDir != null && serverDir.isDirectory()) {
             discoveredPrefabs = org.pepsoft.worldpainter.hytale.HytalePrefabDiscovery.discoverPrefabs(serverDir);
             if (! discoveredPrefabs.isEmpty()) {
                 specificPrefabStatusLabel.setText(discoveredPrefabs.size() + " prefabs found from local HytaleAssets");
+                assetsAvailable = true;
             } else {
                 discoveredPrefabs = org.pepsoft.worldpainter.hytale.HytalePrefabDiscovery.loadBundledPrefabs();
                 specificPrefabStatusLabel.setText(discoveredPrefabs.isEmpty()
-                    ? "<html><i>No prefabs available.</i></html>"
-                    : "<html><i>Using bundled prefab catalog; local HytaleAssets has no Prefabs directory.</i></html>");
+                    ? "<html><i>No prefabs available. Use <b>Locate Assets</b> to set your Hytale folder.</i></html>"
+                    : "<html><i>Using bundled prefab catalog. Use <b>Locate Assets</b> for full prefab support.</i></html>");
             }
         } else {
             discoveredPrefabs = org.pepsoft.worldpainter.hytale.HytalePrefabDiscovery.loadBundledPrefabs();
             specificPrefabStatusLabel.setText(discoveredPrefabs.isEmpty()
-                ? "<html><i>No HytaleAssets found. Specific prefabs unavailable.</i></html>"
-                : "<html><i>Using bundled prefab catalog; local HytaleAssets not required for the prefab list.</i></html>");
+                ? "<html><i>No HytaleAssets found. Use <b>Locate Assets</b> below.</i></html>"
+                : "<html><i>Using bundled prefab catalog. Use <b>Locate Assets</b> for full support.</i></html>");
+        }
+        // Show the locate button only when assets are not fully available
+        if (locateAssetsButton != null) {
+            locateAssetsButton.setVisible(! assetsAvailable);
         }
         filterPrefabList();
     }
@@ -4265,19 +4276,71 @@ public final class App extends JFrame implements BrushControl,
     /**
     * Auto-discover and set the HytaleAssets directory for Hytale icon and metadata loading.
      * Searches common locations relative to the working directory and user home.
+     * If auto-detection fails, prompts the user to select the directory.
      */
     private void initHytaleAssetsDir() {
         if (hytaleAssetsDirInitialized) return;
         hytaleAssetsDirInitialized = true;
-        final java.io.File assetsDir = org.pepsoft.worldpainter.hytale.HytaleAssetsLocator.ensureAssetsConfigured();
+        java.io.File assetsDir = org.pepsoft.worldpainter.hytale.HytaleAssetsLocator.ensureAssetsConfigured();
         if (assetsDir != null) {
             logger.info("Using Hytale assets at: {}", assetsDir.getAbsolutePath());
             return;
         }
-        logger.warn("HytaleAssets directory not found — Hytale icons will use fallbacks and some metadata will be unavailable");
+        // Auto-detect failed — ask the user to locate the directory
+        assetsDir = promptForHytaleAssetsDir();
+        if (assetsDir != null) {
+            logger.info("User selected Hytale assets at: {}", assetsDir.getAbsolutePath());
+        } else {
+            logger.warn("User declined to select HytaleAssets — icons will use fallbacks and some features will be unavailable");
+        }
     }
     
     private boolean hytaleAssetsDirInitialized = false;
+
+    /**
+     * Show a dialog asking the user to point to their Hytale assets.
+     * Returns the resolved assets dir, or null if the user cancels.
+     */
+    java.io.File promptForHytaleAssetsDir() {
+        final int result = JOptionPane.showConfirmDialog(this,
+                "<html>Hytale assets were not found automatically.<br><br>" +
+                        "WorldPainter needs access to your Hytale assets for blocks, prefabs, and gameplay configs.<br>" +
+                        "Would you like to select your HytaleAssets folder or Hytale launcher install folder now?</html>",
+                "Locate Hytale Assets",
+                YES_NO_OPTION,
+                JOptionPane.QUESTION_MESSAGE);
+        if (result != YES_OPTION) {
+            return null;
+        }
+        return browseForHytaleAssetsDir();
+    }
+
+    /**
+     * Open a directory chooser to select a Hytale assets source directory,
+     * configure it via the locator, and refresh the prefab list.
+     */
+    private java.io.File browseForHytaleAssetsDir() {
+        final JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Select HytaleAssets or Hytale launcher install folder");
+        fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        fileChooser.setSelectedFile(new java.io.File(System.getProperty("user.home")));
+        if (fileChooser.showOpenDialog(this) != JFileChooser.APPROVE_OPTION) {
+            return null;
+        }
+        final java.io.File selectedDir = fileChooser.getSelectedFile();
+        final java.io.File configuredDir = org.pepsoft.worldpainter.hytale.HytaleAssetsLocator.configureAssetsSource(selectedDir);
+        if (configuredDir == null) {
+            beepAndShowError(this,
+                    "The selected directory is not a usable Hytale assets source.\n" +
+                    "Select either an extracted HytaleAssets folder or the Hytale launcher install folder\n" +
+                    "(the one containing Assets.zip and a Server directory).",
+                    "Invalid Hytale Assets Directory");
+            return null;
+        }
+        // Refresh prefab list if the panel is active
+        updateSpecificPrefabsList();
+        return configuredDir;
+    }
     
     private JPanel createCustomTerrainPanel() {
         customTerrainPanel = new JPanel();
@@ -7539,6 +7602,7 @@ public final class App extends JFrame implements BrushControl,
     private java.util.List<org.pepsoft.worldpainter.hytale.PrefabFileEntry> discoveredPrefabs = java.util.Collections.emptyList();
     private JTextField specificPrefabSearchField;
     private JLabel specificPrefabStatusLabel;
+    private JButton locateAssetsButton;
     private JPanel customPrefabLayerRowsPanel;
     private final java.util.List<org.pepsoft.worldpainter.hytale.HytaleSpecificPrefabLayer> createdPrefabLayersList = new ArrayList<>();
     private Filter filter, toolFilter;
