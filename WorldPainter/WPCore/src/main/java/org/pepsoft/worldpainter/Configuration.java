@@ -261,6 +261,14 @@ public final class Configuration implements Serializable, EventLogger, Minecraft
         this.customObjectsDirectory = customObjectsDirectory;
     }
 
+    public synchronized File getHytaleAssetsSourceDirectory() {
+        return hytaleAssetsSourceDirectory;
+    }
+
+    public synchronized void setHytaleAssetsSourceDirectory(File hytaleAssetsSourceDirectory) {
+        this.hytaleAssetsSourceDirectory = hytaleAssetsSourceDirectory;
+    }
+
     public synchronized boolean isCheckForUpdates() {
         return checkForUpdates;
     }
@@ -1161,6 +1169,7 @@ public final class Configuration implements Serializable, EventLogger, Minecraft
         worldDirectory = FileUtils.absolutise(worldDirectory);
         savesDirectory = FileUtils.absolutise(savesDirectory);
         customObjectsDirectory = FileUtils.absolutise(customObjectsDirectory);
+        hytaleAssetsSourceDirectory = FileUtils.absolutise(hytaleAssetsSourceDirectory);
         minecraftJars = FileUtils.absolutise(minecraftJars);
         layerDirectory = FileUtils.absolutise(layerDirectory);
         terrainDirectory = FileUtils.absolutise(terrainDirectory);
@@ -1268,6 +1277,7 @@ public final class Configuration implements Serializable, EventLogger, Minecraft
     @Deprecated
     private File exportDirectory;
     private File savesDirectory, customObjectsDirectory;
+    private File hytaleAssetsSourceDirectory;
     @Deprecated
     private World.Border border;
     private Border border2;

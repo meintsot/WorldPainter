@@ -281,30 +281,7 @@ public final class HytaleBiomeIconFactory {
             if (assetsSearchDone) {
                 return;
             }
-            final File[] candidates = new File[] {
-                    new File("HytaleAssets"),
-                    new File("..", "HytaleAssets"),
-                    new File(System.getProperty("user.dir"), "HytaleAssets"),
-                    new File(System.getProperty("user.dir"), ".." + File.separator + "HytaleAssets"),
-                    new File(System.getProperty("user.home"), "Desktop" + File.separator + "WorldPainter" + File.separator + "HytaleAssets")
-            };
-            for (File candidate : candidates) {
-                if (HytaleTerrain.hasUsableAssetsDir(candidate)) {
-                    assetsRoot = candidate;
-                    HytaleTerrain.setHytaleAssetsDir(candidate);
-                    break;
-                }
-            }
-            if (assetsRoot == null) {
-                final String sysProp = System.getProperty("org.pepsoft.worldpainter.hytaleAssetsDir");
-                if (sysProp != null) {
-                    final File candidate = new File(sysProp);
-                    if (HytaleTerrain.hasUsableAssetsDir(candidate)) {
-                        assetsRoot = candidate;
-                        HytaleTerrain.setHytaleAssetsDir(candidate);
-                    }
-                }
-            }
+            assetsRoot = HytaleAssetsLocator.ensureAssetsConfigured();
             assetsSearchDone = true;
         }
     }

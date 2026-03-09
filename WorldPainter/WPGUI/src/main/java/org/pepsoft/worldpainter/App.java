@@ -4302,30 +4302,10 @@ public final class App extends JFrame implements BrushControl,
     private void initHytaleAssetsDir() {
         if (hytaleAssetsDirInitialized) return;
         hytaleAssetsDirInitialized = true;
-        
-        java.io.File[] candidates = {
-            new java.io.File("HytaleAssets"),
-            new java.io.File("..", "HytaleAssets"),
-            new java.io.File(System.getProperty("user.dir"), "HytaleAssets"),
-            new java.io.File(System.getProperty("user.dir"), ".." + java.io.File.separator + "HytaleAssets"),
-            new java.io.File(System.getProperty("user.home"), "Desktop" + java.io.File.separator + "WorldPainter" + java.io.File.separator + "HytaleAssets"),
-        };
-        for (java.io.File candidate : candidates) {
-            if (org.pepsoft.worldpainter.hytale.HytaleTerrain.hasUsableAssetsDir(candidate)) {
-                org.pepsoft.worldpainter.hytale.HytaleTerrain.setHytaleAssetsDir(candidate);
-                logger.info("Found HytaleAssets at: {}", candidate.getAbsolutePath());
-                return;
-            }
-        }
-        // Also allow system property override
-        String sysProp = System.getProperty("org.pepsoft.worldpainter.hytaleAssetsDir");
-        if (sysProp != null) {
-            java.io.File dir = new java.io.File(sysProp);
-            if (dir.isDirectory()) {
-                org.pepsoft.worldpainter.hytale.HytaleTerrain.setHytaleAssetsDir(dir);
-                logger.info("Using HytaleAssets from system property: {}", dir.getAbsolutePath());
-                return;
-            }
+        final java.io.File assetsDir = org.pepsoft.worldpainter.hytale.HytaleAssetsLocator.ensureAssetsConfigured();
+        if (assetsDir != null) {
+            logger.info("Using Hytale assets at: {}", assetsDir.getAbsolutePath());
+            return;
         }
         logger.warn("HytaleAssets directory not found — Hytale icons will use fallbacks and some metadata will be unavailable");
     }

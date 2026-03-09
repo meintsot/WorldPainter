@@ -16,6 +16,7 @@ import org.pepsoft.worldpainter.Dimension.Anchor;
 import org.pepsoft.worldpainter.World2.BorderSettings;
 import org.pepsoft.worldpainter.biomeschemes.CustomBiomeManager;
 import org.pepsoft.worldpainter.exporting.WorldExportSettings;
+import org.pepsoft.worldpainter.hytale.HytaleAssetsLocator;
 import org.pepsoft.worldpainter.hytale.HytaleTerrainHelper;
 import org.pepsoft.worldpainter.hytale.HytaleWorldSettings;
 import org.pepsoft.worldpainter.layers.CustomLayer;
@@ -233,6 +234,12 @@ public class ExportWorldDialog extends WPDialogWithPaintSelection {
             fieldName.requestFocusInWindow();
             beepAndShowError(this, "You have not specified a name for the map.", "Error");
             return;
+        }
+        if (isHytalePlatform(world.getPlatform())) {
+            final File hytaleAssetsDir = ensureHytaleAssetsDirForExport();
+            if (hytaleAssetsDir == null) {
+                return;
+            }
         }
 
         // Check for warnings
@@ -595,26 +602,46 @@ public class ExportWorldDialog extends WPDialogWithPaintSelection {
     }
 
     private File findHytaleAssetsDir() {
-        final File[] candidates = {
-                new File("HytaleAssets"),
-                new File("..", "HytaleAssets"),
-                new File(System.getProperty("user.dir"), "HytaleAssets"),
-                new File(System.getProperty("user.dir"), ".." + File.separator + "HytaleAssets"),
-                new File(System.getProperty("user.home"), "Desktop" + File.separator + "WorldPainter" + File.separator + "HytaleAssets"),
-        };
-        for (File candidate : candidates) {
-            if (candidate.isDirectory() && new File(candidate, "Server" + File.separator + "GameplayConfigs").isDirectory()) {
-                return candidate;
-            }
+        final File assetsDir = HytaleAssetsLocator.ensureAssetsConfigured();
+        return HytaleAssetsLocator.hasGameplayConfigs(assetsDir) ? assetsDir : null;
+    }
+
+    private File ensureHytaleAssetsDirForExport() {
+        final File assetsDir = HytaleAssetsLocator.ensureAssetsConfigured();
+        if (HytaleAssetsLocator.hasPrefabAssets(assetsDir) && HytaleAssetsLocator.hasGameplayConfigs(assetsDir)) {
+            return assetsDir;
         }
-        final String pathFromSystemProperty = System.getProperty("org.pepsoft.worldpainter.hytaleAssetsDir");
-        if (pathFromSystemProperty != null) {
-            final File candidate = new File(pathFromSystemProperty);
-            if (candidate.isDirectory() && new File(candidate, "Server" + File.separator + "GameplayConfigs").isDirectory()) {
-                return candidate;
-            }
+
+        final int result = JOptionPane.showConfirmDialog(this,
+                "<html>Hytale assets were not found automatically.<br><br>" +
+                        "Blocks, gameplay configs, and prefab export need access to your local Hytale assets.<br>" +
+                        "Choose Yes to select either an extracted HytaleAssets folder or your Hytale launcher install folder.</html>",
+                "Hytale Assets Required",
+                YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+        if (result != YES_OPTION) {
+            return null;
         }
-        return null;
+
+        final JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setDialogTitle("Select HytaleAssets or Hytale launcher install folder");
+        fileChooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        fileChooser.setSelectedFile(new File(System.getProperty("user.home")));
+        if (doWithoutExceptionReporting(() -> fileChooser.showOpenDialog(this)) != JFileChooser.APPROVE_OPTION) {
+            return null;
+        }
+
+        final File selectedDir = fileChooser.getSelectedFile();
+        final File configuredDir = HytaleAssetsLocator.configureAssetsSource(selectedDir);
+        if ((configuredDir == null) || (! HytaleAssetsLocator.hasPrefabAssets(configuredDir)) || (! HytaleAssetsLocator.hasGameplayConfigs(configuredDir))) {
+            beepAndShowError(this,
+                    "The selected directory is not a usable Hytale assets source. Select either an extracted HytaleAssets folder or the launcher install folder containing Assets.zip and Server.",
+                    "Invalid Hytale Assets Directory");
+            return null;
+        }
+
+        applyPlatformSpecificSettings(world.getPlatform());
+        return configuredDir;
     }
 
     private void selectDir() {

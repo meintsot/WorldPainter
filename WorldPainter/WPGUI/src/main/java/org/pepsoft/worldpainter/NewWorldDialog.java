@@ -791,26 +791,7 @@ public class NewWorldDialog extends WorldPainterDialog {
     }
 
     private void initHytaleAssetsDir() {
-        java.io.File[] candidates = {
-            new java.io.File("HytaleAssets"),
-            new java.io.File("..", "HytaleAssets"),
-            new java.io.File(System.getProperty("user.dir"), "HytaleAssets"),
-            new java.io.File(System.getProperty("user.dir"), ".." + java.io.File.separator + "HytaleAssets"),
-            new java.io.File(System.getProperty("user.home"), "Desktop" + java.io.File.separator + "WorldPainter" + java.io.File.separator + "HytaleAssets"),
-        };
-        for (java.io.File candidate : candidates) {
-            if (HytaleTerrain.hasUsableAssetsDir(candidate)) {
-                HytaleTerrain.setHytaleAssetsDir(candidate);
-                return;
-            }
-        }
-        String sysProp = System.getProperty("org.pepsoft.worldpainter.hytaleAssetsDir");
-        if (sysProp != null) {
-            java.io.File dir = new java.io.File(sysProp);
-            if (dir.isDirectory()) {
-                HytaleTerrain.setHytaleAssetsDir(dir);
-            }
-        }
+        org.pepsoft.worldpainter.hytale.HytaleAssetsLocator.ensureAssetsConfigured();
     }
 
     private void updateSurfaceMaterialModel() {
