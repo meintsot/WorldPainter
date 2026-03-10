@@ -14,7 +14,6 @@ if %ERRORLEVEL% neq 0 (
 
 :: Get the directory this script is in
 set "SCRIPT_DIR=%~dp0"
-set "HYTALE_ASSETS_DIR=%SCRIPT_DIR%HytaleAssets"
 
 :: Find the JAR file
 for %%f in ("%SCRIPT_DIR%WPGUI-*-full.jar") do set "JAR_FILE=%%f"
@@ -22,15 +21,6 @@ for %%f in ("%SCRIPT_DIR%WPGUI-*-full.jar") do set "JAR_FILE=%%f"
 if not defined JAR_FILE (
     echo.
     echo ERROR: Could not find WPGUI-*-full.jar in %SCRIPT_DIR%
-    echo.
-    pause
-    exit /b 1
-)
-
-if not exist "%HYTALE_ASSETS_DIR%\Common\Icons\ItemsGenerated" if not exist "%HYTALE_ASSETS_DIR%\Common\Icons\Items" if not exist "%HYTALE_ASSETS_DIR%\Common\Items" (
-    echo.
-    echo ERROR: Could not find the bundled HytaleAssets subset in %HYTALE_ASSETS_DIR%
-    echo        Make sure you extracted and kept the full dist folder.
     echo.
     pause
     exit /b 1
@@ -48,7 +38,6 @@ java --add-opens java.desktop/sun.swing=ALL-UNNAMED ^
      --add-opens java.base/java.lang=ALL-UNNAMED ^
     -Dorg.pepsoft.worldpainter.classifier=hytale ^
     -Dorg.pepsoft.worldpainter.threads=%WP_MAX_THREADS% ^
-    -Dorg.pepsoft.worldpainter.hytaleAssetsDir="%HYTALE_ASSETS_DIR%" ^
      -Xmx10G ^
      -jar "%JAR_FILE%"
 
