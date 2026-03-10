@@ -18,29 +18,29 @@ public class HistoryEntry implements Serializable {
     public String getText() {
         switch (key) {
             case WORLD_LEGACY_PRE_0_2:
-                return "World created with WorldPainter older than 0.2";
+                return "World created with TalePainter older than 0.2";
             case WORLD_LEGACY_PRE_2_0_0:
-                return "World created with WorldPainter older than 2.0.0";
+                return "World created with TalePainter older than 2.0.0";
             case WORLD_CREATED:
-                return MessageFormat.format("World created with WorldPainter {0}", wpVersion);
+                return MessageFormat.format("World created with TalePainter {0}", wpVersion);
             case WORLD_IMPORTED_FROM_MINECRAFT_MAP:
-                return MessageFormat.format("World imported from Minecraft map {0} at {1} with WorldPainter {2}", args[0], args[1], wpVersion);
+                return MessageFormat.format("World imported from Minecraft map {0} at {1} with TalePainter {2}", args[0], args[1], wpVersion);
             case WORLD_IMPORTED_FROM_HEIGHT_MAP:
-                return MessageFormat.format("World imported from height map {0} with WorldPainter {1}", args[0], wpVersion);
+                return MessageFormat.format("World imported from height map {0} with TalePainter {1}", args[0], wpVersion);
             case WORLD_RECOVERED:
-                return MessageFormat.format("World recovered from corrupted file with WorldPainter {0}", wpVersion);
+                return MessageFormat.format("World recovered from corrupted file with TalePainter {0}", wpVersion);
             case WORLD_LOADED:
                 return MessageFormat.format("World loaded from file {0}", args[0]);
             case WORLD_SAVED:
                 return MessageFormat.format("World saved to file {0}", args[0]);
             case WORLD_EXPORTED_FULL:
-                return MessageFormat.format("World fully exported as Minecraft map named {0} at {1} with WorldPainter {2}", args[0], args[1], wpVersion);
+                return MessageFormat.format("World fully exported as Minecraft map named {0} at {1} with TalePainter {2}", args[0], args[1], wpVersion);
             case WORLD_EXPORTED_PARTIAL:
-                return MessageFormat.format("World partially exported as Minecraft map named {0} at {1} with WorldPainter {2}", args[0], args[1], wpVersion);
+                return MessageFormat.format("World partially exported as Minecraft map named {0} at {1} with TalePainter {2}", args[0], args[1], wpVersion);
             case WORLD_MERGED_FULL:
-                return MessageFormat.format("World fully merged with Minecraft map named {0} at {1} with WorldPainter {2}", args[0], args[1], wpVersion);
+                return MessageFormat.format("World fully merged with Minecraft map named {0} at {1} with TalePainter {2}", args[0], args[1], wpVersion);
             case WORLD_MERGED_PARTIAL:
-                return MessageFormat.format("World partially merged with Minecraft map named {0} at {1} with WorldPainter {2}", args[0], args[1], wpVersion);
+                return MessageFormat.format("World partially merged with Minecraft map named {0} at {1} with TalePainter {2}", args[0], args[1], wpVersion);
             case WORLD_DIMENSION_ADDED:
                 return MessageFormat.format("Dimension {0} added to world", args[0]);
             case WORLD_DIMENSION_REMOVED:
@@ -64,13 +64,13 @@ public class HistoryEntry implements Serializable {
             case WORLD_MASK_IMPORTED_TO_DIMENSION:
                 return MessageFormat.format("Mask {1} imported into dimension {0} as layer {2}", args[0], args[1], args[2]);
             case WORLD_RECOVERED_FROM_AUTOSAVE:
-                return MessageFormat.format("World recovered from autosave with WorldPainter {0}", wpVersion);
+                return MessageFormat.format("World recovered from autosave with TalePainter {0}", wpVersion);
             case WORLD_RETARGETED:
                 return MessageFormat.format("World retargeted from map format {0} to {1}", args[0], args[1]);
             case WORLD_DIMENSION_SCALED:
                 return MessageFormat.format("Dimension {0} scaled by {1}%", args[0], args[1]);
             default:
-                return MessageFormat.format("Unknown event ID {0} by WorldPainter {0} ({1})", key, wpVersion, wpBuild);
+                return MessageFormat.format("Unknown event ID {0} by TalePainter {0} ({1})", key, wpVersion, wpBuild);
         }
     }
 

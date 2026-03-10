@@ -55,13 +55,13 @@ public class WPTransferHandler extends TransferHandler {
             final int p = name.lastIndexOf('.');
             final String extension = (p != -1) ? name.substring(p + 1).toLowerCase() : null;
             if ((! "world".equals(extension)) && (! IMAGE_FILE_EXTENSIONS.contains(extension))) {
-                beepAndShowError(app, "The file is not a WorldPainter .world file or image file.", "Unsupported File");
+                beepAndShowError(app, "The file is not a TalePainter .world file or image file.", "Unsupported File");
                 return false;
             }
             try {
                 if (IMAGE_FILE_EXTENSIONS.contains(extension)) {
                     final int action = JOptionPane.showOptionDialog(app,
-                            "An image file was dropped on WorldPainter.\nSelect how you would like to import it:",
+                            "An image file was dropped on TalePainter.\nSelect how you would like to import it:",
                             "Select Image Import Action",
                             DEFAULT_OPTION,
                             QUESTION_MESSAGE,

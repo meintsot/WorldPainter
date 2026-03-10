@@ -96,10 +96,10 @@ public class ErrorDialog extends javax.swing.JDialog {
                     "Performance tab of the Preferences screen.");
             } else {
                 jTextArea1.setText("Not enough memory available for that operation!\n\n"
-                    + "WorldPainter is already using the recommended maximum\n"
+                    + "TalePainter is already using the recommended maximum\n"
                     + "amount of memory, so it is not recommended to give it\n"
                     + "more. To be able to perform the operation you should\n"
-                    + "install more memory (and reinstall WorldPainter).");
+                    + "install more memory (and reinstall TalePainter).");
             }
             jButton1.setEnabled(false);
             jButton1.setToolTipText("Not necessary to send details of out of memory errors");
@@ -181,7 +181,7 @@ public class ErrorDialog extends javax.swing.JDialog {
             mdcContextMap.forEach((key, value) -> event.setAttribute(new AttributeKeyVO<>(ATTRIBUTE_KEY_MDC_ENTRY + '.' + key), value));
         }
 
-        sb.append("WorldPainter version: " + Version.VERSION + " (" + Version.BUILD + ")" + eol);
+        sb.append("TalePainter version: " + Version.VERSION + " (" + Version.BUILD + ")" + eol);
         event.setAttribute(ATTRIBUTE_KEY_VERSION, Version.VERSION);
         event.setAttribute(ATTRIBUTE_KEY_BUILD, Version.BUILD);
         sb.append(eol);
@@ -290,7 +290,7 @@ public class ErrorDialog extends javax.swing.JDialog {
 
     private void email() {
         try {
-            URI uri = new URI("mailto", "worldpainter@pepsoft.org?subject=WorldPainter error report&body=" + body, null);
+            URI uri = new URI("mailto", "worldpainter@pepsoft.org?subject=TalePainter error report&body=" + body, null);
             Desktop desktop = Desktop.getDesktop();
             desktop.mail(uri);
             showInfo(this, "A new email message should have been opened now for you to send.\nIf it did not work, please use the \"copy to clipboard\" button\nand manually mail the information to worldpainter@pepsoft.org.", "Email Created");

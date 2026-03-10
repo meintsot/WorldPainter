@@ -161,7 +161,7 @@ public final class BackupUtils {
                 throw new MDCCapturingRuntimeException("I/O error getting backups directory file store for platform " + platform, e);
             }
         });
-        File backupsDir = new File(System.getProperty("user.home"), "WorldPainter Backups");
+        File backupsDir = new File(System.getProperty("user.home"), "TalePainter Backups");
         if (backupsDir.isDirectory()) {
             FileStore backupsDirStore = Files.getFileStore(backupsDir.toPath());
             backupsDirs.computeIfAbsent(backupsDirStore, key -> new HashSet<>()).add(backupsDir);

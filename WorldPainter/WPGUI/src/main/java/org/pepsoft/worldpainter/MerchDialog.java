@@ -80,7 +80,7 @@ public final class MerchDialog extends WorldPainterDialog {
         buttonMerchStore = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
-        setTitle("WorldPainter Has A Merch Store");
+        setTitle("TalePainter Has A Merch Store");
         setResizable(false);
 
         jLabel1.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
@@ -91,7 +91,7 @@ public final class MerchDialog extends WorldPainterDialog {
         jTextArea1.setColumns(20);
         jTextArea1.setFont(jTextArea1.getFont().deriveFont(jTextArea1.getFont().getSize()+6f));
         jTextArea1.setLineWrap(true);
-        jTextArea1.setText("WorldPainter has a merch store! Get your WorldPainter paraphernalia, be the envy of all your friends and support the development of WorldPainter.");
+        jTextArea1.setText("TalePainter has a merch store! Get your TalePainter paraphernalia, be the envy of all your friends and support the development of TalePainter.");
         jTextArea1.setWrapStyleWord(true);
         jTextArea1.setOpaque(false);
 

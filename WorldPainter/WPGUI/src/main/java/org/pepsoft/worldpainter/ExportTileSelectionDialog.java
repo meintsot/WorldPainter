@@ -158,7 +158,7 @@ public class ExportTileSelectionDialog extends WorldPainterDialog implements Win
 
         jComboBox1.addActionListener(this::jComboBox1ActionPerformed);
 
-        jLabel2.setText("WorldPainter works in tiles of 128 by 128 blocks. Select tiles to export:");
+        jLabel2.setText("TalePainter works in tiles of 128 by 128 blocks. Select tiles to export:");
 
         buttonClose.setText("OK");
         buttonClose.addActionListener(this::buttonCloseActionPerformed);

@@ -38,7 +38,7 @@ public class MixedMaterialHelper {
         if ((terrainDirectory == null) || (! terrainDirectory.isDirectory())) {
             terrainDirectory = DesktopUtils.getDocumentsFolder();
         }
-        File selectedFile = FileUtils.selectFileForOpen(SwingUtilities.getWindowAncestor(parent), "Select WorldPainter custom terrain file", terrainDirectory, new FileFilter() {
+        File selectedFile = FileUtils.selectFileForOpen(SwingUtilities.getWindowAncestor(parent), "Select TalePainter custom terrain file", terrainDirectory, new FileFilter() {
             @Override
             public boolean accept(File f) {
                 return f.isDirectory() || f.getName().toLowerCase().endsWith(".terrain");
@@ -46,7 +46,7 @@ public class MixedMaterialHelper {
 
             @Override
             public String getDescription() {
-                return "WorldPainter Custom Terrains (*.terrain)";
+                return "TalePainter Custom Terrains (*.terrain)";
             }
 
             @Override
@@ -64,7 +64,7 @@ public class MixedMaterialHelper {
                 beepAndShowError(parent, "An input error occurred while reading the file (message: " + e.getMessage() + ")", "Input Error");
             } catch (ClassCastException e) {
                 logger.error("{} while reading {}", e.getClass().getSimpleName(), selectedFile, e);
-                beepAndShowError(parent, "The selected file is not a valid WorldPainter custom terrain file", "Invalid File");
+                beepAndShowError(parent, "The selected file is not a valid TalePainter custom terrain file", "Invalid File");
             }
         }
         return null;
@@ -76,7 +76,7 @@ public class MixedMaterialHelper {
         if ((terrainDirectory == null) || (! terrainDirectory.isDirectory())) {
             terrainDirectory = DesktopUtils.getDocumentsFolder();
         }
-        File[] selectedFiles = FileUtils.selectFilesForOpen(SwingUtilities.getWindowAncestor(parent), "Select WorldPainter custom terrain file(s)", terrainDirectory, new FileFilter() {
+        File[] selectedFiles = FileUtils.selectFilesForOpen(SwingUtilities.getWindowAncestor(parent), "Select TalePainter custom terrain file(s)", terrainDirectory, new FileFilter() {
             @Override
             public boolean accept(File f) {
                 return f.isDirectory() || f.getName().toLowerCase().endsWith(".terrain");
@@ -84,7 +84,7 @@ public class MixedMaterialHelper {
 
             @Override
             public String getDescription() {
-                return "WorldPainter Custom Terrains (*.terrain)";
+                return "TalePainter Custom Terrains (*.terrain)";
             }
 
             @Override
@@ -105,7 +105,7 @@ public class MixedMaterialHelper {
                         beepAndShowError(parent, "An input error occurred while reading " + selectedFile + " (message: " + e.getMessage() + ")", "Input Error");
                     } catch (ClassCastException e) {
                         logger.error("{} while reading {}", e.getClass().getSimpleName(), selectedFile, e);
-                        beepAndShowError(parent, selectedFile + " is not a valid WorldPainter custom terrain file", "Invalid File");
+                        beepAndShowError(parent, selectedFile + " is not a valid TalePainter custom terrain file", "Invalid File");
                     }
                 }
                 return (! materials.isEmpty()) ? materials.toArray(new MixedMaterial[materials.size()]) : null;
@@ -121,7 +121,7 @@ public class MixedMaterialHelper {
             terrainDirectory = DesktopUtils.getDocumentsFolder();
         }
         File selectedFile = new File(terrainDirectory, org.pepsoft.util.FileUtils.sanitiseName(material.getName()) + ".terrain");
-        selectedFile = FileUtils.selectFileForSave(SwingUtilities.getWindowAncestor(parent), "Export as WorldPainter custom terrain file", selectedFile, new FileFilter() {
+        selectedFile = FileUtils.selectFileForSave(SwingUtilities.getWindowAncestor(parent), "Export as TalePainter custom terrain file", selectedFile, new FileFilter() {
             @Override
             public boolean accept(File f) {
                 return f.isDirectory() || f.getName().toLowerCase().endsWith(".terrain");
@@ -129,7 +129,7 @@ public class MixedMaterialHelper {
 
             @Override
             public String getDescription() {
-                return "WorldPainter Custom Terrains (*.terrain)";
+                return "TalePainter Custom Terrains (*.terrain)";
             }
 
             @Override

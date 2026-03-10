@@ -57,7 +57,7 @@ public class GetWorldOp extends AbstractOperation<World2> {
         } catch (IOException e) {
             throw new ScriptException("I/O error while loading world " + fileName, e);
         } catch (UnloadableWorldException e) {
-            throw new ScriptException("Unloadable world " + fileName + " (not a WorldPainter world?)", e);
+            throw new ScriptException("Unloadable world " + fileName + " (not a TalePainter world?)", e);
         }
         return worldIO.getWorld();
     }

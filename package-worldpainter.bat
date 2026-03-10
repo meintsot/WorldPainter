@@ -8,7 +8,7 @@ if not exist "%PROJECT_DIR%pom.xml" (
     if exist "%PROJECT_DIR%WorldPainter\pom.xml" (
         set "PROJECT_DIR=%PROJECT_DIR%WorldPainter\"
     ) else (
-        echo [ERROR] Could not find WorldPainter pom.xml.
+        echo [ERROR] Could not find TalePainter pom.xml.
         pause
         exit /b 1
     )
@@ -90,7 +90,7 @@ echo [INFO] Using Maven command: !MVN_CMD!
 echo [INFO] Project directory: %PROJECT_DIR%
 echo.
 echo ============================================
-echo   Building WorldPainter (Hytale Edition)
+echo   Building TalePainter (Hytale Edition)
 echo   Fat JAR for distribution
 echo ============================================
 echo.

@@ -3,7 +3,7 @@
 <Form version="1.5" maxVersion="1.7" type="org.netbeans.modules.form.forminfo.JDialogFormInfo">
   <Properties>
     <Property name="defaultCloseOperation" type="int" value="2"/>
-    <Property name="title" type="java.lang.String" value="Please Support WorldPainter"/>
+    <Property name="title" type="java.lang.String" value="Please Support TalePainter"/>
     <Property name="resizable" type="boolean" value="false"/>
   </Properties>
   <SyntheticProperties>
@@ -90,7 +90,7 @@
           </FontInfo>
         </Property>
         <Property name="lineWrap" type="boolean" value="true"/>
-        <Property name="text" type="java.lang.String" value="Thank you for using WorldPainter!&#xa;&#xa;WorldPainter takes a lot of effort to create and maintain. Please consider helping out with a donation, or by buying merchandise from our merch store."/>
+        <Property name="text" type="java.lang.String" value="Thank you for using TalePainter!&#xa;&#xa;TalePainter takes a lot of effort to create and maintain. Please consider helping out with a donation, or by buying merchandise from our merch store."/>
         <Property name="wrapStyleWord" type="boolean" value="true"/>
         <Property name="opaque" type="boolean" value="false"/>
       </Properties>

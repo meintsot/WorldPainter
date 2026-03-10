@@ -42,7 +42,7 @@ public class BiomesViewerFrame extends JFrame {
     }
     
     public BiomesViewerFrame(long seed, final Point marker, int preferredBiomeAlgorithm, ColourScheme colourScheme, SeedListener seedListener) throws HeadlessException {
-        super("WorldPainter - Biomes Viewer");
+        super("TalePainter - Biomes Viewer");
         this.colourScheme = colourScheme;
         this.seedListener = seedListener;
         standAloneMode = App.getInstanceIfExists() == null;
@@ -156,7 +156,7 @@ public class BiomesViewerFrame extends JFrame {
         toolBar.add(Box.createHorizontalStrut(5));
         createWorldButton = new JButton("Create world");
         if (! standAloneMode) {
-            createWorldButton.setToolTipText("Create a new WorldPainter world from the selected tiles");
+            createWorldButton.setToolTipText("Create a new TalePainter world from the selected tiles");
             createWorldButton.addActionListener(e -> createWorld());
         }
         createWorldButton.setEnabled(false);

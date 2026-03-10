@@ -97,7 +97,7 @@ public class Mapper {
         if ((dim < 0) || (dim > 2)) {
             error("Invalid dimension specified: " + dim);
         }
-        System.out.println("WorldPainter Mapper tool - version " + Version.VERSION + " - © 2012 - 2014 pepsoft.org");
+        System.out.println("TalePainter Mapper tool - version " + Version.VERSION + " - © 2012 - 2014 pepsoft.org");
         ColourScheme colourScheme = ColourScheme.DEFAULT;
         if (output == null) {
             output = new File(worldDir.getName().toLowerCase() + ".png");

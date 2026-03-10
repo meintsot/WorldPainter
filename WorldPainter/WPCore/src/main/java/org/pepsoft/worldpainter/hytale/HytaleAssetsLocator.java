@@ -103,7 +103,7 @@ public final class HytaleAssetsLocator {
         candidates.add(new File("..", "HytaleAssets"));
         candidates.add(new File(System.getProperty("user.dir"), "HytaleAssets"));
         candidates.add(new File(System.getProperty("user.dir"), ".." + File.separator + "HytaleAssets"));
-        candidates.add(new File(System.getProperty("user.home"), "Desktop" + File.separator + "WorldPainter" + File.separator + "HytaleAssets"));
+        candidates.add(new File(System.getProperty("user.home"), "Desktop" + File.separator + "TalePainter" + File.separator + "HytaleAssets"));
 
         addWindowsCandidate(candidates, System.getenv("APPDATA"));
         addWindowsCandidate(candidates, System.getenv("LOCALAPPDATA"));

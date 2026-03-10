@@ -35,7 +35,7 @@ public class TestPing {
         sslContext.init(null, new TrustManager[] {trustManager}, new SecureRandom());
         HttpsURLConnection.setDefaultSSLSocketFactory(sslContext.getSocketFactory());
 
-        String httpAgent = "WorldPainter " + Version.VERSION + "; " + System.getProperty("os.name") + " " + System.getProperty("os.version") + " " + System.getProperty("os.arch") + ";";
+        String httpAgent = "TalePainter " + Version.VERSION + "; " + System.getProperty("os.name") + " " + System.getProperty("os.version") + " " + System.getProperty("os.arch") + ";";
         System.setProperty("http.agent", httpAgent);
 
         URL url = new URL("https://bo.worldpainter.net:1443/ping");

@@ -723,7 +723,7 @@ public class HytaleWorldExporter implements WorldExporter {
             ProgressReceiver progressReceiver) throws IOException {
         
         Map<String, Object> terrainData = new LinkedHashMap<>();
-        terrainData.put("format", "WorldPainter Hytale Terrain Export");
+        terrainData.put("format", "TalePainter Hytale Terrain Export");
         terrainData.put("version", 1);
         terrainData.put("blockOffsetX", blockOffsetX);
         terrainData.put("blockOffsetZ", blockOffsetZ);

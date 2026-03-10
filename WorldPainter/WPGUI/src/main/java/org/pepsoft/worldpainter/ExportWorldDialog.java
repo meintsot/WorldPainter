@@ -690,7 +690,7 @@ public class ExportWorldDialog extends WPDialogWithPaintSelection {
                 beepAndShowError(this, "The selected file \"" + dataPackFile.getName() + "\" is not a Minecraft data pack.", "Not A Data Pack");
                 return;
             } else if (dataPackFile.getName().equalsIgnoreCase("worldpainter.zip")) {
-                beepAndShowError(this, "The WorldPainter data pack is managed by WorldPainter.", "Cannot Add WorldPainter Data Pack");
+                beepAndShowError(this, "The TalePainter data pack is managed by TalePainter.", "Cannot Add TalePainter Data Pack");
                 return;
             } else {
                 for (Enumeration<File> e = dataPacksListModel.elements(); e.hasMoreElements(); ) {
@@ -881,7 +881,7 @@ public class ExportWorldDialog extends WPDialogWithPaintSelection {
             }
         });
 
-        jLabel12.setText("<html><i>Use at own risk. WorldPainter does</i> not <i>check the validity or version! <i></html>");
+        jLabel12.setText("<html><i>Use at own risk. TalePainter does</i> not <i>check the validity or version! <i></html>");
 
         panelMinecraftWorldBorder.setBorder(javax.swing.BorderFactory.createTitledBorder("World Border"));
 

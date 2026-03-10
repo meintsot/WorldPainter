@@ -344,7 +344,7 @@
           <Image iconType="3" name="/org/pepsoft/worldpainter/icons/error.png"/>
         </Property>
         <Property name="text" type="java.lang.String" value=" "/>
-        <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;This removes &lt;em&gt;all&lt;/em&gt; wood and leaf blocks, including man-made ones!&lt;br&gt;&#xa;WorldPainter can&apos;t tell the difference between natural and man-made wood blocks.&lt;br&gt;&#xa;Be sure to protect your builds with the Read-Only layer.&lt;/html&gt;"/>
+        <Property name="toolTipText" type="java.lang.String" value="&lt;html&gt;This removes &lt;em&gt;all&lt;/em&gt; wood and leaf blocks, including man-made ones!&lt;br&gt;&#xa;TalePainter can&apos;t tell the difference between natural and man-made wood blocks.&lt;br&gt;&#xa;Be sure to protect your builds with the Read-Only layer.&lt;/html&gt;"/>
       </Properties>
     </Component>
     <Component class="javax.swing.JLabel" name="jLabel8">

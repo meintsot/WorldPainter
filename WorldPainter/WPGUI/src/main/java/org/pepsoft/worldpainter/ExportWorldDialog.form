@@ -443,7 +443,7 @@
             </Component>
             <Component class="javax.swing.JLabel" name="jLabel12">
               <Properties>
-                <Property name="text" type="java.lang.String" value="&lt;html&gt;&lt;i&gt;Use at own risk. WorldPainter does&lt;/i&gt; not &lt;i&gt;check the validity or version! &lt;i&gt;&lt;/html&gt;"/>
+                <Property name="text" type="java.lang.String" value="&lt;html&gt;&lt;i&gt;Use at own risk. TalePainter does&lt;/i&gt; not &lt;i&gt;check the validity or version! &lt;i&gt;&lt;/html&gt;"/>
               </Properties>
             </Component>
             <Container class="javax.swing.JPanel" name="panelMinecraftWorldBorder">

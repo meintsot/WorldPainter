@@ -84,7 +84,7 @@
     </Component>
     <Component class="javax.swing.JLabel" name="jLabel2">
       <Properties>
-        <Property name="text" type="java.lang.String" value="WorldPainter works in tiles of 128 by 128 blocks. Select tiles to export:"/>
+        <Property name="text" type="java.lang.String" value="TalePainter works in tiles of 128 by 128 blocks. Select tiles to export:"/>
       </Properties>
     </Component>
     <Component class="javax.swing.JButton" name="buttonClose">

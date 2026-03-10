@@ -85,7 +85,7 @@ public class RotateWorldDialog extends WorldPainterDialog {
         if (affectedDimensions.stream().flatMap(dimension -> dimension.getOverlays().stream()).anyMatch(overlay -> ! overlay.getFile().canRead())) {
             beepAndShowWarning(this, "One or more overlay image files could not be read,\nand have therefore not been adjusted.\nYou will need to adjust these manually.", "Not All Overlays Adjusted");
         } else if (affectedDimensions.stream().anyMatch(dimension -> ! dimension.getOverlays().isEmpty())) {
-            beepAndShowWarning(this, "The overlay(s) have been shifted to the correct location, but not rotated.\nYou must manually rotate the image files outside of WorldPainter.", "Overlays Not Rotated");
+            beepAndShowWarning(this, "The overlay(s) have been shifted to the correct location, but not rotated.\nYou must manually rotate the image files outside of TalePainter.", "Overlays Not Rotated");
         }
         ok();
     }

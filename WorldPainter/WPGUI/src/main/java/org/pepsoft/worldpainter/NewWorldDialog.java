@@ -1249,7 +1249,7 @@ public class NewWorldDialog extends WorldPainterDialog {
     public static void showMasterDimensionInfo(Window parent) {
         showInfo(parent, "<html>" +
                 "<h1>Master Dimensions</h1>" +
-                "<p>A Master Dimension is a WorldPainter dimension type (similar to a Ceiling Dimension). It is Exported<br>" +
+                "<p>A Master Dimension is a TalePainter dimension type (similar to a Ceiling Dimension). It is Exported<br>" +
                 "at 1:16 scale wherever the regular Surface Dimension does not exist. Because the Master Dimension is<br>" +
                 "only scaled at Export, operations such as saving, loading and editing it are <em>much</em> faster than<br>" +
                 "creating a regular Surface Dimension of that size. Note that exporting it takes just as long though." +
@@ -1856,7 +1856,7 @@ public class NewWorldDialog extends WorldPainterDialog {
                         "<p>A master dimension will be exported at 256 times the size (by area)<br>and is meant for speeding up the creation of very large maps.</p>" +
                         "<ul>" +
                         "    <li>You <b>cannot change your mind</b> later; if you do not want this to be<br>a master dimension later you will have to start over." +
-                        "    <li>Loading, editing and saving are quicker, but Exporting is not!<br><b>Exporting takes 256 times longer</b> than a regular dimension<br>of the same pixel size in WorldPainter." +
+                        "    <li>Loading, editing and saving are quicker, but Exporting is not!<br><b>Exporting takes 256 times longer</b> than a regular dimension<br>of the same pixel size in TalePainter." +
                         "    <li>You can detail areas of the Master Dimension at 1:1 scale by<br>switching to the Surface Dimension (" + COMMAND_KEY_NAME + "+M or View menu)<br>and then adding tiles (" + COMMAND_KEY_NAME + "+T or Edit menu)." +
                         "</ul>" +
                         "<p>Are you sure?</p>" +

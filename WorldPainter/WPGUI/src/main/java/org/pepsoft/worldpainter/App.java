@@ -150,7 +150,7 @@ public final class App extends JFrame implements BrushControl,
         BiomesViewerFrame.SeedListener, BrushOptions.Listener, CustomBiomeListener,
         DockableHolder, PropertyChangeListener, Dimension.Listener, Tile.Listener, MapDragControl {
     private App() {
-        super((mode == Mode.WORLDPAINTER) ? "WorldPainter" : "MinecraftMapEditor"); // NOI18N
+        super((mode == Mode.WORLDPAINTER) ? "TalePainter" : "MinecraftMapEditor"); // NOI18N
 
         if (MainFrame.getMainFrame() != null) {
             throw new IllegalArgumentException("Already instantiated");
@@ -528,7 +528,7 @@ public final class App extends JFrame implements BrushControl,
         }
         this.dimension = dimension;
         if (dimension != null) {
-            setTitle("WorldPainter - " + world.getName() + " - " + dimension.getName()); // NOI18N
+            setTitle("TalePainter - " + world.getName() + " - " + dimension.getName()); // NOI18N
             final Anchor anchor = dimension.getAnchor();
             viewSurfaceMenuItem.setSelected(anchor.dim == DIM_NORMAL);
             viewNetherMenuItem.setSelected(anchor.dim == DIM_NETHER);
@@ -538,7 +538,7 @@ public final class App extends JFrame implements BrushControl,
             // Legacy: if this is an older world with an overlay enabled, warn the user that it may be incorrectly
             // located (we used to offer to fix this, but this should be exceedingly rare).
             if (dimension.isFixOverlayCoords()) {
-                beepAndShowWarning(this, "This world was created in an older version of WorldPainter\n" +
+                beepAndShowWarning(this, "This world was created in an older version of TalePainter\n" +
                         "in which the overlay offsets were not stored correctly.\n" +
                         "You may need to fix the position of your overlay.", "Check Overlay Positioning");
                 dimension.setFixOverlayCoords(false);
@@ -705,7 +705,7 @@ public final class App extends JFrame implements BrushControl,
         } else {
             view.setDimension(null);
             view.setBackgroundDimension(null, -1, null);
-            setTitle("WorldPainter"); // NOI18N
+            setTitle("TalePainter"); // NOI18N
 
             // Clear action states
             ACTION_GRID.setSelected(false);
@@ -992,10 +992,10 @@ public final class App extends JFrame implements BrushControl,
                 && (newWorld.getMetadata() != null)
                 && newWorld.getMetadata().containsKey(METADATA_KEY_WP_VERSION)
                 && (! ((String) newWorld.getMetadata().get(METADATA_KEY_WP_VERSION)).contains("SNAPSHOT"))) {
-            beepAndShowWarning(this, "You are running a snapshot version of WorldPainter.\n" +
-                    "This file was last saved by a regular version of WorldPainter.\n" +
+            beepAndShowWarning(this, "You are running a snapshot version of TalePainter.\n" +
+                    "This file was last saved by a regular version of TalePainter.\n" +
                     "If you save the file with this version, you may no longer be able to open it\n" +
-                    "using a regular version of WorldPainter!", "Loading Non-snapshot World");
+                    "using a regular version of TalePainter!", "Loading Non-snapshot World");
         }
 
         Set<Warning> warnings = newWorld.getWarnings();
@@ -1558,7 +1558,7 @@ public final class App extends JFrame implements BrushControl,
                 rotateAutosaveFile();
             } catch (RuntimeException | Error e) {
                 logger.error("An exception occurred while trying to rotate the autosave", e);
-                beepAndShowWarning(this, "An error occurred while trying to clear the autosave.\nWorldPainter may try to load the autosave on the next start.\nIf this keeps happening, please report it to the author.", "Clearing Autosave Failed");
+                beepAndShowWarning(this, "An error occurred while trying to clear the autosave.\nTalePainter may try to load the autosave on the next start.\nIf this keeps happening, please report it to the author.", "Clearing Autosave Failed");
             }
             return true;
         } finally {
@@ -2364,7 +2364,7 @@ public final class App extends JFrame implements BrushControl,
         } else {
             dir = DesktopUtils.getDocumentsFolder();
         }
-        File selectedFile = FileUtils.selectFileForOpen(this, "Select a WorldPainter world", dir,
+        File selectedFile = FileUtils.selectFileForOpen(this, "Select a TalePainter world", dir,
                 new FileFilter() {
                     @Override
                     public boolean accept(File f) {
@@ -2396,7 +2396,7 @@ public final class App extends JFrame implements BrushControl,
                 return;
             }
             if (! selectedFile.canRead()) {
-                showMessageDialog(this, "WorldPainter is not authorised to read the selected file", "Access Denied", ERROR_MESSAGE);
+                showMessageDialog(this, "TalePainter is not authorised to read the selected file", "Access Denied", ERROR_MESSAGE);
                 return;
             }
             open(selectedFile);
@@ -2445,7 +2445,7 @@ public final class App extends JFrame implements BrushControl,
                     file = new File(DesktopUtils.getDocumentsFolder(), org.pepsoft.util.FileUtils.sanitiseName(world.getName().trim() + ".world"));
                 }
             }
-            file = FileUtils.selectFileForSave(App.this, "Save as a WorldPainter world", file, new FileFilter() {
+            file = FileUtils.selectFileForSave(App.this, "Save as a TalePainter world", file, new FileFilter() {
                 @Override
                 public boolean accept(File f) {
                     return f.isDirectory()
@@ -2530,12 +2530,12 @@ public final class App extends JFrame implements BrushControl,
             final String worldName = world.getName();
             if (worldName.length() != name.length()) {
                 world.setName(name);
-                setTitle("WorldPainter - " + name + " - " + dimension.getName()); // NOI18N
+                setTitle("TalePainter - " + name + " - " + dimension.getName()); // NOI18N
             } else {
                 for (int i = 0; i < name.length(); i++) {
                     if ((name.charAt(i) != '_') && (name.charAt(i) != worldName.charAt(i))) {
                         world.setName(name);
-                        setTitle("WorldPainter - " + name + " - " + dimension.getName()); // NOI18N
+                        setTitle("TalePainter - " + name + " - " + dimension.getName()); // NOI18N
                         break;
                     }
                 }
@@ -2643,7 +2643,7 @@ public final class App extends JFrame implements BrushControl,
                 rotateAutosaveFile();
             } catch (RuntimeException | Error e) {
                 logger.error("An exception occurred while trying to rotate the autosave", e);
-                beepAndShowWarning(this, "An error occurred while trying to clear the autosave.\nWorldPainter may try to load the autosave on the next start.\nIf this keeps happening, please report it to the author.", "Clearing Autosave Failed");
+                beepAndShowWarning(this, "An error occurred while trying to clear the autosave.\nTalePainter may try to load the autosave on the next start.\nIf this keeps happening, please report it to the author.", "Clearing Autosave Failed");
             }
             lastSelectedFile = file;
             addRecentlyUsedWorld(file);
@@ -2698,7 +2698,7 @@ public final class App extends JFrame implements BrushControl,
             if (! config.isAutosaveEnabled()) {
                 logger.debug("[AUTOSAVE] Autosave disabled in configuration");
             } else if (config.isAutosaveInhibited()) {
-                logger.debug("[AUTOSAVE] Autosave inhibited (e.g. due to another instance of WorldPainter running)");
+                logger.debug("[AUTOSAVE] Autosave inhibited (e.g. due to another instance of TalePainter running)");
             } else if (world == null) {
                 logger.debug("[AUTOSAVE] No world loaded");
             } else if (pauseAutosave != 0) {
@@ -4304,7 +4304,7 @@ public final class App extends JFrame implements BrushControl,
     java.io.File promptForHytaleAssetsDir() {
         final int result = JOptionPane.showConfirmDialog(this,
                 "<html>Hytale assets were not found automatically.<br><br>" +
-                        "WorldPainter needs access to your Hytale assets for blocks, prefabs, and gameplay configs.<br>" +
+                        "TalePainter needs access to your Hytale assets for blocks, prefabs, and gameplay configs.<br>" +
                         "Would you like to select your HytaleAssets folder or Hytale launcher install folder now?</html>",
                 "Locate Hytale Assets",
                 YES_NO_OPTION,
@@ -4807,7 +4807,7 @@ public final class App extends JFrame implements BrushControl,
 //                        try {
 //                            config.save();
 //                            easyModeItem.setSelected(true);
-//                            JOptionPane.showMessageDialog(App.this, "Advanced Mode has been activated. You must\nrestart WorldPainter for the change to take effect!", "Restart Required", JOptionPane.INFORMATION_MESSAGE);
+//                            JOptionPane.showMessageDialog(App.this, "Advanced Mode has been activated. You must\nrestart TalePainter for the change to take effect!", "Restart Required", JOptionPane.INFORMATION_MESSAGE);
 //                        } catch (IOException exception) {
 //                            ErrorDialog errorDialog = new ErrorDialog(App.this);
 //                            errorDialog.setException(exception);
@@ -4822,7 +4822,7 @@ public final class App extends JFrame implements BrushControl,
 //                        try {
 //                            config.save();
 //                            easyModeItem.setSelected(false);
-//                            JOptionPane.showMessageDialog(App.this, "Advanced Mode has been deactivated. You must\nrestart WorldPainter for the change to take effect!", "Restart Required", JOptionPane.INFORMATION_MESSAGE);
+//                            JOptionPane.showMessageDialog(App.this, "Advanced Mode has been deactivated. You must\nrestart TalePainter for the change to take effect!", "Restart Required", JOptionPane.INFORMATION_MESSAGE);
 //                        } catch (IOException exception) {
 //                            ErrorDialog errorDialog = new ErrorDialog(App.this);
 //                            errorDialog.setException(exception);
@@ -4868,7 +4868,7 @@ public final class App extends JFrame implements BrushControl,
                         rotateAutosaveFile();
                     } catch (RuntimeException | Error e2) {
                         logger.error("An exception occurred while trying to rotate the autosave", e2);
-                        beepAndShowWarning(this, "An error occurred while trying to clear the autosave.\nWorldPainter may try to load the autosave on the next start.\nIf this keeps happening, please report it to the author.", "Clearing Autosave Failed");
+                        beepAndShowWarning(this, "An error occurred while trying to clear the autosave.\nTalePainter may try to load the autosave on the next start.\nIf this keeps happening, please report it to the author.", "Clearing Autosave Failed");
                     }
                 }
             }
@@ -6584,7 +6584,7 @@ public final class App extends JFrame implements BrushControl,
         if ((layerDirectory == null) || (! layerDirectory.isDirectory())) {
             layerDirectory = DesktopUtils.getDocumentsFolder();
         }
-        final File[] selectedFiles = FileUtils.selectFilesForOpen(this, "Select WorldPainter layer file(s)", layerDirectory, new FileFilter() {
+        final File[] selectedFiles = FileUtils.selectFilesForOpen(this, "Select TalePainter layer file(s)", layerDirectory, new FileFilter() {
             @Override
             public boolean accept(File f) {
                 return f.isDirectory() || f.getName().toLowerCase().endsWith(".layer");
@@ -6592,7 +6592,7 @@ public final class App extends JFrame implements BrushControl,
 
             @Override
             public String getDescription() {
-                return "WorldPainter Custom Layers (*.layer)";
+                return "TalePainter Custom Layers (*.layer)";
             }
 
             @Override
@@ -6632,15 +6632,15 @@ public final class App extends JFrame implements BrushControl,
                     return;
                 } catch (IOException e) {
                     logger.error("I/O error while loading file " + selectedFile, e);
-                    beepAndShowError(this, "I/O error occurred while reading the specified file,\nor is not a (valid) WorldPainter layer file", "I/O Error Or Invalid File");
+                    beepAndShowError(this, "I/O error occurred while reading the specified file,\nor is not a (valid) TalePainter layer file", "I/O Error Or Invalid File");
                     return;
                 } catch (ClassNotFoundException e) {
                     logger.error("Class not found exception while loading file " + selectedFile, e);
-                    beepAndShowError(this, "The specified file is not a (valid) WorldPainter layer file", "Invalid File");
+                    beepAndShowError(this, "The specified file is not a (valid) TalePainter layer file", "Invalid File");
                     return;
                 } catch (ClassCastException e) {
                     logger.error("Class cast exception while loading file " + selectedFile, e);
-                    beepAndShowError(this, "The specified file is not a (valid) WorldPainter layer file", "Invalid File");
+                    beepAndShowError(this, "The specified file is not a (valid) TalePainter layer file", "Invalid File");
                     return;
                 }
             }
@@ -6683,7 +6683,7 @@ public final class App extends JFrame implements BrushControl,
         } else {
             dir = DesktopUtils.getDocumentsFolder();
         }
-        final File selectedFile = FileUtils.selectFileForOpen(this, "Select a WorldPainter world", dir,
+        final File selectedFile = FileUtils.selectFileForOpen(this, "Select a TalePainter world", dir,
                 new FileFilter() {
                     @Override
                     public boolean accept(File f) {
@@ -6715,7 +6715,7 @@ public final class App extends JFrame implements BrushControl,
                 return;
             }
             if (! selectedFile.canRead()) {
-                showMessageDialog(this, "WorldPainter is not authorised to read the selected file", "Access Denied", ERROR_MESSAGE);
+                showMessageDialog(this, "TalePainter is not authorised to read the selected file", "Access Denied", ERROR_MESSAGE);
                 return;
             }
             final World2 selectedWorld = ProgressDialog.executeTask(this, new LoadWorldTask(this, selectedFile), NOT_CANCELABLE);

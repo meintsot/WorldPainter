@@ -830,7 +830,7 @@ public class CustomLayerController implements PropertyChangeListener {
         if ((layerDirectory == null) || (! layerDirectory.isDirectory())) {
             layerDirectory = DesktopUtils.getDocumentsFolder();
         }
-        File selectedFile = FileUtils.selectFileForSave(app, "Export WorldPainter layer file", new File(layerDirectory, org.pepsoft.util.FileUtils.sanitiseName(layer.getName()) + ".layer"), new FileFilter() {
+        File selectedFile = FileUtils.selectFileForSave(app, "Export TalePainter layer file", new File(layerDirectory, org.pepsoft.util.FileUtils.sanitiseName(layer.getName()) + ".layer"), new FileFilter() {
             @Override
             public boolean accept(File f) {
                 return f.isDirectory() || f.getName().toLowerCase().endsWith(".layer");
@@ -838,7 +838,7 @@ public class CustomLayerController implements PropertyChangeListener {
 
             @Override
             public String getDescription() {
-                return "WorldPainter Custom Layers (*.layer)";
+                return "TalePainter Custom Layers (*.layer)";
             }
 
             @Override

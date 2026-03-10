@@ -86,7 +86,7 @@ public abstract class AbstractWorldExporter implements WorldExporter {
         File minecraftDir = baseDir.getParentFile();
         File backupsDir = new File(minecraftDir, "backups");
         if ((! backupsDir.isDirectory()) &&  (! backupsDir.mkdirs())) {
-            backupsDir = new File(System.getProperty("user.home"), "WorldPainter Backups");
+            backupsDir = new File(System.getProperty("user.home"), "TalePainter Backups");
             if ((! backupsDir.isDirectory()) && (! backupsDir.mkdirs())) {
                 throw new IOException("Could not create " + backupsDir);
             }

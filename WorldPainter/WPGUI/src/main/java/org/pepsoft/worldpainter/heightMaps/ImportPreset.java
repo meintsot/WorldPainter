@@ -71,7 +71,7 @@ public abstract class ImportPreset {
             }
         }
     };
-    public static final ImportPreset WORLDPAINTER_LOW_RES_0_BASED = new ImportPreset("One to one (e.g. low res WorldPainter export); from 0") {
+    public static final ImportPreset WORLDPAINTER_LOW_RES_0_BASED = new ImportPreset("One to one (e.g. low res TalePainter export); from 0") {
         @Override
         public Mapping getMapping(double imageMaxHeight, double imageLow, double imageHigh, Platform platform, int maxHeight) {
             if (imageLow < 0) {
@@ -88,7 +88,7 @@ public abstract class ImportPreset {
         }
     };
 
-    public static final ImportPreset WORLDPAINTER_HIGH_RES_0_BASED = new ImportPreset("256 to one (e.g. high res WorldPainter export); from 0") {
+    public static final ImportPreset WORLDPAINTER_HIGH_RES_0_BASED = new ImportPreset("256 to one (e.g. high res TalePainter export); from 0") {
         @Override
         public Mapping getMapping(double imageMaxHeight, double imageLow, double imageHigh, Platform platform, int maxHeight) {
             if (imageLow < 0) {
@@ -114,7 +114,7 @@ public abstract class ImportPreset {
         }
     };
 
-    public static final ImportPreset WORLDPAINTER_LOW_RES_MINUS_64_BASED = new ImportPreset("One to one (e.g. low res WorldPainter export); from -64") {
+    public static final ImportPreset WORLDPAINTER_LOW_RES_MINUS_64_BASED = new ImportPreset("One to one (e.g. low res TalePainter export); from -64") {
         @Override
         public Mapping getMapping(double imageMaxHeight, double imageLow, double imageHigh, Platform platform, int maxHeight) {
             if (imageLow < 0) {
@@ -131,7 +131,7 @@ public abstract class ImportPreset {
         }
     };
 
-    public static final ImportPreset WORLDPAINTER_HIGH_RES_MINUS_64_BASED = new ImportPreset("256 to one (e.g. high res WorldPainter export); from -64") {
+    public static final ImportPreset WORLDPAINTER_HIGH_RES_MINUS_64_BASED = new ImportPreset("256 to one (e.g. high res TalePainter export); from -64") {
         @Override
         public Mapping getMapping(double imageMaxHeight, double imageLow, double imageHigh, Platform platform, int maxHeight) {
             if (imageLow < 0) {

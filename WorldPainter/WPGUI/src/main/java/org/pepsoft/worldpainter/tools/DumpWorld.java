@@ -65,7 +65,7 @@ public class DumpWorld {
         System.out.println("    Northernmost tile: " + dimension.getLowestY() + "; southernmost tile: " + dimension.getHighestY());
         System.out.println("    Total number of tiles: " + dimension.getTileCount());
         System.out.println("    Generator: " + dimension.getGenerator());
-        System.out.println("    WorldPainter seed: " + dimension.getSeed() + "; Minecraft seed: " + dimension.getMinecraftSeed());
+        System.out.println("    TalePainter seed: " + dimension.getSeed() + "; Minecraft seed: " + dimension.getMinecraftSeed());
         if (dimension.getBorder() != null) {
             if (dimension.getBorder().isEndless()) {
                 switch (dimension.getBorder()) {

@@ -51,7 +51,7 @@ public abstract class JavaLevel extends AbstractNBTItem {
             setInt(TAG_DATA_VERSION, dataVersion);
             Map<String, Tag> versionTag = new HashMap<>();
             versionTag.put(TAG_ID, new IntTag(TAG_ID, dataVersion));
-            versionTag.put(TAG_NAME, new StringTag(TAG_NAME, "WorldPainter"));
+            versionTag.put(TAG_NAME, new StringTag(TAG_NAME, "TalePainter"));
             versionTag.put(TAG_SNAPSHOT, new ByteTag(TAG_SNAPSHOT, (byte) (Version.isSnapshot() ? 1 : 0)));
             setMap(TAG_VERSION, versionTag);
         }
@@ -513,7 +513,7 @@ public abstract class JavaLevel extends AbstractNBTItem {
             datapack.addDescriptor("pack.mcmeta", Meta.builder()
                     .pack(Meta.Pack.builder()
                             .packFormat((platform == JAVA_ANVIL_1_17) ? 7 : 9)
-                            .description("WorldPainter Settings").build()).build());
+                            .description("TalePainter Settings").build()).build());
             datapack.addDescriptor("data/minecraft/dimension_type/overworld.json", Dimension.createDefault(platform, DIM_NORMAL, minHeight, maxHeight));
             datapack.write(new FileOutputStream(datapackFile));
         } catch (IOException e) {

@@ -3,7 +3,7 @@
 <Form version="1.5" maxVersion="1.7" type="org.netbeans.modules.form.forminfo.JDialogFormInfo">
   <Properties>
     <Property name="defaultCloseOperation" type="int" value="2"/>
-    <Property name="title" type="java.lang.String" value="WorldPainter Has A Merch Store"/>
+    <Property name="title" type="java.lang.String" value="TalePainter Has A Merch Store"/>
     <Property name="resizable" type="boolean" value="false"/>
   </Properties>
   <SyntheticProperties>
@@ -81,7 +81,7 @@
           </FontInfo>
         </Property>
         <Property name="lineWrap" type="boolean" value="true"/>
-        <Property name="text" type="java.lang.String" value="WorldPainter has a merch store! Get your WorldPainter paraphernalia, be the envy of all your friends and support the development of WorldPainter."/>
+        <Property name="text" type="java.lang.String" value="TalePainter has a merch store! Get your TalePainter paraphernalia, be the envy of all your friends and support the development of TalePainter."/>
         <Property name="wrapStyleWord" type="boolean" value="true"/>
         <Property name="opaque" type="boolean" value="false"/>
       </Properties>

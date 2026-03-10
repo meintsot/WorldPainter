@@ -42,7 +42,7 @@ import static org.pepsoft.worldpainter.util.LayoutUtils.setDefaultSizeAndLocatio
  */
 public class ThreeDeeFrame extends JFrame implements WindowListener {
     public ThreeDeeFrame(Dimension dimension, ColourScheme colourScheme, CustomBiomeManager customBiomeManager, Point initialCoords) throws HeadlessException {
-        super("WorldPainter - 3D View");
+        super("TalePainter - 3D View");
         setIconImage(App.ICON);
         this.colourScheme = colourScheme;
         this.customBiomeManager = customBiomeManager;

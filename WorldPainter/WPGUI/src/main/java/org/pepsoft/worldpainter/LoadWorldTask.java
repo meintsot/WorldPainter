@@ -57,7 +57,7 @@ public class LoadWorldTask implements ProgressTask<World2> {
         for (Map.Entry<String, Object> entry: metadata.entrySet()) {
             switch (entry.getKey()) {
                 case METADATA_KEY_WP_VERSION:
-                    sb.append("Saved with WorldPainter ").append(entry.getValue());
+                    sb.append("Saved with TalePainter ").append(entry.getValue());
                     String build = (String) metadata.get(METADATA_KEY_WP_BUILD);
                     if (build != null) {
                         sb.append(" (").append(build).append(')');
@@ -93,21 +93,21 @@ public class LoadWorldTask implements ProgressTask<World2> {
         try {
             String text;
             if (e.getMetadata() != null) {
-                StringBuilder sb = new StringBuilder("WorldPainter could not load the file. The cause may be one of:\n" +
+                StringBuilder sb = new StringBuilder("TalePainter could not load the file. The cause may be one of:\n" +
                         "\n" +
                         "* The file is damaged or corrupted\n" +
-                        "* The file was created with a newer version of WorldPainter\n" +
-                        "* The file was created using WorldPainter plugins which you do not have\n" +
+                        "* The file was created with a newer version of TalePainter\n" +
+                        "* The file was created using TalePainter plugins which you do not have\n" +
                         "\n");
                 appendMetadata(sb, e.getMetadata());
                 text = sb.toString();
             } else {
-                text = "WorldPainter could not load the file. The cause may be one of:\n" +
+                text = "TalePainter could not load the file. The cause may be one of:\n" +
                         "\n" +
-                        "* The file is not a WorldPainter world\n" +
+                        "* The file is not a TalePainter world\n" +
                         "* The file is damaged or corrupted\n" +
-                        "* The file was created with a newer version of WorldPainter\n" +
-                        "* The file was created using WorldPainter plugins which you do not have";
+                        "* The file was created with a newer version of TalePainter\n" +
+                        "* The file was created using TalePainter plugins which you do not have";
             }
             SwingUtilities.invokeAndWait(() -> showMessageDialog(parent, text, strings.getString("file.damaged"), ERROR_MESSAGE));
         } catch (InterruptedException e2) {

@@ -223,10 +223,10 @@ public class JavaWorldMerger extends JavaWorldExporter { // TODO can this be mad
         if (mergeBlocksAboveGround || mergeBlocksUnderground || mergeBiomesUnderground) {
             // TODO support different map heights; just give a warning
             if (level.getMinHeight() != world.getMinHeight()) {
-                throw new IllegalArgumentException("Existing map has different min height (" + level.getMinHeight() + ") than WorldPainter world (" + world.getMinHeight() + ")");
+                throw new IllegalArgumentException("Existing map has different min height (" + level.getMinHeight() + ") than TalePainter world (" + world.getMinHeight() + ")");
             }
             if (level.getMaxHeight() != world.getMaxHeight()) {
-                throw new IllegalArgumentException("Existing map has different max height (" + level.getMaxHeight() + ") than WorldPainter world (" + world.getMaxHeight() + ")");
+                throw new IllegalArgumentException("Existing map has different max height (" + level.getMaxHeight() + ") than TalePainter world (" + world.getMaxHeight() + ")");
             }
 
             // Dimension sanity checks

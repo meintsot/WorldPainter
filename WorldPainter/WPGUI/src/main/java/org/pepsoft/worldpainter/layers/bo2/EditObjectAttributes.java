@@ -620,7 +620,7 @@ public class EditObjectAttributes extends WorldPainterDialog {
 
         jLabel14.setText("Waterlogging should:");
 
-        comboBoxWaterlogging.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "no change", "be managed by WorldPainter", "behave as exported" }));
+        comboBoxWaterlogging.setModel(new javax.swing.DefaultComboBoxModel<>(new String[] { "no change", "be managed by TalePainter", "behave as exported" }));
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);

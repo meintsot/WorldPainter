@@ -53,7 +53,7 @@ public class HytaleBsonChunkSerializer {
     private static final String COMP_ENVIRONMENT_CHUNK = "EnvironmentChunk";
     private static final String COMP_CHUNK_COLUMN = "ChunkColumn";
     private static final String COMP_BLOCK_HEALTH_CHUNK = "BlockHealthChunk";
-    private static final String COMP_WP_METADATA = "WorldPainterMetadata";
+    private static final String COMP_WP_METADATA = "TalePainterMetadata";
     private static final String COMP_BLOCK_SECTION = "Block";
     private static final String COMP_FLUID_SECTION = "Fluid";
     private static final String COMP_CHUNK_SECTION = "ChunkSection";

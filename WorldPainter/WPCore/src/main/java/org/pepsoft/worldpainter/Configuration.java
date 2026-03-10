@@ -1226,11 +1226,11 @@ public final class Configuration implements Serializable, EventLogger, Minecraft
             classifier = "snapshot";
         }
         if (SystemUtils.isMac()) {
-            return new File(System.getProperty("user.home"), "Library/Application Support/WorldPainter" + ((classifier != null) ? (" [" + classifier.toUpperCase() + "]") : ""));
+            return new File(System.getProperty("user.home"), "Library/Application Support/TalePainter" + ((classifier != null) ? (" [" + classifier.toUpperCase() + "]") : ""));
         } else if (SystemUtils.isWindows()) {
             final String appDataStr = System.getenv("APPDATA");
             if (appDataStr != null) {
-                return new File(appDataStr, "WorldPainter" + ((classifier != null) ? (" [" + classifier.toUpperCase() + "]") : ""));
+                return new File(appDataStr, "TalePainter" + ((classifier != null) ? (" [" + classifier.toUpperCase() + "]") : ""));
             }
         }
         // Backwards compatibility with existing installations:

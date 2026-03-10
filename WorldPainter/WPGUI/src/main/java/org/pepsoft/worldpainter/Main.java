@@ -91,7 +91,7 @@ public class Main {
             }
         }
         if (safeMode) {
-            logger.info("WorldPainter running in safe mode");
+            logger.info("TalePainter running in safe mode");
             System.setProperty("org.pepsoft.worldpainter.safeMode", "true");
             System.setProperty("org.pepsoft.util.GUIUtils.disableScaling", "true");
         }
@@ -156,11 +156,11 @@ public class Main {
         StatusPrinter.printInCaseOfErrorsOrWarnings(logContext);
         SLF4JBridgeHandler.removeHandlersForRootLogger();
         SLF4JBridgeHandler.install();
-        logger.info("Starting WorldPainter " + Version.VERSION + " (" + Version.BUILD + ")");
+        logger.info("Starting TalePainter " + Version.VERSION + " (" + Version.BUILD + ")");
         logger.info("Running on {} version {}; architecture: {}", System.getProperty("os.name"), System.getProperty("os.version"), System.getProperty("os.arch"));
         logger.info("Running on {} Java version {}; maximum heap size: {} MB", System.getProperty("java.vendor"), System.getProperty("java.specification.version"), Runtime.getRuntime().maxMemory() / 1000000);
         if (autosaveInhibited) {
-            logger.warn("Another instance of WorldPainter is already running; disabling autosave");
+            logger.warn("Another instance of TalePainter is already running; disabling autosave");
         }
 
         // Parse the command line
@@ -279,7 +279,7 @@ public class Main {
         }
 
         if (config.isAutosaveEnabled() && autosaveInhibited) {
-            StartupMessages.addWarning("Another instance of WorldPainter is already running.\nAutosave will therefore be disabled in this instance of WorldPainter!");
+            StartupMessages.addWarning("Another instance of TalePainter is already running.\nAutosave will therefore be disabled in this instance of TalePainter!");
         }
 
         // Store the acceleration type in the config object so the Preferences dialog can edit it
@@ -313,7 +313,7 @@ public class Main {
         for (Platform platform : PlatformManager.getInstance().getAllPlatforms()) {
             logger.info("Available platform: {}", platform.displayName);
         }
-        String httpAgent = "WorldPainter " + Version.VERSION + "; " + System.getProperty("os.name") + " " + System.getProperty("os.version") + " " + System.getProperty("os.arch") + ";";
+        String httpAgent = "TalePainter " + Version.VERSION + "; " + System.getProperty("os.name") + " " + System.getProperty("os.version") + " " + System.getProperty("os.arch") + ";";
         System.setProperty("http.agent", httpAgent);
 
         // Load the private context, if any, which provides services which we only want the official distribution of
@@ -379,7 +379,7 @@ public class Main {
                 } catch (BackingStoreException e) {
                     logger.error("Backing store exception saving acceleration type", e);
                 }
-                logger.info("Shutting down WorldPainter");
+                logger.info("Shutting down TalePainter");
             }
         });
         
@@ -513,7 +513,7 @@ public class Main {
                 } else if ((! autosaveInhibited) && myConfig.isAutosaveEnabled() && autosaveFile.isFile()) {
                     logger.info("Recovering autosaved world");
                     app.open(autosaveFile);
-                    StartupMessages.addWarning("WorldPainter was not shut down correctly.\nYour world has been recovered from the most recent autosave.\nMake sure to Save it if you want to keep it!");
+                    StartupMessages.addWarning("TalePainter was not shut down correctly.\nYour world has been recovered from the most recent autosave.\nMake sure to Save it if you want to keep it!");
                 } else {
                     app.open(file);
                 }
@@ -555,12 +555,12 @@ public class Main {
 
     @Language("HTML")
     private static final String SNAPSHOT_MESSAGE = "<html><h1>Warning: Snapshot Release</h1>" +
-            "<p>This is a snapshot release of WorldPainter. It is for testing <em>only</em>!" +
+            "<p>This is a snapshot release of TalePainter. It is for testing <em>only</em>!" +
             "<p>Any worlds you edit with this version <strong>may not be loadable</strong> by the next production version<br>when that is released and <strong>will not be loadable</strong> by the current production version!" +
             "<p><strong>Make backups</strong> of any existing worlds you wish to test with this release, in a safe location." +
             "<p>Any or all work you do with this test release may be lost, and if you don't create backups,<br>you may lose your current worlds." +
-            "<p>Please report bugs on GitHub: https://github.com/Captain-Chaos/WorldPainter" +
-            "<p>Type \"I understand\" below to proceed with testing the next release of WorldPainter:</p></html>";
+            "<p>Please report bugs on GitHub: https://github.com/Captain-Chaos/TalePainter" +
+            "<p>Type \"I understand\" below to proceed with testing the next release of TalePainter:</p></html>";
     private static final String SNAPSHOT_MESSAGE_KEY = "org.pepsoft.worldpainter.snapshotWarning";
 
     private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(Main.class);

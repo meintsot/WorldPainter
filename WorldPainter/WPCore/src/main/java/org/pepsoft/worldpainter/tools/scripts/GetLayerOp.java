@@ -77,9 +77,9 @@ public class GetLayerOp extends AbstractOperation<Layer> {
             } catch (IOException e) {
                 throw new ScriptException("I/O error while loading layer " + fileName, e);
             } catch (ClassCastException e) {
-                throw new ScriptException(fileName + " is not a WorldPainter custom layer file", e);
+                throw new ScriptException(fileName + " is not a TalePainter custom layer file", e);
             } catch (ClassNotFoundException e) {
-                throw new ScriptException("Class not found exception while loading layer " + fileName + " (not a WorldPainter custom layer?)", e);
+                throw new ScriptException("Class not found exception while loading layer " + fileName + " (not a TalePainter custom layer?)", e);
             }
         } else if (world != null) {
             if ((name == null) || name.isEmpty()) {

@@ -8,7 +8,7 @@ if not exist "%PROJECT_DIR%pom.xml" (
     if exist "%PROJECT_DIR%WorldPainter\pom.xml" (
         set "PROJECT_DIR=%PROJECT_DIR%WorldPainter\"
     ) else (
-        echo [ERROR] Could not find WorldPainter pom.xml.
+        echo [ERROR] Could not find TalePainter pom.xml.
         echo         Expected either:
         echo         - %PROJECT_DIR%pom.xml
         echo         - %PROJECT_DIR%WorldPainter\pom.xml
@@ -126,12 +126,12 @@ if %BUILD_EXIT% NEQ 0 (
 )
 
 echo.
-echo [INFO] Build succeeded. Launching WorldPainter...
+echo [INFO] Build succeeded. Launching TalePainter...
 call "!MVN_CMD!" -pl WPGUI exec:exec
 set RUN_EXIT=%ERRORLEVEL%
 if %RUN_EXIT% NEQ 0 (
     echo.
-    echo [ERROR] WorldPainter failed to start.
+    echo [ERROR] TalePainter failed to start.
     popd
     pause
     exit /b 1
@@ -139,6 +139,6 @@ if %RUN_EXIT% NEQ 0 (
 
 popd
 echo.
-echo [INFO] WorldPainter exited normally.
+echo [INFO] TalePainter exited normally.
 endlocal
 exit /b 0

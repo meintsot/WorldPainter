@@ -500,8 +500,8 @@ public class ScriptRunner extends WorldPainterDialog {
             nonResponsiveScriptWarningTimer = new Timer(10000,
                     evt -> showWarning(this, "Script not responding to interrupt request.\n" +
                     "Ask the author to add interrupt checking to the script.\n" +
-                    "See the WorldPainter Scripting API docs for details.\n" +
-                    "The only way to stop the script may be to kill WorldPainter", "Script Unresponsive"));
+                    "See the TalePainter Scripting API docs for details.\n" +
+                    "The only way to stop the script may be to kill TalePainter", "Script Unresponsive"));
             nonResponsiveScriptWarningTimer.start();
         } else {
             super.cancel();

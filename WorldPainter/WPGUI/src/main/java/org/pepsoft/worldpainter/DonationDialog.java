@@ -117,7 +117,7 @@ public final class DonationDialog extends WorldPainterDialog {
         buttonMerchStore = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
-        setTitle("Please Support WorldPainter");
+        setTitle("Please Support TalePainter");
         setResizable(false);
 
         jLabel1.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
@@ -128,7 +128,7 @@ public final class DonationDialog extends WorldPainterDialog {
         jTextArea1.setColumns(20);
         jTextArea1.setFont(jTextArea1.getFont().deriveFont(jTextArea1.getFont().getSize()+6f));
         jTextArea1.setLineWrap(true);
-        jTextArea1.setText("Thank you for using WorldPainter!\n\nWorldPainter takes a lot of effort to create and maintain. Please consider helping out with a donation, or by buying merchandise from our merch store.");
+        jTextArea1.setText("Thank you for using TalePainter!\n\nTalePainter takes a lot of effort to create and maintain. Please consider helping out with a donation, or by buying merchandise from our merch store.");
         jTextArea1.setWrapStyleWord(true);
         jTextArea1.setOpaque(false);
 

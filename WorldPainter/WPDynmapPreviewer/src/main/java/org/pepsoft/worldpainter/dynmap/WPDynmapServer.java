@@ -59,7 +59,7 @@ public class WPDynmapServer extends DynmapServerInterface {
 
     @Override
     public String getServerName() {
-        return "WorldPainter " + Version.VERSION + " (" + Version.BUILD + ")";
+        return "TalePainter " + Version.VERSION + " (" + Version.BUILD + ")";
     }
 
     @Override

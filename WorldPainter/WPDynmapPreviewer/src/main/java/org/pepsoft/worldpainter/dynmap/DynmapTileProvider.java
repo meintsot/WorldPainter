@@ -102,7 +102,7 @@ public class DynmapTileProvider implements TileProvider {
 
     private void refreshMap() {
         Map<String, Object> config = new HashMap<>();
-        config.put("name", "WorldPainter");
+        config.put("name", "TalePainter");
         config.put("image-format", "png");
         if (caves) {
             config.put("shader", "caves");

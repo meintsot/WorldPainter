@@ -183,7 +183,7 @@ public class AboutDialog extends javax.swing.JDialog implements WindowListener {
         File configDir = Configuration.getConfigDir();
         StringBuilder message = new StringBuilder();
         if (Configuration.getInstance().isSafeMode()) {
-            message.append("WorldPainter is running in safe mode\n");
+            message.append("TalePainter is running in safe mode\n");
         }
         message.append(MessageFormat.format(strings.getString("worldpainter.version.0.njava.version.1.noperating.system.2.3.version.4.n"), Version.VERSION, Version.BUILD, System.getProperty("java.version"), System.getProperty("os.name"), System.getProperty("os.arch"), System.getProperty("os.version")));
         if (installDir != null) {
@@ -239,7 +239,7 @@ public class AboutDialog extends javax.swing.JDialog implements WindowListener {
         jTextPane3 = new javax.swing.JTextPane();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
-        setTitle("About WorldPainter");
+        setTitle("About TalePainter");
         setResizable(false);
 
         jLabel1.setIcon(new javax.swing.ImageIcon(getClass().getResource("/org/pepsoft/worldpainter/resources/banner.png"))); // NOI18N

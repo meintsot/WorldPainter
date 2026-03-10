@@ -251,7 +251,7 @@ public class TileEditor extends WorldPainterModalFrame implements TileSelector.L
         jTextPane1 = new javax.swing.JTextPane();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
-        setTitle("WorldPainter - Add, Expand or Remove Tiles");
+        setTitle("TalePainter - Add, Expand or Remove Tiles");
 
         buttonClose.setText("Close");
         buttonClose.addActionListener(new java.awt.event.ActionListener() {
@@ -280,7 +280,7 @@ public class TileEditor extends WorldPainterModalFrame implements TileSelector.L
 
         jTextPane1.setEditable(false);
         jTextPane1.setContentType("text/html"); // NOI18N
-        jTextPane1.setText("WorldPainter works in tiles of 128 by 128 blocks.\nOn this screen you can add, expand or remove tiles.<br>\n<br>\nSelect tiles to the right using the left mouse button,\nmove the map with the middle or right buttons,\nthen select an action below:<br>\n<br>\nDrag to select tiles; hold Ctrl and drag to deselect tiles.<br>\n<br>\n<b>Note:</b> this will remove all undo information!");
+        jTextPane1.setText("TalePainter works in tiles of 128 by 128 blocks.\nOn this screen you can add, expand or remove tiles.<br>\n<br>\nSelect tiles to the right using the left mouse button,\nmove the map with the middle or right buttons,\nthen select an action below:<br>\n<br>\nDrag to select tiles; hold Ctrl and drag to deselect tiles.<br>\n<br>\n<b>Note:</b> this will remove all undo information!");
         jTextPane1.setOpaque(false);
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());

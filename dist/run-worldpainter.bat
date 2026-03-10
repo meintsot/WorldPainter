@@ -1,5 +1,5 @@
 @echo off
-title WorldPainter (Hytale Edition)
+title TalePainter (Hytale Edition)
 
 :: Check for Java
 where java >nul 2>&1
@@ -26,7 +26,7 @@ if not defined JAR_FILE (
     exit /b 1
 )
 
-echo Starting WorldPainter (Hytale Edition)...
+echo Starting TalePainter (Hytale Edition)...
 echo.
 
 if not defined WP_MAX_THREADS set "WP_MAX_THREADS=1"
@@ -43,6 +43,6 @@ java --add-opens java.desktop/sun.swing=ALL-UNNAMED ^
 
 if %ERRORLEVEL% neq 0 (
     echo.
-    echo WorldPainter exited with an error. Check the output above.
+    echo TalePainter exited with an error. Check the output above.
     pause
 )

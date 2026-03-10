@@ -58,9 +58,9 @@ public class GetTerrainOp extends AbstractOperation<MixedMaterial> {
         } catch (IOException e) {
             throw new ScriptException("I/O error while loading terrain " + fileName, e);
         } catch (ClassCastException e) {
-            throw new ScriptException(fileName + " is not a WorldPainter custom terrain file", e);
+            throw new ScriptException(fileName + " is not a TalePainter custom terrain file", e);
         } catch (ClassNotFoundException e) {
-            throw new ScriptException("Class not found exception while loading terrain " + fileName + " (not a WorldPainter custom terrain?)", e);
+            throw new ScriptException("Class not found exception while loading terrain " + fileName + " (not a TalePainter custom terrain?)", e);
         }
     }
     

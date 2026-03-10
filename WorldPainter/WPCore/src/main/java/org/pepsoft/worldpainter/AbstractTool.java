@@ -28,7 +28,7 @@ public abstract class AbstractTool {
         File configDir = Configuration.getConfigDir();
 
         // Configure logging
-        logger.info("Starting WorldPainter {} ({})", Version.VERSION, Version.BUILD);
+        logger.info("Starting TalePainter {} ({})", Version.VERSION, Version.BUILD);
         logger.info("Running on {} version {}; architecture: {}", System.getProperty("os.name"), System.getProperty("os.version"), System.getProperty("os.arch"));
         logger.info("Running on {} Java version {}; maximum heap size: {} MB", System.getProperty("java.vendor"), System.getProperty("java.specification.version"), Runtime.getRuntime().maxMemory() / 1048576);
 
@@ -94,7 +94,7 @@ public abstract class AbstractTool {
         for (Platform platform: PlatformManager.getInstance().getAllPlatforms()) {
             logger.info("Available platform: {}", platform.displayName);
         }
-        String httpAgent = "WorldPainter " + Version.VERSION + "; " + System.getProperty("os.name") + " " + System.getProperty("os.version") + " " + System.getProperty("os.arch") + ";";
+        String httpAgent = "TalePainter " + Version.VERSION + "; " + System.getProperty("os.name") + " " + System.getProperty("os.version") + " " + System.getProperty("os.arch") + ";";
         System.setProperty("http.agent", httpAgent);
     }
 
