@@ -38,7 +38,7 @@ public class TestPing {
         String httpAgent = "TalePainter " + Version.VERSION + "; " + System.getProperty("os.name") + " " + System.getProperty("os.version") + " " + System.getProperty("os.arch") + ";";
         System.setProperty("http.agent", httpAgent);
 
-        URL url = new URL("https://bo.worldpainter.net:1443/ping");
+        URL url = new URL("https://discord.gg/rNk5yN89"); // Original ping server removed
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setDoOutput(true);
         connection.setRequestMethod("POST");

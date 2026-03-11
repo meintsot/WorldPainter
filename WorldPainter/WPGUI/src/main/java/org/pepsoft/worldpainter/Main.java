@@ -330,10 +330,7 @@ public class Main {
             config.setPingAllowed(false);
         }
 
-        // Check for updates (if update checker is available)
-        if (privateContext != null) {
-            privateContext.checkForUpdates();
-        }
+        // Update checking disabled for TalePainter fork
 
         final long start = System.currentTimeMillis();
         config.setLaunchCount(config.getLaunchCount() + 1);
@@ -526,12 +523,7 @@ public class Main {
                 for (String message: StartupMessages.getMessages()) {
                     showInfo(app, message, "Startup Message");
                 }
-                if (StartupMessages.getErrors().isEmpty() && StartupMessages.getWarnings().isEmpty() && StartupMessages.getMessages().isEmpty()) {
-                    // Don't bother the user with this if we've already bothered them with errors and/or warnings
-                    if (! DonationDialog.maybeShowDonationDialog(app)) {
-                        MerchDialog.maybeShowMerchDialog(app);
-                    }
-                }
+                // Donation and merch dialogs removed for TalePainter fork
             });
         });
     }

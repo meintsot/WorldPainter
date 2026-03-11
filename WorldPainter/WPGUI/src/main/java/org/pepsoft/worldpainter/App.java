@@ -1006,7 +1006,7 @@ public final class App extends JFrame implements BrushControl,
                     case AUTO_BIOMES_DISABLED:
                         if (showOptionDialog(this, "Automatic Biomes were previously enabled for this world but have been disabled.\nPress More Info for more information, including how to reenable it.", "Automatic Biomes Disabled", DEFAULT_OPTION, WARNING_MESSAGE, null, new Object[] {"More Info", "OK"}, "OK") == 0) {
                             try {
-                                DesktopUtils.open(new URL("https://www.worldpainter.net/doc/legacy/newautomaticbiomes"));
+                                DesktopUtils.open(new URL("https://discord.gg/rNk5yN89"));
                             } catch (MalformedURLException e) {
                                 throw new RuntimeException(e);
                             }
@@ -1015,7 +1015,7 @@ public final class App extends JFrame implements BrushControl,
                     case AUTO_BIOMES_ENABLED:
                         if (showOptionDialog(this, "Automatic Biomes were previously disabled for this world but have been enabled.\nPress More Info for more information, including how to disable it.", "Automatic Biomes Enabled", DEFAULT_OPTION, WARNING_MESSAGE, null, new Object[] {"More Info", "OK"}, "OK") == 0) {
                             try {
-                                DesktopUtils.open(new URL("https://www.worldpainter.net/doc/legacy/newautomaticbiomes"));
+                                DesktopUtils.open(new URL("https://discord.gg/rNk5yN89"));
                             } catch (MalformedURLException e) {
                                 throw new RuntimeException(e);
                             }
@@ -5146,7 +5146,7 @@ public final class App extends JFrame implements BrushControl,
                 logger.error("Could not open ScriptRunner", exc);
                 beepAndShowError(App.this, "JavaScript support requires Java 11 or later.\n" +
                         "Please install a newer version of Java and try again.\n" +
-                        "See www.worldpainter.net for links.", "Newer Java Required");
+                        "See our Discord for links.", "Newer Java Required");
             }
         });
         menuItem.setMnemonic('s');
@@ -5168,7 +5168,7 @@ public final class App extends JFrame implements BrushControl,
         menuItem.setMnemonic('f');
         menuItem.addActionListener(e -> {
             try {
-                DesktopUtils.open(new URL("https://www.worldpainter.net/doc/faq"));
+                DesktopUtils.open(new URL("https://discord.gg/rNk5yN89"));
             } catch (MalformedURLException ex) {
                 throw new RuntimeException(ex);
             }
@@ -5179,7 +5179,7 @@ public final class App extends JFrame implements BrushControl,
         menuItem.setMnemonic('t');
         menuItem.addActionListener(e -> {
             try {
-                DesktopUtils.open(new URL("https://www.worldpainter.net/trac/wiki/Troubleshooting"));
+                DesktopUtils.open(new URL("https://discord.gg/rNk5yN89"));
             } catch (MalformedURLException ex) {
                 throw new RuntimeException(ex);
             }
@@ -5187,28 +5187,6 @@ public final class App extends JFrame implements BrushControl,
         menu.add(menuItem);
 
         menu.addSeparator();
-
-        menuItem = new JMenuItem("Donate");
-        menuItem.setMnemonic('d');
-        menuItem.addActionListener(e -> {
-            try {
-                DesktopUtils.open(new URL("https://www.worldpainter.net/donate/paypal"));
-            } catch (MalformedURLException ex) {
-                throw new RuntimeException(ex);
-            }
-        });
-        menu.add(menuItem);
-
-        menuItem = new JMenuItem("Merch store");
-        menuItem.setMnemonic('m');
-        menuItem.addActionListener(e -> {
-            try {
-                DesktopUtils.open(new URL("https://www.worldpainter.store/"));
-            } catch (MalformedURLException ex) {
-                throw new RuntimeException(ex);
-            }
-        });
-        menu.add(menuItem);
 
         if (! hideAbout) {
             menuItem = new JMenuItem(strings.getString("about"));
@@ -7362,7 +7340,7 @@ public final class App extends JFrame implements BrushControl,
         @Override
         public void performAction(ActionEvent event) {
             try {
-                DesktopUtils.open(new URL("https://www.worldpainter.net/doc/"));
+                DesktopUtils.open(new URL("https://discord.gg/rNk5yN89"));
             } catch (MalformedURLException e) {
                 throw new RuntimeException(e);
             }
@@ -7696,7 +7674,7 @@ public final class App extends JFrame implements BrushControl,
 
     private static final int MAX_RECENT_FILES = 10;
     
-    private static final String HELP_ROOT_URL = "https://www.worldpainter.net/help/";
+    private static final String HELP_ROOT_URL = "https://discord.gg/rNk5yN89";
 
     private static final ResourceBundle strings = ResourceBundle.getBundle("org.pepsoft.worldpainter.resources.strings"); // NOI18N
 

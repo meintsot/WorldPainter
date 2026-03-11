@@ -792,9 +792,9 @@ public class MaterialSelector extends javax.swing.JPanel {
 
     private void jLabel5MouseClicked(java.awt.event.MouseEvent evt) {//GEN-FIRST:event_jLabel5MouseClicked
         try {
-            DesktopUtils.open(new URL("https://www.worldpainter.net/links/dataValues"));
+            DesktopUtils.open(new URL("https://discord.gg/rNk5yN89"));
         } catch (MalformedURLException e) {
-            throw new RuntimeException("Malformed URL exception while trying to open https://www.worldpainter.net/links/dataValues", e);
+            throw new RuntimeException("Malformed URL exception while trying to open Discord", e);
         }
     }//GEN-LAST:event_jLabel5MouseClicked
 

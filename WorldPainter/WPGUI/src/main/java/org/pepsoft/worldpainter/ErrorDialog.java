@@ -126,17 +126,17 @@ public class ErrorDialog extends javax.swing.JDialog {
                     }
                 }
             } else {
-                jButton1.setText("Email Details...");
-                if ((! Desktop.isDesktopSupported()) || (! Desktop.getDesktop().isSupported(Desktop.Action.MAIL))) {
-                    jButton1.setToolTipText("Emailing not supported on this system; please use the \"copy to clipboard\" button and mail the details to worldpainter@pepsoft.org.");
+                jButton1.setText("Open Discord...");
+                if ((! Desktop.isDesktopSupported()) || (! Desktop.getDesktop().isSupported(Desktop.Action.BROWSE))) {
+                    jButton1.setToolTipText("Please use the \"copy to clipboard\" button and report the details on our Discord: https://discord.gg/rNk5yN89");
                 } else {
                     jButton1.setEnabled(true);
                 }
                 mode = Mode.REPORTING_DISABLED;
                 if (ioException) {
-                    requestedActionLine = "If you think this is a bug then please use the button below to email the details of this error to the creator of this program.";
+                    requestedActionLine = "If you think this is a bug then please use the button below to report the details of this error on our Discord.";
                 } else {
-                    requestedActionLine = "Please help debug the problem by using the button below to email the details of this error to the creator of this program.";
+                    requestedActionLine = "Please help debug the problem by using the button below to report the details of this error on our Discord.";
                 }
             }
             final String text;
@@ -290,16 +290,15 @@ public class ErrorDialog extends javax.swing.JDialog {
 
     private void email() {
         try {
-            URI uri = new URI("mailto", "worldpainter@pepsoft.org?subject=TalePainter error report&body=" + body, null);
             Desktop desktop = Desktop.getDesktop();
-            desktop.mail(uri);
-            showInfo(this, "A new email message should have been opened now for you to send.\nIf it did not work, please use the \"copy to clipboard\" button\nand manually mail the information to worldpainter@pepsoft.org.", "Email Created");
+            desktop.browse(new URI("https://discord.gg/rNk5yN89"));
+            showInfo(this, "The Discord server should have been opened in your browser.\nPlease paste the error details (use \"copy to clipboard\") in the appropriate channel.", "Discord Opened");
         } catch (URISyntaxException e) {
-            logger.error("URI syntax error while trying to send email", e);
-            JOptionPane.showMessageDialog(this, "Could not create email message with error details!\nPlease use the \"copy to clipboard\" button and mail\nthe information to worldpainter@pepsoft.org.", "Could Not Create Email", JOptionPane.ERROR_MESSAGE);
+            logger.error("URI syntax error while trying to open Discord", e);
+            JOptionPane.showMessageDialog(this, "Could not open Discord!\nPlease use the \"copy to clipboard\" button and report\nthe information on our Discord: https://discord.gg/rNk5yN89", "Could Not Open Discord", JOptionPane.ERROR_MESSAGE);
         } catch (IOException e) {
-            logger.error("I/O error while trying to send email", e);
-            JOptionPane.showMessageDialog(this, "Could not create email message with error details!\nPlease use the \"copy to clipboard\" button and mail\nthe information to worldpainter@pepsoft.org.", "Could Not Create Email", JOptionPane.ERROR_MESSAGE);
+            logger.error("I/O error while trying to open Discord", e);
+            JOptionPane.showMessageDialog(this, "Could not open Discord!\nPlease use the \"copy to clipboard\" button and report\nthe information on our Discord: https://discord.gg/rNk5yN89", "Could Not Open Discord", JOptionPane.ERROR_MESSAGE);
         }
     }
     
@@ -307,7 +306,7 @@ public class ErrorDialog extends javax.swing.JDialog {
         Clipboard clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
         StringSelection data = new StringSelection(body);
         clipboard.setContents(data, data);
-        showInfo(this, "The information has been copied to the clipboard. Please paste\nit in a new email and send it to worldpainter@pepsoft.org.", "Information Copied");
+        showInfo(this, "The information has been copied to the clipboard. Please paste\nit on our Discord: https://discord.gg/rNk5yN89", "Information Copied");
     }
 
     private void submitInBackground() {
@@ -332,10 +331,10 @@ public class ErrorDialog extends javax.swing.JDialog {
                 } catch (RuntimeException e) {
                     logger.error("{} while trying to submit exception report to server (message: {})", e.getClass().getSimpleName(), e.getMessage(), e);
                     doOnEventThread(() -> {
-                        JOptionPane.showMessageDialog(ErrorDialog.this, "Submitting error report failed.\nPlease use the \"Email Details...\" button below\nto email the report.");
-                        jButton1.setText("Email Details...");
-                        if ((! Desktop.isDesktopSupported()) || (! Desktop.getDesktop().isSupported(Desktop.Action.MAIL))) {
-                            jButton1.setToolTipText("Emailing not supported on this system; please use the \"copy to clipboard\" button and mail the details to worldpainter@pepsoft.org.");
+                        JOptionPane.showMessageDialog(ErrorDialog.this, "Submitting error report failed.\nPlease use the \"Open Discord...\" button below\nto report the error.");
+                        jButton1.setText("Open Discord...");
+                        if ((! Desktop.isDesktopSupported()) || (! Desktop.getDesktop().isSupported(Desktop.Action.BROWSE))) {
+                            jButton1.setToolTipText("Please use the \"copy to clipboard\" button and report the details on our Discord: https://discord.gg/rNk5yN89");
                         } else {
                             jButton1.setEnabled(true);
                         }

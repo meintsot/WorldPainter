@@ -141,14 +141,9 @@ public class PreferencesDialog extends WorldPainterDialog {
                 checkBoxPing.setSelected(false);
                 pingNotSet = true;
             }
-            if ((Main.privateContext == null)
-                    || "true".equals(System.getProperty("org.pepsoft.worldpainter.devMode"))
-                    || "true".equals(System.getProperty("org.pepsoft.worldpainter.disableUpdateCheck"))) {
-                checkBoxCheckForUpdates.setSelected(false);
-                checkBoxCheckForUpdates.setEnabled(false);
-            } else {
-                checkBoxCheckForUpdates.setSelected(config.isCheckForUpdates());
-            }
+            // Update checking disabled for TalePainter fork
+            checkBoxCheckForUpdates.setSelected(false);
+            checkBoxCheckForUpdates.setEnabled(false);
             if ("true".equals(System.getProperty("org.pepsoft.worldpainter.disableUndo"))) {
                 checkBoxUndo.setSelected(false);
                 checkBoxUndo.setEnabled(false);
