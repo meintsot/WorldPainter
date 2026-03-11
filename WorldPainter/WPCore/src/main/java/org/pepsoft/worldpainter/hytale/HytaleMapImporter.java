@@ -56,7 +56,7 @@ public class HytaleMapImporter extends MapImporter {
         final long start = System.currentTimeMillis();
 
         // 1. Create World2
-        final World2 world = new World2(HYTALE, 0, HytaleChunk.MAX_HEIGHT);
+        final World2 world = new World2(HYTALE, 0, HytaleChunk.DEFAULT_MAX_HEIGHT);
         world.setName(worldDir.getName());
         world.setCreateGoodiesChest(false);
         world.setImportedFrom(new File(worldDir, "config.json"));
@@ -77,7 +77,7 @@ public class HytaleMapImporter extends MapImporter {
             dimension.setBorderLevel(62);
 
             // 3. Iterate chunks
-            try (ChunkStore chunkStore = new HytaleChunkStore(worldDir, 0, HytaleChunk.MAX_HEIGHT)) {
+            try (ChunkStore chunkStore = new HytaleChunkStore(worldDir, 0, HytaleChunk.DEFAULT_MAX_HEIGHT)) {
                 final Set<MinecraftCoords> allCoords = chunkStore.getChunkCoords();
                 final int totalChunks = allCoords.size();
                 final AtomicInteger processedCount = new AtomicInteger();
@@ -202,7 +202,7 @@ public class HytaleMapImporter extends MapImporter {
 
         // Detect water level from fluid data
         int waterLevel = 0; // Hytale minZ = 0
-        for (int y = height + 1; y < HytaleChunk.MAX_HEIGHT && y <= height + 32; y++) {
+        for (int y = height + 1; y < HytaleChunk.DEFAULT_MAX_HEIGHT && y <= height + 32; y++) {
             HytaleChunk.HytaleSection section = chunk.getSections()[y >> 5];
             if (section != null) {
                 int fluidId = section.getFluidId(localX, y & 31, localZ);
@@ -210,7 +210,7 @@ public class HytaleMapImporter extends MapImporter {
                     // Found fluid above surface
                     waterLevel = y;
                     // Look for top of fluid column
-                    for (int fy = y + 1; fy < HytaleChunk.MAX_HEIGHT; fy++) {
+                    for (int fy = y + 1; fy < HytaleChunk.DEFAULT_MAX_HEIGHT; fy++) {
                         HytaleChunk.HytaleSection fSec = chunk.getSections()[fy >> 5];
                         if (fSec == null || fSec.getFluidId(localX, fy & 31, localZ) == 0) {
                             waterLevel = fy - 1;

@@ -13,17 +13,20 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * A Hytale chunk implementation. Hytale chunks are 32x32x320 blocks, organized into 10 sections of 32x32x32 blocks each.
+ * A Hytale chunk implementation. Hytale chunks are 32x32 blocks wide and organized into sections
+ * of 32x32x32 blocks each. The default height is 320 (10 sections), but this can be configured
+ * to support taller worlds (e.g., 512, 640, 1024) for modded servers.
  */
 public class HytaleChunk implements Chunk {
     
     public static final int CHUNK_SIZE = 32;
     public static final int SECTION_HEIGHT = 32;
-    public static final int SECTION_COUNT = 10;
-    public static final int MAX_HEIGHT = 320;
+    public static final int DEFAULT_SECTION_COUNT = 10;
+    public static final int DEFAULT_MAX_HEIGHT = 320;
     
     private final int x, z;
     private final int minHeight, maxHeight;
+    private final int sectionCount;
     private final HytaleSection[] sections;
     private final short[] heightmap;
     private final String[] biomes; // Biome name for each column (32x32 = 1024)
@@ -46,8 +49,9 @@ public class HytaleChunk implements Chunk {
         this.z = z;
         this.minHeight = minHeight;
         this.maxHeight = maxHeight;
-        this.sections = new HytaleSection[SECTION_COUNT];
-        for (int i = 0; i < SECTION_COUNT; i++) {
+        this.sectionCount = maxHeight / SECTION_HEIGHT;
+        this.sections = new HytaleSection[sectionCount];
+        for (int i = 0; i < sectionCount; i++) {
             sections[i] = new HytaleSection();
         }
         this.heightmap = new short[CHUNK_SIZE * CHUNK_SIZE];
@@ -70,13 +74,13 @@ public class HytaleChunk implements Chunk {
     
     @Override
     public int getBlockLightLevel(int x, int y, int z) {
-        if (y < 0 || y >= MAX_HEIGHT) return 0;
+        if (y < 0 || y >= maxHeight) return 0;
         return getSection(y).getBlockLight(x, y & 31, z);
     }
     
     @Override
     public void setBlockLightLevel(int x, int y, int z, int blockLightLevel) {
-        if (y < 0 || y >= MAX_HEIGHT) return;
+        if (y < 0 || y >= maxHeight) return;
         getSection(y).setBlockLight(x, y & 31, z, blockLightLevel);
     }
     
@@ -117,13 +121,13 @@ public class HytaleChunk implements Chunk {
     
     @Override
     public int getSkyLightLevel(int x, int y, int z) {
-        if (y < 0 || y >= MAX_HEIGHT) return 15;
+        if (y < 0 || y >= maxHeight) return 15;
         return getSection(y).getSkyLight(x, y & 31, z);
     }
     
     @Override
     public void setSkyLightLevel(int x, int y, int z, int skyLightLevel) {
-        if (y < 0 || y >= MAX_HEIGHT) return;
+        if (y < 0 || y >= maxHeight) return;
         getSection(y).setSkyLight(x, y & 31, z, skyLightLevel);
     }
     
@@ -154,18 +158,18 @@ public class HytaleChunk implements Chunk {
     
     @Override
     public Material getMaterial(int x, int y, int z) {
-        if (y < 0 || y >= MAX_HEIGHT) return Material.AIR;
+        if (y < 0 || y >= maxHeight) return Material.AIR;
         return getSection(y).getMaterial(x, y & 31, z);
     }
 
     public HytaleBlock getHytaleBlock(int x, int y, int z) {
-        if (y < 0 || y >= MAX_HEIGHT) return HytaleBlock.EMPTY;
+        if (y < 0 || y >= maxHeight) return HytaleBlock.EMPTY;
         return getSection(y).getHytaleBlock(x, y & 31, z);
     }
     
     @Override
     public void setMaterial(int x, int y, int z, Material material) {
-        if (y < 0 || y >= MAX_HEIGHT) return;
+        if (y < 0 || y >= maxHeight) return;
         getSection(y).setMaterial(x, y & 31, z, material);
         // Update heightmap
         if (material != Material.AIR && y > getHeight(x, z)) {
@@ -184,7 +188,7 @@ public class HytaleChunk implements Chunk {
     }
 
     public void setHytaleBlock(int x, int y, int z, HytaleBlock block) {
-        if (y < 0 || y >= MAX_HEIGHT) return;
+        if (y < 0 || y >= maxHeight) return;
         HytaleBlock effective = (block != null) ? block : HytaleBlock.EMPTY;
         getSection(y).setHytaleBlock(x, y & 31, z, effective);
         if (!effective.isEmpty() && y > getHeight(x, z)) {
@@ -344,7 +348,7 @@ public class HytaleChunk implements Chunk {
     
     @Override
     public int getHighestNonAirBlock(int x, int z) {
-        for (int y = MAX_HEIGHT - 1; y >= 0; y--) {
+        for (int y = maxHeight - 1; y >= 0; y--) {
             if (getMaterial(x, y, z) != Material.AIR) {
                 return y;
             }
@@ -375,6 +379,13 @@ public class HytaleChunk implements Chunk {
      */
     public HytaleSection[] getSections() {
         return sections;
+    }
+    
+    /**
+     * Get the number of sections in this chunk (dynamic based on maxHeight).
+     */
+    public int getSectionCount() {
+        return sectionCount;
     }
     
     /**

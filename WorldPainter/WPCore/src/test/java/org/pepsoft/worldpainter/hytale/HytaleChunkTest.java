@@ -27,8 +27,8 @@ public class HytaleChunkTest {
     public void testChunkDimensions() {
         assertEquals(32, HytaleChunk.CHUNK_SIZE);
         assertEquals(32, HytaleChunk.SECTION_HEIGHT);
-        assertEquals(10, HytaleChunk.SECTION_COUNT);
-        assertEquals(320, HytaleChunk.MAX_HEIGHT);
+        assertEquals(10, HytaleChunk.DEFAULT_SECTION_COUNT);
+        assertEquals(320, HytaleChunk.DEFAULT_MAX_HEIGHT);
     }
     
     @Test

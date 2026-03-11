@@ -1110,6 +1110,7 @@ public class HytaleBlockRegistry {
 
         // --- FLUIDS ---
         addBlocks(Category.FLUID,
+            "Water_Source", "Lava_Source",
             "Fluid_Water", "Fluid_Water_Source", "Fluid_Water_Finite",
             "Fluid_Lava", "Fluid_Lava_Source",
             "Fluid_Poison", "Fluid_Poison_Source",

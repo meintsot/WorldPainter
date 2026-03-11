@@ -146,15 +146,22 @@ public class Bo2LayerEditor extends AbstractLayerEditor<Bo2Layer> implements Lis
             // Very old layer; no file information at all
             objects.addAll(layer.getObjectProvider().getAllObjects());
         }
+        allObjects.clear();
         listModel.clear();
         for (WPObject object: objects) {
-            listModel.addElement(object.clone());
+            WPObject clone = object.clone();
+            allObjects.add(clone);
+            listModel.addElement(clone);
         }
         spinnerBlocksPerAttempt.setValue(layer.getDensity());
         spinnerGrid.setValue(layer.getGridX());
         spinnerRandomOffset.setValue(layer.getRandomDisplacement());
+        if (checkBoxNoPhysics != null) {
+            checkBoxNoPhysics.setSelected(layer.isNoPhysics());
+        }
         
         refreshLeafDecaySettings();
+        updateCategories();
         if (isHytaleWorld) {
             populateBlockMappings();
         }
@@ -188,7 +195,7 @@ public class Bo2LayerEditor extends AbstractLayerEditor<Bo2Layer> implements Lis
 
     @Override
     public boolean isCommitAvailable() {
-        boolean filesSelected = listModel.getSize() > 0;
+        boolean filesSelected = !allObjects.isEmpty();
         boolean nameSpecified = fieldName.getText().trim().length() > 0;
         return filesSelected && nameSpecified;
     }
@@ -206,16 +213,40 @@ public class Bo2LayerEditor extends AbstractLayerEditor<Bo2Layer> implements Lis
 
     @Override
     public JComponent getComponent() {
-        if (isHytaleWorld) {
-            if (wrapperPanel == null) {
-                wrapperPanel = new JPanel(new BorderLayout());
-                wrapperPanel.add(this, BorderLayout.CENTER);
+        if (wrapperPanel == null) {
+            wrapperPanel = new JPanel(new BorderLayout(0, 5));
+
+            // Category filter at the top
+            JPanel categoryPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 5, 2));
+            labelCategory = new JLabel("Category:");
+            comboBoxCategory = new JComboBox<>();
+            comboBoxCategory.addItem(ALL_CATEGORIES);
+            comboBoxCategory.addActionListener(e -> filterByCategory());
+            categoryPanel.add(labelCategory);
+            categoryPanel.add(comboBoxCategory);
+            wrapperPanel.add(categoryPanel, BorderLayout.NORTH);
+
+            wrapperPanel.add(this, BorderLayout.CENTER);
+
+            // Bottom panel: no-physics checkbox + optional block mapping
+            JPanel bottomPanel = new JPanel();
+            bottomPanel.setLayout(new BoxLayout(bottomPanel, BoxLayout.Y_AXIS));
+
+            checkBoxNoPhysics = new JCheckBox("Disable physics (force-place all blocks regardless of terrain)");
+            checkBoxNoPhysics.setToolTipText("When enabled, objects are placed at their calculated position without foundation or collision checks");
+            checkBoxNoPhysics.addActionListener(e -> settingsChanged());
+            JPanel checkPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 2));
+            checkPanel.add(checkBoxNoPhysics);
+            bottomPanel.add(checkPanel);
+
+            if (isHytaleWorld) {
                 blockMappingPanel = createBlockMappingPanel();
-                wrapperPanel.add(blockMappingPanel, BorderLayout.SOUTH);
+                bottomPanel.add(blockMappingPanel);
             }
-            return wrapperPanel;
+
+            wrapperPanel.add(bottomPanel, BorderLayout.SOUTH);
         }
-        return this;
+        return wrapperPanel;
     }
         
     // ListSelectionListener
@@ -244,10 +275,8 @@ public class Bo2LayerEditor extends AbstractLayerEditor<Bo2Layer> implements Lis
 
     private Bo2Layer saveSettings(Bo2Layer layer) {
         String name = fieldName.getText();
-        List<WPObject> objects = new ArrayList<>(listModel.getSize());
-        for (int i = 0; i < listModel.getSize(); i++) {
-            objects.add(listModel.getElementAt(i));
-        }
+        // Use allObjects (unfiltered master list) for saving
+        List<WPObject> objects = new ArrayList<>(allObjects);
         Bo2ObjectProvider objectProvider = new Bo2ObjectTube(name, objects);
         if (layer == null) {
             layer = new Bo2Layer(objectProvider, "Custom (e.g. bo2, bo3 and/or schematic) objects", paintPicker1.getPaint());
@@ -260,6 +289,9 @@ public class Bo2LayerEditor extends AbstractLayerEditor<Bo2Layer> implements Lis
         layer.setGridX((Integer) spinnerGrid.getValue());
         layer.setGridY((Integer) spinnerGrid.getValue());
         layer.setRandomDisplacement((Integer) spinnerRandomOffset.getValue());
+        if (checkBoxNoPhysics != null) {
+            layer.setNoPhysics(checkBoxNoPhysics.isSelected());
+        }
         if (isHytaleWorld && blockMappingTableModel != null) {
             layer.setHytaleBlockMappings(collectMappingsFromTable());
         }
@@ -272,7 +304,7 @@ public class Bo2LayerEditor extends AbstractLayerEditor<Bo2Layer> implements Lis
     }
     
     private void setControlStates() {
-        boolean filesSelected = listModel.getSize() > 0;
+        boolean filesSelected = !allObjects.isEmpty();
         boolean objectsSelected = listObjects.getSelectedIndex() != -1;
         buttonRemoveFile.setEnabled(objectsSelected);
         buttonReloadAll.setEnabled(filesSelected);
@@ -339,6 +371,7 @@ public class Bo2LayerEditor extends AbstractLayerEditor<Bo2Layer> implements Lis
                 }
                 settingsChanged();
                 refreshLeafDecaySettings();
+                updateCategories();
                 if (isHytaleWorld) {
                     populateBlockMappings();
                 }
@@ -379,6 +412,7 @@ public class Bo2LayerEditor extends AbstractLayerEditor<Bo2Layer> implements Lis
                     return true;
                 });
             }
+            allObjects.add(object);
             listModel.addElement(object);
         } catch (IllegalArgumentException e) {
             logger.error("IllegalArgumentException while trying to load custom object " + file, e);
@@ -392,10 +426,13 @@ public class Bo2LayerEditor extends AbstractLayerEditor<Bo2Layer> implements Lis
     private void removeFiles() {
         int[] selectedIndices = listObjects.getSelectedIndices();
         for (int i = selectedIndices.length - 1; i >= 0; i--) {
+            WPObject removed = listModel.getElementAt(selectedIndices[i]);
             listModel.removeElementAt(selectedIndices[i]);
+            allObjects.remove(removed);
         }
         settingsChanged();
         refreshLeafDecaySettings();
+        updateCategories();
         if (isHytaleWorld) {
             populateBlockMappings();
         }
@@ -431,7 +468,12 @@ public class Bo2LayerEditor extends AbstractLayerEditor<Bo2Layer> implements Lis
                             attributes.putAll(existingAttributes);
                             object.setAttributes(attributes);
                         }
+                        WPObject oldObject = listModel.getElementAt(index);
+                        int allIdx = allObjects.indexOf(oldObject);
                         listModel.setElementAt(object, index);
+                        if (allIdx >= 0) {
+                            allObjects.set(allIdx, object);
+                        }
                     } catch (IOException e) {
                         logger.error("I/O error while reloading " + file, e);
                         errors.append(file.getPath()).append('\n');
@@ -617,6 +659,73 @@ public class Bo2LayerEditor extends AbstractLayerEditor<Bo2Layer> implements Lis
                 round(blocksAt1),
                 round(blocksAt50),
                 round((blocksAt100 <= 1) ? 1 : blocksAt100)));
+    }
+
+    // --- Category filter support ---
+
+    /**
+     * Extract a category string from a WPObject. Checks for "[Category]" in
+     * the object name first, then falls back to the parent directory name of
+     * the source file.
+     */
+    static String extractCategory(WPObject object) {
+        String name = object.getName();
+        if (name != null) {
+            int open = name.indexOf('[');
+            int close = name.indexOf(']', open + 1);
+            if (open >= 0 && close > open) {
+                return name.substring(open + 1, close);
+            }
+        }
+        File file = object.getAttribute(ATTRIBUTE_FILE);
+        if (file != null) {
+            File parent = file.getParentFile();
+            if (parent != null) {
+                return parent.getName();
+            }
+        }
+        return UNCATEGORIZED;
+    }
+
+    /**
+     * Rebuild the category combo box from the current allObjects list.
+     */
+    private void updateCategories() {
+        if (comboBoxCategory == null) {
+            return;
+        }
+        String previousSelection = (String) comboBoxCategory.getSelectedItem();
+        comboBoxCategory.removeAllItems();
+        comboBoxCategory.addItem(ALL_CATEGORIES);
+        Set<String> categories = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+        for (WPObject obj : allObjects) {
+            categories.add(extractCategory(obj));
+        }
+        for (String cat : categories) {
+            comboBoxCategory.addItem(cat);
+        }
+        if (previousSelection != null) {
+            comboBoxCategory.setSelectedItem(previousSelection);
+            if (comboBoxCategory.getSelectedItem() == null || !comboBoxCategory.getSelectedItem().equals(previousSelection)) {
+                comboBoxCategory.setSelectedItem(ALL_CATEGORIES);
+            }
+        }
+    }
+
+    /**
+     * Filter the displayed list to only show objects matching the selected category.
+     */
+    private void filterByCategory() {
+        if (comboBoxCategory == null) {
+            return;
+        }
+        String selected = (String) comboBoxCategory.getSelectedItem();
+        listModel.clear();
+        for (WPObject obj : allObjects) {
+            if (ALL_CATEGORIES.equals(selected) || extractCategory(obj).equalsIgnoreCase(selected)) {
+                listModel.addElement(obj);
+            }
+        }
     }
 
     /**
@@ -1130,8 +1239,7 @@ public class Bo2LayerEditor extends AbstractLayerEditor<Bo2Layer> implements Lis
 
         // Scan all objects for unique source materials so both schematics and Hytale prefabs can be remapped.
         java.util.TreeMap<String, String> mappings = new java.util.TreeMap<>();
-        for (int i = 0; i < listModel.getSize(); i++) {
-            WPObject object = listModel.getElementAt(i);
+        for (WPObject object : allObjects) {
             Point3i dim = object.getDimensions();
             for (int x = 0; x < dim.x; x++) {
                 for (int y = 0; y < dim.y; y++) {
@@ -1280,8 +1388,14 @@ public class Bo2LayerEditor extends AbstractLayerEditor<Bo2Layer> implements Lis
     }
 
     private final DefaultListModel<WPObject> listModel;
+    private final List<WPObject> allObjects = new ArrayList<>();
     private final NumberFormat numberFormat = NumberFormat.getInstance();
     private ColourScheme colourScheme;
+
+    // Category filter and no-physics controls
+    private JCheckBox checkBoxNoPhysics;
+    private JComboBox<String> comboBoxCategory;
+    private JLabel labelCategory;
 
     // Block mapping fields for Hytale worlds
     private boolean isHytaleWorld;
@@ -1290,6 +1404,8 @@ public class Bo2LayerEditor extends AbstractLayerEditor<Bo2Layer> implements Lis
     private javax.swing.table.DefaultTableModel blockMappingTableModel;
     private JTable blockMappingTable;
 
+    private static final String ALL_CATEGORIES = "All";
+    private static final String UNCATEGORIZED = "Uncategorized";
     private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(Bo2LayerEditor.class);
     private static final long serialVersionUID = 1L;
 }

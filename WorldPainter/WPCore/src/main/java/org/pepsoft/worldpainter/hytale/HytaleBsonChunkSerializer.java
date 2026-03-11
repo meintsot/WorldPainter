@@ -463,7 +463,7 @@ public class HytaleBsonChunkSerializer {
         BsonArray sections = new BsonArray();
         
         HytaleChunk.HytaleSection[] chunkSections = chunk.getSections();
-        for (int i = 0; i < HytaleChunk.SECTION_COUNT; i++) {
+        for (int i = 0; i < chunk.getSectionCount(); i++) {
             sections.add(createSectionHolderBson(chunkSections[i], i, chunk, null));
         }
         

@@ -90,6 +90,21 @@ public class Bo2Layer extends CustomLayer {
     }
 
     /**
+     * Whether physics checks (foundation requirements, collision detection)
+     * should be disabled when placing objects from this layer. When {@code true},
+     * objects are force-placed at their calculated position regardless of what
+     * blocks are already there. Useful for importing Minecraft tree schematics
+     * where physics cause floating or missing blocks.
+     */
+    public boolean isNoPhysics() {
+        return noPhysics;
+    }
+
+    public void setNoPhysics(boolean noPhysics) {
+        this.noPhysics = noPhysics;
+    }
+
+    /**
      * Get custom source-block→Hytale block mappings for this layer.
      * Used during Hytale export to override default block conversions.
      *
@@ -150,6 +165,7 @@ public class Bo2Layer extends CustomLayer {
     private int density = 20;
     private int gridX = 1, gridY = 1, randomDisplacement = 0;
     private Map<String, String> hytaleBlockMappings;
+    private boolean noPhysics = false;
 
     private static final long serialVersionUID = 1L;
 }

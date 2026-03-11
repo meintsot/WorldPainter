@@ -112,6 +112,17 @@ public class FrostExporter extends AbstractLayerExporter<Frost> implements Secon
                                         // regular thin snow block
                                         placeSnow(minecraftWorld, x, y, height, 1);
                                     }
+                                    // For Hytale, snow replaces the surface block, so clear any
+                                    // insubstantial blocks above (e.g. plants that would be left floating)
+                                    if (isHytale) {
+                                        for (int dz = height + 1; dz <= highestNonAirBlock; dz++) {
+                                            if (minecraftWorld.getMaterialAt(x, y, dz).insubstantial) {
+                                                minecraftWorld.setMaterialAt(x, y, dz, AIR);
+                                            } else {
+                                                break;
+                                            }
+                                        }
+                                    }
                                 }
                                 break;
                             }
@@ -136,12 +147,11 @@ public class FrostExporter extends AbstractLayerExporter<Frost> implements Secon
             throw new IllegalArgumentException("layers " + layers);
         }
         if (HytaleTerrainHelper.isHytale(platform)) {
-            if (minecraftWorld.getMaterialAt(x, y, height).isNamed("hytale:Soil_Snow")
-                    || minecraftWorld.getMaterialAt(x, y, height + 1).isNamed("hytale:Soil_Snow")) {
+            if (minecraftWorld.getMaterialAt(x, y, height).isNamed("hytale:Soil_Snow")) {
                 return;
             }
-            // Hytale snow is a simple block without layer variants
-            minecraftWorld.setMaterialAt(x, y, height + 1, Material.get("hytale:Soil_Snow"));
+            // Hytale snow is a soil variant, so replace the surface block rather than stacking on top
+            minecraftWorld.setMaterialAt(x, y, height, Material.get("hytale:Soil_Snow"));
             return;
         }
         Material existingMaterial = minecraftWorld.getMaterialAt(x, y, height + 1);

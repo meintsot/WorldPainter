@@ -148,7 +148,7 @@ public class HytaleMapImportDialog extends WorldPainterDialog {
         ProgressDialog.executeTask(this, new ProgressTask<Void>() {
             @Override public String getName() { return "Analyzing Hytale world..."; }
             @Override public Void execute(ProgressReceiver pr) throws ProgressReceiver.OperationCancelled {
-                try (ChunkStore store = new HytaleChunkStore(worldDir, 0, HytaleChunk.MAX_HEIGHT)) {
+                try (ChunkStore store = new HytaleChunkStore(worldDir, 0, HytaleChunk.DEFAULT_MAX_HEIGHT)) {
                     Set<MinecraftCoords> coords = store.getChunkCoords();
                     final NumberFormat fmt = NumberFormat.getIntegerInstance();
                     int minX = Integer.MAX_VALUE, maxX = Integer.MIN_VALUE;
@@ -183,7 +183,7 @@ public class HytaleMapImportDialog extends WorldPainterDialog {
             @Override public World2 execute(ProgressReceiver pr) throws ProgressReceiver.OperationCancelled {
                 try {
                     TileFactory tileFactory = TileFactoryFactory.createNoiseTileFactory(
-                        0, Terrain.GRASS, 0, HytaleChunk.MAX_HEIGHT, 58, 62, false, true, 20, 1.0);
+                        0, Terrain.GRASS, 0, HytaleChunk.DEFAULT_MAX_HEIGHT, 58, 62, false, true, 20, 1.0);
                     HytaleMapImporter importer = new HytaleMapImporter(
                         worldDir, tileFactory, null, readOnlyOpt);
                     return importer.doImport(pr);

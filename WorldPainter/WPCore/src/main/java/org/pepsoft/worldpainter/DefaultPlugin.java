@@ -156,7 +156,7 @@ public class DefaultPlugin extends AbstractPlugin implements LayerProvider {
     public static final Platform HYTALE = new Platform(
             "org.pepsoft.hytale",
             "Hytale",
-            new int[] { 320 }, 320,
+            new int[] { 320, 512, 640, 1024 }, 320,
             Integer.MIN_VALUE, Integer.MAX_VALUE, Integer.MIN_VALUE, Integer.MAX_VALUE,
             0,
             Arrays.asList(SURVIVAL, CREATIVE, ADVENTURE),

@@ -35,4 +35,23 @@ public class FrostExporterTest {
             assertEquals(AIR, minecraftWorld.getMaterialAt(0, 0, 64));
         }
     }
+
+    @Test
+    public void testHytaleFrostReplacesSurfaceBlock() {
+        HytaleBlockRegistry.ensureMaterialsRegistered();
+
+        final Rectangle area = new Rectangle(0, 0, 1, 1);
+        final Dimension dimension = createDimension(area, 62);
+        dimension.setBitLayerValueAt(Frost.INSTANCE, 0, 0, true);
+
+        final Material hytaleSnow = Material.get("hytale:Soil_Snow");
+        try (var minecraftWorld = createMinecraftWorld(area, 62, GRASS_BLOCK)) {
+            final FrostExporter exporter = new FrostExporter(dimension, DefaultPlugin.HYTALE, new FrostExporter.FrostSettings());
+            exporter.addFeatures(area, area, minecraftWorld);
+
+            // Snow should replace the surface block, not be added on top
+            assertEquals(hytaleSnow, minecraftWorld.getMaterialAt(0, 0, 62));
+            assertEquals(AIR, minecraftWorld.getMaterialAt(0, 0, 63));
+        }
+    }
 }
