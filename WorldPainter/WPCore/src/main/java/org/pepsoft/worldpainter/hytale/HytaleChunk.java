@@ -23,6 +23,8 @@ public class HytaleChunk implements Chunk {
     public static final int SECTION_HEIGHT = 32;
     public static final int DEFAULT_SECTION_COUNT = 10;
     public static final int DEFAULT_MAX_HEIGHT = 320;
+    public static final int SUPPORT_NONE = 0;
+    public static final int SUPPORT_DECORATIVE = 15;
     
     private final int x, z;
     private final int minHeight, maxHeight;
@@ -191,6 +193,9 @@ public class HytaleChunk implements Chunk {
         if (y < 0 || y >= maxHeight) return;
         HytaleBlock effective = (block != null) ? block : HytaleBlock.EMPTY;
         getSection(y).setHytaleBlock(x, y & 31, z, effective);
+        if (effective.isEmpty()) {
+            getSection(y).setSupportValue(x, y & 31, z, SUPPORT_NONE);
+        }
         if (!effective.isEmpty() && y > getHeight(x, z)) {
             setHeight(x, z, y);
         } else if (effective.isEmpty() && y == getHeight(x, z)) {
@@ -204,6 +209,20 @@ public class HytaleChunk implements Chunk {
             }
             setHeight(x, z, newHeight);
         }
+    }
+
+    public int getSupportValue(int x, int y, int z) {
+        if (y < 0 || y >= maxHeight) return SUPPORT_NONE;
+        return getSection(y).getSupportValue(x, y & 31, z);
+    }
+
+    public void setSupportValue(int x, int y, int z, int supportValue) {
+        if (y < 0 || y >= maxHeight) return;
+        getSection(y).setSupportValue(x, y & 31, z, supportValue);
+    }
+
+    public void setDecorative(int x, int y, int z, boolean decorative) {
+        setSupportValue(x, y, z, decorative ? SUPPORT_DECORATIVE : SUPPORT_NONE);
     }
     
     @Override
@@ -604,6 +623,8 @@ public class HytaleChunk implements Chunk {
         private final byte[] fluidLevels;
         private final byte[] blockLight;
         private final byte[] skyLight;
+        private byte[] supportData;
+        private int nonZeroSupportCount;
         
         // Palette for efficient storage
         private final List<Material> palette = new ArrayList<>();
@@ -781,6 +802,47 @@ public class HytaleChunk implements Chunk {
             int idx = getIndex(x, y, z);
             fluidIds[idx] = 0;
             fluidLevels[idx] = 0;
+        }
+
+        public int getSupportValue(int x, int y, int z) {
+            if (supportData == null) {
+                return SUPPORT_NONE;
+            }
+            int index = getIndex(x, y, z);
+            int packed = supportData[index >> 1] & 0xFF;
+            return ((index & 1) == 0) ? (packed & 0xF) : ((packed >> 4) & 0xF);
+        }
+
+        public void setSupportValue(int x, int y, int z, int supportValue) {
+            int value = supportValue & 0xF;
+            if ((supportData == null) && (value == SUPPORT_NONE)) {
+                return;
+            }
+            if (supportData == null) {
+                supportData = new byte[SECTION_SIZE >> 1];
+            }
+            int index = getIndex(x, y, z);
+            int byteIndex = index >> 1;
+            int packed = supportData[byteIndex] & 0xFF;
+            int oldValue = ((index & 1) == 0) ? (packed & 0xF) : ((packed >> 4) & 0xF);
+            if (oldValue == value) {
+                return;
+            }
+            if ((index & 1) == 0) {
+                packed = (packed & 0xF0) | value;
+            } else {
+                packed = (packed & 0x0F) | (value << 4);
+            }
+            supportData[byteIndex] = (byte) packed;
+            if ((oldValue == SUPPORT_NONE) && (value != SUPPORT_NONE)) {
+                nonZeroSupportCount++;
+            } else if ((oldValue != SUPPORT_NONE) && (value == SUPPORT_NONE)) {
+                nonZeroSupportCount--;
+            }
+        }
+
+        public byte[] getSupportData() {
+            return (nonZeroSupportCount > 0) ? supportData : null;
         }
         
         /**

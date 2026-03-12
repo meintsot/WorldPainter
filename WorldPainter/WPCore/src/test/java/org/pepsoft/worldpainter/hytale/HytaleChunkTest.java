@@ -198,6 +198,19 @@ public class HytaleChunkTest {
         assertEquals(8, readFluidLevel(fluidData, 1));
     }
 
+    @Test
+    public void testDecorativeSupportDataSerializesForNoPhysicsBlocks() {
+        HytaleChunk chunk = new HytaleChunk(0, 0, 0, 320);
+
+        chunk.setHytaleBlock(2, 10, 3, HytaleBlock.of("Wood_Oak_Trunk"));
+        chunk.setDecorative(2, 10, 3, true);
+
+        byte[] physicsData = getSerializedBlockPhysicsData(chunk, 0);
+        assertNotNull(physicsData);
+        assertTrue(physicsData.length > 1);
+        assertEquals(HytaleChunk.SUPPORT_DECORATIVE, readSupportValue(physicsData, blockIndex(2, 10, 3)));
+    }
+
     private static byte[] getSerializedFluidData(HytaleChunk chunk, int sectionIndex) {
         BsonDocument root = new RawBsonDocument(HytaleBsonChunkSerializer.serializeChunk(chunk));
         BsonDocument components = root.getDocument("Components");
@@ -207,6 +220,17 @@ public class HytaleChunkTest {
         BsonDocument sectionComponents = sectionHolder.getDocument("Components");
         BsonDocument fluidDoc = sectionComponents.getDocument("Fluid");
         return fluidDoc.getBinary("Data").getData();
+    }
+
+    private static byte[] getSerializedBlockPhysicsData(HytaleChunk chunk, int sectionIndex) {
+        BsonDocument root = new RawBsonDocument(HytaleBsonChunkSerializer.serializeChunk(chunk));
+        BsonDocument components = root.getDocument("Components");
+        BsonDocument chunkColumn = components.getDocument("ChunkColumn");
+        BsonArray sections = chunkColumn.getArray("Sections");
+        BsonDocument sectionHolder = sections.get(sectionIndex).asDocument();
+        BsonDocument sectionComponents = sectionHolder.getDocument("Components");
+        BsonDocument physicsDoc = sectionComponents.getDocument("BlockPhysics");
+        return physicsDoc.getBinary("Data").getData();
     }
 
     private static int readFluidLevel(byte[] fluidData, int index) {
@@ -254,5 +278,21 @@ public class HytaleChunkTest {
             return levelByte & 0xF;
         }
         return (levelByte >> 4) & 0xF;
+    }
+
+    private static int readSupportValue(byte[] physicsData, int index) {
+        if (physicsData.length == 0 || physicsData[0] == 0) {
+            return 0;
+        }
+        int byteIndex = 1 + (index >> 1);
+        int packed = physicsData[byteIndex] & 0xFF;
+        if ((index & 1) == 0) {
+            return packed & 0xF;
+        }
+        return (packed >> 4) & 0xF;
+    }
+
+    private static int blockIndex(int x, int y, int z) {
+        return (y & 31) << 10 | (z & 31) << 5 | (x & 31);
     }
 }

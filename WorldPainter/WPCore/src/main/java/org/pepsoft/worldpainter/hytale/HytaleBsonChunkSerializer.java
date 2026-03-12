@@ -448,12 +448,10 @@ public class HytaleBsonChunkSerializer {
     /**
      * Create ChunkColumn BSON with 10 section holders.
      *
-     * <p>Block physics support values are left at 0 (no data). Hytale's runtime
-     * computes correct support values on-demand when blocks are disturbed.
-     * Pre-computing values causes cascading corrections on first interaction
-     * because the runtime's steady-state differs from any static BFS computation
-     * (e.g., leaves directly supported by wood get value 0 via SATISFIES_SUPPORT,
-     * not a propagated distance).
+     * <p>Most sections leave block physics support values unset so Hytale can
+     * compute them on-demand when blocks are disturbed. Sections containing
+     * explicitly marked decorative blocks serialize only those support
+     * overrides.
      *
      * Format from ChunkColumn.CODEC:
      * - "Sections": array of 10 Holder documents
@@ -464,7 +462,7 @@ public class HytaleBsonChunkSerializer {
         
         HytaleChunk.HytaleSection[] chunkSections = chunk.getSections();
         for (int i = 0; i < chunk.getSectionCount(); i++) {
-            sections.add(createSectionHolderBson(chunkSections[i], i, chunk, null));
+            sections.add(createSectionHolderBson(chunkSections[i], i, chunk, chunkSections[i].getSupportData()));
         }
         
         doc.put("Sections", sections);

@@ -1317,8 +1317,10 @@ public class HytaleWorldExporter implements WorldExporter {
             }
             Bo2Layer bo2Layer = (Bo2Layer) layer;
             regionWorld.setActiveBlockMappings(bo2Layer.getHytaleBlockMappings());
+            regionWorld.setDecoratePlacedBlocks(bo2Layer.isNoPhysics());
             Bo2LayerExporter exporter = bo2Layer.getExporter(dimension, platform, dimension.getLayerSettings(bo2Layer));
             if (exporter == null) {
+                regionWorld.setDecoratePlacedBlocks(false);
                 continue;
             }
             try {
@@ -1330,6 +1332,8 @@ public class HytaleWorldExporter implements WorldExporter {
             } catch (RuntimeException e) {
                 logger.error("Error applying custom object layer '{}' in region {},{}",
                         bo2Layer.getName(), regionCoords.x, regionCoords.y, e);
+            } finally {
+                regionWorld.setDecoratePlacedBlocks(false);
             }
         }
     }
@@ -1485,6 +1489,10 @@ public class HytaleWorldExporter implements WorldExporter {
             this.activeBlockMappings = mappings;
         }
 
+        void setDecoratePlacedBlocks(boolean decoratePlacedBlocks) {
+            this.decoratePlacedBlocks = decoratePlacedBlocks;
+        }
+
         @Override
         public int getBlockTypeAt(int x, int y, int height) {
             return getMaterialAt(x, y, height).blockType;
@@ -1568,10 +1576,12 @@ public class HytaleWorldExporter implements WorldExporter {
             if (material.isNamed(MC_WATER)) {
                 location.chunk.setHytaleBlock(location.localX, height, location.localZ, HytaleBlock.EMPTY);
                 section.setFluid(location.localX, localY, location.localZ, HytaleBlockMapping.HY_WATER, 1);
+                location.chunk.setDecorative(location.localX, height, location.localZ, false);
                 return;
             } else if (material.isNamed(MC_LAVA)) {
                 location.chunk.setHytaleBlock(location.localX, height, location.localZ, HytaleBlock.EMPTY);
                 section.setFluid(location.localX, localY, location.localZ, HytaleBlockMapping.HY_LAVA, 1);
+                location.chunk.setDecorative(location.localX, height, location.localZ, false);
                 return;
             }
 
@@ -1579,9 +1589,11 @@ public class HytaleWorldExporter implements WorldExporter {
             if (block.isFluid()) {
                 location.chunk.setHytaleBlock(location.localX, height, location.localZ, HytaleBlock.EMPTY);
                 section.setFluid(location.localX, localY, location.localZ, block.id, 1);
+                location.chunk.setDecorative(location.localX, height, location.localZ, false);
             } else {
                 section.clearFluid(location.localX, localY, location.localZ);
                 location.chunk.setHytaleBlock(location.localX, height, location.localZ, block);
+                location.chunk.setDecorative(location.localX, height, location.localZ, decoratePlacedBlocks);
             }
         }
 
@@ -1717,6 +1729,7 @@ public class HytaleWorldExporter implements WorldExporter {
         private final int blockOffsetX, blockOffsetZ;
         private final int minHeight, maxHeight;
         private java.util.Map<String, String> activeBlockMappings;
+        private boolean decoratePlacedBlocks;
 
         private static final class Location {
             private Location(HytaleChunk chunk, int localX, int localZ) {
