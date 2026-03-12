@@ -6079,18 +6079,21 @@ public final class App extends JFrame implements BrushControl,
 
         // Platform-specific layer visibility: fully hide layers that don't apply
         final boolean isHytalePlatform = org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(platform);
-        // Minecraft-only layers: hidden for Hytale
-        setLayerHidden(Caves.INSTANCE, isHytalePlatform);
-        setLayerHidden(Caverns.INSTANCE, isHytalePlatform);
-        setLayerHidden(Chasms.INSTANCE, isHytalePlatform);
+        // Caves, Caverns, Chasms, Resources: available for both platforms
+        setLayerHidden(Caves.INSTANCE, false);
+        setLayerHidden(Caverns.INSTANCE, false);
+        setLayerHidden(Chasms.INSTANCE, false);
+        setLayerHidden(Resources.INSTANCE, false);
+        // Tree layers are Minecraft-only (Hytale uses prefabs for trees)
         setLayerHidden(DeciduousForest.INSTANCE, isHytalePlatform);
         setLayerHidden(PineForest.INSTANCE, isHytalePlatform);
         setLayerHidden(SwampLand.INSTANCE, isHytalePlatform);
         setLayerHidden(Jungle.INSTANCE, isHytalePlatform);
-        setLayerHidden(Resources.INSTANCE, isHytalePlatform);
         // Hytale-only layers: hidden for Minecraft
         setLayerHidden(org.pepsoft.worldpainter.hytale.HytaleEntityLayer.INSTANCE, true); // experimental — always hidden for now
         setLayerHidden(org.pepsoft.worldpainter.hytale.HytalePrefabLayer.INSTANCE, ! isHytalePlatform);
+        setLayerHidden(org.pepsoft.worldpainter.hytale.HytaleFluidLayer.INSTANCE, ! isHytalePlatform);
+        setLayerHidden(org.pepsoft.worldpainter.hytale.HytaleEnvironmentLayer.INSTANCE, ! isHytalePlatform);
         // Populate is Minecraft-only (tells MC to generate vegetation/ores); no effect on Hytale
         setLayerHidden(Populate.INSTANCE, isHytalePlatform);
         // Show/hide Hytale-only dockable frames

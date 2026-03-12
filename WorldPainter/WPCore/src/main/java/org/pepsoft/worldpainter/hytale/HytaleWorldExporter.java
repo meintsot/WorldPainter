@@ -27,6 +27,9 @@ import org.pepsoft.worldpainter.layers.Frost;
 import org.pepsoft.worldpainter.layers.FloodWithLava;
 import org.pepsoft.worldpainter.layers.bo2.Bo2LayerExporter;
 import org.pepsoft.worldpainter.layers.exporters.FrostExporter;
+import org.pepsoft.worldpainter.exporting.LayerExporter;
+import org.pepsoft.worldpainter.exporting.FirstPassLayerExporter;
+import org.pepsoft.worldpainter.exporting.SecondPassLayerExporter;
 import org.pepsoft.worldpainter.util.FileInUseException;
 import org.pepsoft.worldpainter.vo.AttributeKeyVO;
 import org.pepsoft.worldpainter.vo.EventVO;
@@ -40,6 +43,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.ThreadFactory;
@@ -598,7 +602,9 @@ public class HytaleWorldExporter implements WorldExporter {
             
             logger.info("Processing {} regions for dimension {}", regions.size(), dimension.getName());
             final boolean hasCustomObjects = hasCustomObjectLayers(dimension);
-            logger.info("Hytale custom object layers present: {}", hasCustomObjects);
+            final boolean hasSecondPass = hasSecondPassLayers(dimension);
+            final boolean needsFullRegionRetention = hasCustomObjects || hasSecondPass;
+            logger.info("Hytale custom object layers present: {}, second-pass layers: {}", hasCustomObjects, hasSecondPass);
 
             final Dimension ceilingDimension = world.getDimension(NORMAL_DETAIL_CEILING);
             if (ceilingDimension != null) {
@@ -637,7 +643,7 @@ public class HytaleWorldExporter implements WorldExporter {
                     ? Math.max(1, configured)
                     : adaptiveDefaultConcurrentRegions;
             final int maxByMemory = Math.max(1, (int) (maxMem / (1536L * 1024 * 1024)));
-            final int maxByContent = hasCustomObjects ? 1 : configuredMaxConcurrentRegions;
+            final int maxByContent = needsFullRegionRetention ? 1 : configuredMaxConcurrentRegions;
             final int maxConcurrentRegions = Math.max(1,
                 Math.min(Math.min(maxByContent, maxByMemory), sortedRegions.size()));
             final Semaphore regionMemorySemaphore = new Semaphore(maxConcurrentRegions);
@@ -671,7 +677,7 @@ public class HytaleWorldExporter implements WorldExporter {
                         }
                         
                         try {
-                            exportRegion(chunksDir, dimension, ceilingDimension, tileCoords, region, collectedStats, regionProgress, hasCustomObjects);
+                            exportRegion(chunksDir, dimension, ceilingDimension, tileCoords, region, collectedStats, regionProgress, needsFullRegionRetention);
                         } catch (Throwable t) {
                             if (chainContains(t, ProgressReceiver.OperationCancelled.class)) {
                                 logger.debug("Operation cancelled on thread {}", Thread.currentThread().getName());
@@ -873,6 +879,12 @@ public class HytaleWorldExporter implements WorldExporter {
                     }
                 }
             }
+
+            // Apply first-pass layers (ground cover, resources) to chunks
+            applyFirstPassLayers(dimension, tileCoords, chunksByCoords);
+
+            // Apply second-pass layers (caves, caverns, chasms) - CARVE then ADD_FEATURES
+            applySecondPassLayers(dimension, regionCoords, chunksByCoords);
 
             applyFrostLayer(dimension, regionCoords, chunksByCoords);
 
@@ -1101,16 +1113,23 @@ public class HytaleWorldExporter implements WorldExporter {
                     }
                 }
 
-                // Fill water or lava if below water level
-                // Surface block is at height, so water starts at height+1
-                // waterLevel is the TOP surface of water (inclusive)
+                // Fill fluid (water/lava/poison/slime/tar) if below water level
+                // Surface block is at height, so fluid starts at height+1
+                // waterLevel is the TOP surface of fluid (inclusive)
                 if (localWaterLevel > height) {
                     waterColumns++;
-                    String fluidId = isLavaFluid ? HytaleBlockMapping.HY_LAVA : HytaleBlockMapping.HY_WATER;
+                    String fluidId;
+                    if (hasFluidOverride) {
+                        fluidId = HytaleFluidLayer.getFluidBlockId(fluidLayerValue);
+                    } else if (isLavaFluid) {
+                        fluidId = HytaleBlockMapping.HY_LAVA;
+                    } else {
+                        fluidId = HytaleBlockMapping.HY_WATER;
+                    }
                     // Debug logging for first fluid placement in this chunk
                     if (!waterLogged && logger.isDebugEnabled()) {
                         logger.debug("{} at world ({}, {}) chunk block ({}, {}) - Terrain Y: {}, Fluid Y: {}, Placing Y: {} to {}",
-                            isLavaFluid ? "Lava" : "Water", worldX, worldZ, localX, localZ, height, localWaterLevel, height + 1, localWaterLevel);
+                            fluidId, worldX, worldZ, localX, localZ, height, localWaterLevel, height + 1, localWaterLevel);
                         waterLogged = true;
                     }
                     for (int y = height + 1; y <= localWaterLevel; y++) {
@@ -1360,6 +1379,189 @@ public class HytaleWorldExporter implements WorldExporter {
         } catch (RuntimeException e) {
             logger.error("Error applying frost layer in region {},{}", regionCoords.x, regionCoords.y, e);
         }
+    }
+
+    /**
+     * Apply all second-pass layer exporters (caves, caverns, chasms, etc.) to the region.
+     * Follows the same two-stage pattern as AbstractWorldExporter: CARVE first, then ADD_FEATURES.
+     */
+    private void applySecondPassLayers(Dimension dimension, Point regionCoords, Map<Long, HytaleChunk> chunksByCoords) {
+        Set<Layer> layers = dimension.getAllLayers(false);
+        if (layers.isEmpty()) {
+            return;
+        }
+
+        // Collect second-pass layers (excluding Bo2Layer which is handled separately, and Frost which has its own method)
+        List<Layer> secondPassLayers = new ArrayList<>();
+        for (Layer layer : layers) {
+            if (layer instanceof Bo2Layer || layer == Frost.INSTANCE) {
+                continue;
+            }
+            Class<? extends LayerExporter> exporterType = layer.getExporterType();
+            if (exporterType != null && SecondPassLayerExporter.class.isAssignableFrom(exporterType)) {
+                secondPassLayers.add(layer);
+            }
+        }
+        if (secondPassLayers.isEmpty()) {
+            return;
+        }
+        Collections.sort(secondPassLayers);
+
+        final int regionSize = HytaleChunk.CHUNK_SIZE * 32;
+        final Rectangle exportedArea = new Rectangle(
+                (regionCoords.x << 10) - blockOffsetX,
+                (regionCoords.y << 10) - blockOffsetZ,
+                regionSize,
+                regionSize);
+
+        final HytaleRegionMinecraftWorld regionWorld = new HytaleRegionMinecraftWorld(chunksByCoords, blockOffsetX, blockOffsetZ,
+                dimension.getMinHeight(), dimension.getMaxHeight());
+
+        // Instantiate all exporters
+        Map<Layer, SecondPassLayerExporter> exporters = new LinkedHashMap<>();
+        for (Layer layer : secondPassLayers) {
+            LayerExporter exporter = layer.getExporter(dimension, platform, dimension.getLayerSettings(layer));
+            if (exporter instanceof SecondPassLayerExporter) {
+                exporters.put(layer, (SecondPassLayerExporter) exporter);
+            }
+        }
+
+        // Stage 1: CARVE - remove blocks (caves, tunnels, etc.)
+        for (Map.Entry<Layer, SecondPassLayerExporter> entry : exporters.entrySet()) {
+            SecondPassLayerExporter exporter = entry.getValue();
+            if (!exporter.getStages().contains(SecondPassLayerExporter.Stage.CARVE)) {
+                continue;
+            }
+            try {
+                List<Fixup> fixups = exporter.carve(exportedArea, exportedArea, regionWorld);
+                if (fixups != null && !fixups.isEmpty()) {
+                    logger.debug("Skipped {} border fixups for layer '{}' CARVE in region {},{}",
+                            fixups.size(), entry.getKey().getName(), regionCoords.x, regionCoords.y);
+                }
+            } catch (RuntimeException e) {
+                logger.error("Error carving layer '{}' in region {},{}", entry.getKey().getName(), regionCoords.x, regionCoords.y, e);
+            }
+        }
+
+        // Stage 2: ADD_FEATURES - add decorations (stalactites, mushrooms, etc.)
+        for (Map.Entry<Layer, SecondPassLayerExporter> entry : exporters.entrySet()) {
+            SecondPassLayerExporter exporter = entry.getValue();
+            if (!exporter.getStages().contains(SecondPassLayerExporter.Stage.ADD_FEATURES)) {
+                continue;
+            }
+            try {
+                List<Fixup> fixups = exporter.addFeatures(exportedArea, exportedArea, regionWorld);
+                if (fixups != null && !fixups.isEmpty()) {
+                    logger.debug("Skipped {} border fixups for layer '{}' ADD_FEATURES in region {},{}",
+                            fixups.size(), entry.getKey().getName(), regionCoords.x, regionCoords.y);
+                }
+            } catch (RuntimeException e) {
+                logger.error("Error adding features for layer '{}' in region {},{}", entry.getKey().getName(), regionCoords.x, regionCoords.y, e);
+            }
+        }
+    }
+
+    /**
+     * Apply first-pass layer exporters (ground cover, resources) to the region.
+     * These need a Chunk interface, which we provide via HytaleChunkView.
+     */
+    private void applyFirstPassLayers(Dimension dimension, Set<Point> tileCoords, Map<Long, HytaleChunk> chunksByCoords) {
+        Set<Layer> layers = dimension.getAllLayers(false);
+        if (layers.isEmpty()) {
+            return;
+        }
+
+        // Collect first-pass layers
+        List<Layer> firstPassLayers = new ArrayList<>();
+        for (Layer layer : layers) {
+            Class<? extends LayerExporter> exporterType = layer.getExporterType();
+            if (exporterType != null && FirstPassLayerExporter.class.isAssignableFrom(exporterType)) {
+                firstPassLayers.add(layer);
+            }
+        }
+        if (firstPassLayers.isEmpty()) {
+            return;
+        }
+
+        // Instantiate all exporters
+        List<FirstPassLayerExporter> exporters = new ArrayList<>();
+        for (Layer layer : firstPassLayers) {
+            LayerExporter exporter = layer.getExporter(dimension, platform, dimension.getLayerSettings(layer));
+            if (exporter instanceof FirstPassLayerExporter) {
+                exporters.add((FirstPassLayerExporter) exporter);
+            }
+        }
+        if (exporters.isEmpty()) {
+            return;
+        }
+
+        // Apply each first-pass exporter to each chunk
+        // First-pass exporters work per-tile, per-chunk via render(Tile, Chunk)
+        for (Map.Entry<Long, HytaleChunk> entry : chunksByCoords.entrySet()) {
+            HytaleChunk chunk = entry.getValue();
+            int hyChunkX = chunk.getxPos();
+            int hyChunkZ = chunk.getzPos();
+
+            // Convert to world block coords and then to tile coords
+            int blockX = (hyChunkX << 5) - blockOffsetX;
+            int blockZ = (hyChunkZ << 5) - blockOffsetZ;
+            int tileX = blockX >> 7;
+            int tileZ = blockZ >> 7;
+
+            if (!tileCoords.contains(new Point(tileX, tileZ))) {
+                continue;
+            }
+
+            Tile tile = dimension.getTile(tileX, tileZ);
+            if (tile == null) {
+                continue;
+            }
+
+            // Each Hytale chunk (32x32) corresponds to 4 MC chunks (16x16)
+            // Create MC-style chunk views for each quadrant
+            for (int qx = 0; qx < 2; qx++) {
+                for (int qz = 0; qz < 2; qz++) {
+                    int mcChunkX = hyChunkX * 2 + qx;
+                    int mcChunkZ = hyChunkZ * 2 + qz;
+                    int xOffset = qx << 4;
+                    int zOffset = qz << 4;
+                    HytaleChunkView chunkView = new HytaleChunkView(chunk, mcChunkX, mcChunkZ, xOffset, zOffset);
+
+                    for (FirstPassLayerExporter exporter : exporters) {
+                        try {
+                            exporter.render(tile, chunkView);
+                        } catch (RuntimeException e) {
+                            logger.error("Error applying first-pass layer in chunk ({}, {})", mcChunkX, mcChunkZ, e);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private boolean hasSecondPassLayers(Dimension dimension) {
+        Set<Layer> layers = dimension.getAllLayers(false);
+        for (Layer layer : layers) {
+            if (layer instanceof Bo2Layer || layer == Frost.INSTANCE) {
+                continue;
+            }
+            Class<? extends LayerExporter> exporterType = layer.getExporterType();
+            if (exporterType != null && SecondPassLayerExporter.class.isAssignableFrom(exporterType)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasFirstPassLayers(Dimension dimension) {
+        Set<Layer> layers = dimension.getAllLayers(false);
+        for (Layer layer : layers) {
+            Class<? extends LayerExporter> exporterType = layer.getExporterType();
+            if (exporterType != null && FirstPassLayerExporter.class.isAssignableFrom(exporterType)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void calculateLighting(Point regionCoords, Map<Long, HytaleChunk> chunksByCoords, ProgressReceiver progressReceiver)

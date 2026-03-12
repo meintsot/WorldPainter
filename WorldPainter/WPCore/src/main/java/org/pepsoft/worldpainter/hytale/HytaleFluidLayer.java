@@ -23,7 +23,10 @@ import java.awt.image.BufferedImage;
  * <tr><td>8</td><td>Volcanic Water</td><td>Orange-red #c04020</td></tr>
  * <tr><td>9</td><td>Lava</td><td>Lava source</td></tr>
  * <tr><td>10</td><td>Azure Water</td><td>Bright azure #20a0ff</td></tr>
- * <tr><td>11-15</td><td>(reserved)</td><td>Future use</td></tr>
+ * <tr><td>11</td><td>Poison</td><td>Sickly green #50c878</td></tr>
+ * <tr><td>12</td><td>Slime</td><td>Bright green #7cfc00</td></tr>
+ * <tr><td>13</td><td>Tar</td><td>Dark brown #2f1a0e</td></tr>
+ * <tr><td>14-15</td><td>(reserved)</td><td>Future use</td></tr>
  * </table>
  */
 public class HytaleFluidLayer extends Layer {
@@ -73,8 +76,11 @@ public class HytaleFluidLayer extends Layer {
     public static final int FLUID_VOLCANIC    = 8;
     public static final int FLUID_LAVA        = 9;
     public static final int FLUID_AZURE       = 10;
+    public static final int FLUID_POISON      = 11;
+    public static final int FLUID_SLIME       = 12;
+    public static final int FLUID_TAR         = 13;
 
-    public static final int FLUID_COUNT = 11;
+    public static final int FLUID_COUNT = 14;
 
     /** Display names for fluid presets, indexed by layer value. */
     public static final String[] FLUID_NAMES = {
@@ -88,7 +94,10 @@ public class HytaleFluidLayer extends Layer {
         "Glacial Water",
         "Volcanic Water",
         "Lava",
-        "Azure Water"
+        "Azure Water",
+        "Poison",
+        "Slime",
+        "Tar"
     };
 
     /** Water tint hex colors for each preset (used in Hytale environment WaterTint). */
@@ -103,7 +112,10 @@ public class HytaleFluidLayer extends Layer {
         "#a0d8ef",   // Glacial
         "#c04020",   // Volcanic
         null,        // Lava (not water)
-        "#20a0ff"    // Azure
+        "#20a0ff",   // Azure
+        "#50c878",   // Poison - sickly green
+        "#7cfc00",   // Slime - bright green
+        "#2f1a0e"    // Tar - dark brown
     };
 
     /** Display colors for the annotation-style renderer (ARGB). */
@@ -118,7 +130,10 @@ public class HytaleFluidLayer extends Layer {
         0x80a0d8ef,  // Glacial
         0x80c04020,  // Volcanic
         0x80ff4400,  // Lava
-        0x8020a0ff   // Azure
+        0x8020a0ff,  // Azure
+        0x8050c878,  // Poison
+        0x807cfc00,  // Slime
+        0x802f1a0e   // Tar
     };
 
     /**
@@ -129,10 +144,24 @@ public class HytaleFluidLayer extends Layer {
     }
 
     /**
+     * Returns whether the given fluid preset is a non-water, non-lava special fluid
+     * (poison, slime, or tar).
+     */
+    public static boolean isSpecialFluid(int fluidValue) {
+        return fluidValue == FLUID_POISON || fluidValue == FLUID_SLIME || fluidValue == FLUID_TAR;
+    }
+
+    /**
      * Returns the Hytale block ID for the given fluid preset.
      */
     public static String getFluidBlockId(int fluidValue) {
-        return isLava(fluidValue) ? "Lava_Source" : "Water_Source";
+        switch (fluidValue) {
+            case FLUID_LAVA:    return "Lava_Source";
+            case FLUID_POISON:  return "Poison_Source";
+            case FLUID_SLIME:   return "Slime_Source";
+            case FLUID_TAR:     return "Tar_Source";
+            default:            return "Water_Source";
+        }
     }
 
     /**
