@@ -1142,7 +1142,7 @@ chunks:         for (int chunkX = 0; chunkX < TILE_SIZE; chunkX += 16) {
 
         final boolean hytalePlatform = org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(dimension.getWorld().getPlatform());
         comboBoxTerrain.setModel(new DefaultComboBoxModel(hytalePlatform
-                ? HytaleTerrain.PICK_LIST
+                ? org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.getAllHytaleTerrains()
                 : Terrain.getConfiguredValues()));
         if (hytalePlatform) {
             comboBoxTerrain.setRenderer(new org.pepsoft.worldpainter.hytale.HytaleTerrainListCellRenderer(colourScheme));

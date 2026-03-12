@@ -1,5 +1,9 @@
 package org.pepsoft.worldpainter.hytale;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import org.pepsoft.worldpainter.ColourScheme;
 import org.pepsoft.worldpainter.Tile;
 import org.slf4j.Logger;
@@ -9,11 +13,16 @@ import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.geom.Point2D;
 import java.awt.image.BufferedImage;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectStreamException;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.io.Serializable;
+import java.nio.file.Files;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.Collection;
@@ -121,6 +130,13 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
      */
     public static void setHytaleAssetsDir(File dir) {
         hytaleAssetsDir = dir;
+        cachedTextureIndex = null;
+        cachedTextureIndexDir = null;
+        cachedItemDefinitionIndex = null;
+        cachedItemDefinitionIndexDir = null;
+        CACHED_ICON_INDEXES.clear();
+        CACHED_BLOCK_ASSET_METADATA.clear();
+        LOGGED_MISSING_ICON_BLOCKS.clear();
         HytaleBlockRegistry.initialize((dir != null) ? dir.toPath() : null);
     }
 
@@ -182,6 +198,12 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
     }
     
     private BufferedImage loadOrCreateIcon() {
+        BlockAssetMetadata assetMetadata = loadBlockAssetMetadata();
+        BufferedImage metadataIcon = loadExplicitAssetImage(assetMetadata != null ? assetMetadata.iconPaths : Collections.emptyList());
+        if (metadataIcon != null) {
+            return metadataIcon;
+        }
+
         List<String> generatedIconCandidates = (block != null)
                 ? getGeneratedIconCandidates(block.id)
                 : Collections.emptyList();
@@ -190,7 +212,7 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
             return generatedIcon;
         }
 
-        BlockFaceTextures textures = loadBlockFaceTextures();
+        BlockFaceTextures textures = loadBlockFaceTextures(assetMetadata);
         if (textures != null) {
             BufferedImage topTexture = (textures.top != null) ? textures.top : textures.side;
             BufferedImage sideTexture = (textures.side != null) ? textures.side : textures.top;
@@ -239,7 +261,13 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
     /**
      * Try to load top and side textures for this block from HytaleAssets.
      */
-    private BlockFaceTextures loadBlockFaceTextures() {
+    private BlockFaceTextures loadBlockFaceTextures(BlockAssetMetadata assetMetadata) {
+        BufferedImage topTexture = loadExplicitAssetImage(assetMetadata != null ? assetMetadata.topTexturePaths : Collections.emptyList());
+        BufferedImage sideTexture = loadExplicitAssetImage(assetMetadata != null ? assetMetadata.sideTexturePaths : Collections.emptyList());
+        if ((topTexture != null) || (sideTexture != null)) {
+            return new BlockFaceTextures(topTexture, sideTexture);
+        }
+
         File texturesDir = getTexturesDir();
         if ((texturesDir == null) || (block == null)) {
             return null;
@@ -288,8 +316,8 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
             addTextureCandidates(blockId.replace("_Crop_", "_"), topCandidates, sideCandidates);
         }
 
-        BufferedImage topTexture = loadTexture(textureIndex, topCandidates);
-        BufferedImage sideTexture = loadTexture(textureIndex, sideCandidates);
+        topTexture = loadTexture(textureIndex, topCandidates);
+        sideTexture = loadTexture(textureIndex, sideCandidates);
         if ((topTexture == null) && (sideTexture == null)) {
             return null;
         }
@@ -338,10 +366,203 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         }
     }
 
+    private BlockAssetMetadata loadBlockAssetMetadata() {
+        if ((hytaleAssetsDir == null) || (block == null)) {
+            return null;
+        }
+        String cacheKey = hytaleAssetsDir.getAbsolutePath() + "|" + block.id;
+        BlockAssetMetadata cached = CACHED_BLOCK_ASSET_METADATA.get(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
+        BlockAssetMetadata metadata = loadBlockAssetMetadata(block.id, new HashSet<>());
+        if (metadata == null) {
+            metadata = BlockAssetMetadata.EMPTY;
+        }
+        CACHED_BLOCK_ASSET_METADATA.put(cacheKey, metadata);
+        return metadata.isEmpty() ? null : metadata;
+    }
+
+    private BlockAssetMetadata loadBlockAssetMetadata(String blockId, Set<String> seenBlockIds) {
+        if ((blockId == null) || (! seenBlockIds.add(blockId))) {
+            return null;
+        }
+
+        File definitionFile = findBlockDefinitionFile(blockId);
+        if ((definitionFile == null) || (! definitionFile.isFile())) {
+            return null;
+        }
+
+        try (Reader reader = new BufferedReader(new InputStreamReader(new FileInputStream(definitionFile), StandardCharsets.UTF_8))) {
+            JsonElement rootElement = JsonParser.parseReader(reader);
+            if ((rootElement == null) || (! rootElement.isJsonObject())) {
+                return null;
+            }
+            JsonObject root = rootElement.getAsJsonObject();
+            BlockAssetMetadata metadata = new BlockAssetMetadata();
+
+            String iconPath = getString(root, "Icon");
+            if (iconPath != null) {
+                metadata.iconPaths.add(iconPath);
+            }
+
+            JsonObject blockType = getObject(root, "BlockType");
+            if (blockType != null) {
+                JsonArray textures = getArray(blockType, "Textures");
+                if (textures != null) {
+                    for (JsonElement textureElement : textures) {
+                        if (textureElement.isJsonObject()) {
+                            addTexturePaths(textureElement.getAsJsonObject(), metadata);
+                        }
+                    }
+                }
+            }
+
+            String parentId = getString(root, "Parent");
+            if (parentId != null) {
+                BlockAssetMetadata parentMetadata = loadBlockAssetMetadata(parentId, seenBlockIds);
+                if (parentMetadata != null) {
+                    metadata.addFallback(parentMetadata);
+                }
+            }
+
+            return metadata.isEmpty() ? null : metadata;
+        } catch (Exception e) {
+            logger.debug("Could not load Hytale asset metadata for block {} from {}", blockId, definitionFile, e);
+            return null;
+        }
+    }
+
+    private void addTexturePaths(JsonObject textureObject, BlockAssetMetadata metadata) {
+        addSharedTexturePath(textureObject, "All", metadata);
+        addTexturePath(textureObject, "Top", metadata.topTexturePaths);
+        addTexturePath(textureObject, "Bottom", metadata.topTexturePaths);
+        addTexturePath(textureObject, "UpDown", metadata.topTexturePaths);
+        addTexturePath(textureObject, "Sides", metadata.sideTexturePaths);
+        addTexturePath(textureObject, "Side", metadata.sideTexturePaths);
+        addTexturePath(textureObject, "North", metadata.sideTexturePaths);
+        addTexturePath(textureObject, "South", metadata.sideTexturePaths);
+        addTexturePath(textureObject, "East", metadata.sideTexturePaths);
+        addTexturePath(textureObject, "West", metadata.sideTexturePaths);
+    }
+
+    private void addSharedTexturePath(JsonObject textureObject, String field, BlockAssetMetadata metadata) {
+        String texturePath = getString(textureObject, field);
+        if (texturePath == null) {
+            return;
+        }
+        metadata.topTexturePaths.add(texturePath);
+        metadata.sideTexturePaths.add(texturePath);
+    }
+
+    private void addTexturePath(JsonObject textureObject, String field, Collection<String> targets) {
+        String texturePath = getString(textureObject, field);
+        if (texturePath == null) {
+            return;
+        }
+        targets.add(texturePath);
+    }
+
+    private JsonObject getObject(JsonObject object, String field) {
+        JsonElement element = object.get(field);
+        return (element != null && element.isJsonObject()) ? element.getAsJsonObject() : null;
+    }
+
+    private JsonArray getArray(JsonObject object, String field) {
+        JsonElement element = object.get(field);
+        return (element != null && element.isJsonArray()) ? element.getAsJsonArray() : null;
+    }
+
+    private String getString(JsonObject object, String field) {
+        JsonElement element = object.get(field);
+        return (element != null && element.isJsonPrimitive()) ? element.getAsString() : null;
+    }
+
+    private File findBlockDefinitionFile(String blockId) {
+        if ((hytaleAssetsDir == null) || (blockId == null)) {
+            return null;
+        }
+        Map<String, File> definitionIndex = indexBlockDefinitionFiles();
+        return definitionIndex.get((blockId + ".json").toLowerCase(Locale.ROOT));
+    }
+
+    private Map<String, File> indexBlockDefinitionFiles() {
+        if ((cachedItemDefinitionIndex != null) && hytaleAssetsDir.equals(cachedItemDefinitionIndexDir)) {
+            return cachedItemDefinitionIndex;
+        }
+        Map<String, File> index = new HashMap<>();
+        addJsonFiles(index, new File(hytaleAssetsDir, "Server" + File.separator + "Item" + File.separator + "Items"));
+        addJsonFiles(index, new File(hytaleAssetsDir, "Server" + File.separator + "Item" + File.separator + "ResourceTypes"));
+        addJsonFiles(index, new File(hytaleAssetsDir, "Server" + File.separator + "Drops"));
+        cachedItemDefinitionIndex = index;
+        cachedItemDefinitionIndexDir = hytaleAssetsDir;
+        return index;
+    }
+
+    private void addJsonFiles(Map<String, File> index, File root) {
+        if ((root == null) || (! root.isDirectory())) {
+            return;
+        }
+        try {
+            Files.walk(root.toPath())
+                    .filter(Files::isRegularFile)
+                    .filter(path -> path.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".json"))
+                    .forEach(path -> index.putIfAbsent(path.getFileName().toString().toLowerCase(Locale.ROOT), path.toFile()));
+        } catch (IOException e) {
+            logger.debug("Could not index Hytale block definition files under {}", root, e);
+        }
+    }
+
+    private BufferedImage loadExplicitAssetImage(Collection<String> assetPaths) {
+        if ((assetPaths == null) || assetPaths.isEmpty()) {
+            return null;
+        }
+        for (String assetPath : assetPaths) {
+            File resolved = resolveAssetFile(assetPath);
+            if ((resolved != null) && resolved.isFile()) {
+                try {
+                    BufferedImage image = ImageIO.read(resolved);
+                    if (image != null) {
+                        if (assetPath.toLowerCase(Locale.ROOT).contains("_gs")) {
+                            image = tintGreyscale(image, getEffectiveColour());
+                        }
+                        return image;
+                    }
+                } catch (IOException e) {
+                    logger.debug("Could not load explicit Hytale asset image {}", resolved, e);
+                }
+            }
+        }
+        return null;
+    }
+
+    private File resolveAssetFile(String assetPath) {
+        if ((hytaleAssetsDir == null) || (assetPath == null) || assetPath.isEmpty()) {
+            return null;
+        }
+        String normalizedPath = assetPath.replace('/', File.separatorChar);
+        List<File> candidates = new ArrayList<>(3);
+        if (normalizedPath.startsWith("Common" + File.separator) || normalizedPath.startsWith("Server" + File.separator)) {
+            candidates.add(new File(hytaleAssetsDir, normalizedPath));
+        } else {
+            candidates.add(new File(hytaleAssetsDir, "Common" + File.separator + normalizedPath));
+            candidates.add(new File(hytaleAssetsDir, normalizedPath));
+        }
+        for (File candidate : candidates) {
+            if (candidate.isFile()) {
+                return candidate;
+            }
+        }
+        return null;
+    }
+
     /** Cached texture file index — built once, reused for all terrains. */
     private static volatile Map<String, File> cachedTextureIndex;
     private static volatile File cachedTextureIndexDir;
+    private static volatile Map<String, File> cachedItemDefinitionIndex;
+    private static volatile File cachedItemDefinitionIndexDir;
     private static final Map<File, Map<String, File>> CACHED_ICON_INDEXES = Collections.synchronizedMap(new HashMap<>());
+    private static final Map<String, BlockAssetMetadata> CACHED_BLOCK_ASSET_METADATA = Collections.synchronizedMap(new HashMap<>());
     private static final Set<String> LOGGED_MISSING_ICON_BLOCKS = Collections.synchronizedSet(new HashSet<>());
 
     private Map<String, File> indexTextureFiles(File texturesDir) {
@@ -798,6 +1019,27 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
 
         private final BufferedImage top;
         private final BufferedImage side;
+    }
+
+    private static final class BlockAssetMetadata {
+        private static final BlockAssetMetadata EMPTY = new BlockAssetMetadata();
+
+        private final LinkedHashSet<String> iconPaths = new LinkedHashSet<>();
+        private final LinkedHashSet<String> topTexturePaths = new LinkedHashSet<>();
+        private final LinkedHashSet<String> sideTexturePaths = new LinkedHashSet<>();
+
+        private boolean isEmpty() {
+            return iconPaths.isEmpty() && topTexturePaths.isEmpty() && sideTexturePaths.isEmpty();
+        }
+
+        private void addFallback(BlockAssetMetadata fallback) {
+            if (fallback == null) {
+                return;
+            }
+            iconPaths.addAll(fallback.iconPaths);
+            topTexturePaths.addAll(fallback.topTexturePaths);
+            sideTexturePaths.addAll(fallback.sideTexturePaths);
+        }
     }
 
     /**

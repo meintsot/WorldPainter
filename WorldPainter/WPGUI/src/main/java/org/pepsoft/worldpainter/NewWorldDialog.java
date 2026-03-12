@@ -797,7 +797,7 @@ public class NewWorldDialog extends WorldPainterDialog {
     private void updateSurfaceMaterialModel() {
         Object previousSelection = comboBoxSurfaceMaterial.getSelectedItem();
         if (isHytalePlatform()) {
-            comboBoxSurfaceMaterial.setModel(new DefaultComboBoxModel(HytaleTerrain.PICK_LIST));
+            comboBoxSurfaceMaterial.setModel(new DefaultComboBoxModel(org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.getAllHytaleTerrains()));
             comboBoxSurfaceMaterial.setRenderer(new org.pepsoft.worldpainter.hytale.HytaleTerrainListCellRenderer(app.getColourScheme()));
         } else {
             comboBoxSurfaceMaterial.setModel(new DefaultComboBoxModel(Terrain.PICK_LIST));

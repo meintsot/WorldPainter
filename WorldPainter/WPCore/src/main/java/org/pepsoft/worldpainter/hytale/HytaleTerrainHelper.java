@@ -12,7 +12,7 @@ import java.util.*;
  * to present the correct terrain list depending on the active platform.
  *
  * <p>When the active platform is Hytale, terrain combo boxes should show
- * {@link HytaleTerrain#PICK_LIST} terrains. When Minecraft, they show
+ * the complete Hytale terrain list. When Minecraft, they show
  * {@link Terrain#PICK_LIST} as usual.
  *
  * <p>This class also maps Minecraft terrains to their closest Hytale equivalents
@@ -33,9 +33,9 @@ public final class HytaleTerrainHelper {
     }
 
     /**
-     * Get the pick list items appropriate for the given platform.
+     * Get the terrain choice items appropriate for the given platform.
      * Returns an Object array that can be used with JComboBox models.
-     * For Hytale: HytaleTerrain[] from HytaleTerrain.PICK_LIST
+     * For Hytale: all {@link HytaleTerrain} values
      * For Minecraft: Terrain[] from Terrain.PICK_LIST
      *
      * @param platform The active platform
@@ -43,10 +43,17 @@ public final class HytaleTerrainHelper {
      */
     public static Object[] getPickList(Platform platform) {
         if (isHytale(platform)) {
-            return HytaleTerrain.PICK_LIST;
+            return getAllHytaleTerrains();
         } else {
             return Terrain.PICK_LIST;
         }
+    }
+
+    /**
+     * Get the complete Hytale terrain list for UI models.
+     */
+    public static HytaleTerrain[] getAllHytaleTerrains() {
+        return HytaleTerrain.getAllTerrains().toArray(new HytaleTerrain[0]);
     }
 
     /**

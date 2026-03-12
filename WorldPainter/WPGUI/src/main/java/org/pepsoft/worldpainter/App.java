@@ -4215,7 +4215,7 @@ public final class App extends JFrame implements BrushControl,
         final String query = (terrainSearchField != null)
                 ? terrainSearchField.getText().trim().toLowerCase(Locale.ROOT)
                 : "";
-        org.pepsoft.worldpainter.hytale.HytaleTerrain[] pickList = org.pepsoft.worldpainter.hytale.HytaleTerrain.PICK_LIST;
+        org.pepsoft.worldpainter.hytale.HytaleTerrain[] pickList = org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.getAllHytaleTerrains();
         int shownCount = 0;
         for (org.pepsoft.worldpainter.hytale.HytaleTerrain ht : pickList) {
             if ((! query.isEmpty())
