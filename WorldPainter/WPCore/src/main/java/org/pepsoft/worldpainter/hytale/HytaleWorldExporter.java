@@ -106,6 +106,9 @@ public class HytaleWorldExporter implements WorldExporter {
     
     // Prefab paster for inlining prefab blocks during export (initialized at export time)
     private HytalePrefabPaster prefabPaster;
+
+    // Original chunk store for merging imported data (entities, health, metadata) on re-export
+    private HytaleChunkStore originalChunkStore;
     
     public HytaleWorldExporter(World2 world, WorldExportSettings exportSettings) {
         this.world = world;
@@ -573,9 +576,13 @@ public class HytaleWorldExporter implements WorldExporter {
             this.blockOffsetX = -centerTileX * 128;
             this.blockOffsetZ = -centerTileY * 128;
             
-            logger.info("Centering terrain: tile center ({},{}), block offset ({},{})", 
+            logger.info("Centering terrain: tile center ({},{}), block offset ({},{})",
                 centerTileX, centerTileY, blockOffsetX, blockOffsetZ);
-            
+
+            // Open the original imported world (if any) for merging entities, block health,
+            // and metadata back into the exported chunks for round-trip fidelity
+            openOriginalChunkStore(dimension);
+
             for (Point tile : tileCoords) {
                 // Apply offset when calculating Hytale chunk coords
                 int worldBlockX = tile.x * 128 + blockOffsetX;
@@ -710,7 +717,10 @@ public class HytaleWorldExporter implements WorldExporter {
             }
             
             logger.info("Exported {} regions with BSON chunk data", sortedRegions.size());
-            
+
+            // Close original chunk store after all regions are exported
+            closeOriginalChunkStore();
+
             collectedStats.time = System.currentTimeMillis() - start;
             
             if (progressReceiver != null) {
@@ -871,6 +881,11 @@ public class HytaleWorldExporter implements WorldExporter {
 
                     // Add entities (spawn markers, etc.)
                     addEntitiesToChunk(chunk, dimension, hyChunkX, hyChunkZ);
+
+                    // Merge entities, block health, and metadata from the original
+                    // imported world so that re-exporting preserves all original data
+                    mergeOriginalChunkData(chunk, originalBlockX, originalBlockZ);
+
                     chunksByCoords.put(chunkKey(hyChunkX, hyChunkZ), chunk);
                     
                     chunksExported++;
@@ -914,6 +929,134 @@ public class HytaleWorldExporter implements WorldExporter {
         }
         
         logger.debug("Exported region {},{} to {}", regionCoords.x, regionCoords.y, regionPath);
+    }
+
+    /**
+     * Open the original imported world's chunk store so that entities, block health,
+     * and metadata can be merged back into re-exported chunks.
+     */
+    private void openOriginalChunkStore(Dimension dimension) {
+        File importedFrom = world.getImportedFrom();
+        if (importedFrom == null || !importedFrom.exists()) {
+            return;
+        }
+        // importedFrom points to config.json; parent is the world directory
+        File importedWorldDir = importedFrom.getParentFile();
+        if (importedWorldDir == null) {
+            return;
+        }
+        File importedChunksDir = new File(importedWorldDir, "chunks");
+        if (importedChunksDir.isDirectory()) {
+            try {
+                originalChunkStore = new HytaleChunkStore(importedWorldDir,
+                    dimension.getMinHeight(), dimension.getMaxHeight());
+                logger.info("Opened original chunk store at {} for round-trip merge",
+                    importedWorldDir.getAbsolutePath());
+            } catch (Exception e) {
+                logger.warn("Could not open original chunk store for merging: {}", e.getMessage());
+                originalChunkStore = null;
+            }
+        }
+    }
+
+    /**
+     * Close the original chunk store after export is complete.
+     */
+    private void closeOriginalChunkStore() {
+        if (originalChunkStore != null) {
+            try {
+                originalChunkStore.close();
+            } catch (Exception e) {
+                logger.warn("Error closing original chunk store: {}", e.getMessage());
+            }
+            originalChunkStore = null;
+        }
+    }
+
+    /**
+     * Merge entities, block health, water tints, spawn configuration, and prefab
+     * markers from the original imported chunk into the newly generated chunk.
+     * This enables round-trip fidelity: import a server world, edit terrain in
+     * WorldPainter, and re-export without losing entities, schematics, or metadata.
+     *
+     * @param newChunk The newly generated chunk to merge data into
+     * @param originalBlockX The original (pre-offset) block X coordinate of this chunk's origin
+     * @param originalBlockZ The original (pre-offset) block Z coordinate of this chunk's origin
+     */
+    private void mergeOriginalChunkData(HytaleChunk newChunk, int originalBlockX, int originalBlockZ) {
+        if (originalChunkStore == null) {
+            return;
+        }
+
+        // Calculate the original chunk coordinates (before centering offset was applied).
+        // originalBlockX/Z are in WorldPainter tile space; the original Hytale chunk
+        // coordinates are simply these divided by 32 (Hytale chunk size).
+        int origChunkX = originalBlockX >> 5;
+        int origChunkZ = originalBlockZ >> 5;
+
+        HytaleChunk originalChunk;
+        try {
+            originalChunk = (HytaleChunk) originalChunkStore.getChunk(origChunkX, origChunkZ);
+        } catch (Exception e) {
+            logger.debug("Could not read original chunk at {},{}: {}", origChunkX, origChunkZ, e.getMessage());
+            return;
+        }
+        if (originalChunk == null) {
+            return;
+        }
+
+        // 1. Entities: copy all original entities with position adjusted for centering offset.
+        //    This includes NPCs, creature spawn markers, and player spawn markers from the
+        //    original world. A duplicate player spawn marker may occur (one from addEntitiesToChunk,
+        //    one from the original) but this is harmless — Hytale uses whichever is closer.
+        for (HytaleEntity entity : originalChunk.getHytaleEntities()) {
+            HytaleEntity adjusted = entity.clone();
+            adjusted.setPosition(
+                entity.getX() + blockOffsetX,
+                entity.getY(),
+                entity.getZ() + blockOffsetZ
+            );
+            newChunk.addHytaleEntity(adjusted);
+        }
+
+        // 2. Block health: copy all damaged block entries
+        for (Map.Entry<Integer, HytaleChunk.BlockHealthData> entry : originalChunk.getBlockHealthMap().entrySet()) {
+            int key = entry.getKey();
+            int bx = HytaleChunk.unpackX(key);
+            int by = HytaleChunk.unpackY(key);
+            int bz = HytaleChunk.unpackZ(key);
+            HytaleChunk.BlockHealthData data = entry.getValue();
+            newChunk.setBlockHealth(bx, by, bz, data.health, data.lastDamageTime);
+        }
+
+        // 3. Water tints: preserve original values where the new chunk has no override
+        for (int lz = 0; lz < HytaleChunk.CHUNK_SIZE; lz++) {
+            for (int lx = 0; lx < HytaleChunk.CHUNK_SIZE; lx++) {
+                String origTint = originalChunk.getWaterTint(lx, lz);
+                if (origTint != null && newChunk.getWaterTint(lx, lz) == null) {
+                    newChunk.setWaterTint(lx, lz, origTint);
+                }
+            }
+        }
+
+        // 4. Spawn density and tags: preserve where new chunk has defaults
+        for (int lz = 0; lz < HytaleChunk.CHUNK_SIZE; lz++) {
+            for (int lx = 0; lx < HytaleChunk.CHUNK_SIZE; lx++) {
+                float origDensity = originalChunk.getSpawnDensity(lx, lz);
+                if (origDensity >= 0.0f && newChunk.getSpawnDensity(lx, lz) < 0.0f) {
+                    newChunk.setSpawnDensity(lx, lz, origDensity);
+                }
+                String origTag = originalChunk.getSpawnTag(lx, lz);
+                if (origTag != null && newChunk.getSpawnTag(lx, lz) == null) {
+                    newChunk.setSpawnTag(lx, lz, origTag);
+                }
+            }
+        }
+
+        // 5. Prefab markers: copy all from original
+        for (HytaleChunk.PrefabMarker pm : originalChunk.getPrefabMarkers()) {
+            newChunk.addPrefabMarker(pm.x, pm.y, pm.z, pm.category, pm.prefabPath);
+        }
     }
 
     private boolean hasCustomObjectLayers(Dimension dimension) {

@@ -401,7 +401,25 @@ public class HytaleRegionFile implements Closeable {
                 logger.warn("Error reading EntityChunk for {},{}: {}", localX, localZ, e.getMessage());
             }
         }
-        
+
+        // --- TalePainterMetadata (water tints, spawn overrides, prefab markers) ---
+        if (components.containsKey("TalePainterMetadata")) {
+            try {
+                readTalePainterMetadata(components.getDocument("TalePainterMetadata"), chunk);
+            } catch (Exception e) {
+                logger.warn("Error reading TalePainterMetadata for {},{}: {}", localX, localZ, e.getMessage());
+            }
+        }
+
+        // --- BlockHealthChunk (damaged block health values) ---
+        if (components.containsKey("BlockHealthChunk")) {
+            try {
+                readBlockHealthChunk(components.getDocument("BlockHealthChunk"), chunk);
+            } catch (Exception e) {
+                logger.warn("Error reading BlockHealthChunk for {},{}: {}", localX, localZ, e.getMessage());
+            }
+        }
+
         return chunk;
     }
     
@@ -941,6 +959,83 @@ public class HytaleRegionFile implements Closeable {
         }
     }
     
+    /**
+     * Read TalePainterMetadata BSON component: water tints, spawn overrides, prefab markers.
+     */
+    private void readTalePainterMetadata(BsonDocument metaDoc, HytaleChunk chunk) {
+        // Water Tints: { "x,z": "hexColor", ... }
+        if (metaDoc.containsKey("WaterTints")) {
+            BsonDocument tintDoc = metaDoc.getDocument("WaterTints");
+            for (String key : tintDoc.keySet()) {
+                String[] parts = key.split(",");
+                if (parts.length == 2) {
+                    int x = Integer.parseInt(parts[0]);
+                    int z = Integer.parseInt(parts[1]);
+                    chunk.setWaterTint(x, z, tintDoc.getString(key).getValue());
+                }
+            }
+        }
+
+        // Spawn Overrides: [ { x, z, density?, tag? }, ... ]
+        if (metaDoc.containsKey("SpawnOverrides")) {
+            for (BsonValue val : metaDoc.getArray("SpawnOverrides")) {
+                BsonDocument entry = val.asDocument();
+                int x = entry.getInt32("x").getValue();
+                int z = entry.getInt32("z").getValue();
+                if (entry.containsKey("density")) {
+                    chunk.setSpawnDensity(x, z, (float) entry.getDouble("density").getValue());
+                }
+                if (entry.containsKey("tag")) {
+                    chunk.setSpawnTag(x, z, entry.getString("tag").getValue());
+                }
+            }
+        }
+
+        // Prefab Markers: [ { x, y, z, category, path }, ... ]
+        if (metaDoc.containsKey("PrefabMarkers")) {
+            for (BsonValue val : metaDoc.getArray("PrefabMarkers")) {
+                BsonDocument entry = val.asDocument();
+                chunk.addPrefabMarker(
+                    entry.getInt32("x").getValue(),
+                    entry.getInt32("y").getValue(),
+                    entry.getInt32("z").getValue(),
+                    entry.getString("category").getValue(),
+                    entry.getString("path").getValue()
+                );
+            }
+        }
+    }
+
+    /**
+     * Read BlockHealthChunk BSON component: damaged block health values.
+     * Format (version 2): byte version, int count, then per entry: int x, int y, int z, float health, long lastDamageTime.
+     */
+    private void readBlockHealthChunk(BsonDocument healthDoc, HytaleChunk chunk) {
+        if (!healthDoc.containsKey("Data")) {
+            return;
+        }
+        byte[] rawData = healthDoc.getBinary("Data").getData();
+        ByteBuf buf = Unpooled.wrappedBuffer(rawData);
+        try {
+            int version = buf.readByte() & 0xFF;
+            if (version < 2) {
+                return; // Unsupported version
+            }
+            int healthMapSize = buf.readInt();
+            for (int i = 0; i < healthMapSize; i++) {
+                int x = buf.readInt();
+                int y = buf.readInt();
+                int z = buf.readInt();
+                float health = buf.readFloat();
+                long lastDamageTime = buf.readLong();
+                chunk.setBlockHealth(x, y, z, health, lastDamageTime);
+            }
+            // Skip fragilityMap (not used)
+        } finally {
+            buf.release();
+        }
+    }
+
     /**
      * Read UTF-8 string in Hytale format (short length prefix).
      */

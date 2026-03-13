@@ -265,7 +265,7 @@ public class HytaleChunk implements Chunk {
     /**
      * Set the health of a block. Health is 0.0-1.0 where 1.0 is full health.
      * Only damaged blocks (health < 1.0) are stored.
-     * 
+     *
      * @param x Block X coordinate (0-31)
      * @param y Block Y coordinate (0-319)
      * @param z Block Z coordinate (0-31)
@@ -274,10 +274,28 @@ public class HytaleChunk implements Chunk {
     public void setBlockHealth(int x, int y, int z, float health) {
         int key = packBlockCoords(x, y, z);
         if (health >= 1.0f) {
-            // Full health - remove from map
             blockHealthMap.remove(key);
         } else {
             blockHealthMap.put(key, new BlockHealthData(health));
+        }
+    }
+
+    /**
+     * Set the health of a block with a specific last damage time, preserving
+     * the original timestamp for round-trip fidelity.
+     *
+     * @param x Block X coordinate (0-31)
+     * @param y Block Y coordinate (0-319)
+     * @param z Block Z coordinate (0-31)
+     * @param health Health value (0.0-1.0)
+     * @param lastDamageTime Game time when block was last damaged
+     */
+    public void setBlockHealth(int x, int y, int z, float health, long lastDamageTime) {
+        int key = packBlockCoords(x, y, z);
+        if (health >= 1.0f) {
+            blockHealthMap.remove(key);
+        } else {
+            blockHealthMap.put(key, new BlockHealthData(health, lastDamageTime));
         }
     }
     

@@ -46,6 +46,15 @@ public class HytaleEntity implements Serializable, Cloneable {
     
     /** Additional custom properties. */
     protected Map<String, Object> properties;
+
+    /**
+     * The original BSON bytes for lossless round-trip serialization.
+     * When an entity is deserialized from a Hytale world, the full BSON document
+     * is stored here so that entity-specific components (NPC AI state, inventory,
+     * spawn marker config, etc.) are preserved on re-export even though this class
+     * only parses the common fields (EntityType, Transform, UUID).
+     */
+    private byte[] originalBsonBytes;
     
     /**
      * Create a new entity.
@@ -194,20 +203,36 @@ public class HytaleEntity implements Serializable, Cloneable {
      * @return BSON document representing this entity
      */
     public BsonDocument toBson() {
+        // If we have original BSON bytes from an imported entity, reconstruct the
+        // full document and update only the Transform and UUID (which may have changed
+        // due to position adjustments during export). This preserves all entity-specific
+        // components (NPC state, inventory, spawn config, etc.) that we don't parse.
+        if (originalBsonBytes != null) {
+            try {
+                BsonDocument doc = HytaleBsonChunkSerializer.bytesToBson(originalBsonBytes);
+                // Update transform in case position was adjusted
+                doc.put("Transform", serializeTransformComponent());
+                doc.put("UUID", serializeUUIDComponent());
+                return doc;
+            } catch (Exception e) {
+                // Fall through to build from scratch if original BSON is corrupt
+            }
+        }
+
         BsonDocument doc = new BsonDocument();
-        
+
         // Entity type identifier
         doc.put("EntityType", new BsonString(entityType));
-        
+
         // Transform component with position and rotation
         doc.put("Transform", serializeTransformComponent());
-        
+
         // UUID component
         doc.put("UUID", serializeUUIDComponent());
-        
+
         // Allow subclasses to add their specific components
         addEntityComponents(doc);
-        
+
         return doc;
     }
     
@@ -277,6 +302,11 @@ public class HytaleEntity implements Serializable, Cloneable {
             HytaleEntity copy = (HytaleEntity) super.clone();
             copy.uuid = UUID.randomUUID(); // New UUID for clone
             copy.properties = new HashMap<>(this.properties);
+            // Preserve original BSON for round-trip fidelity; the new UUID
+            // will be written over the stored one during toBson()
+            if (this.originalBsonBytes != null) {
+                copy.originalBsonBytes = this.originalBsonBytes.clone();
+            }
             return copy;
         } catch (CloneNotSupportedException e) {
             throw new RuntimeException(e);
@@ -292,12 +322,14 @@ public class HytaleEntity implements Serializable, Cloneable {
      * @return The deserialized entity, or null if the document is invalid
      */
     public static HytaleEntity fromBson(BsonDocument doc) {
-        if (doc == null || !doc.containsKey("EntityType")) return null;
-        
+        if (doc == null || !doc.containsKey("EntityType")) {
+            return null;
+        }
+
         String type = doc.getString("EntityType").getValue();
         double ex = 0, ey = 0, ez = 0;
         float eyaw = 0, epitch = 0, eroll = 0;
-        
+
         if (doc.containsKey("Transform")) {
             BsonDocument transform = doc.getDocument("Transform");
             if (transform.containsKey("Position")) {
@@ -313,9 +345,9 @@ public class HytaleEntity implements Serializable, Cloneable {
                 eroll = (float) rot.getDouble("Z").getValue();
             }
         }
-        
+
         HytaleEntity entity = new HytaleEntity(type, ex, ey, ez, eyaw, epitch, eroll);
-        
+
         if (doc.containsKey("UUID")) {
             BsonDocument uuidDoc = doc.getDocument("UUID");
             if (uuidDoc.containsKey("UUID")) {
@@ -326,7 +358,15 @@ public class HytaleEntity implements Serializable, Cloneable {
                 }
             }
         }
-        
+
+        // Store the full original BSON for lossless round-trip: entity-specific
+        // components (NPC state, inventory, etc.) are preserved on re-export.
+        try {
+            entity.originalBsonBytes = HytaleBsonChunkSerializer.bsonToBytes(doc);
+        } catch (Exception e) {
+            // Non-fatal: entity will still export with basic fields only
+        }
+
         return entity;
     }
     

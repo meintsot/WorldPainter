@@ -4594,6 +4594,11 @@ public final class App extends JFrame implements BrushControl,
             subMenu.setMnemonic('i');
             subMenu.add(menuItem);
 
+            menuItem = new JMenuItem("Existing Hytale world...");
+            menuItem.addActionListener(event -> importHytaleWorld());
+            menuItem.setMnemonic('y');
+            subMenu.add(menuItem);
+
             menuItem = new JMenuItem(strings.getString("height.map") + "...");
             menuItem.addActionListener(event -> importHeightMap(null));
             menuItem.setMnemonic('h');

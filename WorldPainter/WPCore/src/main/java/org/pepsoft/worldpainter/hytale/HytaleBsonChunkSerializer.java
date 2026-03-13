@@ -1158,15 +1158,16 @@ public class HytaleBsonChunkSerializer {
     }
     
     /**
-     * Convert BSON document to bytes.
+     * Convert BSON document to bytes. Public for use by HytaleEntity for
+     * round-trip entity BSON preservation during import/export.
      */
-    private static byte[] bsonToBytes(BsonDocument doc) {
+    public static byte[] bsonToBytes(BsonDocument doc) {
         try (BasicOutputBuffer buffer = new BasicOutputBuffer()) {
             CODEC.encode(new BsonBinaryWriter(buffer), doc, ENCODER_CONTEXT);
             return buffer.toByteArray();
         }
     }
-    
+
     /**
      * Deserialize BSON bytes to document (for debugging).
      */
