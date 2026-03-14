@@ -57,6 +57,8 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
     /** Cached icon. */
     private transient BufferedImage icon;
     private transient Map<Integer, BufferedImage> scaledIconCache;
+    /** Whether the icon was loaded from an actual asset (true) or is a colour fallback (false). */
+    private transient boolean iconFromAsset;
     
     /** Path to HytaleAssets for texture loading (set once at startup). */
     private static File hytaleAssetsDir;
@@ -168,6 +170,14 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
     }
 
     /**
+     * Whether this terrain has an actual icon from the Hytale assets (as opposed to a colour fallback).
+     * Must be called after {@link #getIcon(ColourScheme)} has been invoked at least once.
+     */
+    public boolean hasAssetIcon() {
+        return iconFromAsset;
+    }
+
+    /**
      * Get this icon scaled to a target size in pixels.
      */
     public BufferedImage getScaledIcon(int size, ColourScheme colourScheme) {
@@ -201,6 +211,7 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         BlockAssetMetadata assetMetadata = loadBlockAssetMetadata();
         BufferedImage metadataIcon = loadExplicitAssetImage(assetMetadata != null ? assetMetadata.iconPaths : Collections.emptyList());
         if (metadataIcon != null) {
+            iconFromAsset = true;
             return metadataIcon;
         }
 
@@ -209,6 +220,7 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
                 : Collections.emptyList();
         BufferedImage generatedIcon = loadGeneratedItemIcon(generatedIconCandidates);
         if (generatedIcon != null) {
+            iconFromAsset = true;
             return generatedIcon;
         }
 
@@ -217,6 +229,7 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
             BufferedImage topTexture = (textures.top != null) ? textures.top : textures.side;
             BufferedImage sideTexture = (textures.side != null) ? textures.side : textures.top;
             if ((topTexture != null) && (sideTexture != null)) {
+                iconFromAsset = true;
                 return renderIsometricIcon(topTexture, sideTexture);
             }
         }
@@ -281,15 +294,62 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
 
         // Fluids are typically named Fluid_Water / Fluid_Lava in the assets.
         if (blockId.endsWith("_Source")) {
-            String fluidName = "Fluid_" + blockId.substring(0, blockId.length() - "_Source".length());
+            String withoutSource = blockId.substring(0, blockId.length() - "_Source".length());
+            addTextureCandidates(withoutSource, topCandidates, sideCandidates);
+            String fluidName = "Fluid_" + withoutSource;
             topCandidates.add(fluidName + ".png");
             sideCandidates.add(fluidName + ".png");
+        }
+        if (blockId.endsWith("_Finite")) {
+            addTextureCandidates(blockId.substring(0, blockId.length() - "_Finite".length()), topCandidates, sideCandidates);
         }
 
         for (String prefix : new String[] { "Rock_", "Soil_" }) {
             if (blockId.startsWith(prefix)) {
                 addTextureCandidates(blockId.substring(prefix.length()), topCandidates, sideCandidates);
             }
+        }
+
+        // Wood_X_Planks_Y → try Wood_X_Y (assets often omit "Planks_")
+        if (blockId.contains("_Planks_")) {
+            addTextureCandidates(blockId.replace("_Planks_", "_"), topCandidates, sideCandidates);
+        }
+
+        // Roof sub-variants → try base roof texture
+        if (blockId.endsWith("_Flap") || blockId.endsWith("_Flat") || blockId.endsWith("_Vertical")) {
+            String base = blockId.substring(0, blockId.lastIndexOf('_'));
+            addTextureCandidates(base, topCandidates, sideCandidates);
+            for (String prefix : new String[] { "Rock_", "Soil_" }) {
+                if (base.startsWith(prefix)) {
+                    addTextureCandidates(base.substring(prefix.length()), topCandidates, sideCandidates);
+                }
+            }
+        }
+
+        // Mossy reordering: Rock_Stone_Mossy_Brick → Rock_Stone_Brick_Mossy
+        if (blockId.contains("_Mossy_")) {
+            String withoutMossy = blockId.replace("_Mossy_", "_");
+            // Try appending _Mossy at the end (e.g. Rock_Stone_Mossy_Brick → Rock_Stone_Brick_Mossy)
+            addTextureCandidates(withoutMossy + "_Mossy", topCandidates, sideCandidates);
+            // Try inserting _Mossy before the last segment (e.g. Rock_Stone_Mossy_Brick_Beam → Rock_Stone_Brick_Mossy_Beam)
+            int lastUnderscore = withoutMossy.lastIndexOf('_');
+            if (lastUnderscore > 0) {
+                String reordered = withoutMossy.substring(0, lastUnderscore) + "_Mossy" + withoutMossy.substring(lastUnderscore);
+                if (!reordered.equals(blockId)) {
+                    addTextureCandidates(reordered, topCandidates, sideCandidates);
+                }
+            }
+        }
+
+        // Block ID abbreviations vs full asset names
+        if (blockId.contains("Rock_Ledge_")) {
+            addTextureCandidates(blockId.replace("Rock_Ledge_", "Rock_Ledgestone_"), topCandidates, sideCandidates);
+        }
+        if (blockId.contains("Rock_Lime_")) {
+            addTextureCandidates(blockId.replace("Rock_Lime_", "Rock_Limestone_"), topCandidates, sideCandidates);
+        }
+        if (blockId.contains("Rock_Peach_")) {
+            addTextureCandidates(blockId.replace("Rock_Peach_", "Rock_Peachstone_"), topCandidates, sideCandidates);
         }
 
         // Common spelling mismatch in assets (Poisoned vs Poisonned).
@@ -315,6 +375,9 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         if (blockId.contains("_Crop_")) {
             addTextureCandidates(blockId.replace("_Crop_", "_"), topCandidates, sideCandidates);
         }
+
+        // Some assets use a "Prototype_" prefix (e.g. Rock_Concrete_Brick → Prototype_Rock_Concrete_Brick)
+        addTextureCandidates("Prototype_" + blockId, topCandidates, sideCandidates);
 
         topTexture = loadTexture(textureIndex, topCandidates);
         sideTexture = loadTexture(textureIndex, sideCandidates);
@@ -613,8 +676,16 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         addGeneratedPlantFamilyVariants(blockId, candidates);
         addGeneratedReedsAndSeaweedVariants(blockId, candidates);
 
+        // Fluid_*_Source → try Fluid_* (e.g. Fluid_Water_Source → Fluid_Water)
         if (blockId.endsWith("_Source")) {
-            addGeneratedIconCandidates("Fluid_" + blockId.substring(0, blockId.length() - "_Source".length()), candidates);
+            String withoutSource = blockId.substring(0, blockId.length() - "_Source".length());
+            addGeneratedIconCandidates(withoutSource, candidates);
+            addGeneratedIconCandidates("Fluid_" + withoutSource, candidates);
+        }
+        // Fluid_*_Finite → try Fluid_* (e.g. Fluid_Water_Finite → Fluid_Water)
+        if (blockId.endsWith("_Finite")) {
+            String withoutFinite = blockId.substring(0, blockId.length() - "_Finite".length());
+            addGeneratedIconCandidates(withoutFinite, candidates);
         }
         if (blockId.endsWith("_Block")) {
             addGeneratedIconCandidates(blockId.substring(0, blockId.length() - "_Block".length()), candidates);
@@ -624,6 +695,50 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
             if (blockId.startsWith(prefix)) {
                 addGeneratedIconCandidates(blockId.substring(prefix.length()), candidates);
             }
+        }
+
+        // Wood_X_Planks_Y → try Wood_X_Y (assets often omit "Planks_")
+        // e.g. Wood_Softwood_Planks_Beam → Wood_Softwood_Beam
+        if (blockId.contains("_Planks_")) {
+            addGeneratedIconCandidates(blockId.replace("_Planks_", "_"), candidates);
+        }
+
+        // Roof sub-variants (_Roof_Flap, _Roof_Flat, _Roof_Vertical) → try base _Roof
+        if (blockId.endsWith("_Flap") || blockId.endsWith("_Flat") || blockId.endsWith("_Vertical")) {
+            String base = blockId.substring(0, blockId.lastIndexOf('_'));
+            addGeneratedIconCandidates(base, candidates);
+            // Also try without Rock_/Soil_ prefix for roof base
+            for (String prefix : new String[] { "Rock_", "Soil_" }) {
+                if (base.startsWith(prefix)) {
+                    addGeneratedIconCandidates(base.substring(prefix.length()), candidates);
+                }
+            }
+        }
+
+        // Rock_Stone_Mossy_Brick → try Rock_Stone_Brick_Mossy (assets sometimes reorder Mossy)
+        if (blockId.contains("_Mossy_")) {
+            String withoutMossy = blockId.replace("_Mossy_", "_");
+            // Try appending _Mossy at the end (e.g. Rock_Stone_Mossy_Brick → Rock_Stone_Brick_Mossy)
+            addGeneratedIconCandidates(withoutMossy + "_Mossy", candidates);
+            // Try inserting _Mossy before the last segment (e.g. Rock_Stone_Mossy_Brick_Beam → Rock_Stone_Brick_Mossy_Beam)
+            int lastUnderscore = withoutMossy.lastIndexOf('_');
+            if (lastUnderscore > 0) {
+                String reordered = withoutMossy.substring(0, lastUnderscore) + "_Mossy" + withoutMossy.substring(lastUnderscore);
+                if (!reordered.equals(blockId)) {
+                    addGeneratedIconCandidates(reordered, candidates);
+                }
+            }
+        }
+
+        // Block ID abbreviations vs full asset names
+        if (blockId.contains("Rock_Ledge_")) {
+            addGeneratedIconCandidates(blockId.replace("Rock_Ledge_", "Rock_Ledgestone_"), candidates);
+        }
+        if (blockId.contains("Rock_Lime_")) {
+            addGeneratedIconCandidates(blockId.replace("Rock_Lime_", "Rock_Limestone_"), candidates);
+        }
+        if (blockId.contains("Rock_Peach_")) {
+            addGeneratedIconCandidates(blockId.replace("Rock_Peach_", "Rock_Peachstone_"), candidates);
         }
 
         if (blockId.contains("Poisoned")) {
@@ -642,6 +757,9 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         if (blockId.contains("_Crop_")) {
             addGeneratedIconCandidates(blockId.replace("_Crop_", "_"), candidates);
         }
+
+        // Some assets use a "Prototype_" prefix (e.g. Rock_Concrete_Brick → Prototype_Rock_Concrete_Brick)
+        addGeneratedIconCandidates("Prototype_" + blockId, candidates);
 
         return new ArrayList<>(candidates);
     }
@@ -2238,7 +2356,11 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         List<HytaleTerrain> additional = new ArrayList<>();
         for (HytaleTerrain terrain : ALL_TERRAINS) {
             if (!primary.contains(terrain)) {
-                additional.add(terrain);
+                // Force icon resolution and only include terrains with actual asset icons
+                terrain.getIcon(null);
+                if (terrain.hasAssetIcon()) {
+                    additional.add(terrain);
+                }
             }
         }
         return additional.toArray(new HytaleTerrain[0]);
@@ -2399,6 +2521,27 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
     public static List<HytaleTerrain> getDefaultTerrains() {
         return new ArrayList<>(Arrays.asList(PICK_LIST));
     }
+
+    /**
+     * Get the PICK_LIST filtered to only include terrains that have an actual icon from the Hytale assets.
+     * Terrains that fell back to a colour-only icon are excluded. The result is cached after first call.
+     */
+    public static HytaleTerrain[] getPickListWithIcons() {
+        if (pickListWithIcons == null) {
+            List<HytaleTerrain> filtered = new ArrayList<>();
+            for (HytaleTerrain t : PICK_LIST) {
+                // Force icon resolution so hasAssetIcon() is reliable
+                t.getIcon(null);
+                if (t.hasAssetIcon()) {
+                    filtered.add(t);
+                }
+            }
+            pickListWithIcons = filtered.toArray(new HytaleTerrain[0]);
+        }
+        return pickListWithIcons;
+    }
+
+    private static volatile HytaleTerrain[] pickListWithIcons;
 
     public static List<HytaleTerrain> getAllTerrains() {
         return new ArrayList<>(Arrays.asList(ALL_TERRAINS));

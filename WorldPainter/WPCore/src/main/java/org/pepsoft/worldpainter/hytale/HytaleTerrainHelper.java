@@ -50,10 +50,10 @@ public final class HytaleTerrainHelper {
     }
 
     /**
-     * Get the complete Hytale terrain list for UI models.
+     * Get the Hytale terrain list for UI models, excluding terrains without asset icons.
      */
     public static HytaleTerrain[] getAllHytaleTerrains() {
-        return HytaleTerrain.getAllTerrains().toArray(new HytaleTerrain[0]);
+        return HytaleTerrain.getPickListWithIcons();
     }
 
     /**
@@ -89,7 +89,7 @@ public final class HytaleTerrainHelper {
         }
 
         final List<Terrain> result = new ArrayList<>();
-        for (HytaleTerrain hytaleTerrain : HytaleTerrain.PICK_LIST) {
+        for (HytaleTerrain hytaleTerrain : HytaleTerrain.getPickListWithIcons()) {
             final Terrain representative = representatives.get(hytaleTerrain);
             if (representative != null) {
                 if (! result.contains(representative)) {

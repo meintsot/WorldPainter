@@ -11,12 +11,13 @@ import static org.junit.Assert.assertTrue;
 public class HytaleTerrainHelperTest {
 
     @Test
-    public void testGetPickListReturnsAllHytaleTerrains() {
-        final HytaleTerrain[] allTerrains = HytaleTerrainHelper.getAllHytaleTerrains();
+    public void testGetPickListReturnsFilteredHytaleTerrains() {
+        final HytaleTerrain[] uiTerrains = HytaleTerrainHelper.getAllHytaleTerrains();
 
-        assertTrue(allTerrains.length >= HytaleTerrain.PICK_LIST.length);
-        assertEquals(HytaleTerrain.getAllTerrains().size(), allTerrains.length);
-        assertArrayEquals(allTerrains, HytaleTerrainHelper.getPickList(DefaultPlugin.HYTALE));
+        // UI list should be a subset of the full pick list (blocks without icons are excluded)
+        assertTrue(uiTerrains.length <= HytaleTerrain.PICK_LIST.length);
+        assertTrue(uiTerrains.length > 0);
+        assertArrayEquals(uiTerrains, HytaleTerrainHelper.getPickList(DefaultPlugin.HYTALE));
     }
 
     @Test
