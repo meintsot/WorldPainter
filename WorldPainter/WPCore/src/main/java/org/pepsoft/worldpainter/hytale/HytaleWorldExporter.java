@@ -910,6 +910,11 @@ public class HytaleWorldExporter implements WorldExporter {
 
             calculateLighting(regionCoords, chunksByCoords, progressReceiver);
 
+            // Final pass: enforce void columns by clearing any blocks/fluids
+            // that may have been placed by second-pass layers, custom objects,
+            // frost, or lighting. This guarantees void areas are truly empty.
+            enforceVoidColumns(dimension, chunksByCoords);
+
             for (int localZ = 0; localZ < 32; localZ++) {
                 for (int localX = 0; localX < 32; localX++) {
                     int hyChunkX = (regionCoords.x << 5) + localX;
@@ -1113,6 +1118,66 @@ public class HytaleWorldExporter implements WorldExporter {
     }
     
     /**
+     * Final pass: enforce void columns by clearing any blocks, fluids, and
+     * support data that may have been placed in void-marked columns by
+     * first-pass layers, second-pass layers, custom objects, frost, or other
+     * processing steps. This guarantees void areas are truly empty in the
+     * exported chunk data.
+     */
+    private void enforceVoidColumns(Dimension dimension, Map<Long, HytaleChunk> chunksByCoords) {
+        int cleared = 0;
+        for (Map.Entry<Long, HytaleChunk> entry : chunksByCoords.entrySet()) {
+            HytaleChunk chunk = entry.getValue();
+            int hyChunkX = chunk.getxPos();
+            int hyChunkZ = chunk.getzPos();
+
+            // Convert to world block coords and then to tile coords
+            int blockX = (hyChunkX << 5) - blockOffsetX;
+            int blockZ = (hyChunkZ << 5) - blockOffsetZ;
+            int tileX = blockX >> 7;
+            int tileZ = blockZ >> 7;
+
+            Tile tile = dimension.getTile(tileX, tileZ);
+            if (tile == null) {
+                continue;
+            }
+
+            int maxHeight = chunk.getMaxHeight();
+            for (int localX = 0; localX < HytaleChunk.CHUNK_SIZE; localX++) {
+                for (int localZ = 0; localZ < HytaleChunk.CHUNK_SIZE; localZ++) {
+                    int worldX = blockX + localX;
+                    int worldZ = blockZ + localZ;
+                    int tileLocalX = worldX & 0x7F;
+                    int tileLocalZ = worldZ & 0x7F;
+
+                    if (!tile.getBitLayerValue(org.pepsoft.worldpainter.layers.Void.INSTANCE, tileLocalX, tileLocalZ)) {
+                        continue;
+                    }
+
+                    // This column is void — clear everything
+                    chunk.setHeight(localX, localZ, 0);
+                    for (int y = 0; y < maxHeight; y++) {
+                        HytaleBlock existing = chunk.getHytaleBlock(localX, y, localZ);
+                        if (existing != null && !existing.isEmpty()) {
+                            chunk.setHytaleBlock(localX, y, localZ, HytaleBlock.EMPTY);
+                            cleared++;
+                        }
+                        HytaleChunk.HytaleSection section = chunk.getSections()[y >> 5];
+                        int localY = y & 31;
+                        if (section.getFluidId(localX, localY, localZ) > 0) {
+                            section.clearFluid(localX, localY, localZ);
+                            cleared++;
+                        }
+                    }
+                }
+            }
+        }
+        if (cleared > 0) {
+            logger.info("Void enforcement pass cleared {} blocks/fluids", cleared);
+        }
+    }
+
+    /**
      * Populate a Hytale chunk with terrain data from WorldPainter dimension.
      * Uses HytaleBlockMapping for proper block conversion and sets biomes.
      */
@@ -1146,6 +1211,13 @@ public class HytaleWorldExporter implements WorldExporter {
                 // Get coordinates within the tile
                 int tileLocalX = worldX & 0x7F; // % 128
                 int tileLocalZ = worldZ & 0x7F;
+                
+                // Check if this column is marked as Void — skip all terrain generation
+                if (tile.getBitLayerValue(org.pepsoft.worldpainter.layers.Void.INSTANCE, tileLocalX, tileLocalZ)) {
+                    // Leave the column completely empty (no bedrock, no terrain, no fluids)
+                    chunk.setHeight(localX, localZ, 0);
+                    continue;
+                }
                 
                 // Get terrain height and terrain type
                 int height = tile.getIntHeight(tileLocalX, tileLocalZ);
@@ -1364,6 +1436,11 @@ public class HytaleWorldExporter implements WorldExporter {
                 int worldZ = worldBlockZ + localZ;
                 int tileLocalX = worldX & 0x7F;
                 int tileLocalZ = worldZ & 0x7F;
+
+                // Check if this column is marked as Void in the ceiling dimension — skip it
+                if (ceilingTile.getBitLayerValue(org.pepsoft.worldpainter.layers.Void.INSTANCE, tileLocalX, tileLocalZ)) {
+                    continue;
+                }
 
                 // Bedrock lid at the very top of the ceiling (unless bottomless)
                 if (!bottomless) {
@@ -2183,7 +2260,30 @@ public class HytaleWorldExporter implements WorldExporter {
 
         @Override
         public void setMaterial(int x, int y, int z, Material material) {
-            delegate.getSections()[y >> 5].setMaterialForLighting(x + xOffset, y & 31, z + zOffset, material);
+            int dx = x + xOffset;
+            int dz = z + zOffset;
+            if (y < delegate.getMinHeight() || y >= delegate.getMaxHeight()) {
+                return;
+            }
+            if ((material == null) || (material == Material.AIR)) {
+                delegate.setHytaleBlock(dx, y, dz, HytaleBlock.EMPTY);
+                delegate.getSections()[y >> 5].clearFluid(dx, y & 31, dz);
+                return;
+            }
+            HytaleBlock block = HytaleBlockMapping.toHytaleBlock(material);
+            if (block.isFluid()) {
+                delegate.setHytaleBlock(dx, y, dz, HytaleBlock.EMPTY);
+                delegate.getSections()[y >> 5].setFluid(dx, y & 31, dz, block.id, 1);
+            } else if (material.isNamed(MC_WATER)) {
+                delegate.setHytaleBlock(dx, y, dz, HytaleBlock.EMPTY);
+                delegate.getSections()[y >> 5].setFluid(dx, y & 31, dz, HytaleBlockMapping.HY_WATER, 1);
+            } else if (material.isNamed(MC_LAVA)) {
+                delegate.setHytaleBlock(dx, y, dz, HytaleBlock.EMPTY);
+                delegate.getSections()[y >> 5].setFluid(dx, y & 31, dz, HytaleBlockMapping.HY_LAVA, 1);
+            } else {
+                delegate.getSections()[y >> 5].clearFluid(dx, y & 31, dz);
+                delegate.setHytaleBlock(dx, y, dz, block);
+            }
         }
 
         @Override
