@@ -1223,7 +1223,7 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
     public static final HytaleTerrain BLUE_CRYSTAL = new HytaleTerrain("Blue Crystal",
         HytaleBlock.of("Rock_Crystal_Blue_Block"), 0x4d7fd6);
     public static final HytaleTerrain BLUE_ICE = new HytaleTerrain("Blue Ice",
-        HytaleBlock.of("Rock_Ice"), 0xa0d0ff);
+        HytaleBlock.of("Rock_Ice_Blue"), 0xa0d0ff);
     public static final HytaleTerrain BURNED_GRASS = new HytaleTerrain("Soil Burnt Grass",
         HytaleBlock.of("Soil_Grass_Burnt"), 0x5c4020);
     public static final HytaleTerrain CALCITE = new HytaleTerrain("Calcite",
