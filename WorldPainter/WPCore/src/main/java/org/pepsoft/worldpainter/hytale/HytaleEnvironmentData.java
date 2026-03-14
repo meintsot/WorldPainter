@@ -88,15 +88,15 @@ public final class HytaleEnvironmentData {
         // ── Zone 1 (Emerald Grove) ──
         reg("Env_Zone1",           "Zone 1 Base",         null,         "#1983d9", 0.5f, Category.ZONE1);
         reg("Env_Zone1_Plains",    "Plains",              "Env_Zone1",  "#1983d9", 0.5f, Category.ZONE1);
-        reg("Env_Zone1_Forests",   "Forests",             "Env_Zone1",  "#1983d9", 0.6f, Category.ZONE1);
-        reg("Env_Zone1_Autumn",    "Autumn Forest",       "Env_Zone1",  "#1983d9", 0.5f, Category.ZONE1);
-        reg("Env_Zone1_Azure",     "Azure Forest",        "Env_Zone1",  "#20a0ff", 0.5f, Category.ZONE1);
-        reg("Env_Zone1_Mountains", "Mountains",           "Env_Zone1",  "#1983d9", 0.4f, Category.ZONE1);
-        reg("Env_Zone1_Swamps",    "Swamps",              "Env_Zone1",  "#66682b", 0.7f, Category.ZONE1);
+        reg("Env_Zone1_Forests",   "Forests",             "Env_Zone1",  "#1983d9", 0.9f, Category.ZONE1);
+        reg("Env_Zone1_Autumn",    "Autumn Forest",       null,         "#616f6f", 0.9f, Category.ZONE1);
+        reg("Env_Zone1_Azure",     "Azure Forest",        "Env_Zone1",  "#1983d9", 0.5f, Category.ZONE1);
+        reg("Env_Zone1_Mountains", "Mountains",           "Env_Zone1",  "#1983d9", 0.3f, Category.ZONE1);
+        reg("Env_Zone1_Swamps",    "Swamps",              null,         "#66682b", 0.9f, Category.ZONE1);
         reg("Env_Zone1_Shores",    "Shores",              "Env_Zone1",  "#1983d9", 0.3f, Category.ZONE1);
         reg("Env_Zone1_Kweebec",   "Kweebec Village",     "Env_Zone1",  "#1983d9", 0.4f, Category.ZONE1);
         reg("Env_Zone1_Trork",     "Trork Camp",          "Env_Zone1",  "#1983d9", 0.6f, Category.ZONE1);
-        reg("Env_Zone1_Caves",     "Caves",               "Env_Zone1",  "#1983d9", 0.4f, Category.ZONE1);
+        reg("Env_Zone1_Caves",     "Caves",               null,         "#1983d9", 0.5f, Category.ZONE1);
         reg("Env_Zone1_Caves_Forests",   "Cave — Forests",   "Env_Zone1_Caves", "#1983d9", 0.5f, Category.ZONE1);
         reg("Env_Zone1_Caves_Goblins",   "Cave — Goblins",   "Env_Zone1_Caves", "#1983d9", 0.6f, Category.ZONE1);
         reg("Env_Zone1_Caves_Mountains", "Cave — Mountains", "Env_Zone1_Caves", "#1983d9", 0.4f, Category.ZONE1);
@@ -104,25 +104,25 @@ public final class HytaleEnvironmentData {
         reg("Env_Zone1_Caves_Rats",      "Cave — Rats",      "Env_Zone1_Caves", "#1983d9", 0.5f, Category.ZONE1);
         reg("Env_Zone1_Caves_Spiders",   "Cave — Spiders",   "Env_Zone1_Caves", "#1983d9", 0.6f, Category.ZONE1);
         reg("Env_Zone1_Caves_Swamps",    "Cave — Swamps",    "Env_Zone1_Caves", "#66682b", 0.6f, Category.ZONE1);
-        reg("Env_Zone1_Caves_Volcanic_T1", "Cave — Volcanic T1", "Env_Zone1_Caves", "#1983d9", 0.3f, Category.ZONE1);
-        reg("Env_Zone1_Caves_Volcanic_T2", "Cave — Volcanic T2", "Env_Zone1_Caves", "#1983d9", 0.4f, Category.ZONE1);
-        reg("Env_Zone1_Caves_Volcanic_T3", "Cave — Volcanic T3", "Env_Zone1_Caves", "#1983d9", 0.5f, Category.ZONE1);
+        reg("Env_Zone1_Caves_Volcanic_T1", "Cave — Volcanic T1", null,              "#1983d9", 0.5f, Category.ZONE1);
+        reg("Env_Zone1_Caves_Volcanic_T2", "Cave — Volcanic T2", "Env_Zone1_Caves_Volcanic_T1", "#1983d9", 0.4f, Category.ZONE1);
+        reg("Env_Zone1_Caves_Volcanic_T3", "Cave — Volcanic T3", "Env_Zone1_Caves_Volcanic_T1", "#1983d9", 0.5f, Category.ZONE1);
         reg("Env_Zone1_Dungeons",    "Dungeons",           "Env_Zone1",  "#1983d9", 0.7f, Category.ZONE1);
         reg("Env_Zone1_Encounters",  "Encounters",         "Env_Zone1",  "#1983d9", 0.6f, Category.ZONE1);
         reg("Env_Zone1_Mage_Towers", "Mage Towers",        "Env_Zone1",  "#1983d9", 0.5f, Category.ZONE1);
         reg("Env_Zone1_Mineshafts",  "Mineshafts",         "Env_Zone1",  "#1983d9", 0.4f, Category.ZONE1);
 
         // ── Zone 2 (Howling Sands) ──
-        reg("Env_Zone2",            "Zone 2 Base",         null,         "#198dea", 0.4f, Category.ZONE2);
-        reg("Env_Zone2_Deserts",    "Deserts",             "Env_Zone2",  "#198dea", 0.3f, Category.ZONE2);
+        reg("Env_Zone2",            "Zone 2 Base",         null,         "#198dea", 0.3f, Category.ZONE2);
+        reg("Env_Zone2_Deserts",    "Deserts",             null,         "#198dea", 0.2f, Category.ZONE2);
         reg("Env_Zone2_Savanna",    "Savanna",             "Env_Zone2",  "#198dea", 0.5f, Category.ZONE2);
         reg("Env_Zone2_Scrub",      "Scrub",               "Env_Zone2",  "#198dea", 0.4f, Category.ZONE2);
         reg("Env_Zone2_Plateaus",   "Plateaus",            "Env_Zone2",  "#198dea", 0.4f, Category.ZONE2);
-        reg("Env_Zone2_Oasis",      "Oasis",               "Env_Zone2",  "#30b8c0", 0.5f, Category.ZONE2);
+        reg("Env_Zone2_Oasis",      "Oasis",               null,         "#198dea", 0.4f, Category.ZONE2);
         reg("Env_Zone2_Scarak",     "Scarak Territory",    "Env_Zone2",  "#198dea", 0.7f, Category.ZONE2);
         reg("Env_Zone2_Feran",      "Feran Territory",     "Env_Zone2",  "#198dea", 0.5f, Category.ZONE2);
         reg("Env_Zone2_Shores",     "Shores",              "Env_Zone2",  "#198dea", 0.3f, Category.ZONE2);
-        reg("Env_Zone2_Caves",      "Caves",               "Env_Zone2",  "#198dea", 0.4f, Category.ZONE2);
+        reg("Env_Zone2_Caves",      "Caves",               null,         "#1983d9", 0.5f, Category.ZONE2);
         reg("Env_Zone2_Caves_Deserts",   "Cave — Deserts",   "Env_Zone2_Caves", "#198dea", 0.3f, Category.ZONE2);
         reg("Env_Zone2_Caves_Goblins",   "Cave — Goblins",   "Env_Zone2_Caves", "#198dea", 0.5f, Category.ZONE2);
         reg("Env_Zone2_Caves_Plateaus",  "Cave — Plateaus",  "Env_Zone2_Caves", "#198dea", 0.4f, Category.ZONE2);
@@ -130,52 +130,52 @@ public final class HytaleEnvironmentData {
         reg("Env_Zone2_Caves_Savanna",   "Cave — Savanna",   "Env_Zone2_Caves", "#198dea", 0.4f, Category.ZONE2);
         reg("Env_Zone2_Caves_Scarak",    "Cave — Scarak",    "Env_Zone2_Caves", "#198dea", 0.6f, Category.ZONE2);
         reg("Env_Zone2_Caves_Scrub",     "Cave — Scrub",     "Env_Zone2_Caves", "#198dea", 0.4f, Category.ZONE2);
-        reg("Env_Zone2_Caves_Volcanic_T1", "Cave — Volcanic T1", "Env_Zone2_Caves", "#198dea", 0.3f, Category.ZONE2);
-        reg("Env_Zone2_Caves_Volcanic_T2", "Cave — Volcanic T2", "Env_Zone2_Caves", "#198dea", 0.4f, Category.ZONE2);
-        reg("Env_Zone2_Caves_Volcanic_T3", "Cave — Volcanic T3", "Env_Zone2_Caves", "#198dea", 0.5f, Category.ZONE2);
+        reg("Env_Zone2_Caves_Volcanic_T1", "Cave — Volcanic T1", null,              "#198dea", 0.5f, Category.ZONE2);
+        reg("Env_Zone2_Caves_Volcanic_T2", "Cave — Volcanic T2", "Env_Zone2_Caves_Volcanic_T1", "#198dea", 0.4f, Category.ZONE2);
+        reg("Env_Zone2_Caves_Volcanic_T3", "Cave — Volcanic T3", "Env_Zone2_Caves_Volcanic_T1", "#198dea", 0.5f, Category.ZONE2);
         reg("Env_Zone2_Dungeons",    "Dungeons",           "Env_Zone2",  "#198dea", 0.7f, Category.ZONE2);
         reg("Env_Zone2_Encounters",  "Encounters",         "Env_Zone2",  "#198dea", 0.6f, Category.ZONE2);
         reg("Env_Zone2_Mage_Towers", "Mage Towers",        "Env_Zone2",  "#198dea", 0.5f, Category.ZONE2);
         reg("Env_Zone2_Mineshafts",  "Mineshafts",         "Env_Zone2",  "#198dea", 0.4f, Category.ZONE2);
 
         // ── Zone 3 (Borea) ──
-        reg("Env_Zone3",            "Zone 3 Base",         null,         "#2076b5", 0.4f, Category.ZONE3);
-        reg("Env_Zone3_Forests",    "Forests",             "Env_Zone3",  "#2076b5", 0.5f, Category.ZONE3);
-        reg("Env_Zone3_Tundra",     "Tundra",              "Env_Zone3",  "#2076b5", 0.3f, Category.ZONE3);
+        reg("Env_Zone3",            "Zone 3 Base",         null,         "#2076b5", 0.3f, Category.ZONE3);
+        reg("Env_Zone3_Forests",    "Forests",             null,         "#2076b5", 0.9f, Category.ZONE3);
+        reg("Env_Zone3_Tundra",     "Tundra",              "Env_Zone3",  "#2076b5", 0.4f, Category.ZONE3);
         reg("Env_Zone3_Mountains",  "Mountains",           "Env_Zone3",  "#2076b5", 0.3f, Category.ZONE3);
-        reg("Env_Zone3_Glacial",    "Glacial",             "Env_Zone3",  "#a0d8ef", 0.2f, Category.ZONE3);
-        reg("Env_Zone3_Glacial_Henges", "Glacial Henges",  "Env_Zone3_Glacial", "#a0d8ef", 0.3f, Category.ZONE3);
-        reg("Env_Zone3_Hedera",     "Hedera Village",      "Env_Zone3",  "#2076b5", 0.4f, Category.ZONE3);
+        reg("Env_Zone3_Glacial",    "Glacial",             null,         "#2076b5", 0.3f, Category.ZONE3);
+        reg("Env_Zone3_Glacial_Henges", "Glacial Henges",  null,         "#2076b5", 0.0f, Category.ZONE3);
+        reg("Env_Zone3_Hedera",     "Hedera Village",      null,         "#264D3D", 0.5f, Category.ZONE3);
         reg("Env_Zone3_Outlander",  "Outlander Camp",      "Env_Zone3",  "#2076b5", 0.6f, Category.ZONE3);
         reg("Env_Zone3_Shores",     "Shores",              "Env_Zone3",  "#2076b5", 0.3f, Category.ZONE3);
-        reg("Env_Zone3_Caves",      "Caves",               "Env_Zone3",  "#2076b5", 0.4f, Category.ZONE3);
+        reg("Env_Zone3_Caves",      "Caves",               null,         "#1983d9", 0.5f, Category.ZONE3);
         reg("Env_Zone3_Caves_Forests",  "Cave — Forests",   "Env_Zone3_Caves", "#2076b5", 0.5f, Category.ZONE3);
         reg("Env_Zone3_Caves_Glacial",  "Cave — Glacial",   "Env_Zone3_Caves", "#a0d8ef", 0.3f, Category.ZONE3);
         reg("Env_Zone3_Caves_Mountains", "Cave — Mountains","Env_Zone3_Caves", "#2076b5", 0.3f, Category.ZONE3);
         reg("Env_Zone3_Caves_Spider",   "Cave — Spider",    "Env_Zone3_Caves", "#2076b5", 0.6f, Category.ZONE3);
         reg("Env_Zone3_Caves_Tundra",   "Cave — Tundra",    "Env_Zone3_Caves", "#2076b5", 0.3f, Category.ZONE3);
-        reg("Env_Zone3_Caves_Volcanic_T1", "Cave — Volcanic T1", "Env_Zone3_Caves", "#2076b5", 0.3f, Category.ZONE3);
-        reg("Env_Zone3_Caves_Volcanic_T2", "Cave — Volcanic T2", "Env_Zone3_Caves", "#2076b5", 0.4f, Category.ZONE3);
-        reg("Env_Zone3_Caves_Volcanic_T3", "Cave — Volcanic T3", "Env_Zone3_Caves", "#2076b5", 0.5f, Category.ZONE3);
+        reg("Env_Zone3_Caves_Volcanic_T1", "Cave — Volcanic T1", null,              "#2076b5", 0.3f, Category.ZONE3);
+        reg("Env_Zone3_Caves_Volcanic_T2", "Cave — Volcanic T2", "Env_Zone3_Caves_Volcanic_T1", "#2076b5", 0.4f, Category.ZONE3);
+        reg("Env_Zone3_Caves_Volcanic_T3", "Cave — Volcanic T3", "Env_Zone3_Caves_Volcanic_T1", "#2076b5", 0.5f, Category.ZONE3);
         reg("Env_Zone3_Dungeons",    "Dungeons",           "Env_Zone3",  "#2076b5", 0.7f, Category.ZONE3);
         reg("Env_Zone3_Encounters",  "Encounters",         "Env_Zone3",  "#2076b5", 0.6f, Category.ZONE3);
         reg("Env_Zone3_Mage_Towers", "Mage Towers",        "Env_Zone3",  "#2076b5", 0.5f, Category.ZONE3);
         reg("Env_Zone3_Mineshafts",  "Mineshafts",         "Env_Zone3",  "#2076b5", 0.4f, Category.ZONE3);
 
         // ── Zone 4 (Devastated Lands) ──
-        reg("Env_Zone4",            "Zone 4 Base",         null,         "#667030", 0.4f, Category.ZONE4);
-        reg("Env_Zone4_Forests",    "Forests",             "Env_Zone4",  "#667030", 0.5f, Category.ZONE4);
-        reg("Env_Zone4_Jungles",    "Jungles",             "Env_Zone4",  "#4a6020", 0.6f, Category.ZONE4);
-        reg("Env_Zone4_Wastes",     "Wastes",              "Env_Zone4",  "#667030", 0.3f, Category.ZONE4);
-        reg("Env_Zone4_Volcanoes",  "Volcanoes",           "Env_Zone4",  "#c04020", 0.3f, Category.ZONE4);
-        reg("Env_Zone4_Crucible",   "Crucible",            "Env_Zone4",  "#667030", 0.5f, Category.ZONE4);
-        reg("Env_Zone4_Shores",     "Shores",              "Env_Zone4",  "#667030", 0.3f, Category.ZONE4);
-        reg("Env_Zone4_Sewers",     "Sewers",              "Env_Zone4",  "#667030", 0.5f, Category.ZONE4);
-        reg("Env_Zone4_Caves",      "Caves",               "Env_Zone4",  "#667030", 0.4f, Category.ZONE4);
-        reg("Env_Zone4_Caves_Volcanic", "Cave — Volcanic",  "Env_Zone4_Caves", "#c04020", 0.4f, Category.ZONE4);
-        reg("Env_Zone4_Dungeons",    "Dungeons",           "Env_Zone4",  "#667030", 0.7f, Category.ZONE4);
-        reg("Env_Zone4_Encounters",  "Encounters",         "Env_Zone4",  "#667030", 0.6f, Category.ZONE4);
-        reg("Env_Zone4_Mage_Towers", "Mage Towers",        "Env_Zone4",  "#667030", 0.5f, Category.ZONE4);
+        reg("Env_Zone4",            "Zone 4 Base",         null,         "#627A38", 0.2f, Category.ZONE4);
+        reg("Env_Zone4_Forests",    "Forests",             "Env_Zone4",  "#627A38", 0.5f, Category.ZONE4);
+        reg("Env_Zone4_Jungles",    "Jungles",             null,         "#627A38", 1.0f, Category.ZONE4);
+        reg("Env_Zone4_Wastes",     "Wastes",              "Env_Zone4",  "#627A38", 0.3f, Category.ZONE4);
+        reg("Env_Zone4_Volcanoes",  "Volcanoes",           "Env_Zone4",  "#627A38", 0.3f, Category.ZONE4);
+        reg("Env_Zone4_Crucible",   "Crucible",            null,         "#627A38", 0.1f, Category.ZONE4);
+        reg("Env_Zone4_Shores",     "Shores",              "Env_Zone4",  "#2076b5", 0.3f, Category.ZONE4);
+        reg("Env_Zone4_Sewers",     "Sewers",              null,         "#627A38", 1.0f, Category.ZONE4);
+        reg("Env_Zone4_Caves",      "Caves",               null,         "#627A38", 0.1f, Category.ZONE4);
+        reg("Env_Zone4_Caves_Volcanic", "Cave — Volcanic",  null,        "#627A38", 0.5f, Category.ZONE4);
+        reg("Env_Zone4_Dungeons",    "Dungeons",           "Env_Zone4",  "#627A38", 0.7f, Category.ZONE4);
+        reg("Env_Zone4_Encounters",  "Encounters",         "Env_Zone4",  "#627A38", 0.6f, Category.ZONE4);
+        reg("Env_Zone4_Mage_Towers", "Mage Towers",        "Env_Zone4",  "#627A38", 0.5f, Category.ZONE4);
 
         // ── Special / Unique ──
         reg("Default",                         "Default",                 null, "#1983d9", 0.5f, Category.SPECIAL);
@@ -188,8 +188,8 @@ public final class HytaleEnvironmentData {
         reg("Env_Forgotten_Temple_Interior_Grand", "Forgotten Temple — Grand Interior", null, "#1983d9", 0.3f, Category.SPECIAL);
         reg("Env_Forgotten_Temple_Interior_Small", "Forgotten Temple — Small Interior", null, "#1983d9", 0.3f, Category.SPECIAL);
         reg("Env_Forgotten_Temple_Interior_Tent",  "Forgotten Temple — Tent", null, "#1983d9", 0.2f, Category.SPECIAL);
-        reg("Env_Portals_Hedera",              "Portal — Hedera",         null, "#2076b5", 0.3f, Category.SPECIAL);
-        reg("Env_Portals_Oasis",               "Portal — Oasis",          null, "#30b8c0", 0.3f, Category.SPECIAL);
+        reg("Env_Portals_Hedera",              "Portal — Hedera",         null, "#264D3D", 0.5f, Category.SPECIAL);
+        reg("Env_Portals_Oasis",               "Portal — Oasis",          null, "#198dea", 0.8f, Category.SPECIAL);
     }
 
     // ─── Lookup ────────────────────────────────────────────────────────
