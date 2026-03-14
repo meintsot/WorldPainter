@@ -186,7 +186,23 @@ public class HytaleMapImportDialog extends WorldPainterDialog {
                         0, Terrain.GRASS, 0, HytaleChunk.DEFAULT_MAX_HEIGHT, 58, 62, false, true, 20, 1.0);
                     HytaleMapImporter importer = new HytaleMapImporter(
                         worldDir, tileFactory, null, readOnlyOpt);
-                    return importer.doImport(pr);
+                    World2 world = importer.doImport(pr);
+                    if (importer.getWarnings() != null) {
+                        try {
+                            SwingUtilities.invokeAndWait(() -> {
+                                java.awt.Toolkit.getDefaultToolkit().beep();
+                                ImportWarningsDialog warningsDialog = new ImportWarningsDialog(
+                                    HytaleMapImportDialog.this,
+                                    "Hytale Import Warnings",
+                                    "The import process generated warnings. Some chunks may not have been imported correctly.");
+                                warningsDialog.setWarnings(importer.getWarnings());
+                                warningsDialog.setVisible(true);
+                            });
+                        } catch (java.lang.reflect.InvocationTargetException | InterruptedException e) {
+                            throw new RuntimeException(e);
+                        }
+                    }
+                    return world;
                 } catch (IOException e) {
                     throw new RuntimeException("I/O error during Hytale import", e);
                 }

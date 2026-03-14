@@ -82,22 +82,42 @@ public class HytaleMapImporter extends MapImporter {
                 final int totalChunks = allCoords.size();
                 final AtomicInteger processedCount = new AtomicInteger();
 
+                logger.info("Found " + totalChunks + " chunks to import");
+
                 for (MinecraftCoords coords : allCoords) {
                     if (progressReceiver != null) {
                         progressReceiver.setProgress((float) processedCount.getAndIncrement() / totalChunks);
                     }
 
                     if (chunksToSkip != null && chunksToSkip.contains(coords)) {
+                        skipChunkCount++;
                         continue;
                     }
 
-                    final Chunk chunk = chunkStore.getChunk(coords.x, coords.z);
+                    final Chunk chunk;
+                    try {
+                        chunk = chunkStore.getChunk(coords.x, coords.z);
+                    } catch (Exception e) {
+                        nullChunkCount++;
+                        if (nullChunkCount <= 10) {
+                            logger.warning("Exception reading chunk at " + coords.x + "," + coords.z + ": " + e.getMessage());
+                        }
+                        continue;
+                    }
                     if (chunk == null) {
+                        nullChunkCount++;
+                        if (nullChunkCount <= 10) {
+                            logger.warning("Chunk at " + coords.x + "," + coords.z + " returned null");
+                        }
                         continue;
                     }
 
                     importChunk((HytaleChunk) chunk, coords.x, coords.z, dimension, blockMapper);
                 }
+
+                logger.info("Import summary: " + totalChunks + " enumerated, "
+                    + importChunkCount + " imported, " + nullChunkCount + " null/failed, "
+                    + skipChunkCount + " skipped, " + dimension.getTileCount() + " tiles created");
             }
 
             // 4. Apply read-only if requested
@@ -117,13 +137,26 @@ public class HytaleMapImporter extends MapImporter {
 
         world.addDimension(dimension);
 
-        // 5. Report unmapped blocks
+        // 5. Build warnings (shown to user via dialog)
+        final StringBuilder sb = new StringBuilder();
+
+        // Chunk failure summary
+        if (nullChunkCount > 0) {
+            sb.append("Import summary: ").append(importChunkCount).append(" chunks imported, ")
+                .append(nullChunkCount).append(" chunks failed to load (those areas will be blank).\n\n");
+        }
+
+        // Unmapped block IDs
         final Set<String> unmapped = blockMapper.getUnmappedBlockIds();
         if (!unmapped.isEmpty()) {
-            final StringBuilder sb = new StringBuilder("The following block IDs were not directly mapped and used fallback terrain:\n");
+            sb.append("The following ").append(unmapped.size())
+                .append(" block ID(s) were not mapped and used fallback terrain (STONE):\n");
             for (String id : unmapped) {
                 sb.append("  - ").append(id).append('\n');
             }
+        }
+
+        if (sb.length() > 0) {
             warnings = sb.toString();
             logger.warning(warnings);
         }
@@ -136,6 +169,10 @@ public class HytaleMapImporter extends MapImporter {
     public String getWarnings() {
         return warnings;
     }
+
+    private int importChunkCount = 0;
+    private int nullChunkCount = 0;
+    private int skipChunkCount = 0;
 
     private void importChunk(HytaleChunk chunk, int chunkX, int chunkZ,
                              Dimension dimension, HytaleImportBlockMapper mapper) {
@@ -154,6 +191,22 @@ public class HytaleMapImporter extends MapImporter {
         final int offX = (chunkX & (CHUNKS_PER_TILE - 1)) * HYTALE_CHUNK_SIZE;
         final int offZ = (chunkZ & (CHUNKS_PER_TILE - 1)) * HYTALE_CHUNK_SIZE;
 
+        if (importChunkCount < 5) {
+            int minH = Integer.MAX_VALUE, maxH = Integer.MIN_VALUE;
+            int nonAirCount = 0;
+            for (int lx = 0; lx < HYTALE_CHUNK_SIZE; lx++) {
+                for (int lz = 0; lz < HYTALE_CHUNK_SIZE; lz++) {
+                    int h = chunk.getHeight(lx, lz);
+                    if (h < minH) minH = h;
+                    if (h > maxH) maxH = h;
+                    HytaleBlock b = chunk.getHytaleBlock(lx, h, lz);
+                    if (b != null && !b.isEmpty()) nonAirCount++;
+                }
+            }
+            logger.info("importChunk: global=(" + chunkX + "," + chunkZ + ") → tile=(" + tileX + "," + tileZ + ") offset=(" + offX + "," + offZ + ")"
+                + " heightRange=[" + minH + "," + maxH + "] blocksAtHeight=" + nonAirCount);
+        }
+
         for (int localX = 0; localX < HYTALE_CHUNK_SIZE; localX++) {
             for (int localZ = 0; localZ < HYTALE_CHUNK_SIZE; localZ++) {
                 final int tilePixelX = offX + localX;
@@ -162,6 +215,7 @@ public class HytaleMapImporter extends MapImporter {
                 importColumn(chunk, localX, localZ, tile, tilePixelX, tilePixelZ, mapper);
             }
         }
+        importChunkCount++;
     }
 
     private void importColumn(HytaleChunk chunk, int localX, int localZ,

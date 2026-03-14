@@ -9,11 +9,14 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.logging.Logger;
 
 /**
  * ChunkStore implementation for reading/writing Hytale world chunks.
  */
 public class HytaleChunkStore implements ChunkStore {
+    
+    private static final Logger logger = Logger.getLogger(HytaleChunkStore.class.getName());
     
     private final File chunksDir;
     private final int minHeight;
@@ -53,9 +56,11 @@ public class HytaleChunkStore implements ChunkStore {
     public Set<MinecraftCoords> getChunkCoords() {
         Set<MinecraftCoords> coords = new HashSet<>();
         for (Point regionCoords : getRegionCoords()) {
+            int regionChunkCount = 0;
             try {
                 HytaleRegionFile region = getRegionFile(regionCoords.x, regionCoords.y, false);
                 if (region == null) {
+                    logger.warning("Region " + regionCoords.x + "," + regionCoords.y + " file not found");
                     continue;
                 }
                 for (int localZ = 0; localZ < 32; localZ++) {
@@ -64,13 +69,16 @@ public class HytaleChunkStore implements ChunkStore {
                             int chunkX = (regionCoords.x << 5) + localX;
                             int chunkZ = (regionCoords.y << 5) + localZ;
                             coords.add(new MinecraftCoords(chunkX, chunkZ));
+                            regionChunkCount++;
                         }
                     }
                 }
             } catch (IOException e) {
                 throw new RuntimeException("Error enumerating chunks in region " + regionCoords.x + "," + regionCoords.y, e);
             }
+            logger.info("Region " + regionCoords.x + "," + regionCoords.y + ": " + regionChunkCount + " chunks found");
         }
+        logger.info("Total: " + coords.size() + " chunks across " + getRegionCoords().size() + " regions");
         return coords;
     }
     

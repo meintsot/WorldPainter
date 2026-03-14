@@ -802,16 +802,16 @@ public class HytaleBsonChunkSerializer {
      * Each byte contains two 4-bit palette indices.
      * Total: 32768 blocks / 2 = 16384 bytes
      * 
-     * IMPORTANT: Hytale's BitUtil uses the convention:
-     * - Even indices → HIGH nibble (bits 4-7)
-     * - Odd indices → LOW nibble (bits 0-3)
+     * Standard convention (matching Hytale's BitUtil.setNibble):
+     * - Even indices → LOW nibble (bits 0-3)
+     * - Odd indices → HIGH nibble (bits 4-7)
      */
     private static void writeHalfByteBlockData(ByteBuf buf, int[] blockIndices) {
         for (int i = 0; i < blockIndices.length; i += 2) {
-            int idx1 = blockIndices[i] & 0x0F;      // Even index → HIGH nibble
-            int idx2 = (i + 1 < blockIndices.length) ? (blockIndices[i + 1] & 0x0F) : 0;  // Odd index → LOW nibble
-            // Pack: even index in high nibble, odd in low nibble (Hytale convention)
-            buf.writeByte((idx1 << 4) | idx2);
+            int low = blockIndices[i] & 0x0F;       // Even index → LOW nibble
+            int high = (i + 1 < blockIndices.length) ? (blockIndices[i + 1] & 0x0F) : 0;  // Odd index → HIGH nibble
+            // Pack: odd index in high nibble, even in low nibble (standard nibble convention)
+            buf.writeByte((high << 4) | low);
         }
     }
     
