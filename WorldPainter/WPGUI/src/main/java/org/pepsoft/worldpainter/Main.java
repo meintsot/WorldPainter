@@ -42,6 +42,7 @@ import java.nio.file.StandardOpenOption;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.lang.management.ManagementFactory;
 import java.util.*;
 import java.util.List;
 import java.util.prefs.BackingStoreException;
@@ -97,6 +98,27 @@ public class Main {
         }
         if (Version.isSnapshot()) {
             System.setProperty("org.pepsoft.snapshotVersion", "true");
+        }
+
+        // Check if we need to re-launch with a different heap size (configured in Preferences UI)
+        if (! "true".equals(System.getProperty("org.pepsoft.worldpainter.heapConfigured"))) {
+            final boolean snapshotForHeap = Version.isSnapshot();
+            Preferences heapPrefs = Preferences.userNodeForPackage(Main.class);
+            int configuredHeapMB = heapPrefs.getInt((snapshotForHeap ? "snapshot." : "") + "maxHeapSizeMB", 0);
+            if (configuredHeapMB > 0) {
+                long currentMaxMB = Runtime.getRuntime().maxMemory() / (1024 * 1024);
+                // Re-launch if current heap differs by more than 10% from configured
+                if (Math.abs(currentMaxMB - configuredHeapMB) > configuredHeapMB * 0.1) {
+                    try {
+                        relaunchWithHeap(configuredHeapMB, args);
+                        System.exit(0);
+                        return;
+                    } catch (Exception e) {
+                        System.err.println("Failed to re-launch with configured heap size (" + configuredHeapMB + " MB): " + e.getMessage());
+                        // Continue with current heap size
+                    }
+                }
+            }
         }
 
         // Use a file lock to make sure only one instance is running with autosave enabled
@@ -554,6 +576,53 @@ public class Main {
             "<p>Please report bugs on GitHub: https://github.com/Captain-Chaos/TalePainter" +
             "<p>Type \"I understand\" below to proceed with testing the next release of TalePainter:</p></html>";
     private static final String SNAPSHOT_MESSAGE_KEY = "org.pepsoft.worldpainter.snapshotWarning";
+
+    private static void relaunchWithHeap(int heapSizeMB, String[] args) throws Exception {
+        String javaHome = System.getProperty("java.home");
+        String javaBin = javaHome + File.separator + "bin" + File.separator + "java";
+        String classpath = System.getProperty("java.class.path");
+
+        List<String> command = new ArrayList<>();
+        command.add(javaBin);
+        command.add("-Xmx" + heapSizeMB + "m");
+        command.add("-Dorg.pepsoft.worldpainter.heapConfigured=true");
+
+        // Propagate existing system properties that matter
+        for (String prop : new String[]{
+                "org.pepsoft.worldpainter.devMode",
+                "org.pepsoft.worldpainter.safeMode",
+                "org.pepsoft.worldpainter.configDir",
+                "org.pepsoft.worldpainter.classifier",
+                "org.pepsoft.worldpainter.threads"
+        }) {
+            String val = System.getProperty(prop);
+            if (val != null) {
+                command.add("-D" + prop + "=" + val);
+            }
+        }
+
+        // Propagate --add-opens JVM arguments
+        for (String inputArg : ManagementFactory.getRuntimeMXBean().getInputArguments()) {
+            if (inputArg.startsWith("--add-opens")) {
+                command.add(inputArg);
+            }
+        }
+
+        // Detect if running from a JAR (-jar) or classpath
+        if (classpath.endsWith(".jar") && ! classpath.contains(File.pathSeparator)) {
+            command.add("-jar");
+            command.add(classpath);
+        } else {
+            command.add("-cp");
+            command.add(classpath);
+            command.add(Main.class.getName());
+        }
+        command.addAll(Arrays.asList(args));
+
+        ProcessBuilder pb = new ProcessBuilder(command);
+        pb.inheritIO();
+        pb.start();
+    }
 
     private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(Main.class);
 

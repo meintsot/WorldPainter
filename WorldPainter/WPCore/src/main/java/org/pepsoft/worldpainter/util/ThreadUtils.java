@@ -24,9 +24,13 @@ public final class ThreadUtils {
         final Runtime runtime = Runtime.getRuntime();
         final int threadCount;
         final String sysProp = System.getProperty("org.pepsoft.worldpainter.threads");
+        final Integer configProp = (Configuration.getInstance() != null) ? Configuration.getInstance().getMaxThreadCount() : null;
         if (sysProp != null) {
             threadCount = Math.max(Math.min(Integer.parseInt(sysProp), jobCount), 1);
             logger.info("Using " + threadCount + " thread(s) for " + operation + " (max. thread count source: org.pepsoft.worldpainter.threads advanced setting set to " + sysProp + ")");
+        } else if (configProp != null) {
+            threadCount = Math.max(Math.min(configProp, jobCount), 1);
+            logger.info("Using " + threadCount + " thread(s) for " + operation + " (max. thread count source: max. thread count in preferences set to " + configProp + ")");
         } else {
             threadCount = Math.max(Math.min(runtime.availableProcessors(), jobCount), 1);
             logger.info("Using " + threadCount + " thread(s) for " + operation + " (max. thread count source: logical processors: " + runtime.availableProcessors() + ")");

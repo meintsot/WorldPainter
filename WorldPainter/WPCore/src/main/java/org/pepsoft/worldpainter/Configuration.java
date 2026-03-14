@@ -732,6 +732,14 @@ public final class Configuration implements Serializable, EventLogger, Minecraft
         this.maxThreadCount = maxThreadCount;
     }
 
+    public synchronized Integer getMaxHeapSizeMB() {
+        return maxHeapSizeMB;
+    }
+
+    public synchronized void setMaxHeapSizeMB(Integer maxHeapSizeMB) {
+        this.maxHeapSizeMB = maxHeapSizeMB;
+    }
+
     public synchronized int getViewDistance() {
         return viewDistance;
     }
@@ -1344,6 +1352,7 @@ public final class Configuration implements Serializable, EventLogger, Minecraft
     private Map<String, List<MessageDisplayed>> displayedMessages = new HashMap<>();
     private File overlaysDirectory;
     private Integer maxThreadCount;
+    private Integer maxHeapSizeMB;
     private int viewDistance = 192; // 12 chunks (default of Minecraft 1.18.2)
 
     /**

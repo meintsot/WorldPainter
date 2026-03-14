@@ -98,6 +98,9 @@ public class PreferencesDialog extends WorldPainterDialog {
         ((SpinnerNumberModel) spinnerManualThreadCount.getModel()).setMaximum(logicalProcessorCount);
         spinnerManualThreadCount.setValue(logicalProcessorCount);
 
+        long currentMaxMB = Runtime.getRuntime().maxMemory() / (1024 * 1024);
+        labelCurrentHeap.setText("<html><i>Requires restart. Current: " + currentMaxMB + " MB</i></html>");
+
         loadSettings();
         
         rootPane.setDefaultButton(buttonOK);
@@ -266,6 +269,13 @@ public class PreferencesDialog extends WorldPainterDialog {
             radioButtonThreadCountAuto.setEnabled(! maxThreadCountFixed);
             radioButtonThreadCountManual.setEnabled(! maxThreadCountFixed);
 
+            if (config.getMaxHeapSizeMB() != null) {
+                radioButtonHeapManual.setSelected(true);
+                spinnerMaxHeapSizeMB.setValue(config.getMaxHeapSizeMB());
+            } else {
+                radioButtonHeapAuto.setSelected(true);
+            }
+
             setControlStates();
         } finally {
             programmaticChange = false;
@@ -380,13 +390,24 @@ public class PreferencesDialog extends WorldPainterDialog {
             }
         }
 
+        if (radioButtonHeapAuto.isSelected()) {
+            config.setMaxHeapSizeMB(null);
+        } else {
+            config.setMaxHeapSizeMB((int) spinnerMaxHeapSizeMB.getValue());
+        }
+
         try {
             config.save();
 
-            // Store the acceleration type and manual GUI scale separately, because we need them before we can
-            // load the config:
+            // Store the acceleration type, manual GUI scale, and heap size separately, because we need them
+            // before we can load the config:
             Preferences prefs = Preferences.userNodeForPackage(Main.class);
             prefs.put((isSnapshot() ? "snapshot." : "") + "accelerationType", config.getAccelerationType().name());
+            if (config.getMaxHeapSizeMB() != null) {
+                prefs.putInt((isSnapshot() ? "snapshot." : "") + "maxHeapSizeMB", config.getMaxHeapSizeMB());
+            } else {
+                prefs.remove((isSnapshot() ? "snapshot." : "") + "maxHeapSizeMB");
+            }
             prefs.flush();
             prefs = Preferences.userNodeForPackage(GUIUtils.class);
             prefs.putFloat((isSnapshot() ? "snapshot." : "") + "manualUIScale", config.getUiScale());
@@ -410,6 +431,7 @@ public class PreferencesDialog extends WorldPainterDialog {
         spinnerAutoSaveInterval.setEnabled(autosaveEnabled && (! autosaveInhibited));
         sliderUIScale.setEnabled(radioButtonUIScaleManual.isSelected());
         spinnerManualThreadCount.setEnabled(radioButtonThreadCountManual.isSelected() && radioButtonThreadCountManual.isEnabled());
+        spinnerMaxHeapSizeMB.setEnabled(radioButtonHeapManual.isSelected());
     }
 
     private void updateLabelUIScale() {
@@ -618,6 +640,7 @@ public class PreferencesDialog extends WorldPainterDialog {
         buttonGroup3 = new javax.swing.ButtonGroup();
         buttonGroup4 = new javax.swing.ButtonGroup();
         buttonGroup5 = new javax.swing.ButtonGroup();
+        buttonGroup6 = new javax.swing.ButtonGroup();
         jTabbedPane1 = new javax.swing.JTabbedPane();
         jPanel1 = new javax.swing.JPanel();
         checkBoxPing = new javax.swing.JCheckBox();
@@ -744,6 +767,12 @@ public class PreferencesDialog extends WorldPainterDialog {
         radioButtonThreadCountManual = new javax.swing.JRadioButton();
         spinnerManualThreadCount = new javax.swing.JSpinner();
         jLabel54 = new javax.swing.JLabel();
+        jPanel7 = new javax.swing.JPanel();
+        jLabel55 = new javax.swing.JLabel();
+        radioButtonHeapAuto = new javax.swing.JRadioButton();
+        radioButtonHeapManual = new javax.swing.JRadioButton();
+        spinnerMaxHeapSizeMB = new javax.swing.JSpinner();
+        labelCurrentHeap = new javax.swing.JLabel();
         buttonCancel = new javax.swing.JButton();
         buttonOK = new javax.swing.JButton();
 
@@ -1679,6 +1708,65 @@ public class PreferencesDialog extends WorldPainterDialog {
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
+        jPanel7.setBorder(javax.swing.BorderFactory.createTitledBorder("Memory"));
+
+        jLabel55.setText("Maximum heap size (MB):");
+
+        buttonGroup6.add(radioButtonHeapAuto);
+        radioButtonHeapAuto.setText("automatic (use launcher default)");
+        radioButtonHeapAuto.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                radioButtonHeapAutoActionPerformed(evt);
+            }
+        });
+
+        buttonGroup6.add(radioButtonHeapManual);
+        radioButtonHeapManual.setText("manual:");
+        radioButtonHeapManual.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                radioButtonHeapManualActionPerformed(evt);
+            }
+        });
+
+        spinnerMaxHeapSizeMB.setModel(new javax.swing.SpinnerNumberModel(4096, 1024, 65536, 512));
+
+        labelCurrentHeap.setText("<html><i>Requires restart</i></html>");
+
+        javax.swing.GroupLayout jPanel7Layout = new javax.swing.GroupLayout(jPanel7);
+        jPanel7.setLayout(jPanel7Layout);
+        jPanel7Layout.setHorizontalGroup(
+            jPanel7Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel7Layout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(jPanel7Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(jPanel7Layout.createSequentialGroup()
+                        .addComponent(jLabel55)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(jPanel7Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(jPanel7Layout.createSequentialGroup()
+                                .addComponent(radioButtonHeapManual)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(spinnerMaxHeapSizeMB, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                            .addComponent(radioButtonHeapAuto)))
+                    .addComponent(labelCurrentHeap, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
+        jPanel7Layout.setVerticalGroup(
+            jPanel7Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(jPanel7Layout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(jPanel7Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(jLabel55)
+                    .addComponent(radioButtonHeapAuto))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(jPanel7Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(radioButtonHeapManual)
+                    .addComponent(spinnerMaxHeapSizeMB, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(labelCurrentHeap, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+        );
+
         javax.swing.GroupLayout jPanel2Layout = new javax.swing.GroupLayout(jPanel2);
         jPanel2.setLayout(jPanel2Layout);
         jPanel2Layout.setHorizontalGroup(
@@ -1686,6 +1774,7 @@ public class PreferencesDialog extends WorldPainterDialog {
             .addGroup(jPanel2Layout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(jPanel2Layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
+                    .addComponent(jPanel7, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(jPanel6, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
                     .addComponent(jPanel3, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -1701,7 +1790,9 @@ public class PreferencesDialog extends WorldPainterDialog {
                     .addComponent(jPanel4, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(jPanel6, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addContainerGap(77, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jPanel7, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
         );
 
         jTabbedPane1.addTab("Performance", jPanel2);
@@ -1958,6 +2049,14 @@ public class PreferencesDialog extends WorldPainterDialog {
         setControlStates();
     }//GEN-LAST:event_radioButtonThreadCountManualActionPerformed
 
+    private void radioButtonHeapAutoActionPerformed(java.awt.event.ActionEvent evt) {
+        setControlStates();
+    }
+
+    private void radioButtonHeapManualActionPerformed(java.awt.event.ActionEvent evt) {
+        setControlStates();
+    }
+
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton buttonCancel;
     private javax.swing.JButton buttonCleanUpBackupsNow;
@@ -1966,6 +2065,7 @@ public class PreferencesDialog extends WorldPainterDialog {
     private javax.swing.ButtonGroup buttonGroup3;
     private javax.swing.ButtonGroup buttonGroup4;
     private javax.swing.ButtonGroup buttonGroup5;
+    private javax.swing.ButtonGroup buttonGroup6;
     private javax.swing.JButton buttonModePreset;
     private javax.swing.JButton buttonOK;
     private javax.swing.JButton buttonReset;
@@ -2043,6 +2143,7 @@ public class PreferencesDialog extends WorldPainterDialog {
     private javax.swing.JLabel jLabel52;
     private javax.swing.JLabel jLabel53;
     private javax.swing.JLabel jLabel54;
+    private javax.swing.JLabel jLabel55;
     private javax.swing.JLabel jLabel6;
     private javax.swing.JLabel jLabel7;
     private javax.swing.JLabel jLabel8;
@@ -2053,11 +2154,13 @@ public class PreferencesDialog extends WorldPainterDialog {
     private javax.swing.JPanel jPanel4;
     private javax.swing.JPanel jPanel5;
     private javax.swing.JPanel jPanel6;
+    private javax.swing.JPanel jPanel7;
     private javax.swing.JSeparator jSeparator1;
     private javax.swing.JSeparator jSeparator2;
     private javax.swing.JSeparator jSeparator3;
     private javax.swing.JSeparator jSeparator5;
     private javax.swing.JTabbedPane jTabbedPane1;
+    private javax.swing.JLabel labelCurrentHeap;
     private javax.swing.JLabel labelEditExportSettingsLink;
     private javax.swing.JLabel labelTerrainAndLayerSettings;
     private javax.swing.JLabel labelUIScale;
@@ -2068,6 +2171,8 @@ public class PreferencesDialog extends WorldPainterDialog {
     private javax.swing.JRadioButton radioButtonAccelUnaccelerated;
     private javax.swing.JRadioButton radioButtonAccelXRender;
     private javax.swing.JRadioButton radioButtonFlat;
+    private javax.swing.JRadioButton radioButtonHeapAuto;
+    private javax.swing.JRadioButton radioButtonHeapManual;
     private javax.swing.JRadioButton radioButtonHilly;
     private javax.swing.JRadioButton radioButtonOverlayOptimiseOnLoad;
     private javax.swing.JRadioButton radioButtonOverlayScaleOnLoad;
@@ -2086,6 +2191,7 @@ public class PreferencesDialog extends WorldPainterDialog {
     private javax.swing.JSpinner spinnerGroundLevel;
     private javax.swing.JSpinner spinnerHeight;
     private javax.swing.JSpinner spinnerManualThreadCount;
+    private javax.swing.JSpinner spinnerMaxHeapSizeMB;
     private javax.swing.JSpinner spinnerRange;
     private javax.swing.JSpinner spinnerScale;
     private javax.swing.JSpinner spinnerUndoLevels;
