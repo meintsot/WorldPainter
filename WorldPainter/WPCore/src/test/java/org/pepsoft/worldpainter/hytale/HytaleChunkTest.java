@@ -169,7 +169,7 @@ public class HytaleChunkTest {
     @Test
     public void testDefaultTintIsArgbGreen() {
         HytaleChunk chunk = new HytaleChunk(0, 0, 0, 320);
-        assertEquals(0xFF7CFC00, chunk.getTint(0, 0));
+        assertEquals(0xFF5B9E28, chunk.getTint(0, 0));
     }
 
     @Test

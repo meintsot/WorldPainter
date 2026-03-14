@@ -2362,8 +2362,9 @@ public class HytaleWorldExporter implements WorldExporter {
         
         String name = terrain.getName().toLowerCase();
         
-        // Desert terrains
-        if (name.contains("sand") || name.contains("desert") || name.contains("red sand")) {
+        // Desert terrains (but not "soul sand" which is a Nether block)
+        if ((name.contains("sand") || name.contains("desert") || name.contains("red sand"))
+                && !name.contains("soul")) {
             return "Desert";
         }
         // Snow/ice terrains
@@ -2378,8 +2379,9 @@ public class HytaleWorldExporter implements WorldExporter {
         if (name.contains("forest") || name.contains("taiga") || name.contains("birch") || name.contains("dark oak")) {
             return "Forest";
         }
-        // Ocean/water terrains
-        if (name.contains("ocean") || name.contains("beach") || name.contains("river")) {
+        // Ocean terrains (deep ocean only — NOT beaches or rivers, which are
+        // land-adjacent and should keep a green vegetation tint)
+        if (name.contains("ocean")) {
             return "Ocean";
         }
         // Mountain terrains
@@ -2391,69 +2393,9 @@ public class HytaleWorldExporter implements WorldExporter {
             return "Underground";
         }
         
-        // Default to grassland
+        // Beaches, rivers, and everything else default to grassland so that
+        // vegetation near sand/water edges keeps a natural green tint.
         return "Grassland";
-    }
-    
-    /**
-     * Map biome name to Hytale environment name.
-     * Environments control weather, lighting, and other effects in Hytale.
-     */
-    private String mapBiomeToEnvironment(String biome) {
-        if (biome == null) {
-            return "Default";
-        }
-        
-        switch (biome) {
-            case "Desert":
-                return "Desert";
-            case "Tundra":
-                return "Tundra";
-            case "Tropical":
-                return "Tropical";
-            case "Forest":
-                return "Forest";
-            case "Ocean":
-                return "Ocean";
-            case "Mountain":
-                return "Mountain";
-            case "Underground":
-                return "Underground";
-            case "Grassland":
-            default:
-                return "Default";
-        }
-    }
-    
-    /**
-     * Map biome name to tint color (ARGB format).
-     * Tints affect grass, leaves, and other vegetation colors.
-     * Format: 0xAARRGGBB.
-     */
-    private int mapBiomeToTint(String biome) {
-        if (biome == null) {
-            return 0xFF79C05A; // Natural grass green - RGB(121,192,90)
-        }
-        
-        switch (biome) {
-            case "Desert":
-                return 0xFFBDB76B; // DarkKhaki - dry, sparse vegetation
-            case "Tundra":
-                return 0xFF80B497; // Muted teal - cold vegetation
-            case "Tropical":
-                return 0xFF1A8C4B; // Deep tropical green
-            case "Forest":
-                return 0xFF59A52C; // Dark forest green
-            case "Ocean":
-                return 0xFF4682B4; // SteelBlue - water tint
-            case "Mountain":
-                return 0xFF808080; // Gray - rocky, sparse vegetation
-            case "Underground":
-                return 0xFF4B0082; // Indigo - dark, underground tint
-            case "Grassland":
-            default:
-                return 0xFF79C05A; // Natural grass green (similar to Minecraft plains)
-        }
     }
     
     /**

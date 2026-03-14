@@ -67,7 +67,7 @@ public class HytaleChunk implements Chunk {
         for (int i = 0; i < biomes.length; i++) {
             biomes[i] = "Grassland";
             environments[i] = "Default";
-            tints[i] = 0xFF7CFC00; // LawnGreen default tint (ARGB)
+            tints[i] = 0xFF5B9E28; // Drifting Plains default grass tint (ARGB)
             waterTints[i] = null;
             spawnDensities[i] = -1.0f; // Default = use environment
             spawnTags[i] = null;
@@ -513,7 +513,7 @@ public class HytaleChunk implements Chunk {
      */
     public int getTint(int x, int z) {
         if (x < 0 || x >= CHUNK_SIZE || z < 0 || z >= CHUNK_SIZE) {
-            return 0xFF7CFC00; // Default LawnGreen in ARGB
+            return 0xFF5B9E28; // Default Drifting Plains grass tint (ARGB)
         }
         return tints[z * CHUNK_SIZE + x];
     }
