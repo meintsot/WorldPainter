@@ -56,7 +56,7 @@ public class HytaleMapImporter extends MapImporter {
         final long start = System.currentTimeMillis();
 
         // 1. Create World2
-        final World2 world = new World2(HYTALE, 0, HytaleChunk.DEFAULT_MAX_HEIGHT);
+        final World2 world = new World2(HYTALE, tileFactory.getMinHeight(), tileFactory.getMaxHeight());
         world.setName(worldDir.getName());
         world.setCreateGoodiesChest(false);
         world.setImportedFrom(new File(worldDir, "config.json"));

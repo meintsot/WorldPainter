@@ -59,10 +59,9 @@ public final class HytaleImportBlockMapper {
             return terrain;
         }
 
-        // 2. Prefix-based fallback
+        // 2. Prefix-based fallback (reasonable match — not reported as unmapped)
         terrain = prefixFallback(blockId);
         if (terrain != null) {
-            unmappedBlockIds.add(blockId);
             return terrain;
         }
 
@@ -72,14 +71,24 @@ public final class HytaleImportBlockMapper {
     }
 
     private static HytaleTerrain prefixFallback(String blockId) {
-        if (blockId.startsWith("Soil_")) return HytaleTerrain.DIRT;
-        if (blockId.startsWith("Rock_")) return HytaleTerrain.STONE;
-        if (blockId.startsWith("Sand_")) return HytaleTerrain.SAND;
-        if (blockId.startsWith("Snow_")) return HytaleTerrain.SNOW;
-        if (blockId.startsWith("Ice_"))  return HytaleTerrain.ICE;
-        if (blockId.startsWith("Ore_"))  return HytaleTerrain.STONE;
-        if (blockId.startsWith("Leaf_") || blockId.startsWith("Leaves_")) return HytaleTerrain.GRASS;
-        if (blockId.startsWith("Wood_") || blockId.startsWith("Log_")) return HytaleTerrain.GRASS;
+        // Block state variants are prefixed with '*' — strip it before matching
+        final String id = blockId.startsWith("*") ? blockId.substring(1) : blockId;
+
+        if (id.startsWith("Soil_"))  return HytaleTerrain.DIRT;
+        if (id.startsWith("Rock_"))  return HytaleTerrain.STONE;
+        if (id.startsWith("Sand_"))  return HytaleTerrain.SAND;
+        if (id.startsWith("Snow_"))  return HytaleTerrain.SNOW;
+        if (id.startsWith("Ice_"))   return HytaleTerrain.ICE;
+        if (id.startsWith("Ore_"))   return HytaleTerrain.STONE;
+        if (id.startsWith("Leaf_") || id.startsWith("Leaves_") || id.startsWith("Plant_")) return HytaleTerrain.GRASS;
+        if (id.startsWith("Wood_") || id.startsWith("Log_"))     return HytaleTerrain.GRASS;
+        if (id.startsWith("Cloth_"))                              return HytaleTerrain.GRASS;
+        if (id.startsWith("Furniture_") || id.startsWith("Deco_") || id.startsWith("Bench_")) return HytaleTerrain.STONE;
+        if (id.startsWith("Survival_Trap_"))                      return HytaleTerrain.STONE;
+        if (id.startsWith("Rail_"))                               return HytaleTerrain.STONE;
+        if (id.startsWith("Ingredient_") || id.startsWith("Container_")) return HytaleTerrain.DIRT;
+        if (id.startsWith("Potion_") || id.startsWith("Alchemy_") || id.startsWith("Recipe_Book_")) return HytaleTerrain.STONE;
+        if (id.startsWith("Block_"))                              return HytaleTerrain.STONE;
         return null;
     }
 }
