@@ -150,6 +150,16 @@ public final class HytaleBlock implements Serializable {
     public boolean isFluid() {
         return id.contains("_Source") || id.equals("Water_Source") || id.equals("Lava_Source");
     }
+
+    /**
+     * Check if this is a grass-type soil block (Soil_Grass*). Grass blocks
+     * should only appear on the surface; subsurface blocks should be dirt,
+     * matching Hytale's in-game behaviour and avoiding unnecessary block
+     * conversions at runtime.
+     */
+    public boolean isGrass() {
+        return id.startsWith("Soil_Grass");
+    }
     
     /**
      * Get property value, or null if not present.

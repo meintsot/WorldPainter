@@ -1302,12 +1302,18 @@ public class HytaleWorldExporter implements WorldExporter {
                 } else if (hytaleTerrain != null) {
                     HytaleBlock terrainBlock = hytaleTerrain.getPrimaryBlock();
                     boolean surfaceOnly = HytaleBlockRegistry.isSurfaceOnlyBlock(terrainBlock.id);
+                    boolean grassTerrain = terrainBlock.isGrass();
                     for (int y = 1; y <= height; y++) {
                         int depth = height - y;
                         HytaleBlock block;
                         if (surfaceOnly && depth > 0) {
                             // Vegetation and decoration blocks only go on the surface;
                             // fill subsurface with dirt (or stone below depth 4)
+                            block = (depth <= 4) ? HytaleBlock.DIRT : HytaleBlock.STONE;
+                        } else if (grassTerrain && depth > 0) {
+                            // Grass blocks only belong on the surface; Hytale converts
+                            // subsurface grass to dirt at runtime which hurts performance,
+                            // so export dirt directly below the top grass block
                             block = (depth <= 4) ? HytaleBlock.DIRT : HytaleBlock.STONE;
                         } else {
                             block = hytaleTerrain.getBlock(seed, worldX, worldZ, depth);
