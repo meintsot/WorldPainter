@@ -1300,9 +1300,18 @@ public class HytaleWorldExporter implements WorldExporter {
                         }
                     }
                 } else if (hytaleTerrain != null) {
+                    HytaleBlock terrainBlock = hytaleTerrain.getPrimaryBlock();
+                    boolean surfaceOnly = HytaleBlockRegistry.isSurfaceOnlyBlock(terrainBlock.id);
                     for (int y = 1; y <= height; y++) {
                         int depth = height - y;
-                        HytaleBlock block = hytaleTerrain.getBlock(seed, worldX, worldZ, depth);
+                        HytaleBlock block;
+                        if (surfaceOnly && depth > 0) {
+                            // Vegetation and decoration blocks only go on the surface;
+                            // fill subsurface with dirt (or stone below depth 4)
+                            block = (depth <= 4) ? HytaleBlock.DIRT : HytaleBlock.STONE;
+                        } else {
+                            block = hytaleTerrain.getBlock(seed, worldX, worldZ, depth);
+                        }
                         if (block.isFluid()) {
                             chunk.setHytaleBlock(localX, y, localZ, HytaleBlock.EMPTY);
                             chunk.getSections()[y >> 5].setFluid(localX, y & 31, localZ, block.id, 1);

@@ -52,20 +52,20 @@ public class HytaleBlockRegistry {
         CRYSTAL_GEM("Crystals & Gems"),
         WOOD_NATURAL("Wood (Natural)"),
         WOOD_PLANKS("Wood Planks"),
-        LEAVES("Tree Leaves"),
-        GRASS_PLANTS("Grass"),
-        FLOWERS("Flowers"),
-        FERNS("Ferns"),
-        BUSHES("Bushes & Brambles"),
-        CACTUS("Cacti"),
-        MOSS_VINES("Moss & Vines"),
-        MUSHROOMS("Mushrooms"),
-        CROPS("Crops & Farming"),
-        CORAL("Coral"),
-        SEAWEED("Seaweed & Aquatic"),
-        SAPLINGS_FRUITS("Saplings & Fruits"),
-        RUBBLE("Rubble & Scatter"),
-        DECORATION("Decorations"),
+        LEAVES("Tree Leaves", true),
+        GRASS_PLANTS("Grass", true),
+        FLOWERS("Flowers", true),
+        FERNS("Ferns", true),
+        BUSHES("Bushes & Brambles", true),
+        CACTUS("Cacti", true),
+        MOSS_VINES("Moss & Vines", true),
+        MUSHROOMS("Mushrooms", true),
+        CROPS("Crops & Farming", true),
+        CORAL("Coral", true),
+        SEAWEED("Seaweed & Aquatic", true),
+        SAPLINGS_FRUITS("Saplings & Fruits", true),
+        RUBBLE("Rubble & Scatter", true),
+        DECORATION("Decorations", true),
         CLOTH("Cloth & Wool"),
         HIVE("Hive Blocks"),
         RUNIC("Runic Blocks"),
@@ -73,12 +73,25 @@ public class HytaleBlockRegistry {
         SPECIAL("Special & Technical");
 
         private final String displayName;
+        private final boolean surfaceOnly;
 
         Category(String displayName) {
+            this(displayName, false);
+        }
+
+        Category(String displayName, boolean surfaceOnly) {
             this.displayName = displayName;
+            this.surfaceOnly = surfaceOnly;
         }
 
         public String getDisplayName() { return displayName; }
+
+        /**
+         * Whether blocks in this category should only be placed on the surface
+         * (depth 0) during export, rather than filling the entire terrain column.
+         * Vegetation, decorations, and other overlay blocks return {@code true}.
+         */
+        public boolean isSurfaceOnly() { return surfaceOnly; }
 
         @Override
         public String toString() { return displayName; }
@@ -179,6 +192,16 @@ public class HytaleBlockRegistry {
     /** Find the category for a block name, or null if not found. */
     public static Category getCategoryForBlock(String blockName) {
         return getInstance().findCategoryForBlock(blockName);
+    }
+
+    /**
+     * Check whether a block should only be placed on the surface (depth 0)
+     * during terrain export. Vegetation, decorations, and other overlay blocks
+     * return {@code true}.
+     */
+    public static boolean isSurfaceOnlyBlock(String blockId) {
+        Category cat = getCategoryForBlock(blockId);
+        return (cat != null) && cat.isSurfaceOnly();
     }
 
     /**
