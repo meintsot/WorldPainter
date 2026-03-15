@@ -1082,7 +1082,7 @@ public class PreferencesDialog extends WorldPainterDialog {
 
         jLabel26.setText("Maximum brush size:");
 
-        spinnerBrushSize.setModel(new javax.swing.SpinnerNumberModel(300, 100, null, 10));
+        spinnerBrushSize.setModel(new javax.swing.SpinnerNumberModel(1000, 100, null, 10));
 
         jLabel21.setText(" ");
 

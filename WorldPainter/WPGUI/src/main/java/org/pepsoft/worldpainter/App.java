@@ -1793,7 +1793,16 @@ public final class App extends JFrame implements BrushControl,
     private void showSearchableHytaleTerrainPicker(Component parent, Consumer<org.pepsoft.worldpainter.hytale.HytaleTerrain> onSelect) {
         final JDialog dialog = new JDialog(this, "Select Hytale Terrain", true);
         final JPanel panel = new JPanel(new BorderLayout(6, 6));
-        final JTextField searchField = new JTextField();
+        final JTextField searchField = new JTextField() {
+            @Override
+            protected boolean processKeyBinding(KeyStroke ks, java.awt.event.KeyEvent e, int condition, boolean pressed) {
+                boolean result = super.processKeyBinding(ks, e, condition, pressed);
+                if (condition == JComponent.WHEN_FOCUSED) {
+                    return true;
+                }
+                return result;
+            }
+        };
         final DefaultListModel<org.pepsoft.worldpainter.hytale.HytaleTerrain> model = new DefaultListModel<>();
         final JList<org.pepsoft.worldpainter.hytale.HytaleTerrain> list = new JList<>(model);
 
@@ -1873,7 +1882,16 @@ public final class App extends JFrame implements BrushControl,
     private void showSearchableMixedMaterialPicker(Component parent, List<MixedMaterial> materials, Consumer<MixedMaterial> onSelect) {
         final JDialog dialog = new JDialog(this, "Select Existing Material", true);
         final JPanel panel = new JPanel(new BorderLayout(6, 6));
-        final JTextField searchField = new JTextField();
+        final JTextField searchField = new JTextField() {
+            @Override
+            protected boolean processKeyBinding(KeyStroke ks, java.awt.event.KeyEvent e, int condition, boolean pressed) {
+                boolean result = super.processKeyBinding(ks, e, condition, pressed);
+                if (condition == JComponent.WHEN_FOCUSED) {
+                    return true;
+                }
+                return result;
+            }
+        };
         final DefaultListModel<MixedMaterial> model = new DefaultListModel<>();
         final JList<MixedMaterial> list = new JList<>(model);
 
@@ -3773,7 +3791,16 @@ public final class App extends JFrame implements BrushControl,
         constraints.weightx = 1.0;
 
         // Search field
-        JTextField searchField = new JTextField();
+        JTextField searchField = new JTextField() {
+            @Override
+            protected boolean processKeyBinding(KeyStroke ks, java.awt.event.KeyEvent e, int condition, boolean pressed) {
+                boolean result = super.processKeyBinding(ks, e, condition, pressed);
+                if (condition == JComponent.WHEN_FOCUSED) {
+                    return true;
+                }
+                return result;
+            }
+        };
         searchField.setToolTipText("Search prefabs by name, category, or path");
         panel.add(searchField, constraints);
 
@@ -7608,7 +7635,7 @@ public final class App extends JFrame implements BrushControl,
 
     public static final Image ICON = IconUtils.loadScaledImage("org/pepsoft/worldpainter/icons/shovel-icon.png");
     
-    public static final int DEFAULT_MAX_RADIUS = 300;
+    public static final int DEFAULT_MAX_RADIUS = 1000;
 
     public static final String KEY_HELP_KEY = "org.pepsoft.worldpainter.helpKey";
     public static final String KEY_ICON = "org.pepsoft.worldpainter.icon";

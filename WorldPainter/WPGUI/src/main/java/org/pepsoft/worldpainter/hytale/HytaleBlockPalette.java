@@ -92,7 +92,16 @@ public class HytaleBlockPalette extends JPanel {
         topPanel.add(categoryCombo, BorderLayout.WEST);
         
         // Search field
-        searchField = new JTextField();
+        searchField = new JTextField() {
+            @Override
+            protected boolean processKeyBinding(KeyStroke ks, java.awt.event.KeyEvent e, int condition, boolean pressed) {
+                boolean result = super.processKeyBinding(ks, e, condition, pressed);
+                if (condition == JComponent.WHEN_FOCUSED) {
+                    return true;
+                }
+                return result;
+            }
+        };
         searchField.setToolTipText("Search blocks by name");
         searchField.addActionListener(e -> refreshBlockList());
         searchField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {

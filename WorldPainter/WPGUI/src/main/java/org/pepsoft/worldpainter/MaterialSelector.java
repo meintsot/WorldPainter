@@ -69,7 +69,16 @@ public class MaterialSelector extends javax.swing.JPanel {
         comboBoxBlockType.setModel(new DefaultComboBoxModel<>(blockIds));
 
         // Add search/filter panel at index 0 (before jPanel1) so the user can quickly filter the primary block name list
-        filterField = new JTextField();
+        filterField = new JTextField() {
+            @Override
+            protected boolean processKeyBinding(KeyStroke ks, java.awt.event.KeyEvent e, int condition, boolean pressed) {
+                boolean result = super.processKeyBinding(ks, e, condition, pressed);
+                if (condition == JComponent.WHEN_FOCUSED) {
+                    return true;
+                }
+                return result;
+            }
+        };
         filterField.setToolTipText("Type to filter block names");
         filterField.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
             @Override public void insertUpdate(javax.swing.event.DocumentEvent e) { filterPrimaryNames(); }

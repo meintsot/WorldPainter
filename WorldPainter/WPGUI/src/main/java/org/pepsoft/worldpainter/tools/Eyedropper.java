@@ -73,9 +73,13 @@ public final class Eyedropper extends MouseOrTabletOperation {
             // to the user as to exactly what value was selected
             popupMenu = new JPopupMenu();
             if (terrain != null) {
-                // On Hytale worlds, resolve the actual HytaleTerrain from the layer index
+                // On Hytale worlds, resolve the actual HytaleTerrain from the layer index.
+                // Custom terrains are user-defined and should not be converted to Hytale
+                // terrains, as the name-based conversion would lose the custom identity.
                 final HytaleTerrain resolvedHytaleTerrain;
-                if (HytaleTerrainHelper.isHytale(dimension.getWorld().getPlatform())) {
+                if (terrain.isCustom()) {
+                    resolvedHytaleTerrain = null;
+                } else if (HytaleTerrainHelper.isHytale(dimension.getWorld().getPlatform())) {
                     final Tile tile = dimension.getTile(x >> TILE_SIZE_BITS, y >> TILE_SIZE_BITS);
                     if (tile != null) {
                         final int htIndex = HytaleTerrainLayer.getTerrainIndex(tile, x & TILE_SIZE_MASK, y & TILE_SIZE_MASK);

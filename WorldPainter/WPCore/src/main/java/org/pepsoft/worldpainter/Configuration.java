@@ -937,10 +937,10 @@ public final class Configuration implements Serializable, EventLogger, Minecraft
                 try {
                     maximumBrushSize = Integer.parseInt(maxRadiusStr);
                 } catch (NumberFormatException e) {
-                    maximumBrushSize = 300;
+                    maximumBrushSize = 1000;
                 }
             } else {
-                maximumBrushSize = 300;
+                maximumBrushSize = 1000;
             }
         }
         if (version < 4) {
@@ -1307,7 +1307,7 @@ public final class Configuration implements Serializable, EventLogger, Minecraft
     private float defaultRange = 20, uiScale;
     private double defaultScale = 1.0;
     private LightOrigin defaultLightOrigin = LightOrigin.NORTHWEST;
-    private int maximumBrushSize = 300;
+    private int maximumBrushSize = 1000;
     private List<EventVO> eventLog = new LinkedList<>();
     private List<CustomLayer> customLayers = new ArrayList<>();
     private List<MixedMaterial> mixedMaterials = new ArrayList<>();
