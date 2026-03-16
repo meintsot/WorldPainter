@@ -126,7 +126,7 @@ public class DynmapRenderer {
                 ps.direction.subtract(ps.top);
                 ps.py = y / sizescale;
                 shaderstate.reset(ps);
-                ps.hytaleHitColour = -1;
+                ps.hytaleHitColour = 0;
                 try {
                     ps.raytrace(cache, shaderstate, shaderdone);
                 } catch (Exception ex) {
@@ -134,10 +134,10 @@ public class DynmapRenderer {
                     ex.printStackTrace();
                 }
                 int c_argb;
-                if (ps.hytaleHitColour != -1) {
+                if (ps.hytaleHitColour != 0) {
                     // Use native Hytale block colour directly, bypassing the Dynmap shader
                     c_argb = ps.hytaleHitColour;
-                    ps.hytaleHitColour = -1;
+                    ps.hytaleHitColour = 0;
                     shaderdone[0] = false;
                 } else {
                     if (!shaderdone[0]) {
@@ -278,6 +278,70 @@ public class DynmapRenderer {
         return (a << 24) | (r << 16) | (g << 8) | b;
     }
 
+    /**
+     * Test a ray against all quads in a Hytale model block. Samples the actual
+     * model texture at the hit point. Returns the sampled texel colour (with face
+     * shading) if any opaque quad pixel is hit, or 0 if the ray passes through
+     * (transparent texture or no geometry hit).
+     */
+    private static int intersectHytaleModel(HytaleBlockModelCache.ParsedModel model,
+                                            BlockStep face,
+                                            Vector3D rayTop, Vector3D rayDir, double rayT) {
+        // Compute the block origin (integer coords of the block the ray entered)
+        double entryX = rayTop.x + rayT * rayDir.x;
+        double entryY = rayTop.y + rayT * rayDir.y;
+        double entryZ = rayTop.z + rayT * rayDir.z;
+
+        int blockX = (int) Math.floor(entryX);
+        int blockY = (int) Math.floor(entryY);
+        int blockZ = (int) Math.floor(entryZ);
+
+        if (entryX == blockX && rayDir.x < 0) { blockX--; }
+        if (entryY == blockY && rayDir.y < 0) { blockY--; }
+        if (entryZ == blockZ && rayDir.z < 0) { blockZ--; }
+
+        // Ray origin in block-local coords
+        double ox = rayTop.x - blockX;
+        double oy = rayTop.y - blockY;
+        double oz = rayTop.z - blockZ;
+
+        // Test against all model quads, find closest hit with opaque texture
+        // We need to check all quads sorted by distance because the closest
+        // geometric hit might be on a transparent pixel
+        double bestT = Double.MAX_VALUE;
+        int bestColour = 0;
+
+        for (HytaleBlockModelCache.ModelQuad quad : model.quads) {
+            double[] hit = quad.intersect(ox, oy, oz, rayDir.x, rayDir.y, rayDir.z);
+            if (hit != null && hit[0] < bestT) {
+                // Sample texture at hit UV
+                int texel = quad.sampleTexture(model.texture, hit[1], hit[2]);
+                if (texel != 0) {
+                    bestT = hit[0];
+                    bestColour = texel;
+                }
+                // If texel is transparent, skip this quad (ray passes through)
+            }
+        }
+
+        if (bestColour == 0) {
+            // No opaque hit — if we have no texture, fall back to average colour
+            // for any geometric hit
+            if (model.texture == null) {
+                // Check if any quad was hit geometrically
+                for (HytaleBlockModelCache.ModelQuad quad : model.quads) {
+                    double[] hit = quad.intersect(ox, oy, oz, rayDir.x, rayDir.y, rayDir.z);
+                    if (hit != null) {
+                        return applyFaceShading(model.colour, face);
+                    }
+                }
+            }
+            return 0; // Ray passes through
+        }
+
+        return applyFaceShading(bestColour, face);
+    }
+
     private final HDPerspective perspective;
     private final HDMap map;
 
@@ -307,6 +371,7 @@ public class DynmapRenderer {
     private static final int [] BAND_MASKS = {0xFF0000, 0xFF00, 0xff, 0xff000000};
 
     private static final Object PATCH_ACCESS_LOCK = new Object();
+
 
     // Cache for custom meshes by state (shared, reusable)
     private static RenderPatch[][] custom_meshes_by_globalstateindex = null;
@@ -366,7 +431,7 @@ public class DynmapRenderer {
         boolean cur_shade;
 
         int[] subblock_xyz = new int[3];
-        int hytaleHitColour = -1;
+        int hytaleHitColour = 0;
         final MapIterator mapiter;
         final boolean isnether;
         boolean skiptoair;
@@ -829,9 +894,32 @@ public class DynmapRenderer {
                 if (mapiter instanceof WPObjectMapIterator) {
                     Material originalMaterial = ((WPObjectMapIterator) mapiter).getOriginalMaterial();
                     if (originalMaterial != null && originalMaterial.namespace.equals(HytaleBlockRegistry.HYTALE_NAMESPACE)) {
-                        hytaleHitColour = sampleHytaleTexture(originalMaterial, laststep, top, direction, t);
-                        shaderdone[0] = true;
-                        return true;
+                        // Check if this is a model block (leaves, plants, etc.)
+                        HytaleBlockModelCache.ParsedModel model = HytaleBlockModelCache.getModel(originalMaterial.simpleName);
+                        if (model != null && !model.isEmpty()) {
+                            // Ray-model intersection with texture sampling
+                            int modelHit = intersectHytaleModel(model, laststep, top, direction, t);
+                            if (modelHit != 0) {
+                                hytaleHitColour = modelHit;
+                                shaderdone[0] = true;
+                                return true;
+                            } else {
+                                // Ray passed through transparent texture / model gaps
+                                nonairhit = true;
+                            }
+                        } else {
+                            // Cube block — sample face texture
+                            int sampled = sampleHytaleTexture(originalMaterial, laststep, top, direction, t);
+                            int alpha = (sampled >> 24) & 0xFF;
+                            if (alpha == 0) {
+                                // Fully transparent texel — skip this block, let ray continue
+                                nonairhit = true;
+                            } else {
+                                hytaleHitColour = sampled;
+                                shaderdone[0] = true;
+                                return true;
+                            }
+                        }
                     }
                 }
                 short[] model;

@@ -150,6 +150,10 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
      * Load the top and side face textures for a Hytale block ID from the configured assets directory.
      * Returns a two-element array {@code [topTexture, sideTexture]} where either element may be
      * {@code null} if not found. Returns {@code null} entirely if no textures could be loaded at all.
+     *
+     * <p>For model-based blocks (leaves, plants) that use a 3D model atlas texture rather than
+     * cube face textures, a semi-transparent representative colour is computed from the model
+     * texture's non-transparent pixels and returned as a small solid image.
      */
     public static BufferedImage[] loadBlockFaceTexturesForId(String blockId) {
         if (blockId == null || hytaleAssetsDir == null) {
@@ -157,20 +161,91 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         }
         HytaleTerrain temp = new HytaleTerrain("_texture_lookup_", HytaleBlock.of(blockId), null);
         BlockAssetMetadata metadata = temp.loadBlockAssetMetadata();
+
+        // For model blocks, load the CustomModelTexture and compute average colour
+        if (metadata != null && metadata.isModelBlock) {
+            BufferedImage modelTexture = temp.loadExplicitAssetImage(metadata.modelTexturePaths);
+            if (modelTexture != null) {
+                BufferedImage representative = createRepresentativeTexture(modelTexture);
+                return new BufferedImage[] { representative, representative };
+            }
+            // Fall through to particleColor
+        }
+
         BlockFaceTextures textures = temp.loadBlockFaceTextures(metadata);
         if (textures != null) {
             return new BufferedImage[] { textures.top, textures.side };
         }
         // If no textures found but we have a particleColor, return that info
-        // encoded as a 1x1 solid-colour image
         if (metadata != null && metadata.particleColor != null) {
-            int argb = 0xFF000000 | metadata.particleColor;
+            int argb = (LEAF_ALPHA << 24) | (metadata.particleColor & 0xFFFFFF);
             BufferedImage solid = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
             solid.setRGB(0, 0, argb);
             return new BufferedImage[] { solid, solid };
         }
         return null;
     }
+
+    /**
+     * Get the custom model path and texture path for a Hytale block ID, if it
+     * is a model-based block. Returns a two-element array {@code [modelPath, texturePath]}
+     * where either may be {@code null}. Returns {@code null} entirely if the block
+     * has no custom model.
+     */
+    public static String[] getModelPathsForBlockId(String blockId) {
+        if (blockId == null || hytaleAssetsDir == null) {
+            return null;
+        }
+        HytaleTerrain temp = new HytaleTerrain("_model_lookup_", HytaleBlock.of(blockId), null);
+        BlockAssetMetadata metadata = temp.loadBlockAssetMetadata();
+        if (metadata == null || !metadata.isModelBlock) {
+            return null;
+        }
+        String modelPath = metadata.customModelPath;
+        String texturePath = metadata.modelTexturePaths.isEmpty()
+                ? null : metadata.modelTexturePaths.iterator().next();
+        if (modelPath == null && texturePath == null) {
+            return null;
+        }
+        return new String[] { modelPath, texturePath };
+    }
+
+    /**
+     * Create a small representative texture from a model texture (e.g. leaf ball atlas).
+     * Computes the average colour of non-transparent pixels and returns a semi-transparent
+     * solid image that gives a natural see-through leaf canopy look.
+     */
+    private static BufferedImage createRepresentativeTexture(BufferedImage modelTexture) {
+        long totalR = 0, totalG = 0, totalB = 0;
+        int count = 0;
+        for (int y = 0; y < modelTexture.getHeight(); y++) {
+            for (int x = 0; x < modelTexture.getWidth(); x++) {
+                int argb = modelTexture.getRGB(x, y);
+                int alpha = (argb >> 24) & 0xFF;
+                if (alpha > 128) {
+                    totalR += (argb >> 16) & 0xFF;
+                    totalG += (argb >> 8) & 0xFF;
+                    totalB += argb & 0xFF;
+                    count++;
+                }
+            }
+        }
+        int r, g, b;
+        if (count > 0) {
+            r = (int) (totalR / count);
+            g = (int) (totalG / count);
+            b = (int) (totalB / count);
+        } else {
+            r = g = b = 128;
+        }
+        int argb = (LEAF_ALPHA << 24) | (r << 16) | (g << 8) | b;
+        BufferedImage result = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
+        result.setRGB(0, 0, argb);
+        return result;
+    }
+
+    /** Alpha value for model-based block rendering (semi-transparent for see-through canopy). */
+    private static final int LEAF_ALPHA = 0xD0;
 
     public static boolean hasUsableAssetsDir(File dir) {
         if ((dir == null) || (!dir.isDirectory())) {
@@ -497,6 +572,31 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
 
             JsonObject blockType = getObject(root, "BlockType");
             if (blockType != null) {
+                // Parse ParticleColor as a colour hint (used for model-based blocks
+                // like leaves where the CustomModelTexture is a 3D model atlas, not
+                // a flat face texture)
+                String particleColorStr = getString(blockType, "ParticleColor");
+                if (particleColorStr != null && particleColorStr.startsWith("#")) {
+                    try {
+                        metadata.particleColor = Integer.parseInt(particleColorStr.substring(1), 16);
+                    } catch (NumberFormatException e) {
+                        // Ignore malformed colour
+                    }
+                }
+
+                String drawType = getString(blockType, "DrawType");
+                String customModel = getString(blockType, "CustomModel");
+                // A block is model-based if it declares DrawType=Model/Cross, or if it
+                // has a CustomModel field (even if DrawType is inherited from a parent)
+                if ("Model".equalsIgnoreCase(drawType)
+                        || "Cross".equalsIgnoreCase(drawType)
+                        || customModel != null) {
+                    metadata.isModelBlock = true;
+                }
+                if (customModel != null && metadata.customModelPath == null) {
+                    metadata.customModelPath = customModel;
+                }
+
                 JsonArray textures = getArray(blockType, "Textures");
                 if (textures != null) {
                     for (JsonElement textureElement : textures) {
@@ -505,26 +605,18 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
                         }
                     }
                 }
-                // Also handle CustomModelTexture for model-based blocks (leaves, etc.)
+
+                // Store CustomModelTexture paths separately — these are 3D model atlas
+                // textures, not suitable for direct cube face rendering
                 JsonArray customModelTextures = getArray(blockType, "CustomModelTexture");
                 if (customModelTextures != null) {
                     for (JsonElement cmt : customModelTextures) {
                         if (cmt.isJsonObject()) {
                             String texturePath = getString(cmt.getAsJsonObject(), "Texture");
                             if (texturePath != null) {
-                                metadata.topTexturePaths.add(texturePath);
-                                metadata.sideTexturePaths.add(texturePath);
+                                metadata.modelTexturePaths.add(texturePath);
                             }
                         }
-                    }
-                }
-                // Parse ParticleColor as fallback colour hint
-                String particleColorStr = getString(blockType, "ParticleColor");
-                if (particleColorStr != null && particleColorStr.startsWith("#")) {
-                    try {
-                        metadata.particleColor = Integer.parseInt(particleColorStr.substring(1), 16);
-                    } catch (NumberFormatException e) {
-                        // Ignore malformed colour
                     }
                 }
             }
@@ -1195,12 +1287,18 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         private final LinkedHashSet<String> iconPaths = new LinkedHashSet<>();
         private final LinkedHashSet<String> topTexturePaths = new LinkedHashSet<>();
         private final LinkedHashSet<String> sideTexturePaths = new LinkedHashSet<>();
+        /** Texture paths from CustomModelTexture (for model-based blocks like leaves). */
+        private final LinkedHashSet<String> modelTexturePaths = new LinkedHashSet<>();
+        /** Path to the .blockymodel file from CustomModel field. */
+        private String customModelPath;
+        /** Whether this block uses a 3D model (DrawType=Model/Cross or has a CustomModel). */
+        private boolean isModelBlock;
         /** Particle colour from block definition, usable as fallback when no texture is found. */
         private Integer particleColor;
 
         private boolean isEmpty() {
             return iconPaths.isEmpty() && topTexturePaths.isEmpty() && sideTexturePaths.isEmpty()
-                    && particleColor == null;
+                    && modelTexturePaths.isEmpty() && customModelPath == null && particleColor == null;
         }
 
         private void addFallback(BlockAssetMetadata fallback) {
@@ -1210,6 +1308,13 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
             iconPaths.addAll(fallback.iconPaths);
             topTexturePaths.addAll(fallback.topTexturePaths);
             sideTexturePaths.addAll(fallback.sideTexturePaths);
+            modelTexturePaths.addAll(fallback.modelTexturePaths);
+            if (customModelPath == null) {
+                customModelPath = fallback.customModelPath;
+            }
+            if (!isModelBlock) {
+                isModelBlock = fallback.isModelBlock;
+            }
             if (particleColor == null) {
                 particleColor = fallback.particleColor;
             }
