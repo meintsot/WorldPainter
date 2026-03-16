@@ -82,4 +82,63 @@ public class HytaleImportBlockMapperTest {
         assertTrue(mapper.getUnmappedBlockIds().contains("Completely_Unknown_XYZ"));
         assertTrue(mapper.getUnmappedBlockIds().contains("Another_Unknown"));
     }
+
+    // ── isNatural() tests ──────────────────────────────────────────────
+
+    @Test
+    public void testNaturalTerrainBlocks() {
+        HytaleImportBlockMapper mapper = new HytaleImportBlockMapper();
+        assertTrue(mapper.isNatural("Rock_Stone"));
+        assertTrue(mapper.isNatural("Soil_Grass"));
+        assertTrue(mapper.isNatural("Soil_Dirt"));
+        assertTrue(mapper.isNatural("Sand_Red"));
+        assertTrue(mapper.isNatural("Snow_Fresh"));
+        assertTrue(mapper.isNatural("Ice_Glacier"));
+        assertTrue(mapper.isNatural("Ore_Iron"));
+    }
+
+    @Test
+    public void testNaturalVegetation() {
+        HytaleImportBlockMapper mapper = new HytaleImportBlockMapper();
+        assertTrue(mapper.isNatural("Leaf_Oak"));
+        assertTrue(mapper.isNatural("Plant_Fern"));
+        assertTrue(mapper.isNatural("Wood_Oak_Log"));
+    }
+
+    @Test
+    public void testManMadePrefixBlocks() {
+        HytaleImportBlockMapper mapper = new HytaleImportBlockMapper();
+        assertFalse(mapper.isNatural("Furniture_Table"));
+        assertFalse(mapper.isNatural("Deco_Lantern"));
+        assertFalse(mapper.isNatural("Bench_Stone"));
+        assertFalse(mapper.isNatural("Rail_Straight"));
+        assertFalse(mapper.isNatural("Container_Chest"));
+        assertFalse(mapper.isNatural("Alchemy_Table"));
+        assertFalse(mapper.isNatural("Survival_Trap_Spike"));
+        assertFalse(mapper.isNatural("Block_Plank_Oak"));
+        assertFalse(mapper.isNatural("Block_Brick_Stone"));
+        assertFalse(mapper.isNatural("Cloth_Red"));
+    }
+
+    @Test
+    public void testEmptyAndNullAreNatural() {
+        HytaleImportBlockMapper mapper = new HytaleImportBlockMapper();
+        assertTrue(mapper.isNatural(null));
+        assertTrue(mapper.isNatural("Empty"));
+    }
+
+    @Test
+    public void testUnknownBlockDefaultsToNatural() {
+        HytaleImportBlockMapper mapper = new HytaleImportBlockMapper();
+        // Completely unknown prefix — should default to natural (conservative)
+        assertTrue(mapper.isNatural("Mysterious_Ancient_Block"));
+    }
+
+    @Test
+    public void testVariantPrefixStripped() {
+        HytaleImportBlockMapper mapper = new HytaleImportBlockMapper();
+        // Variant prefix '*' should be stripped before classification
+        assertFalse(mapper.isNatural("*Furniture_Chair"));
+        assertTrue(mapper.isNatural("*Rock_Granite"));
+    }
 }

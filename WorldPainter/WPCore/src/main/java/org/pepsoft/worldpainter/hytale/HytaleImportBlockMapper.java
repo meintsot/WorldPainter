@@ -3,6 +3,7 @@ package org.pepsoft.worldpainter.hytale;
 import org.pepsoft.worldpainter.Terrain;
 
 import java.util.*;
+import java.util.logging.Logger;
 
 /**
  * Maps Hytale block IDs (from imported chunks) to {@link HytaleTerrain} instances.
@@ -15,8 +16,25 @@ import java.util.*;
  */
 public final class HytaleImportBlockMapper {
 
+    private static final Logger logger = Logger.getLogger(HytaleImportBlockMapper.class.getName());
+
     private final Map<String, HytaleTerrain> cache = new HashMap<>();
+    private final Map<String, Boolean> naturalCache = new HashMap<>();
     private final Set<String> unmappedBlockIds = new LinkedHashSet<>();
+
+    /**
+     * Categories from {@link HytaleBlockRegistry.Category} that represent man-made blocks.
+     * Everything else is considered natural.
+     */
+    private static final Set<HytaleBlockRegistry.Category> MAN_MADE_CATEGORIES = EnumSet.of(
+            HytaleBlockRegistry.Category.ROCK_CONSTRUCTION,
+            HytaleBlockRegistry.Category.WOOD_PLANKS,
+            HytaleBlockRegistry.Category.CLOTH,
+            HytaleBlockRegistry.Category.HIVE,
+            HytaleBlockRegistry.Category.RUNIC,
+            HytaleBlockRegistry.Category.DECORATION,
+            HytaleBlockRegistry.Category.CROPS
+    );
 
     /**
      * Map a Hytale block ID to a HytaleTerrain.
@@ -43,6 +61,25 @@ public final class HytaleImportBlockMapper {
             return null;
         }
         return HytaleTerrainHelper.toMinecraftTerrain(ht);
+    }
+
+    /**
+     * Determine whether a block ID represents a naturally occurring block.
+     * Man-made blocks (furniture, planks, construction, decorations, etc.)
+     * return {@code false}. Empty/air blocks return {@code true}.
+     *
+     * <p>Uses {@link HytaleBlockRegistry.Category} when available, then
+     * falls back to prefix heuristics. Unknown blocks default to natural
+     * (conservative — avoids false read-only marking on terrain).
+     *
+     * @param blockId The block ID string
+     * @return {@code true} if the block is natural terrain, {@code false} if man-made
+     */
+    public boolean isNatural(String blockId) {
+        if (blockId == null || blockId.equals("Empty")) {
+            return true;
+        }
+        return naturalCache.computeIfAbsent(blockId, HytaleImportBlockMapper::classifyNatural);
     }
 
     /**
@@ -90,5 +127,36 @@ public final class HytaleImportBlockMapper {
         if (id.startsWith("Potion_") || id.startsWith("Alchemy_") || id.startsWith("Recipe_Book_")) return HytaleTerrain.STONE;
         if (id.startsWith("Block_"))                              return HytaleTerrain.STONE;
         return null;
+    }
+
+    /**
+     * Classify a block ID as natural or man-made.
+     */
+    private static boolean classifyNatural(String blockId) {
+        // Strip block state variant prefix
+        final String id = blockId.startsWith("*") ? blockId.substring(1) : blockId;
+
+        // 1. Try HytaleBlockRegistry category
+        try {
+            HytaleBlockRegistry.Category cat = HytaleBlockRegistry.getCategoryForBlock(id);
+            if (cat != null) {
+                return !MAN_MADE_CATEGORIES.contains(cat);
+            }
+        } catch (Exception e) {
+            // Registry not available; fall through to prefix heuristics
+        }
+
+        // 2. Prefix-based heuristics for blocks not in the registry
+        // Man-made prefixes
+        if (id.startsWith("Furniture_") || id.startsWith("Deco_") || id.startsWith("Bench_")) return false;
+        if (id.startsWith("Rail_") || id.startsWith("Container_")) return false;
+        if (id.startsWith("Alchemy_") || id.startsWith("Potion_") || id.startsWith("Recipe_Book_")) return false;
+        if (id.startsWith("Survival_Trap_")) return false;
+        // Planks and bricks are construction materials
+        if (id.startsWith("Block_Plank") || id.startsWith("Block_Brick")) return false;
+        if (id.startsWith("Cloth_")) return false;
+
+        // 3. Default: natural (conservative — don't over-mark read-only)
+        return true;
     }
 }

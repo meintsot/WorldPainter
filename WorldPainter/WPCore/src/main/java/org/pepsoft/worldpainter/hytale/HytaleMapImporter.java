@@ -120,16 +120,7 @@ public class HytaleMapImporter extends MapImporter {
                     + skipChunkCount + " skipped, " + dimension.getTileCount() + " tiles created");
             }
 
-            // 4. Apply read-only if requested
-            if (readOnlyOption == ReadOnlyOption.ALL) {
-                for (Tile tile : dimension.getTiles()) {
-                    for (int x = 0; x < TILE_SIZE; x++) {
-                        for (int y = 0; y < TILE_SIZE; y++) {
-                            tile.setBitLayerValue(ReadOnly.INSTANCE, x, y, true);
-                        }
-                    }
-                }
-            }
+        // 4. Read-only is now applied per-chunk in importChunk()
 
         } finally {
             dimension.setEventsInhibited(false);
@@ -203,9 +194,13 @@ public class HytaleMapImporter extends MapImporter {
                     if (b != null && !b.isEmpty()) nonAirCount++;
                 }
             }
-            logger.info("importChunk: global=(" + chunkX + "," + chunkZ + ") → tile=(" + tileX + "," + tileZ + ") offset=(" + offX + "," + offZ + ")"
+            logger.info("importChunk: global=(" + chunkX + "," + chunkZ + ") \u2192 tile=(" + tileX + "," + tileZ + ") offset=(" + offX + "," + offZ + ")"
                 + " heightRange=[" + minH + "," + maxH + "] blocksAtHeight=" + nonAirCount);
         }
+
+        // Reset per-chunk man-made tracking
+        chunkHasManMadeAboveGround = false;
+        chunkHasManMadeBelowGround = false;
 
         for (int localX = 0; localX < HYTALE_CHUNK_SIZE; localX++) {
             for (int localZ = 0; localZ < HYTALE_CHUNK_SIZE; localZ++) {
@@ -215,6 +210,42 @@ public class HytaleMapImporter extends MapImporter {
                 importColumn(chunk, localX, localZ, tile, tilePixelX, tilePixelZ, mapper);
             }
         }
+
+        // Apply per-chunk read-only based on option
+        boolean applyReadOnly = false;
+        switch (readOnlyOption) {
+            case ALL:
+                applyReadOnly = true;
+                break;
+            case MAN_MADE:
+                applyReadOnly = chunkHasManMadeAboveGround || chunkHasManMadeBelowGround;
+                break;
+            case MAN_MADE_ABOVE_GROUND:
+                applyReadOnly = chunkHasManMadeAboveGround;
+                break;
+            default:
+                break;
+        }
+        if (applyReadOnly) {
+            for (int lx = 0; lx < HYTALE_CHUNK_SIZE; lx++) {
+                for (int lz = 0; lz < HYTALE_CHUNK_SIZE; lz++) {
+                    tile.setBitLayerValue(ReadOnly.INSTANCE, offX + lx, offZ + lz, true);
+                }
+            }
+        }
+
+        // Preserve PrefabMarker data as HytalePrefabLayer values
+        for (HytaleChunk.PrefabMarker marker : chunk.getPrefabMarkers()) {
+            int prefabValue = mapPrefabCategory(marker.category, marker.prefabPath);
+            if (prefabValue > 0) {
+                int px = offX + marker.x;
+                int pz = offZ + marker.z;
+                if (px >= 0 && px < TILE_SIZE && pz >= 0 && pz < TILE_SIZE) {
+                    tile.setLayerValue(HytalePrefabLayer.INSTANCE, px, pz, prefabValue);
+                }
+            }
+        }
+
         importChunkCount++;
     }
 
@@ -228,15 +259,34 @@ public class HytaleMapImporter extends MapImporter {
         HytaleTerrain hytaleTerrain = null;
         Terrain mcTerrain = Terrain.STONE;
         int surfaceY = height;
+        boolean surfaceFound = false;
+        final boolean needManMadeCheck = (readOnlyOption == ReadOnlyOption.MAN_MADE
+                                       || readOnlyOption == ReadOnlyOption.MAN_MADE_ABOVE_GROUND);
 
         for (int y = height; y >= 0; y--) {
             HytaleBlock block = chunk.getHytaleBlock(localX, y, localZ);
             if (block != null && !block.isEmpty()) {
-                hytaleTerrain = mapper.map(block.id);
-                if (hytaleTerrain != null) {
-                    mcTerrain = HytaleTerrainHelper.toMinecraftTerrain(hytaleTerrain);
-                    surfaceY = y;
-                    break;
+                // Man-made block detection
+                if (needManMadeCheck && !mapper.isNatural(block.id)) {
+                    if (!surfaceFound) {
+                        chunkHasManMadeAboveGround = true;
+                    } else {
+                        chunkHasManMadeBelowGround = true;
+                    }
+                }
+
+                // Surface terrain detection
+                if (!surfaceFound) {
+                    hytaleTerrain = mapper.map(block.id);
+                    if (hytaleTerrain != null) {
+                        mcTerrain = HytaleTerrainHelper.toMinecraftTerrain(hytaleTerrain);
+                        surfaceY = y;
+                        surfaceFound = true;
+                        // Only continue scanning below surface for MAN_MADE (underground detection)
+                        if (readOnlyOption != ReadOnlyOption.MAN_MADE) {
+                            break;
+                        }
+                    }
                 }
             }
         }
@@ -311,4 +361,42 @@ public class HytaleMapImporter extends MapImporter {
         if (fluidName.contains("Water")) return HytaleFluidLayer.FLUID_ZONE1_WATER;
         return 0;
     }
+
+    /**
+     * Map a PrefabMarker category (and optional path) to a {@link HytalePrefabLayer} constant.
+     */
+    private static int mapPrefabCategory(String category, String prefabPath) {
+        if (category == null) return 0;
+        switch (category) {
+            case "Trees":
+            case "TestTree":
+                return HytalePrefabLayer.PREFAB_TREES;
+            case "Rock_Formations":
+                return HytalePrefabLayer.PREFAB_ROCKS;
+            case "Plants":
+                return HytalePrefabLayer.PREFAB_PLANTS;
+            case "Cave":
+                return HytalePrefabLayer.PREFAB_CAVE;
+            case "Dungeon":
+                return HytalePrefabLayer.PREFAB_DUNGEON;
+            case "Npc":
+                return HytalePrefabLayer.PREFAB_NPC_SETTLEMENT;
+            case "Mineshaft":
+            case "Mineshaft_Drift":
+                return HytalePrefabLayer.PREFAB_MINESHAFT;
+            case "Monuments":
+                if (prefabPath != null) {
+                    if (prefabPath.contains("Encounter")) return HytalePrefabLayer.PREFAB_MONUMENT_ENCOUNTER;
+                    if (prefabPath.contains("Story"))     return HytalePrefabLayer.PREFAB_MONUMENT_STORY;
+                    if (prefabPath.contains("Unique"))    return HytalePrefabLayer.PREFAB_MONUMENT_UNIQUE;
+                }
+                return HytalePrefabLayer.PREFAB_MONUMENT_INCIDENTAL;
+            default:
+                return 0;
+        }
+    }
+
+    // Per-chunk man-made structure tracking (reset in importChunk)
+    private boolean chunkHasManMadeAboveGround;
+    private boolean chunkHasManMadeBelowGround;
 }

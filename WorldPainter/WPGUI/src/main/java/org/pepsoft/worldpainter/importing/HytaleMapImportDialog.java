@@ -32,7 +32,8 @@ public class HytaleMapImportDialog extends WorldPainterDialog {
     // UI Components
     private JTextField fieldFolder;
     private JLabel labelChunkCount, labelWorldBounds, labelRegionFiles;
-    private JCheckBox checkReadOnly;
+    private JRadioButton radioReadOnlyNone, radioReadOnlyManMadeAboveGround, radioReadOnlyManMade, radioReadOnlyAll;
+    private ButtonGroup readOnlyGroup;
     private JButton buttonImport;
 
     public HytaleMapImportDialog(App app) {
@@ -80,8 +81,31 @@ public class HytaleMapImportDialog extends WorldPainterDialog {
 
         // Bottom: options + buttons
         JPanel bottomPanel = new JPanel(new BorderLayout());
-        checkReadOnly = new JCheckBox("Mark imported chunks as read-only");
-        bottomPanel.add(checkReadOnly, BorderLayout.NORTH);
+
+        // Read-only radio buttons (matching Minecraft import dialog)
+        JPanel readOnlyPanel = new JPanel();
+        readOnlyPanel.setLayout(new BoxLayout(readOnlyPanel, BoxLayout.Y_AXIS));
+        readOnlyPanel.setBorder(BorderFactory.createTitledBorder("Read-only options:"));
+        readOnlyGroup = new ButtonGroup();
+
+        radioReadOnlyNone = new JRadioButton("Do not mark any chunks read-only");
+        radioReadOnlyManMadeAboveGround = new JRadioButton(
+            "<html>Mark chunks containing man-made blocks <i>above ground</i> read-only</html>");
+        radioReadOnlyManMadeAboveGround.setSelected(true);
+        radioReadOnlyManMade = new JRadioButton("Mark chunks containing man-made blocks read-only");
+        radioReadOnlyAll = new JRadioButton("Mark all chunks read-only");
+
+        readOnlyGroup.add(radioReadOnlyNone);
+        readOnlyGroup.add(radioReadOnlyManMadeAboveGround);
+        readOnlyGroup.add(radioReadOnlyManMade);
+        readOnlyGroup.add(radioReadOnlyAll);
+
+        readOnlyPanel.add(radioReadOnlyNone);
+        readOnlyPanel.add(radioReadOnlyManMadeAboveGround);
+        readOnlyPanel.add(radioReadOnlyManMade);
+        readOnlyPanel.add(radioReadOnlyAll);
+
+        bottomPanel.add(readOnlyPanel, BorderLayout.NORTH);
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JButton btnCancel = new JButton("Cancel");
@@ -97,7 +121,7 @@ public class HytaleMapImportDialog extends WorldPainterDialog {
 
         setContentPane(mainPanel);
         pack();
-        setMinimumSize(new java.awt.Dimension(480, 350));
+        setMinimumSize(new java.awt.Dimension(520, 450));
     }
 
     private JLabel addStatRow(JPanel panel, GridBagConstraints gbc, int row, String label, String value) {
@@ -175,8 +199,16 @@ public class HytaleMapImportDialog extends WorldPainterDialog {
 
     private void doImport() {
         app.clearWorld();
-        final MapImporter.ReadOnlyOption readOnlyOpt = checkReadOnly.isSelected()
-            ? MapImporter.ReadOnlyOption.ALL : MapImporter.ReadOnlyOption.NONE;
+        final MapImporter.ReadOnlyOption readOnlyOpt;
+        if (radioReadOnlyAll.isSelected()) {
+            readOnlyOpt = MapImporter.ReadOnlyOption.ALL;
+        } else if (radioReadOnlyManMade.isSelected()) {
+            readOnlyOpt = MapImporter.ReadOnlyOption.MAN_MADE;
+        } else if (radioReadOnlyManMadeAboveGround.isSelected()) {
+            readOnlyOpt = MapImporter.ReadOnlyOption.MAN_MADE_ABOVE_GROUND;
+        } else {
+            readOnlyOpt = MapImporter.ReadOnlyOption.NONE;
+        }
 
         importedWorld = ProgressDialog.executeTask(this, new ProgressTask<World2>() {
             @Override public String getName() { return "Importing Hytale world..."; }
