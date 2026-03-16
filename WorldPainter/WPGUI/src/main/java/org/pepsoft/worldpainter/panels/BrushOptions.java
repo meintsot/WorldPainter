@@ -60,6 +60,87 @@ public class BrushOptions extends javax.swing.JPanel implements Observer {
         // Eliminate thousands separators to make spinners smaller:
         spinnerAbove.setEditor(new NumberEditor(spinnerAbove, "0"));
         spinnerBelow.setEditor(new NumberEditor(spinnerBelow, "0"));
+
+        // Add filter preset Save/Load buttons below the generated layout
+        buttonSavePreset = new JButton("Save");
+        buttonSavePreset.setFont(buttonSavePreset.getFont().deriveFont(buttonSavePreset.getFont().getSize() - 1f));
+        buttonSavePreset.setToolTipText("Save current filter as a named preset");
+        buttonSavePreset.addActionListener(e -> saveFilterPreset());
+
+        buttonLoadPreset = new JButton("Load");
+        buttonLoadPreset.setFont(buttonLoadPreset.getFont().deriveFont(buttonLoadPreset.getFont().getSize() - 1f));
+        buttonLoadPreset.setToolTipText("Load a saved filter preset");
+        buttonLoadPreset.addActionListener(e -> showLoadPresetMenu());
+
+        // Rebuild the GroupLayout to include preset buttons at the bottom
+        javax.swing.GroupLayout layout = (javax.swing.GroupLayout) getLayout();
+        layout.setHorizontalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addComponent(checkBoxInSelection)
+            .addComponent(checkBoxBelow)
+            .addComponent(checkBoxReplace)
+            .addComponent(checkBoxExceptOn)
+            .addGroup(layout.createSequentialGroup()
+                .addComponent(checkBoxAboveSlope)
+                .addGap(0, 0, 0)
+                .addComponent(checkBoxBelowSlope))
+            .addGroup(layout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(spinnerAbove, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(spinnerBelow, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(checkBoxFeather)
+                    .addComponent(buttonReplace)
+                    .addComponent(buttonExceptOn)
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(spinnerSlope, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(0, 0, 0)
+                        .addComponent(jLabel1))))
+            .addComponent(checkBoxAbove)
+            .addComponent(checkBoxOutsideSelection)
+            .addGroup(layout.createSequentialGroup()
+                .addComponent(buttonSavePreset)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(buttonLoadPreset))
+        );
+        layout.setVerticalGroup(
+            layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+            .addGroup(layout.createSequentialGroup()
+                .addGap(0, 0, 0)
+                .addComponent(checkBoxInSelection)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(checkBoxOutsideSelection)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(checkBoxAbove)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(spinnerAbove, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(checkBoxBelow)
+                .addGap(0, 0, 0)
+                .addComponent(spinnerBelow, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addGap(0, 0, 0)
+                .addComponent(checkBoxFeather)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(checkBoxReplace)
+                .addGap(0, 0, 0)
+                .addComponent(buttonReplace)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(checkBoxExceptOn)
+                .addGap(0, 0, 0)
+                .addComponent(buttonExceptOn)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(checkBoxAboveSlope)
+                    .addComponent(checkBoxBelowSlope))
+                .addGap(0, 0, 0)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(spinnerSlope, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(jLabel1))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(buttonSavePreset)
+                    .addComponent(buttonLoadPreset)))
+        );
     }
 
     public ColourScheme getColourScheme() {
@@ -142,6 +223,10 @@ public class BrushOptions extends javax.swing.JPanel implements Observer {
             final App app = App.getInstance();
             if (filter.onlyOnFilter instanceof OnlyOnTerrainOrLayerFilter) {
                 onlyOn = toPaint((OnlyOnTerrainOrLayerFilter) filter.onlyOnFilter);
+            } else if (filter.onlyOnFilter instanceof AnyOfFilter) {
+                onlyOn = ((AnyOfFilter) filter.onlyOnFilter).getFilters().stream()
+                        .map(f -> toPaint((OnlyOnTerrainOrLayerFilter) f))
+                        .collect(Collectors.toCollection(ArrayList::new));
             } else if (filter.onlyOnFilter instanceof CombinedFilter) {
                 onlyOn = ((CombinedFilter) filter.onlyOnFilter).getFilters().stream()
                         .map(f -> toPaint((OnlyOnTerrainOrLayerFilter) f))
@@ -151,6 +236,10 @@ public class BrushOptions extends javax.swing.JPanel implements Observer {
             }
             if (filter.exceptOnFilter instanceof ExceptOnTerrainOrLayerFilter) {
                 exceptOn = toPaint((ExceptOnTerrainOrLayerFilter) filter.exceptOnFilter);
+            } else if (filter.exceptOnFilter instanceof AnyOfFilter) {
+                exceptOn = ((AnyOfFilter) filter.exceptOnFilter).getFilters().stream()
+                        .map(f -> toPaint((ExceptOnTerrainOrLayerFilter) f))
+                        .collect(Collectors.toCollection(ArrayList::new));
             } else if (filter.exceptOnFilter instanceof CombinedFilter) {
                 exceptOn = ((CombinedFilter) filter.exceptOnFilter).getFilters().stream()
                         .map(f -> toPaint((ExceptOnTerrainOrLayerFilter) f))
@@ -501,6 +590,10 @@ public class BrushOptions extends javax.swing.JPanel implements Observer {
     private JPopupMenu createReplaceMenu() {
         final JMenu menu = createObjectSelectionMenu(MENU_ONLY_ON, (object, name, icon) -> {
             onlyOn = object;
+            if (onlyOn == null) {
+                checkBoxReplace.setSelected(false);
+                setControlStates();
+            }
             installPaint(onlyOn, buttonReplace, checkBoxReplace);
         }, false, onlyOn);
         final JPopupMenu popupMenu = new BetterJPopupMenu();
@@ -511,6 +604,10 @@ public class BrushOptions extends javax.swing.JPanel implements Observer {
     private JPopupMenu createExceptOnMenu() {
         final JMenu menu = createObjectSelectionMenu(MENU_EXCEPT_ON, (object, name, icon) -> {
             exceptOn = object;
+            if (exceptOn == null) {
+                checkBoxExceptOn.setSelected(false);
+                setControlStates();
+            }
             installPaint(exceptOn, buttonExceptOn, checkBoxExceptOn);
         }, false, exceptOn);
         final JPopupMenu popupMenu = new BetterJPopupMenu();
@@ -753,6 +850,30 @@ public class BrushOptions extends javax.swing.JPanel implements Observer {
             subMenu.setText("Add Another");
             subMenu.setIcon(ICON_PLUS);
             popupMenu.add(subMenu);
+
+            // Add Remove and Clear All options for multi-selection
+            if (currentSelection instanceof List) {
+                final List<Object> selectionList = (List<Object>) currentSelection;
+                if (selectionList.size() > 1) {
+                    final JMenu removeMenu = new JMenu("Remove");
+                    removeMenu.setIcon(ICON_MINUS);
+                    for (int i = 0; i < selectionList.size(); i++) {
+                        final int index = i;
+                        final Object item = selectionList.get(i);
+                        final JMenuItem removeItem = new JMenuItem(getText(item), getIcon(item));
+                        removeItem.addActionListener(e -> {
+                            selectionList.remove(index);
+                            final Object newSelection = (selectionList.size() == 1) ? selectionList.get(0) : selectionList;
+                            listener.objectSelected(newSelection, "Updated", null);
+                        });
+                        removeMenu.add(removeItem);
+                    }
+                    popupMenu.add(removeMenu);
+                }
+                final JMenuItem clearAllItem = new JMenuItem("Clear All");
+                clearAllItem.addActionListener(e -> listener.objectSelected(null, null, null));
+                popupMenu.add(clearAllItem);
+            }
         }
 
         popupMenu = breakUpLongMenus(popupMenu, 25);
@@ -901,6 +1022,100 @@ public class BrushOptions extends javax.swing.JPanel implements Observer {
             }
             listener.filterChanged(filter);
         }
+    }
+
+    private void saveFilterPreset() {
+        final String name = JOptionPane.showInputDialog(
+                SwingUtilities.getWindowAncestor(this),
+                "Enter a name for this filter preset:",
+                "Save Filter Preset",
+                JOptionPane.PLAIN_MESSAGE);
+        if (name != null && !name.trim().isEmpty()) {
+            final FilterPreset preset = new FilterPreset(name.trim());
+            preset.captureFrom(
+                    checkBoxInSelection.isSelected(),
+                    checkBoxOutsideSelection.isSelected(),
+                    checkBoxAbove.isSelected() ? (Integer) spinnerAbove.getValue() : Integer.MIN_VALUE,
+                    checkBoxBelow.isSelected() ? (Integer) spinnerBelow.getValue() : Integer.MIN_VALUE,
+                    checkBoxFeather.isSelected(),
+                    onlyOn,
+                    exceptOn,
+                    (checkBoxAboveSlope.isSelected() || checkBoxBelowSlope.isSelected()) ? (Integer) spinnerSlope.getValue() : -1,
+                    checkBoxAboveSlope.isSelected());
+            Configuration.getInstance().addFilterPreset(preset);
+        }
+    }
+
+    private void showLoadPresetMenu() {
+        final Configuration config = Configuration.getInstance();
+        final List<FilterPreset> presets = config.getFilterPresets();
+        if (presets.isEmpty()) {
+            JOptionPane.showMessageDialog(
+                    SwingUtilities.getWindowAncestor(this),
+                    "No saved filter presets.",
+                    "Load Filter Preset",
+                    JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+        final JPopupMenu menu = new BetterJPopupMenu();
+        for (int i = 0; i < presets.size(); i++) {
+            final FilterPreset preset = presets.get(i);
+            final int presetIndex = i;
+            final JMenuItem loadItem = new JMenuItem(preset.getName());
+            loadItem.addActionListener(e -> loadFilterPreset(preset));
+            // Wrap in a panel-like menu item with a delete option on the right
+            final JMenu presetMenu = new JMenu(preset.getName());
+            final JMenuItem applyItem = new JMenuItem("Apply");
+            applyItem.addActionListener(e -> loadFilterPreset(preset));
+            presetMenu.add(applyItem);
+            final JMenuItem deleteItem = new JMenuItem("Delete");
+            deleteItem.addActionListener(e -> {
+                config.removeFilterPreset(presetIndex);
+            });
+            presetMenu.add(deleteItem);
+            menu.add(presetMenu);
+        }
+        menu.show(buttonLoadPreset, 0, buttonLoadPreset.getHeight());
+    }
+
+    private void loadFilterPreset(FilterPreset preset) {
+        // Resolve paint objects from the preset
+        onlyOn = preset.resolveOnlyOn();
+        exceptOn = preset.resolveExceptOn();
+
+        checkBoxInSelection.setSelected(preset.isInSelection());
+        checkBoxOutsideSelection.setSelected(preset.isOutsideSelection());
+
+        if (preset.getAboveLevel() != Integer.MIN_VALUE) {
+            checkBoxAbove.setSelected(true);
+            spinnerAbove.setValue(preset.getAboveLevel());
+        } else {
+            checkBoxAbove.setSelected(false);
+        }
+
+        if (preset.getBelowLevel() != Integer.MIN_VALUE) {
+            checkBoxBelow.setSelected(true);
+            spinnerBelow.setValue(preset.getBelowLevel());
+        } else {
+            checkBoxBelow.setSelected(false);
+        }
+
+        checkBoxFeather.setSelected(preset.isFeather());
+        checkBoxReplace.setSelected(onlyOn != null);
+        checkBoxExceptOn.setSelected(exceptOn != null);
+
+        if (preset.getSlopeDegrees() >= 0) {
+            spinnerSlope.setValue(preset.getSlopeDegrees());
+            checkBoxAboveSlope.setSelected(preset.isSlopeIsAbove());
+            checkBoxBelowSlope.setSelected(!preset.isSlopeIsAbove());
+        } else {
+            checkBoxAboveSlope.setSelected(false);
+            checkBoxBelowSlope.setSelected(false);
+        }
+
+        installPaint(onlyOn, buttonReplace, checkBoxReplace);
+        installPaint(exceptOn, buttonExceptOn, checkBoxExceptOn);
+        setControlStates();
     }
 
     /**
@@ -1258,6 +1473,8 @@ public class BrushOptions extends javax.swing.JPanel implements Observer {
     private ObservableBoolean selectionState;
     private Platform platform;
     private MapSelectionListener mapSelectionListener;
+    private final JButton buttonSavePreset;
+    private final JButton buttonLoadPreset;
 
     public static final String MENU_ONLY_ON = "onlyOn";
     public static final String MENU_EXCEPT_ON = "exceptOn";
@@ -1266,6 +1483,7 @@ public class BrushOptions extends javax.swing.JPanel implements Observer {
     private static final Icon ICON_LAVA = loadScaledIcon("org/pepsoft/worldpainter/icons/flood_with_lava.png");
     private static final Icon ICON_EYEDROPPER = loadScaledIcon("org/pepsoft/worldpainter/icons/eyedropper.png");
     private static final Icon ICON_PLUS = loadScaledIcon("org/pepsoft/worldpainter/icons/plus.png");
+    private static final Icon ICON_MINUS = loadScaledIcon("org/pepsoft/worldpainter/icons/minus.png");
     private static final Logger logger = LoggerFactory.getLogger(BrushOptions.class);
     private static final long serialVersionUID = 1L;
     

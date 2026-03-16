@@ -19,6 +19,7 @@ import org.pepsoft.worldpainter.layers.CustomLayer;
 import org.pepsoft.worldpainter.layers.Frost;
 import org.pepsoft.worldpainter.layers.Layer;
 import org.pepsoft.worldpainter.layers.Resources;
+import org.pepsoft.worldpainter.panels.FilterPreset;
 import org.pepsoft.worldpainter.layers.exporters.FrostExporter.FrostSettings;
 import org.pepsoft.worldpainter.themes.Filter;
 import org.pepsoft.worldpainter.themes.HeightFilter;
@@ -1222,6 +1223,32 @@ public final class Configuration implements Serializable, EventLogger, Minecraft
         Configuration.instance = instance;
     }
 
+    public synchronized List<FilterPreset> getFilterPresets() {
+        if (filterPresets == null) {
+            filterPresets = new ArrayList<>();
+        }
+        return Collections.unmodifiableList(filterPresets);
+    }
+
+    public synchronized void addFilterPreset(FilterPreset preset) {
+        if (filterPresets == null) {
+            filterPresets = new ArrayList<>();
+        }
+        filterPresets.add(preset);
+    }
+
+    public synchronized void removeFilterPreset(FilterPreset preset) {
+        if (filterPresets != null) {
+            filterPresets.remove(preset);
+        }
+    }
+
+    public synchronized void removeFilterPreset(int index) {
+        if (filterPresets != null && index >= 0 && index < filterPresets.size()) {
+            filterPresets.remove(index);
+        }
+    }
+
     public static File getConfigDir() {
         String classifier = System.getProperty("org.pepsoft.worldpainter.classifier");
         if (classifier != null) {
@@ -1354,6 +1381,7 @@ public final class Configuration implements Serializable, EventLogger, Minecraft
     private Integer maxThreadCount;
     private Integer maxHeapSizeMB;
     private int viewDistance = 192; // 12 chunks (default of Minecraft 1.18.2)
+    private List<FilterPreset> filterPresets = new ArrayList<>();
 
     /**
      * The acceleration type is only stored here at runtime. It is saved to disk
