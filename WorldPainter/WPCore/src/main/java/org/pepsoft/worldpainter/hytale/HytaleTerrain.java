@@ -332,6 +332,17 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
             return generatedIcon;
         }
 
+        // For model blocks (leaves, plants, etc.) that don't have cube face
+        // textures, create an icon from the model's atlas texture.
+        if (assetMetadata != null && assetMetadata.isModelBlock) {
+            BufferedImage modelTexture = loadExplicitAssetImage(assetMetadata.modelTexturePaths);
+            if (modelTexture != null) {
+                BufferedImage representative = createRepresentativeTexture(modelTexture);
+                iconFromAsset = true;
+                return renderIsometricIcon(representative, representative);
+            }
+        }
+
         BlockFaceTextures textures = loadBlockFaceTextures(assetMetadata);
         if (textures != null) {
             BufferedImage topTexture = (textures.top != null) ? textures.top : textures.side;
@@ -2524,11 +2535,8 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         List<HytaleTerrain> additional = new ArrayList<>();
         for (HytaleTerrain terrain : ALL_TERRAINS) {
             if (!primary.contains(terrain)) {
-                // Force icon resolution and only include terrains with actual asset icons
                 terrain.getIcon(null);
-                if (terrain.hasAssetIcon()) {
-                    additional.add(terrain);
-                }
+                additional.add(terrain);
             }
         }
         return additional.toArray(new HytaleTerrain[0]);
@@ -2691,20 +2699,19 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
     }
 
     /**
-     * Get the PICK_LIST filtered to only include terrains that have an actual icon from the Hytale assets.
-     * Terrains that fell back to a colour-only icon are excluded. The result is cached after first call.
+     * Get all Hytale terrains for the UI terrain picker. Returns every terrain
+     * from {@link #ALL_TERRAINS} — curated terrains first (in display order),
+     * followed by auto-generated terrains for any remaining blocks in the
+     * {@link HytaleBlockRegistry}. Each terrain is given an icon: asset-based
+     * where available, or a coloured isometric cube fallback otherwise.
      */
     public static HytaleTerrain[] getPickListWithIcons() {
         if (pickListWithIcons == null) {
-            List<HytaleTerrain> filtered = new ArrayList<>();
-            for (HytaleTerrain t : PICK_LIST) {
-                // Force icon resolution so hasAssetIcon() is reliable
+            // Pre-resolve icons for all terrains so they are ready for display
+            for (HytaleTerrain t : ALL_TERRAINS) {
                 t.getIcon(null);
-                if (t.hasAssetIcon()) {
-                    filtered.add(t);
-                }
             }
-            pickListWithIcons = filtered.toArray(new HytaleTerrain[0]);
+            pickListWithIcons = ALL_TERRAINS;
         }
         return pickListWithIcons;
     }
