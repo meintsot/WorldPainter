@@ -279,13 +279,41 @@ public class DynmapRenderer {
     }
 
     /**
+     * Apply shading to a colour based on the actual surface normal of a model
+     * quad. Interpolates between the six axis-aligned face shade values so that
+     * axis-aligned quads receive identical shading to cube blocks, while
+     * arbitrarily-oriented quads get a smooth blend.
+     */
+    private static int applyNormalShading(int argb, double[] normal) {
+        int a = (argb >> 24) & 0xFF;
+        if (a == 0) {
+            return 0;
+        }
+        double nx = normal[0], ny = normal[1], nz = normal[2];
+        double absNx = Math.abs(nx), absNy = Math.abs(ny), absNz = Math.abs(nz);
+        double sum = absNx + absNy + absNz;
+        if (sum < 1e-10) {
+            return argb;
+        }
+        // Weighted interpolation of the per-axis shade values (matches applyFaceShading)
+        double shade = 0;
+        shade += absNy * (ny > 0 ? 1.0  : 0.55);  // Y+: top, Y-: bottom
+        shade += absNx * (nx > 0 ? 0.8  : 0.7);   // X+: east, X-: west
+        shade += absNz * (nz > 0 ? 0.85 : 0.75);  // Z+: south, Z-: north
+        shade /= sum;
+        int r = Math.min(255, (int) (((argb >> 16) & 0xFF) * shade));
+        int g = Math.min(255, (int) (((argb >> 8) & 0xFF) * shade));
+        int b = Math.min(255, (int) ((argb & 0xFF) * shade));
+        return (a << 24) | (r << 16) | (g << 8) | b;
+    }
+
+    /**
      * Test a ray against all quads in a Hytale model block. Samples the actual
-     * model texture at the hit point. Returns the sampled texel colour (with face
-     * shading) if any opaque quad pixel is hit, or 0 if the ray passes through
-     * (transparent texture or no geometry hit).
+     * model texture at the hit point. Returns the sampled texel colour (with
+     * normal-based shading) if any opaque quad pixel is hit, or 0 if the ray
+     * passes through (transparent texture or no geometry hit).
      */
     private static int intersectHytaleModel(HytaleBlockModelCache.ParsedModel model,
-                                            BlockStep face,
                                             Vector3D rayTop, Vector3D rayDir, double rayT) {
         // Compute the block origin (integer coords of the block the ray entered)
         double entryX = rayTop.x + rayT * rayDir.x;
@@ -306,10 +334,9 @@ public class DynmapRenderer {
         double oz = rayTop.z - blockZ;
 
         // Test against all model quads, find closest hit with opaque texture
-        // We need to check all quads sorted by distance because the closest
-        // geometric hit might be on a transparent pixel
         double bestT = Double.MAX_VALUE;
         int bestColour = 0;
+        HytaleBlockModelCache.ModelQuad bestQuad = null;
 
         for (HytaleBlockModelCache.ModelQuad quad : model.quads) {
             double[] hit = quad.intersect(ox, oy, oz, rayDir.x, rayDir.y, rayDir.z);
@@ -319,6 +346,7 @@ public class DynmapRenderer {
                 if (texel != 0) {
                     bestT = hit[0];
                     bestColour = texel;
+                    bestQuad = quad;
                 }
                 // If texel is transparent, skip this quad (ray passes through)
             }
@@ -328,18 +356,17 @@ public class DynmapRenderer {
             // No opaque hit — if we have no texture, fall back to average colour
             // for any geometric hit
             if (model.texture == null) {
-                // Check if any quad was hit geometrically
                 for (HytaleBlockModelCache.ModelQuad quad : model.quads) {
                     double[] hit = quad.intersect(ox, oy, oz, rayDir.x, rayDir.y, rayDir.z);
                     if (hit != null) {
-                        return applyFaceShading(model.colour, face);
+                        return applyNormalShading(model.colour, quad.normal);
                     }
                 }
             }
             return 0; // Ray passes through
         }
 
-        return applyFaceShading(bestColour, face);
+        return applyNormalShading(bestColour, bestQuad.normal);
     }
 
     private final HDPerspective perspective;
@@ -898,7 +925,7 @@ public class DynmapRenderer {
                         HytaleBlockModelCache.ParsedModel model = HytaleBlockModelCache.getModel(originalMaterial.simpleName);
                         if (model != null && !model.isEmpty()) {
                             // Ray-model intersection with texture sampling
-                            int modelHit = intersectHytaleModel(model, laststep, top, direction, t);
+                            int modelHit = intersectHytaleModel(model, top, direction, t);
                             if (modelHit != 0) {
                                 hytaleHitColour = modelHit;
                                 shaderdone[0] = true;
@@ -920,6 +947,10 @@ public class DynmapRenderer {
                                 return true;
                             }
                         }
+                        // Hytale blocks are handled entirely by the custom path above.
+                        // If there was no hit, the ray should continue instead of falling
+                        // through to standard Dynmap block rendering.
+                        return false;
                     }
                 }
                 short[] model;

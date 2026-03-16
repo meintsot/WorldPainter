@@ -198,7 +198,14 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         }
         HytaleTerrain temp = new HytaleTerrain("_model_lookup_", HytaleBlock.of(blockId), null);
         BlockAssetMetadata metadata = temp.loadBlockAssetMetadata();
-        if (metadata == null || !metadata.isModelBlock) {
+        if (metadata == null) {
+            return null;
+        }
+        // A block is renderable as a model if it is explicitly flagged as a
+        // model block (DrawType=Model/Cross) OR if it has a CustomModel path
+        // (which may have been inherited from a parent without isModelBlock
+        // being set on this particular block).
+        if (!metadata.isModelBlock && metadata.customModelPath == null) {
             return null;
         }
         String modelPath = metadata.customModelPath;

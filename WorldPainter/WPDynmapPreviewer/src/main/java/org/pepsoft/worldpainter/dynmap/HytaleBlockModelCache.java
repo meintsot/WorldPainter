@@ -336,6 +336,8 @@ class HytaleBlockModelCache {
         final double[][] v;
         final boolean doubleSided;
         final double[] edge1, edge2;
+        /** Precomputed unit normal vector of this quad (edge1 × edge2, normalised). */
+        final double[] normal;
         // Texture mapping: quad size in pixels and texture atlas offset
         final int texSizeW, texSizeH;
         final int texOffsetX, texOffsetY;
@@ -357,6 +359,14 @@ class HytaleBlockModelCache {
             this.texAngle = texAngle;
             edge1 = new double[] {v[1][0]-v[0][0], v[1][1]-v[0][1], v[1][2]-v[0][2]};
             edge2 = new double[] {v[3][0]-v[0][0], v[3][1]-v[0][1], v[3][2]-v[0][2]};
+            // Compute normalised surface normal (edge1 × edge2)
+            double[] raw = cross(edge1, edge2);
+            double len = Math.sqrt(raw[0]*raw[0] + raw[1]*raw[1] + raw[2]*raw[2]);
+            if (len > 1e-10) {
+                normal = new double[] { raw[0]/len, raw[1]/len, raw[2]/len };
+            } else {
+                normal = new double[] { 0, 1, 0 }; // degenerate — default to up
+            }
         }
 
         /** Convenience constructor for box faces (no texture layout info). */
