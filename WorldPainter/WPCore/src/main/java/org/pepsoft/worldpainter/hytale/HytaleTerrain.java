@@ -146,6 +146,32 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         return hytaleAssetsDir;
     }
 
+    /**
+     * Load the top and side face textures for a Hytale block ID from the configured assets directory.
+     * Returns a two-element array {@code [topTexture, sideTexture]} where either element may be
+     * {@code null} if not found. Returns {@code null} entirely if no textures could be loaded at all.
+     */
+    public static BufferedImage[] loadBlockFaceTexturesForId(String blockId) {
+        if (blockId == null || hytaleAssetsDir == null) {
+            return null;
+        }
+        HytaleTerrain temp = new HytaleTerrain("_texture_lookup_", HytaleBlock.of(blockId), null);
+        BlockAssetMetadata metadata = temp.loadBlockAssetMetadata();
+        BlockFaceTextures textures = temp.loadBlockFaceTextures(metadata);
+        if (textures != null) {
+            return new BufferedImage[] { textures.top, textures.side };
+        }
+        // If no textures found but we have a particleColor, return that info
+        // encoded as a 1x1 solid-colour image
+        if (metadata != null && metadata.particleColor != null) {
+            int argb = 0xFF000000 | metadata.particleColor;
+            BufferedImage solid = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
+            solid.setRGB(0, 0, argb);
+            return new BufferedImage[] { solid, solid };
+        }
+        return null;
+    }
+
     public static boolean hasUsableAssetsDir(File dir) {
         if ((dir == null) || (!dir.isDirectory())) {
             return false;
@@ -479,6 +505,28 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
                         }
                     }
                 }
+                // Also handle CustomModelTexture for model-based blocks (leaves, etc.)
+                JsonArray customModelTextures = getArray(blockType, "CustomModelTexture");
+                if (customModelTextures != null) {
+                    for (JsonElement cmt : customModelTextures) {
+                        if (cmt.isJsonObject()) {
+                            String texturePath = getString(cmt.getAsJsonObject(), "Texture");
+                            if (texturePath != null) {
+                                metadata.topTexturePaths.add(texturePath);
+                                metadata.sideTexturePaths.add(texturePath);
+                            }
+                        }
+                    }
+                }
+                // Parse ParticleColor as fallback colour hint
+                String particleColorStr = getString(blockType, "ParticleColor");
+                if (particleColorStr != null && particleColorStr.startsWith("#")) {
+                    try {
+                        metadata.particleColor = Integer.parseInt(particleColorStr.substring(1), 16);
+                    } catch (NumberFormatException e) {
+                        // Ignore malformed colour
+                    }
+                }
             }
 
             String parentId = getString(root, "Parent");
@@ -499,7 +547,9 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
     private void addTexturePaths(JsonObject textureObject, BlockAssetMetadata metadata) {
         addSharedTexturePath(textureObject, "All", metadata);
         addTexturePath(textureObject, "Top", metadata.topTexturePaths);
+        addTexturePath(textureObject, "Up", metadata.topTexturePaths);
         addTexturePath(textureObject, "Bottom", metadata.topTexturePaths);
+        addTexturePath(textureObject, "Down", metadata.topTexturePaths);
         addTexturePath(textureObject, "UpDown", metadata.topTexturePaths);
         addTexturePath(textureObject, "Sides", metadata.sideTexturePaths);
         addTexturePath(textureObject, "Side", metadata.sideTexturePaths);
@@ -1145,9 +1195,12 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         private final LinkedHashSet<String> iconPaths = new LinkedHashSet<>();
         private final LinkedHashSet<String> topTexturePaths = new LinkedHashSet<>();
         private final LinkedHashSet<String> sideTexturePaths = new LinkedHashSet<>();
+        /** Particle colour from block definition, usable as fallback when no texture is found. */
+        private Integer particleColor;
 
         private boolean isEmpty() {
-            return iconPaths.isEmpty() && topTexturePaths.isEmpty() && sideTexturePaths.isEmpty();
+            return iconPaths.isEmpty() && topTexturePaths.isEmpty() && sideTexturePaths.isEmpty()
+                    && particleColor == null;
         }
 
         private void addFallback(BlockAssetMetadata fallback) {
@@ -1157,6 +1210,9 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
             iconPaths.addAll(fallback.iconPaths);
             topTexturePaths.addAll(fallback.topTexturePaths);
             sideTexturePaths.addAll(fallback.sideTexturePaths);
+            if (particleColor == null) {
+                particleColor = fallback.particleColor;
+            }
         }
     }
 

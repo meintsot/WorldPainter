@@ -591,10 +591,6 @@ public final class App extends JFrame implements BrushControl,
             clearPrefabLayerButtons();
             StringBuilder warnings = new StringBuilder();
             for (CustomLayer customLayer: dimension.getCustomLayers()) {
-                if (customLayer instanceof org.pepsoft.worldpainter.hytale.HytaleSpecificPrefabLayer) {
-                    addPrefabLayerButton((org.pepsoft.worldpainter.hytale.HytaleSpecificPrefabLayer) customLayer);
-                    continue;
-                }
                 if (customLayer.isHide()) {
                     layersWithNoButton.add(customLayer);
                 } else {
@@ -3838,6 +3834,55 @@ public final class App extends JFrame implements BrushControl,
         constraints.fill = GridBagConstraints.HORIZONTAL;
         constraints.weighty = 0;
 
+        // Prefab info/preview panel
+        JPanel infoPanel = new JPanel(new GridBagLayout());
+        infoPanel.setBorder(BorderFactory.createTitledBorder("Prefab Info"));
+        infoPanel.setPreferredSize(new java.awt.Dimension(0, 80));
+        GridBagConstraints igbc = new GridBagConstraints();
+        igbc.insets = new Insets(1, 4, 1, 4);
+        igbc.anchor = GridBagConstraints.WEST;
+        igbc.fill = GridBagConstraints.HORIZONTAL;
+        igbc.weightx = 1.0;
+        igbc.gridwidth = GridBagConstraints.REMAINDER;
+
+        JLabel infoNameLabel = new JLabel(" ");
+        JLabel infoCategoryLabel = new JLabel(" ");
+        JLabel infoPathLabel = new JLabel(" ");
+        infoPathLabel.setForeground(Color.GRAY);
+        Font smallFont = infoPathLabel.getFont().deriveFont(infoPathLabel.getFont().getSize2D() - 1f);
+        infoPathLabel.setFont(smallFont);
+
+        igbc.gridy = 0;
+        infoPanel.add(infoNameLabel, igbc);
+        igbc.gridy = 1;
+        infoPanel.add(infoCategoryLabel, igbc);
+        igbc.gridy = 2;
+        infoPanel.add(infoPathLabel, igbc);
+
+        prefabList.addListSelectionListener(e -> {
+            if (e.getValueIsAdjusting()) {
+                return;
+            }
+            java.util.List<org.pepsoft.worldpainter.hytale.PrefabFileEntry> sel = prefabList.getSelectedValuesList();
+            if (sel.size() == 1) {
+                org.pepsoft.worldpainter.hytale.PrefabFileEntry entry = sel.get(0);
+                infoNameLabel.setText("Name: " + entry.getDisplayName());
+                infoCategoryLabel.setText("Category: " + entry.getCategory() + " / " + entry.getSubCategory());
+                infoPathLabel.setText(entry.getRelativePath());
+            } else if (sel.size() > 1) {
+                infoNameLabel.setText(sel.size() + " prefabs selected");
+                long categories = sel.stream().map(org.pepsoft.worldpainter.hytale.PrefabFileEntry::getCategory).distinct().count();
+                infoCategoryLabel.setText(categories + " distinct categor" + (categories == 1 ? "y" : "ies"));
+                infoPathLabel.setText(" ");
+            } else {
+                infoNameLabel.setText(" ");
+                infoCategoryLabel.setText(" ");
+                infoPathLabel.setText(" ");
+            }
+        });
+
+        panel.add(infoPanel, constraints);
+
         // Create Layer button
         JButton createLayerButton = new JButton("Create Layer from Selection");
         createLayerButton.setToolTipText("Create a new paintable layer from the selected prefabs");
@@ -3851,13 +3896,62 @@ public final class App extends JFrame implements BrushControl,
                 Toolkit.getDefaultToolkit().beep();
                 return;
             }
-            org.pepsoft.worldpainter.hytale.CreatePrefabLayerDialog dialog =
-                new org.pepsoft.worldpainter.hytale.CreatePrefabLayerDialog(this, selected);
-            dialog.setVisible(true);
-            org.pepsoft.worldpainter.hytale.HytaleSpecificPrefabLayer layer = dialog.getLayer();
-            if (layer != null) {
-                addPrefabLayerButton(layer);
+            // Load selected prefabs as WPObjects and create a Bo2Layer
+            java.io.File assetsDir = org.pepsoft.worldpainter.hytale.HytaleTerrain.getHytaleAssetsDir();
+            java.io.File serverDir = (assetsDir != null) ? new java.io.File(assetsDir, "Server") : null;
+            if (serverDir == null || !serverDir.isDirectory()) {
+                showMessageDialog(this, "HytaleAssets directory not found. Please use 'Locate Assets' first.",
+                        "Assets Not Found", JOptionPane.WARNING_MESSAGE);
+                return;
             }
+            List<org.pepsoft.worldpainter.objects.WPObject> wpObjects = new ArrayList<>();
+            StringBuilder errors = new StringBuilder();
+            for (org.pepsoft.worldpainter.hytale.PrefabFileEntry entry : selected) {
+                java.io.File prefabFile = new java.io.File(serverDir, entry.getRelativePath().replace('/', java.io.File.separatorChar));
+                if (!prefabFile.isFile()) {
+                    errors.append("Not found: ").append(entry.getRelativePath()).append("\n");
+                    continue;
+                }
+                try {
+                    org.pepsoft.worldpainter.objects.WPObject obj = org.pepsoft.worldpainter.hytale.HytalePrefabJsonObject.load(prefabFile);
+                    if (obj != null) {
+                        wpObjects.add(obj);
+                    }
+                } catch (IOException ex) {
+                    errors.append("Error loading ").append(entry.getDisplayName()).append(": ").append(ex.getMessage()).append("\n");
+                }
+            }
+            if (wpObjects.isEmpty()) {
+                showMessageDialog(this, "Could not load any prefab files.\n" + errors,
+                        "Load Failed", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            if (errors.length() > 0) {
+                showMessageDialog(this, "Some prefabs could not be loaded:\n" + errors,
+                        "Partial Load", JOptionPane.WARNING_MESSAGE);
+            }
+            // Derive a name from the selection
+            String layerName;
+            String firstCat = selected.get(0).getCategory();
+            String firstSub = selected.get(0).getSubCategory();
+            boolean sameSub = firstSub != null && selected.stream().allMatch(entry -> firstSub.equals(entry.getSubCategory()));
+            boolean sameCat = selected.stream().allMatch(entry -> entry.getCategory().equals(firstCat));
+            if (sameSub) {
+                layerName = firstSub;
+            } else if (sameCat) {
+                layerName = firstCat;
+            } else {
+                layerName = "Mixed Prefabs";
+            }
+            // Generate a colour from the first entry
+            int hash = selected.get(0).getRelativePath().hashCode();
+            float hue = (hash & 0x7FFFFFFF) / (float) Integer.MAX_VALUE;
+            Color layerColour = Color.getHSBColor(hue, 0.7f, 0.9f);
+            org.pepsoft.worldpainter.layers.bo2.Bo2ObjectTube objectTube =
+                    new org.pepsoft.worldpainter.layers.bo2.Bo2ObjectTube(layerName, wpObjects);
+            Bo2Layer layer = new Bo2Layer(objectTube, wpObjects.size() + " Hytale prefab(s)", layerColour);
+            // Open the full layer editor so the user can customise all settings
+            customLayerController.registerCustomLayer(layer, true);
         });
         panel.add(createLayerButton, constraints);
 
@@ -3903,6 +3997,10 @@ public final class App extends JFrame implements BrushControl,
                 }
                 private void showPopup(java.awt.event.MouseEvent e) {
                     JPopupMenu popup = new JPopupMenu();
+                    JMenuItem editItem = new JMenuItem("Edit layer...");
+                    editItem.addActionListener(ev -> editPrefabLayer(layer));
+                    popup.add(editItem);
+                    popup.addSeparator();
                     JMenuItem removeItem = new JMenuItem("Remove layer");
                     removeItem.addActionListener(ev -> removePrefabLayer(layer));
                     popup.add(removeItem);
@@ -3916,6 +4014,16 @@ public final class App extends JFrame implements BrushControl,
         LayoutUtils.addRowOfComponents(customPrefabLayerRowsPanel, c, row);
         customPrefabLayerRowsPanel.revalidate();
         customPrefabLayerRowsPanel.repaint();
+    }
+
+    private void editPrefabLayer(org.pepsoft.worldpainter.hytale.HytaleSpecificPrefabLayer layer) {
+        org.pepsoft.worldpainter.hytale.CreatePrefabLayerDialog dialog =
+            new org.pepsoft.worldpainter.hytale.CreatePrefabLayerDialog(this, layer);
+        dialog.setVisible(true);
+        if (dialog.getLayer() != null) {
+            // Layer was edited in place, rebuild rows to reflect any name changes
+            rebuildPrefabLayerRows();
+        }
     }
 
     private void removePrefabLayer(org.pepsoft.worldpainter.hytale.HytaleSpecificPrefabLayer layer) {

@@ -3,6 +3,7 @@ package org.pepsoft.worldpainter.dynmap;
 import com.google.common.collect.ImmutableMap;
 import org.dynmap.renderer.DynmapBlockState;
 import org.pepsoft.minecraft.Material;
+import org.pepsoft.worldpainter.hytale.HytaleBlockRegistry;
 
 import java.util.*;
 
@@ -21,8 +22,108 @@ public class DynmapBlockStateHelper {
     }
 
     static DynmapBlockState getDynmapBlockState(Material material) {
-        return IDENTITY_TO_BLOCK_STATE.get(material.identity);
+        DynmapBlockState state = IDENTITY_TO_BLOCK_STATE.get(material.identity);
+        if (state != null) {
+            return state;
+        }
+        // For Hytale blocks, map to a visually similar Minecraft block for 3D preview rendering
+        if (material.namespace.equals(HytaleBlockRegistry.HYTALE_NAMESPACE)) {
+            return hytaleBlockStateCache.computeIfAbsent(material.identity, k -> findHytaleFallbackBlockState(material));
+        }
+        return null;
     }
+
+    /**
+     * Find a Minecraft DynmapBlockState to use as a visual stand-in for a Hytale block
+     * in the 3D preview. Maps by category or name heuristics.
+     */
+    private static DynmapBlockState findHytaleFallbackBlockState(Material material) {
+        HytaleBlockRegistry.Category category = HytaleBlockRegistry.getCategoryForBlock(material.simpleName);
+        String mcName = mapHytaleCategoryToMinecraft(category, material.simpleName);
+        Material mcMaterial = Material.get(MINECRAFT + ':' + mcName);
+        DynmapBlockState mcState = IDENTITY_TO_BLOCK_STATE.get(mcMaterial.identity);
+        return (mcState != null) ? mcState : IDENTITY_TO_BLOCK_STATE.get(Material.STONE.identity);
+    }
+
+    private static String mapHytaleCategoryToMinecraft(HytaleBlockRegistry.Category category, String simpleName) {
+        // Name-based matching first for better accuracy
+        String lower = simpleName.toLowerCase();
+        if (lower.contains("trunk") || lower.contains("log") || lower.contains("bark")) {
+            return "oak_log";
+        } else if (lower.contains("plank")) {
+            return "oak_planks";
+        } else if (lower.contains("leaf") || lower.contains("leaves")) {
+            return "oak_leaves";
+        } else if (lower.contains("grass_block") || lower.equals("grass")) {
+            return "grass_block";
+        } else if (lower.contains("dirt") || lower.contains("soil")) {
+            return "dirt";
+        } else if (lower.contains("sand") && !lower.contains("stone")) {
+            return "sand";
+        } else if (lower.contains("snow")) {
+            return "snow_block";
+        } else if (lower.contains("ice")) {
+            return "ice";
+        } else if (lower.contains("clay")) {
+            return "clay";
+        } else if (lower.contains("gravel") || lower.contains("pebble")) {
+            return "gravel";
+        } else if (lower.contains("cobble")) {
+            return "cobblestone";
+        } else if (lower.contains("brick")) {
+            return "bricks";
+        } else if (lower.contains("water") || lower.contains("fluid")) {
+            return "water";
+        } else if (lower.contains("flower") || lower.contains("rose") || lower.contains("tulip")) {
+            return "poppy";
+        } else if (lower.contains("fern")) {
+            return "fern";
+        } else if (lower.contains("mushroom")) {
+            return "brown_mushroom_block";
+        } else if (lower.contains("cactus")) {
+            return "cactus";
+        } else if (lower.contains("wool") || lower.contains("cloth")) {
+            return "white_wool";
+        }
+        // Fall back to category
+        if (category != null) {
+            switch (category) {
+                case SOIL:              return "dirt";
+                case SAND:              return "sand";
+                case CLAY:              return "clay";
+                case SNOW_ICE:          return "snow_block";
+                case GRAVEL:            return "gravel";
+                case ROCK:              return "stone";
+                case ROCK_CONSTRUCTION: return "stone_bricks";
+                case ORE:               return "iron_ore";
+                case CRYSTAL_GEM:       return "diamond_block";
+                case WOOD_NATURAL:      return "oak_log";
+                case WOOD_PLANKS:       return "oak_planks";
+                case LEAVES:            return "oak_leaves";
+                case GRASS_PLANTS:      return "grass";
+                case FLOWERS:           return "poppy";
+                case FERNS:             return "fern";
+                case BUSHES:            return "oak_leaves";
+                case CACTUS:            return "cactus";
+                case MOSS_VINES:        return "vine";
+                case MUSHROOMS:         return "brown_mushroom_block";
+                case CROPS:             return "wheat";
+                case CORAL:             return "brain_coral_block";
+                case SEAWEED:           return "seagrass";
+                case SAPLINGS_FRUITS:   return "oak_sapling";
+                case RUBBLE:            return "cobblestone";
+                case DECORATION:        return "oak_planks";
+                case CLOTH:             return "white_wool";
+                case HIVE:              return "honeycomb_block";
+                case RUNIC:             return "lapis_block";
+                case FLUID:             return "water";
+                case SPECIAL:           return "bedrock";
+            }
+        }
+        return "stone";
+    }
+
+    private static final Map<Material.Identity, DynmapBlockState> hytaleBlockStateCache = new HashMap<>();
 
     private static final Map<Material.Identity, DynmapBlockState> IDENTITY_TO_BLOCK_STATE;
 

@@ -1410,14 +1410,50 @@ public class HytaleWorldExporter implements WorldExporter {
 
                 // ── Specific Prefab Layers ───────────────────────────
                 for (HytaleSpecificPrefabLayer spLayer : specificPrefabLayers) {
-                    if (tile.getBitLayerValue(spLayer, tileLocalX, tileLocalZ)) {
-                        PrefabFileEntry selected = spLayer.selectPrefab(worldX, worldZ);
-                        // Paste prefab blocks inline (Hytale reads blocks, not markers)
-                        if (!prefabPaster.paste(chunk, localX, height + 1, localZ, worldX, worldZ, selected.getRelativePath())) {
-                            // Fallback: keep marker for debugging if paste failed
-                            chunk.addPrefabMarker(localX, height + 1, localZ,
-                                selected.getDisplayName(), selected.getRelativePath());
+                    int gridX = spLayer.getGridX();
+                    int gridZ = spLayer.getGridZ();
+                    // Skip positions that don't fall on the grid
+                    if (((worldX % gridX) != 0) || ((worldZ % gridZ) != 0)) {
+                        continue;
+                    }
+                    int strength = tile.getLayerValue(spLayer, tileLocalX, tileLocalZ);
+                    if (strength <= 0) {
+                        continue;
+                    }
+                    // Probability-based placement matching Bo2LayerExporter approach
+                    int densityFactor = spLayer.getDensity() * 64;
+                    long placementSeed = seed + worldX * 65537L + worldZ * 4099L + (long) spLayer.getId().hashCode();
+                    java.util.Random rng = new java.util.Random(placementSeed);
+                    if (rng.nextInt(densityFactor) > strength * strength) {
+                        continue;
+                    }
+                    // Apply random displacement
+                    int placeX = worldX;
+                    int placeZ = worldZ;
+                    int placeLocalX = localX;
+                    int placeLocalZ = localZ;
+                    int displacement = spLayer.getRandomDisplacement();
+                    if (displacement > 0) {
+                        double angle = rng.nextDouble() * Math.PI * 2;
+                        double distance = rng.nextDouble() * displacement;
+                        placeX = worldX + (int) Math.round(Math.sin(angle) * distance);
+                        placeZ = worldZ + (int) Math.round(Math.cos(angle) * distance);
+                        // Recalculate local coordinates within this chunk
+                        placeLocalX = placeX - worldBlockX;
+                        placeLocalZ = placeZ - worldBlockZ;
+                        // Skip if displaced outside this chunk
+                        if (placeLocalX < 0 || placeLocalX >= HytaleChunk.CHUNK_SIZE
+                                || placeLocalZ < 0 || placeLocalZ >= HytaleChunk.CHUNK_SIZE) {
+                            continue;
                         }
+                    }
+                    PrefabFileEntry selected = spLayer.selectPrefab(placeX, placeZ);
+                    int placeHeight = tile.getIntHeight(placeX & 0x7F, placeZ & 0x7F);
+                    // Paste prefab blocks inline (Hytale reads blocks, not markers)
+                    if (!prefabPaster.paste(chunk, placeLocalX, placeHeight + 1, placeLocalZ, placeX, placeZ, selected.getRelativePath())) {
+                        // Fallback: keep marker for debugging if paste failed
+                        chunk.addPrefabMarker(placeLocalX, placeHeight + 1, placeLocalZ,
+                            selected.getDisplayName(), selected.getRelativePath());
                     }
                 }
                 

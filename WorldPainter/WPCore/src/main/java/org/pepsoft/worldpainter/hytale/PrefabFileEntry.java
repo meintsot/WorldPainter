@@ -12,6 +12,7 @@ public final class PrefabFileEntry implements Serializable {
     private final String category;
     private final String subCategory;
     private final String relativePath;
+    private int frequency = DEFAULT_FREQUENCY;
 
     public PrefabFileEntry(String displayName, String category, String subCategory, String relativePath) {
         this.displayName = Objects.requireNonNull(displayName);
@@ -24,6 +25,19 @@ public final class PrefabFileEntry implements Serializable {
     public String getCategory() { return category; }
     public String getSubCategory() { return subCategory; }
     public String getRelativePath() { return relativePath; }
+
+    /**
+     * Get the frequency weight for this prefab entry (1-1000).
+     * Higher values mean this prefab is chosen more often relative to others in the same layer.
+     */
+    public int getFrequency() { return frequency; }
+
+    /**
+     * Set the frequency weight for this prefab entry (1-1000).
+     */
+    public void setFrequency(int frequency) {
+        this.frequency = Math.max(1, Math.min(1000, frequency));
+    }
 
     /**
      * Matches against a search query (case-insensitive).
@@ -54,5 +68,7 @@ public final class PrefabFileEntry implements Serializable {
         return relativePath.hashCode();
     }
 
-    private static final long serialVersionUID = 1L;
+    public static final int DEFAULT_FREQUENCY = 100;
+
+    private static final long serialVersionUID = 2L;
 }

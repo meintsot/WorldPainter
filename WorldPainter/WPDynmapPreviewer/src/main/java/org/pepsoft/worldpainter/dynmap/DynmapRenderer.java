@@ -12,6 +12,9 @@ import org.dynmap.renderer.RenderPatch;
 import org.dynmap.renderer.RenderPatchFactory.SideVisible;
 import org.dynmap.utils.*;
 
+import org.pepsoft.minecraft.Material;
+import org.pepsoft.worldpainter.hytale.HytaleBlockRegistry;
+
 import java.awt.*;
 import java.awt.image.*;
 
@@ -123,20 +126,28 @@ public class DynmapRenderer {
                 ps.direction.subtract(ps.top);
                 ps.py = y / sizescale;
                 shaderstate.reset(ps);
+                ps.hytaleHitColour = -1;
                 try {
                     ps.raytrace(cache, shaderstate, shaderdone);
                 } catch (Exception ex) {
                     Log.severe("Error while raytracing tile: perspective=" + perspective + ", coord=" + mapiter.getX() + "," + mapiter.getY() + "," + mapiter.getZ() + ", blockid=" + mapiter.getBlockType() + ", lighting=" + mapiter.getBlockSkyLight() + ":" + mapiter.getBlockEmittedLight() + ", biome=" + mapiter.getBiome().toString(), ex);
                     ex.printStackTrace();
                 }
-                if(! shaderdone[0]) {
-                    shaderstate.rayFinished(ps);
-                }
-                else {
+                int c_argb;
+                if (ps.hytaleHitColour != -1) {
+                    // Use native Hytale block colour directly, bypassing the Dynmap shader
+                    c_argb = ps.hytaleHitColour;
+                    ps.hytaleHitColour = -1;
                     shaderdone[0] = false;
+                } else {
+                    if (!shaderdone[0]) {
+                        shaderstate.rayFinished(ps);
+                    } else {
+                        shaderdone[0] = false;
+                    }
+                    shaderstate.getRayColor(rslt, 0);
+                    c_argb = rslt.getARGB();
                 }
-                shaderstate.getRayColor(rslt, 0);
-                int c_argb = rslt.getARGB();
                 argb_buf[(TILE_HEIGHT * sizescale-y-1) * TILE_WIDTH * sizescale + x] = c_argb;
             }
         }
@@ -182,6 +193,89 @@ public class DynmapRenderer {
 
     private static int fastFloor(double f) {
         return ((int)(f + 1000000000.0)) - 1000000000;
+    }
+
+    /**
+     * Sample the actual Hytale block texture at the ray intersection point.
+     * Computes UV coordinates from the ray position and the hit face, then
+     * samples the block's PNG texture and applies face shading.
+     *
+     * @param material the Hytale block material
+     * @param face     which face the ray entered through
+     * @param rayTop   ray origin (world coordinates)
+     * @param rayDir   ray direction
+     * @param rayT     parametric t value at the intersection
+     */
+    private static int sampleHytaleTexture(Material material, BlockStep face,
+                                           Vector3D rayTop, Vector3D rayDir, double rayT) {
+        HytaleBlockTextureProvider.FaceTextures textures =
+                HytaleBlockTextureProvider.getTextures(material.simpleName);
+
+        // Compute the world-space hit point from the ray equation: hitPoint = top + t * direction
+        double hitX = rayTop.x + rayT * rayDir.x;
+        double hitY = rayTop.y + rayT * rayDir.y;
+        double hitZ = rayTop.z + rayT * rayDir.z;
+
+        // Fractional position within the block (0..1)
+        double fracX = hitX - Math.floor(hitX);
+        double fracY = hitY - Math.floor(hitY);
+        double fracZ = hitZ - Math.floor(hitZ);
+
+        // Determine UV coordinates based on which face was hit
+        double u, v;
+        boolean isTopOrBottom;
+        switch (face) {
+            case Y_PLUS:  // Top face
+                u = fracX; v = fracZ; isTopOrBottom = true; break;
+            case Y_MINUS: // Bottom face
+                u = fracX; v = 1.0 - fracZ; isTopOrBottom = true; break;
+            case X_PLUS:  // East face
+                u = 1.0 - fracZ; v = 1.0 - fracY; isTopOrBottom = false; break;
+            case X_MINUS: // West face
+                u = fracZ; v = 1.0 - fracY; isTopOrBottom = false; break;
+            case Z_PLUS:  // South face
+                u = fracX; v = 1.0 - fracY; isTopOrBottom = false; break;
+            case Z_MINUS: // North face
+                u = 1.0 - fracX; v = 1.0 - fracY; isTopOrBottom = false; break;
+            default:
+                u = 0.5; v = 0.5; isTopOrBottom = false; break;
+        }
+
+        // Sample the texture
+        int texel = textures.sample(isTopOrBottom, u, v);
+
+        // Ensure full alpha (textures may have alpha=0 for fully opaque pixels stored as 0xRRGGBB)
+        if (((texel >> 24) & 0xFF) == 0 && texel != 0) {
+            texel = 0xFF000000 | texel;
+        }
+
+        // Apply face shading for depth perception
+        return applyFaceShading(texel, face);
+    }
+
+    /**
+     * Apply face shading to give the 3D preview depth perception.
+     * Top face is brightest, side faces slightly darker, bottom face darkest.
+     */
+    private static int applyFaceShading(int argb, BlockStep face) {
+        int a = (argb >> 24) & 0xFF;
+        if (a == 0) {
+            return 0;
+        }
+        double shade;
+        switch (face) {
+            case Y_PLUS:   shade = 1.0;  break;
+            case Y_MINUS:  shade = 0.55; break;
+            case X_PLUS:   shade = 0.8;  break;
+            case X_MINUS:  shade = 0.7;  break;
+            case Z_PLUS:   shade = 0.85; break;
+            case Z_MINUS:  shade = 0.75; break;
+            default:       shade = 0.8;  break;
+        }
+        int r = Math.min(255, (int) (((argb >> 16) & 0xFF) * shade));
+        int g = Math.min(255, (int) (((argb >> 8) & 0xFF) * shade));
+        int b = Math.min(255, (int) ((argb & 0xFF) * shade));
+        return (a << 24) | (r << 16) | (g << 8) | b;
     }
 
     private final HDPerspective perspective;
@@ -272,6 +366,7 @@ public class DynmapRenderer {
         boolean cur_shade;
 
         int[] subblock_xyz = new int[3];
+        int hytaleHitColour = -1;
         final MapIterator mapiter;
         final boolean isnether;
         boolean skiptoair;
@@ -730,6 +825,15 @@ public class DynmapRenderer {
                 }
             }
             else if(nonairhit || blocktype.isNotAir()) {
+                // Check if this is a Hytale block — render with actual Hytale textures
+                if (mapiter instanceof WPObjectMapIterator) {
+                    Material originalMaterial = ((WPObjectMapIterator) mapiter).getOriginalMaterial();
+                    if (originalMaterial != null && originalMaterial.namespace.equals(HytaleBlockRegistry.HYTALE_NAMESPACE)) {
+                        hytaleHitColour = sampleHytaleTexture(originalMaterial, laststep, top, direction, t);
+                        shaderdone[0] = true;
+                        return true;
+                    }
+                }
                 short[] model;
                 RenderPatch[] patches = getPatches(blocktype, false);
                 /* Look up to see if block is modelled */

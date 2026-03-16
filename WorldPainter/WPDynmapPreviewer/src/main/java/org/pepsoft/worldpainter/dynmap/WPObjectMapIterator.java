@@ -6,6 +6,7 @@ import org.dynmap.renderer.DynmapBlockState;
 import org.dynmap.renderer.RenderPatchFactory;
 import org.dynmap.utils.BlockStep;
 import org.dynmap.utils.MapIterator;
+import org.pepsoft.minecraft.Material;
 import org.pepsoft.worldpainter.objects.MinecraftWorldObject;
 
 import static org.dynmap.renderer.DynmapBlockState.AIR;
@@ -201,11 +202,22 @@ class WPObjectMapIterator implements MapIterator {
         return y;
     }
 
+    /**
+     * Get the original {@link Material} at the current iterator position, or {@code null} if outside bounds.
+     */
+    Material getOriginalMaterial() {
+        return originalMaterial;
+    }
+
     private void updateMaterial() {
         if (object.bounds.contains(x, y, height)) {
-            material = object.blockStates[x - object.xOffset][y - object.yOffset][height];
+            int ox = x - object.xOffset;
+            int oy = y - object.yOffset;
+            material = object.blockStates[ox][oy][height];
+            originalMaterial = object.materials[ox][oy][height];
         } else {
             material = AIR;
+            originalMaterial = null;
         }
     }
 
@@ -213,4 +225,5 @@ class WPObjectMapIterator implements MapIterator {
     private int x, y, height;
     private BlockStep lastStep;
     private DynmapBlockState material;
+    private Material originalMaterial;
 }

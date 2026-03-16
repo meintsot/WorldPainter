@@ -33,6 +33,7 @@ class WPObjectDynmapWorld extends DynmapWorld {
         Point3i dimensions = object.getDimensions();
         bounds = new Box(xOffset, dimensions.x + xOffset, yOffset, dimensions.y + yOffset, 0, dimensions.z);
         blockStates = new DynmapBlockState[dimensions.x][dimensions.y][dimensions.z];
+        materials = new Material[dimensions.x][dimensions.y][dimensions.z];
         lightLevels = new int[dimensions.x][dimensions.y][dimensions.z];
         heights = new int[dimensions.x][dimensions.y];
         for (int x = 0; x < dimensions.x; x++) {
@@ -40,6 +41,7 @@ class WPObjectDynmapWorld extends DynmapWorld {
                 for (int z = 0; z < dimensions.z; z++) {
                     if (object.getMask(x, y, z)) {
                         final Material material = object.getMaterial(x, y, z);
+                        materials[x][y][z] = material;
                         if (material.empty) {
                             blockStates[x][y][z] = AIR;
                         } else {
@@ -141,6 +143,7 @@ class WPObjectDynmapWorld extends DynmapWorld {
     final Box bounds;
     final int xOffset, yOffset;
     final DynmapBlockState[][][] blockStates;
+    final Material[][][] materials;
 
     private final WPObjectMapChunkCache chunkCache;
     private final int[][][] lightLevels;
