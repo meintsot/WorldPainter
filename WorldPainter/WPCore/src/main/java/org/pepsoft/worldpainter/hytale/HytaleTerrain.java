@@ -498,6 +498,104 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         // Some assets use a "Prototype_" prefix (e.g. Rock_Concrete_Brick → Prototype_Rock_Concrete_Brick)
         addTextureCandidates("Prototype_" + blockId, topCandidates, sideCandidates);
 
+        // Cloth_Roof blocks: strip "Roof_" segment to find the base cloth colour texture
+        // (e.g. Cloth_Roof_Black_Flap → Cloth_Black)
+        if (blockId.startsWith("Cloth_Roof_")) {
+            String clothColour = blockId.substring("Cloth_Roof_".length());
+            for (String suffix : ROOF_SUB_VARIANT_SUFFIXES) {
+                if (clothColour.endsWith(suffix)) {
+                    clothColour = clothColour.substring(0, clothColour.length() - suffix.length());
+                    break;
+                }
+            }
+            addTextureCandidates("Cloth_" + clothColour, topCandidates, sideCandidates);
+        }
+
+        // Rockstone_ → Rock_Stone_ mapping (e.g. Rockstone_Mossy_Brick_Beam → Rock_Stone_Mossy_Brick_Beam)
+        if (blockId.startsWith("Rockstone_")) {
+            String remapped = "Rock_Stone_" + blockId.substring("Rockstone_".length());
+            addTextureCandidates(remapped, topCandidates, sideCandidates);
+            addTextureCandidates(remapped.substring("Rock_".length()), topCandidates, sideCandidates);
+            if (remapped.contains("_Mossy_")) {
+                String withoutMossy = remapped.replace("_Mossy_", "_");
+                addTextureCandidates(withoutMossy + "_Mossy", topCandidates, sideCandidates);
+                int lastUs = withoutMossy.lastIndexOf('_');
+                if (lastUs > 0) {
+                    String reordered = withoutMossy.substring(0, lastUs) + "_Mossy" + withoutMossy.substring(lastUs);
+                    addTextureCandidates(reordered, topCandidates, sideCandidates);
+                }
+            }
+            addConstructionSuffixCandidates(remapped, topCandidates, sideCandidates);
+        }
+
+        // Corrupted_ → Soil_Hive_Corrupted_ mapping
+        if (blockId.startsWith("Corrupted_")) {
+            String remapped = "Soil_Hive_Corrupted_" + blockId.substring("Corrupted_".length());
+            addTextureCandidates(remapped, topCandidates, sideCandidates);
+            addTextureCandidates("Soil_Hive_" + blockId, topCandidates, sideCandidates);
+            addConstructionSuffixCandidates(remapped, topCandidates, sideCandidates);
+        }
+
+        // Rock_ prefix stripping for expanded Peachstone/Ledgestone/Limestone name forms
+        // (e.g. Rock_Peach_Brick → Peachstone_Brick, since textures drop the Rock_ prefix)
+        if (blockId.contains("Rock_Peach_")) {
+            String expanded = blockId.replace("Rock_Peach_", "Peachstone_");
+            addTextureCandidates(expanded, topCandidates, sideCandidates);
+            addConstructionSuffixCandidates(expanded, topCandidates, sideCandidates);
+        }
+        if (blockId.contains("Rock_Ledge_")) {
+            String expanded = blockId.replace("Rock_Ledge_", "Ledgestone_");
+            addTextureCandidates(expanded, topCandidates, sideCandidates);
+            addConstructionSuffixCandidates(expanded, topCandidates, sideCandidates);
+        }
+        if (blockId.contains("Rock_Lime_")) {
+            String expanded = blockId.replace("Rock_Lime_", "Limestone_");
+            addTextureCandidates(expanded, topCandidates, sideCandidates);
+            addConstructionSuffixCandidates(expanded, topCandidates, sideCandidates);
+        }
+
+        // Runic colour variant fallback: strip Blue_/Teal_/Dark_ to try base Runic texture
+        // (e.g. Rock_Runic_Blue_Brick_Ornate → Rock_Runic_Brick_Ornate → Runic_Brick_Ornate)
+        if (blockId.startsWith("Rock_Runic_")) {
+            String afterRunic = blockId.substring("Rock_Runic_".length());
+            for (String colour : RUNIC_COLOUR_PREFIXES) {
+                if (afterRunic.startsWith(colour)) {
+                    String base = "Rock_Runic_" + afterRunic.substring(colour.length());
+                    addTextureCandidates(base, topCandidates, sideCandidates);
+                    addTextureCandidates(base.substring("Rock_".length()), topCandidates, sideCandidates);
+                    addConstructionSuffixCandidates(base, topCandidates, sideCandidates);
+                    break;
+                }
+            }
+        }
+
+        // Wood short name → long name mapping (e.g. Wood_Black_ → Wood_Blackwood_)
+        for (String[] mapping : WOOD_NAME_MAPPINGS) {
+            if (blockId.startsWith(mapping[0])) {
+                String remapped = mapping[1] + blockId.substring(mapping[0].length());
+                addTextureCandidates(remapped, topCandidates, sideCandidates);
+                if (remapped.contains("_Planks_")) {
+                    addTextureCandidates(remapped.replace("_Planks_", "_"), topCandidates, sideCandidates);
+                }
+                addConstructionSuffixCandidates(remapped, topCandidates, sideCandidates);
+                break;
+            }
+        }
+
+        // Progressive construction suffix stripping: try removing variant suffixes
+        // to find a base material texture (e.g. Rock_Chalk_Brick_Ornate → Rock_Chalk_Brick → Rock_Chalk → Chalk)
+        addConstructionSuffixCandidates(blockId, topCandidates, sideCandidates);
+        // Also try suffix stripping on the expanded Ledgestone/Limestone/Peachstone forms
+        if (blockId.contains("Rock_Ledge_")) {
+            addConstructionSuffixCandidates(blockId.replace("Rock_Ledge_", "Rock_Ledgestone_"), topCandidates, sideCandidates);
+        }
+        if (blockId.contains("Rock_Lime_")) {
+            addConstructionSuffixCandidates(blockId.replace("Rock_Lime_", "Rock_Limestone_"), topCandidates, sideCandidates);
+        }
+        if (blockId.contains("Rock_Peach_")) {
+            addConstructionSuffixCandidates(blockId.replace("Rock_Peach_", "Rock_Peachstone_"), topCandidates, sideCandidates);
+        }
+
         topTexture = loadTexture(textureIndex, topCandidates);
         sideTexture = loadTexture(textureIndex, sideCandidates);
         if ((topTexture == null) && (sideTexture == null)) {
@@ -921,11 +1019,144 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         // Some assets use a "Prototype_" prefix (e.g. Rock_Concrete_Brick → Prototype_Rock_Concrete_Brick)
         addGeneratedIconCandidates("Prototype_" + blockId, candidates);
 
+        // Cloth_Roof blocks: strip "Roof_" to find the base cloth colour icon
+        if (blockId.startsWith("Cloth_Roof_")) {
+            String clothColour = blockId.substring("Cloth_Roof_".length());
+            for (String suffix : ROOF_SUB_VARIANT_SUFFIXES) {
+                if (clothColour.endsWith(suffix)) {
+                    clothColour = clothColour.substring(0, clothColour.length() - suffix.length());
+                    break;
+                }
+            }
+            addGeneratedIconCandidates("Cloth_" + clothColour, candidates);
+        }
+
+        // Rockstone_ → Rock_Stone_ mapping
+        if (blockId.startsWith("Rockstone_")) {
+            String remapped = "Rock_Stone_" + blockId.substring("Rockstone_".length());
+            addGeneratedIconCandidates(remapped, candidates);
+            addGeneratedIconCandidates(remapped.substring("Rock_".length()), candidates);
+            if (remapped.contains("_Mossy_")) {
+                String withoutMossy = remapped.replace("_Mossy_", "_");
+                addGeneratedIconCandidates(withoutMossy + "_Mossy", candidates);
+                int lastUs = withoutMossy.lastIndexOf('_');
+                if (lastUs > 0) {
+                    String reordered = withoutMossy.substring(0, lastUs) + "_Mossy" + withoutMossy.substring(lastUs);
+                    addGeneratedIconCandidates(reordered, candidates);
+                }
+            }
+            addConstructionSuffixIconCandidates(remapped, candidates);
+        }
+
+        // Corrupted_ → Soil_Hive_Corrupted_ mapping
+        if (blockId.startsWith("Corrupted_")) {
+            String remapped = "Soil_Hive_Corrupted_" + blockId.substring("Corrupted_".length());
+            addGeneratedIconCandidates(remapped, candidates);
+            addGeneratedIconCandidates("Soil_Hive_" + blockId, candidates);
+            addConstructionSuffixIconCandidates(remapped, candidates);
+        }
+
+        // Rock_ prefix stripping for expanded Peachstone/Ledgestone/Limestone name forms
+        if (blockId.contains("Rock_Peach_")) {
+            String expanded = blockId.replace("Rock_Peach_", "Peachstone_");
+            addGeneratedIconCandidates(expanded, candidates);
+            addConstructionSuffixIconCandidates(expanded, candidates);
+        }
+        if (blockId.contains("Rock_Ledge_")) {
+            String expanded = blockId.replace("Rock_Ledge_", "Ledgestone_");
+            addGeneratedIconCandidates(expanded, candidates);
+            addConstructionSuffixIconCandidates(expanded, candidates);
+        }
+        if (blockId.contains("Rock_Lime_")) {
+            String expanded = blockId.replace("Rock_Lime_", "Limestone_");
+            addGeneratedIconCandidates(expanded, candidates);
+            addConstructionSuffixIconCandidates(expanded, candidates);
+        }
+
+        // Runic colour variant fallback
+        if (blockId.startsWith("Rock_Runic_")) {
+            String afterRunic = blockId.substring("Rock_Runic_".length());
+            for (String colour : RUNIC_COLOUR_PREFIXES) {
+                if (afterRunic.startsWith(colour)) {
+                    String base = "Rock_Runic_" + afterRunic.substring(colour.length());
+                    addGeneratedIconCandidates(base, candidates);
+                    addGeneratedIconCandidates(base.substring("Rock_".length()), candidates);
+                    addConstructionSuffixIconCandidates(base, candidates);
+                    break;
+                }
+            }
+        }
+
+        // Wood short name → long name mapping
+        for (String[] mapping : WOOD_NAME_MAPPINGS) {
+            if (blockId.startsWith(mapping[0])) {
+                String remapped = mapping[1] + blockId.substring(mapping[0].length());
+                addGeneratedIconCandidates(remapped, candidates);
+                if (remapped.contains("_Planks_")) {
+                    addGeneratedIconCandidates(remapped.replace("_Planks_", "_"), candidates);
+                }
+                addConstructionSuffixIconCandidates(remapped, candidates);
+                break;
+            }
+        }
+
+        // Progressive construction suffix stripping
+        addConstructionSuffixIconCandidates(blockId, candidates);
+        if (blockId.contains("Rock_Ledge_")) {
+            addConstructionSuffixIconCandidates(blockId.replace("Rock_Ledge_", "Rock_Ledgestone_"), candidates);
+        }
+        if (blockId.contains("Rock_Lime_")) {
+            addConstructionSuffixIconCandidates(blockId.replace("Rock_Lime_", "Rock_Limestone_"), candidates);
+        }
+        if (blockId.contains("Rock_Peach_")) {
+            addConstructionSuffixIconCandidates(blockId.replace("Rock_Peach_", "Rock_Peachstone_"), candidates);
+        }
+
         return new ArrayList<>(candidates);
     }
 
     private void addGeneratedIconCandidates(String base, Collection<String> candidates) {
         candidates.add(base + ".png");
+    }
+
+    /**
+     * Icon equivalent of {@link #addConstructionSuffixCandidates}: progressively strip
+     * construction suffixes and add icon candidates for each stripped form.
+     */
+    private void addConstructionSuffixIconCandidates(String base, Collection<String> candidates) {
+        Set<String> tried = new HashSet<>();
+        String current = base;
+        boolean stripped = true;
+        while (stripped) {
+            stripped = false;
+            for (String suffix : CONSTRUCTION_SUFFIXES) {
+                if (current.endsWith(suffix)) {
+                    current = current.substring(0, current.length() - suffix.length());
+                    if (tried.add(current)) {
+                        addGeneratedIconCandidates(current, candidates);
+                        for (String prefix : new String[] { "Rock_", "Soil_" }) {
+                            if (current.startsWith(prefix)) {
+                                addGeneratedIconCandidates(current.substring(prefix.length()), candidates);
+                            }
+                        }
+                    }
+                    stripped = true;
+                    break;
+                }
+            }
+        }
+        // Last-resort material family fallback (same as addConstructionSuffixCandidates)
+        for (String fallback : MATERIAL_FAMILY_FALLBACK_SUFFIXES) {
+            String fallbackName = current + fallback;
+            if (!fallbackName.equals(base) && tried.add(fallbackName)) {
+                addGeneratedIconCandidates(fallbackName, candidates);
+                for (String prefix : new String[] { "Rock_", "Soil_" }) {
+                    if (fallbackName.startsWith(prefix)) {
+                        addGeneratedIconCandidates(fallbackName.substring(prefix.length()), candidates);
+                    }
+                }
+            }
+        }
     }
 
     private void addGeneratedPlantIconVariants(String blockId, Collection<String> candidates) {
@@ -1150,6 +1381,77 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
                 name,
                 (hytaleAssetsDir != null) ? hytaleAssetsDir.getAbsolutePath() : "<unset>",
                 generatedIconCandidates);
+    }
+
+    /** Suffixes stripped during progressive construction suffix stripping. Ordered from most to least specific. */
+    private static final String[] CONSTRUCTION_SUFFIXES = {
+        "_Roof_Flap", "_Roof_Flat", "_Roof_Vertical", "_Roof_Slab",
+        "_Smooth_Half", "_Pillar_Base", "_Pillar_Middle",
+        "_Stalactite_Large", "_Stalactite_Small",
+        "_Ornate", "_Decorative", "_Smooth", "_Beam", "_Half",
+        "_Roof", "_Stairs", "_Wall", "_Fence", "_Pipe",
+        "_Brick", "_Cobble"
+    };
+
+    private static final String[] ROOF_SUB_VARIANT_SUFFIXES = { "_Flap", "_Flat", "_Vertical", "_Slab" };
+
+    /** Last-resort fallback: when suffix stripping reaches a base material with no texture, try these sub-variants. */
+    private static final String[] MATERIAL_FAMILY_FALLBACK_SUFFIXES = { "_Brick", "_Cobble", "_Ornate", "_Decorative", "_Smooth" };
+
+    private static final String[] RUNIC_COLOUR_PREFIXES = { "Blue_", "Teal_", "Dark_" };
+
+    /** Short wood prefix → long wood prefix for blocks loaded from game assets with abbreviated names. */
+    private static final String[][] WOOD_NAME_MAPPINGS = {
+        { "Wood_Black_", "Wood_Blackwood_" },
+        { "Wood_Dark_", "Wood_Darkwood_" },
+        { "Wood_Dead_", "Wood_Deadwood_" },
+        { "Wood_Dry_", "Wood_Drywood_" },
+        { "Wood_Golden_", "Wood_Goldenwood_" },
+        { "Wood_Green_", "Wood_Greenwood_" },
+        { "Wood_Light_", "Wood_Lightwood_" },
+        { "Wood_Tropical_", "Wood_Tropicalwood_" },
+    };
+
+    /**
+     * Progressively strip construction suffixes from a base ID and add texture candidates
+     * for each stripped form. For example, {@code Rock_Chalk_Brick_Ornate} →
+     * {@code Rock_Chalk_Brick} → {@code Rock_Chalk} → {@code Chalk}.
+     */
+    private void addConstructionSuffixCandidates(String base, List<String> topCandidates, List<String> sideCandidates) {
+        Set<String> tried = new HashSet<>();
+        String current = base;
+        boolean stripped = true;
+        while (stripped) {
+            stripped = false;
+            for (String suffix : CONSTRUCTION_SUFFIXES) {
+                if (current.endsWith(suffix)) {
+                    current = current.substring(0, current.length() - suffix.length());
+                    if (tried.add(current)) {
+                        addTextureCandidates(current, topCandidates, sideCandidates);
+                        for (String prefix : new String[] { "Rock_", "Soil_" }) {
+                            if (current.startsWith(prefix)) {
+                                addTextureCandidates(current.substring(prefix.length()), topCandidates, sideCandidates);
+                            }
+                        }
+                    }
+                    stripped = true;
+                    break;
+                }
+            }
+        }
+        // Last-resort: when the fully stripped base has no texture, try common material
+        // sub-variants (e.g. Rock_Gold → Rock_Gold_Brick, Rock_Gold_Ornate)
+        for (String fallback : MATERIAL_FAMILY_FALLBACK_SUFFIXES) {
+            String fallbackName = current + fallback;
+            if (!fallbackName.equals(base) && tried.add(fallbackName)) {
+                addTextureCandidates(fallbackName, topCandidates, sideCandidates);
+                for (String prefix : new String[] { "Rock_", "Soil_" }) {
+                    if (fallbackName.startsWith(prefix)) {
+                        addTextureCandidates(fallbackName.substring(prefix.length()), topCandidates, sideCandidates);
+                    }
+                }
+            }
+        }
     }
 
     private void addTextureCandidates(String base, List<String> topCandidates, List<String> sideCandidates) {
