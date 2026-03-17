@@ -172,7 +172,9 @@ public class CavesExporter extends AbstractCavesExporter<Caves> implements Secon
                     // Remember: this is not near the wall of the tunnel; it is near the edge of the sphere we're
                     // currently excavating, so only remove things, don't add them
                     if (intrudingStone) {
-                        if (world.getMaterialAt(x, y, z).isNotNamedOneOf(MC_GRANITE, MC_DIORITE, MC_ANDESITE)
+                        if (world.getMaterialAt(x, y, z).isNotNamedOneOf(MC_GRANITE, MC_DIORITE, MC_ANDESITE,
+                                        "hytale:Rock_Basalt", "hytale:Rock_Granite", "hytale:Rock_Slate",
+                                        "hytale:Rock_Sandstone", "hytale:Rock_Shale", "hytale:Rock_Limestone")
                                 && ((! roughWalls)
                                 || random.nextBoolean())) {
                             // Treat andesite, etc. as "harder" than regular stone so it protrudes slightly into the
@@ -231,7 +233,9 @@ public class CavesExporter extends AbstractCavesExporter<Caves> implements Secon
             return;
         }
         Material material = world.getMaterialAt(x, y, z);
-        if (material.isNamedOneOf(MC_GRASS_BLOCK, MC_DIRT, MC_PODZOL, MC_FARMLAND, MC_GRASS_PATH, MC_DIRT_PATH, MC_SAND, MC_RED_SAND, MC_GRAVEL)) {
+        if (material.isNamedOneOf(MC_GRASS_BLOCK, MC_DIRT, MC_PODZOL, MC_FARMLAND, MC_GRASS_PATH, MC_DIRT_PATH, MC_SAND, MC_RED_SAND, MC_GRAVEL,
+                "hytale:Soil_Grass", "hytale:Soil_Grass_Dry", "hytale:Soil_Grass_Lush", "hytale:Soil_Dirt",
+                "hytale:Sand_Sand", "hytale:Sand_Red_Sand", "hytale:Gravel")) {
             if (((z > minZ) && (! world.getMaterialAt(x, y, z - 1).solid))
                     && ((z <= maxZ) && (! world.getMaterialAt(x, y, z + 1).solid))) {
                 // The block is only one layer thick

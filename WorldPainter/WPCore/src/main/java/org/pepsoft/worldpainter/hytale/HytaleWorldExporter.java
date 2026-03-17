@@ -1201,6 +1201,8 @@ public class HytaleWorldExporter implements WorldExporter {
         int minWaterLevel = Integer.MAX_VALUE;
         int maxWaterLevel = Integer.MIN_VALUE;
         int waterColumns = 0;
+        int specialFluidColumns = 0;
+        Map<String, Integer> fluidTypeCounts = new HashMap<>();
         
         // Hytale chunk is 32x32 blocks
         for (int localX = 0; localX < HytaleChunk.CHUNK_SIZE; localX++) {
@@ -1356,16 +1358,23 @@ public class HytaleWorldExporter implements WorldExporter {
                     } else {
                         fluidId = HytaleBlockMapping.HY_WATER;
                     }
-                    // Debug logging for first fluid placement in this chunk
-                    if (!waterLogged && logger.isDebugEnabled()) {
-                        logger.debug("{} at world ({}, {}) chunk block ({}, {}) - Terrain Y: {}, Fluid Y: {}, Placing Y: {} to {}",
-                            fluidId, worldX, worldZ, localX, localZ, height, localWaterLevel, height + 1, localWaterLevel);
-                        waterLogged = true;
-                    }
+                    fluidTypeCounts.merge(fluidId, 1, Integer::sum);
                     for (int y = height + 1; y <= localWaterLevel; y++) {
                         chunk.setHytaleBlock(localX, y, localZ, HytaleBlock.EMPTY);
                         chunk.getSections()[y >> 5].setFluid(localX, y & 31, localZ, 
-                            fluidId, 1); // Source fluids use max level (1 for water/lava)
+                            fluidId, 1); // Source fluids: all have MaxFluidLevel=1 per Hytale assets
+                    }
+                } else if (hasFluidOverride && fluidLayerValue != HytaleFluidLayer.FLUID_NONE) {
+                    // Fluid layer painted but no water body — create a 1-block fluid
+                    // on the surface so the user's painted fluid actually appears in-game.
+                    specialFluidColumns++;
+                    String fluidId = HytaleFluidLayer.getFluidBlockId(fluidLayerValue);
+                    fluidTypeCounts.merge(fluidId, 1, Integer::sum);
+                    int fluidY = height + 1;
+                    if (fluidY < chunk.getMaxHeight()) {
+                        chunk.setHytaleBlock(localX, fluidY, localZ, HytaleBlock.EMPTY);
+                        chunk.getSections()[fluidY >> 5].setFluid(localX, fluidY & 31, localZ,
+                            fluidId, 1);
                     }
                 }
 
@@ -1464,9 +1473,9 @@ public class HytaleWorldExporter implements WorldExporter {
         }
         
         // Log summary for this chunk area
-        if (logger.isDebugEnabled()) {
-            logger.debug("Chunk area at world ({}, {}) - height min/max: {}/{} waterLevel min/max: {}/{} water columns: {}",
-                worldBlockX, worldBlockZ, minHeight, maxHeight, minWaterLevel, maxWaterLevel, waterColumns);
+        if (waterColumns > 0 || specialFluidColumns > 0) {
+            logger.warn("Chunk at ({}, {}): {} water-body columns, {} surface-fluid columns, height {}-{}, waterLevel {}-{}, fluids: {}",
+                worldBlockX, worldBlockZ, waterColumns, specialFluidColumns, minHeight, maxHeight, minWaterLevel, maxWaterLevel, fluidTypeCounts);
         }
     }
     

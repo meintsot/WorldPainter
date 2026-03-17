@@ -3019,6 +3019,14 @@ public final class App extends JFrame implements BrushControl,
         // dockingManager.addFrame(entitiesPanelFrame);
         // dockingManager.hideFrame(entitiesPanelFrame.getKey());
 
+        fluidPanelFrame = new DockableFrameBuilder(createFluidPanel(), "Fluids", DOCK_SIDE_WEST, 3).scrollable().build();
+        dockingManager.addFrame(fluidPanelFrame);
+        dockingManager.hideFrame(fluidPanelFrame.getKey());
+
+        environmentPanelFrame = new DockableFrameBuilder(createEnvironmentPanel(), "Environments", DOCK_SIDE_WEST, 3).scrollable().build();
+        dockingManager.addFrame(environmentPanelFrame);
+        dockingManager.hideFrame(environmentPanelFrame.getKey());
+
         dockingManager.addFrame(new DockableFrameBuilder(createBrushPanel(), "Brushes", DOCK_SIDE_EAST, 1).build());
 
         if (customBrushes.containsKey(CUSTOM_BRUSHES_DEFAULT_TITLE)) {
@@ -4163,6 +4171,201 @@ public final class App extends JFrame implements BrushControl,
         layerControls.put(org.pepsoft.worldpainter.hytale.HytaleEntityLayer.INSTANCE, new LayerControls(org.pepsoft.worldpainter.hytale.HytaleEntityLayer.INSTANCE, checkBox, soloCheckBox));
 
         panel.putClientProperty(KEY_ICON, new ImageIcon(org.pepsoft.worldpainter.hytale.HytaleEntityLayer.INSTANCE.getIcon()));
+
+        return panel;
+    }
+
+    private JPanel createFluidPanel() {
+        final JPanel panel = new JPanel();
+        panel.setLayout(new GridBagLayout());
+        GridBagConstraints constraints = new GridBagConstraints();
+        constraints.insets = new Insets(1, 1, 1, 1);
+
+        constraints.anchor = GridBagConstraints.FIRST_LINE_START;
+        constraints.weightx = 0.0;
+        JCheckBox checkBox = new JCheckBox("Show:");
+        checkBox.setHorizontalTextPosition(SwingConstants.LEADING);
+        checkBox.setSelected(true);
+        checkBox.setToolTipText("Uncheck to hide fluid overlay from view");
+        checkBox.addActionListener(e -> {
+            if (checkBox.isSelected()) {
+                hiddenLayers.remove(org.pepsoft.worldpainter.hytale.HytaleFluidLayer.INSTANCE);
+            } else {
+                hiddenLayers.add(org.pepsoft.worldpainter.hytale.HytaleFluidLayer.INSTANCE);
+            }
+            updateLayerVisibility();
+        });
+        constraints.gridwidth = 1;
+        panel.add(checkBox, constraints);
+
+        JCheckBox soloCheckBox = new JCheckBox("Solo:");
+        soloCheckBox.setHorizontalTextPosition(SwingConstants.LEADING);
+        soloCheckBox.setToolTipText("<html>Check to show <em>only</em> fluid overlay</html>");
+        soloCheckBox.addActionListener(new SoloCheckboxHandler(soloCheckBox, org.pepsoft.worldpainter.hytale.HytaleFluidLayer.INSTANCE));
+        layerSoloCheckBoxes.put(org.pepsoft.worldpainter.hytale.HytaleFluidLayer.INSTANCE, soloCheckBox);
+        constraints.gridwidth = GridBagConstraints.REMAINDER;
+        panel.add(soloCheckBox, constraints);
+
+        JPanel grid = new JPanel(new GridLayout(0, 2, 2, 2));
+        for (int i = 1; i < org.pepsoft.worldpainter.hytale.HytaleFluidLayer.FLUID_COUNT; i++) {
+            final int fluidValue = i;
+            int argb = org.pepsoft.worldpainter.hytale.HytaleFluidLayer.FLUID_COLORS[i];
+            int rgb = argb & 0x00FFFFFF;
+            JToggleButton button = new JToggleButton(org.pepsoft.worldpainter.hytale.HytaleFluidLayer.FLUID_NAMES[i],
+                    createScaledColourIcon(rgb));
+            button.setToolTipText(org.pepsoft.worldpainter.hytale.HytaleFluidLayer.FLUID_NAMES[i]);
+            button.setMargin(App.BUTTON_INSETS);
+            button.setHorizontalAlignment(SwingConstants.LEFT);
+            if (fluidValue == 1) {
+                button.setSelected(true);
+            }
+            paintButtonGroup.add(button);
+            button.addItemListener(e -> {
+                if (e.getStateChange() == ItemEvent.SELECTED) {
+                    paintUpdater = () -> {
+                        paint = createDiscreteLayerPaint(org.pepsoft.worldpainter.hytale.HytaleFluidLayer.INSTANCE, fluidValue);
+                        paintChanged();
+                    };
+                    paintUpdater.updatePaint();
+                }
+            });
+            button.putClientProperty(KEY_PAINT_ID, createDiscreteLayerPaintId(org.pepsoft.worldpainter.hytale.HytaleFluidLayer.INSTANCE, fluidValue));
+            grid.add(button);
+        }
+        panel.add(grid, constraints);
+
+        layerControls.put(org.pepsoft.worldpainter.hytale.HytaleFluidLayer.INSTANCE, new LayerControls(org.pepsoft.worldpainter.hytale.HytaleFluidLayer.INSTANCE, checkBox, soloCheckBox));
+
+        panel.putClientProperty(KEY_ICON, new ImageIcon(org.pepsoft.worldpainter.hytale.HytaleFluidLayer.INSTANCE.getIcon()));
+
+        return panel;
+    }
+
+    private JPanel createEnvironmentPanel() {
+        final JPanel panel = new JPanel();
+        panel.setLayout(new GridBagLayout());
+        GridBagConstraints constraints = new GridBagConstraints();
+        constraints.insets = new Insets(1, 1, 1, 1);
+
+        constraints.anchor = GridBagConstraints.FIRST_LINE_START;
+        constraints.weightx = 0.0;
+        JCheckBox checkBox = new JCheckBox("Show:");
+        checkBox.setHorizontalTextPosition(SwingConstants.LEADING);
+        checkBox.setSelected(true);
+        checkBox.setToolTipText("Uncheck to hide environment overlay from view");
+        checkBox.addActionListener(e -> {
+            if (checkBox.isSelected()) {
+                hiddenLayers.remove(org.pepsoft.worldpainter.hytale.HytaleEnvironmentLayer.INSTANCE);
+            } else {
+                hiddenLayers.add(org.pepsoft.worldpainter.hytale.HytaleEnvironmentLayer.INSTANCE);
+            }
+            updateLayerVisibility();
+        });
+        constraints.gridwidth = 1;
+        panel.add(checkBox, constraints);
+
+        JCheckBox soloCheckBox = new JCheckBox("Solo:");
+        soloCheckBox.setHorizontalTextPosition(SwingConstants.LEADING);
+        soloCheckBox.setToolTipText("<html>Check to show <em>only</em> environment overlay</html>");
+        soloCheckBox.addActionListener(new SoloCheckboxHandler(soloCheckBox, org.pepsoft.worldpainter.hytale.HytaleEnvironmentLayer.INSTANCE));
+        layerSoloCheckBoxes.put(org.pepsoft.worldpainter.hytale.HytaleEnvironmentLayer.INSTANCE, soloCheckBox);
+        constraints.gridwidth = GridBagConstraints.REMAINDER;
+        panel.add(soloCheckBox, constraints);
+
+        // Search field for filtering environments
+        JTextField envSearchField = new JTextField(14) {
+            @Override
+            protected boolean processKeyBinding(KeyStroke ks, java.awt.event.KeyEvent e, int condition, boolean pressed) {
+                boolean result = super.processKeyBinding(ks, e, condition, pressed);
+                if (condition == JComponent.WHEN_FOCUSED) {
+                    return true;
+                }
+                return result;
+            }
+        };
+        envSearchField.setToolTipText("Search environments by name");
+        constraints.weightx = 1.0;
+        constraints.fill = HORIZONTAL;
+        panel.add(envSearchField, constraints);
+        constraints.fill = GridBagConstraints.NONE;
+        constraints.weightx = 0.0;
+
+        // Container for all zone sections (rebuilt on filter)
+        JPanel zonesContainer = new JPanel();
+        zonesContainer.setLayout(new BoxLayout(zonesContainer, BoxLayout.Y_AXIS));
+
+        Runnable rebuildEnvironments = () -> {
+            String query = envSearchField.getText().trim().toLowerCase();
+            zonesContainer.removeAll();
+            for (org.pepsoft.worldpainter.hytale.HytaleEnvironmentData.Category cat : org.pepsoft.worldpainter.hytale.HytaleEnvironmentData.Category.values()) {
+                java.util.List<org.pepsoft.worldpainter.hytale.HytaleEnvironmentData> envs = org.pepsoft.worldpainter.hytale.HytaleEnvironmentData.getByCategory(cat);
+                if (envs.isEmpty()) continue;
+                // Filter by query
+                java.util.List<org.pepsoft.worldpainter.hytale.HytaleEnvironmentData> filtered = new ArrayList<>();
+                for (org.pepsoft.worldpainter.hytale.HytaleEnvironmentData env : envs) {
+                    if (query.isEmpty() || env.getDisplayName().toLowerCase().contains(query) || env.getName().toLowerCase().contains(query)) {
+                        filtered.add(env);
+                    }
+                }
+                if (filtered.isEmpty()) continue;
+
+                JLabel sectionLabel = new JLabel(cat.getDisplayName());
+                sectionLabel.setFont(sectionLabel.getFont().deriveFont(java.awt.Font.BOLD));
+                sectionLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+                zonesContainer.add(sectionLabel);
+                zonesContainer.add(Box.createVerticalStrut(2));
+
+                JPanel grid = new JPanel(new GridLayout(0, 2, 2, 2));
+                grid.setAlignmentX(Component.LEFT_ALIGNMENT);
+                for (org.pepsoft.worldpainter.hytale.HytaleEnvironmentData env : filtered) {
+                    final int envId = env.getId();
+                    // Generate color from water tint if available
+                    int rgb = 0x60b0ff; // default sky blue
+                    if (env.getWaterTint() != null) {
+                        try {
+                            rgb = Integer.parseInt(env.getWaterTint().substring(1), 16);
+                        } catch (NumberFormatException ignored) {}
+                    }
+                    JToggleButton button = new JToggleButton(env.getDisplayName(), createScaledColourIcon(rgb));
+                    button.setToolTipText(env.getName() + " (" + env.getDisplayName() + ")");
+                    button.setMargin(App.SMALLER_BUTTON_INSETS);
+                    button.setHorizontalAlignment(SwingConstants.LEFT);
+                    button.setFont(button.getFont().deriveFont(button.getFont().getSize2D() - 1f));
+                    paintButtonGroup.add(button);
+                    button.addItemListener(e -> {
+                        if (e.getStateChange() == ItemEvent.SELECTED) {
+                            paintUpdater = () -> {
+                                paint = createDiscreteLayerPaint(org.pepsoft.worldpainter.hytale.HytaleEnvironmentLayer.INSTANCE, envId);
+                                paintChanged();
+                            };
+                            paintUpdater.updatePaint();
+                        }
+                    });
+                    button.putClientProperty(KEY_PAINT_ID, createDiscreteLayerPaintId(org.pepsoft.worldpainter.hytale.HytaleEnvironmentLayer.INSTANCE, envId));
+                    grid.add(button);
+                }
+                zonesContainer.add(grid);
+                zonesContainer.add(Box.createVerticalStrut(6));
+            }
+            zonesContainer.revalidate();
+            zonesContainer.repaint();
+        };
+
+        // Initial build
+        rebuildEnvironments.run();
+
+        // Search listener
+        envSearchField.getDocument().addDocumentListener(new DocumentListener() {
+            @Override public void insertUpdate(DocumentEvent e) { rebuildEnvironments.run(); }
+            @Override public void removeUpdate(DocumentEvent e) { rebuildEnvironments.run(); }
+            @Override public void changedUpdate(DocumentEvent e) { rebuildEnvironments.run(); }
+        });
+
+        panel.add(zonesContainer, constraints);
+
+        layerControls.put(org.pepsoft.worldpainter.hytale.HytaleEnvironmentLayer.INSTANCE, new LayerControls(org.pepsoft.worldpainter.hytale.HytaleEnvironmentLayer.INSTANCE, checkBox, soloCheckBox));
+
+        panel.putClientProperty(KEY_ICON, new ImageIcon(org.pepsoft.worldpainter.hytale.HytaleEnvironmentLayer.INSTANCE.getIcon()));
 
         return panel;
     }
@@ -6239,10 +6442,14 @@ public final class App extends JFrame implements BrushControl,
         // Show/hide Hytale-only dockable frames
         if (isHytalePlatform) {
             dockingManager.showFrame(prefabsPanelFrame.getKey());
+            dockingManager.showFrame(fluidPanelFrame.getKey());
+            dockingManager.showFrame(environmentPanelFrame.getKey());
             // entitiesPanelFrame hidden — experimental
             updateSpecificPrefabsList();
         } else {
             dockingManager.hideFrame(prefabsPanelFrame.getKey());
+            dockingManager.hideFrame(fluidPanelFrame.getKey());
+            dockingManager.hideFrame(environmentPanelFrame.getKey());
             // entitiesPanelFrame hidden — experimental
         }
         activateLayersPanel();
@@ -7719,6 +7926,8 @@ public final class App extends JFrame implements BrushControl,
     private DockableFrame biomesPanelFrame;
     private DockableFrame prefabsPanelFrame;
     private DockableFrame entitiesPanelFrame;
+    private DockableFrame fluidPanelFrame;
+    private DockableFrame environmentPanelFrame;
     private DefaultListModel<org.pepsoft.worldpainter.hytale.PrefabFileEntry> specificPrefabListModel;
     private java.util.List<org.pepsoft.worldpainter.hytale.PrefabFileEntry> discoveredPrefabs = java.util.Collections.emptyList();
     private JTextField specificPrefabSearchField;

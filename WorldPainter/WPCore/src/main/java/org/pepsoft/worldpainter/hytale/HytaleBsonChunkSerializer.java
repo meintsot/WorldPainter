@@ -1085,6 +1085,9 @@ public class HytaleBsonChunkSerializer {
                 buf.writeByte(PALETTE_TYPE_EMPTY);
                 buf.writeBoolean(false);
             } else {
+                if (logger.isInfoEnabled()) {
+                    logger.info("Fluid section palette: {}", palette);
+                }
                 int paletteType = PALETTE_TYPE_HALF_BYTE;
                 buf.writeByte(paletteType);
                 

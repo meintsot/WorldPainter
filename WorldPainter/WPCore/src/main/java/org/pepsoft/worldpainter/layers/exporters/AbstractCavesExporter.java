@@ -52,7 +52,8 @@ public abstract class AbstractCavesExporter<L extends Layer> extends AbstractLay
         decorationSettings = (settings != null) ? settings.getCaveDecorationSettings() : null;
         if (decorationSettings != null) {
             decorateBrownMushrooms = decorationSettings.isEnabled(Decoration.BROWN_MUSHROOM);
-            final boolean mcVersionAtLeast1_17 = platform.getAttribute(ATTRIBUTE_MC_VERSION).isAtLeast(V_1_17);
+            final boolean isHytale = org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(platform);
+            final boolean mcVersionAtLeast1_17 = isHytale || platform.getAttribute(ATTRIBUTE_MC_VERSION).isAtLeast(V_1_17);
             decorateGlowLichen = decorationSettings.isEnabled(Decoration.GLOW_LICHEN) && mcVersionAtLeast1_17;
             decorateLushCaves = decorationSettings.isEnabled(Decoration.LUSH_CAVE_PATCHES) && mcVersionAtLeast1_17;
             decorateDripstoneCaves = decorationSettings.isEnabled(Decoration.DRIPSTONE_CAVE_PATCHES) && mcVersionAtLeast1_17;

@@ -45,6 +45,7 @@ public final class PaintFactory {
                 case BIT_PER_CHUNK:
                     return new BitLayerPaint(layer);
                 case NIBBLE:
+                case BYTE:
                     return new NibbleLayerPaint(layer);
                 default:
                     throw new UnsupportedOperationException("Data size " + layer.getDataSize() + " not supported");

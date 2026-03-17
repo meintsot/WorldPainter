@@ -170,6 +170,8 @@ public class ResourcesExporter extends AbstractLayerExporter<Resources> implemen
         else if (rockName.contains("Shale")) rockType = "Shale";
         else if (rockName.contains("Slate")) rockType = "Slate";
         else if (rockName.contains("Volcanic") || rockName.contains("Magma")) rockType = "Volcanic";
+        else if (rockName.contains("Granite")) rockType = "Granite";
+        else if (rockName.contains("Limestone")) rockType = "Limestone";
         
         String matchedOreName = "hytale:Ore_" + metal + "_" + rockType;
         // Get the matched variant for the host rock type
@@ -415,6 +417,15 @@ public class ResourcesExporter extends AbstractLayerExporter<Resources> implemen
             // Onyxium - extremely rare, deepest levels
             settings.put(Material.get("hytale:Ore_Onyxium_Stone"),
                 new ResourceSettings(Material.get("hytale:Ore_Onyxium_Stone"), minHeight, 16, 1, random.nextLong()));
+            // Crystal - uncommon, shallow to mid depths
+            settings.put(Material.get("hytale:Ore_Crystal_Stone"),
+                new ResourceSettings(Material.get("hytale:Ore_Crystal_Stone"), 32, maxHeight - 1, 2, random.nextLong()));
+            // Coal - common, all depths
+            settings.put(Material.get("hytale:Ore_Coal_Stone"),
+                new ResourceSettings(Material.get("hytale:Ore_Coal_Stone"), minHeight, maxHeight - 1, 8, random.nextLong()));
+            // Sulfur - uncommon, volcanic zones, mid to deep
+            settings.put(Material.get("hytale:Ore_Sulfur_Stone"),
+                new ResourceSettings(Material.get("hytale:Ore_Sulfur_Stone"), minHeight, 64, 2, random.nextLong()));
             return new ResourcesExporterSettings(settings);
         }
 

@@ -357,8 +357,11 @@ public class HytaleMapImporter extends MapImporter {
      */
     private static int mapFluidToLayer(String fluidName) {
         if (fluidName == null || fluidName.equals("Empty")) return 0;
-        if (fluidName.contains("Lava"))  return HytaleFluidLayer.FLUID_LAVA;
-        if (fluidName.contains("Water")) return HytaleFluidLayer.FLUID_ZONE1_WATER;
+        if (fluidName.contains("Poison")) return HytaleFluidLayer.FLUID_POISON;
+        if (fluidName.contains("Slime"))  return HytaleFluidLayer.FLUID_SLIME;
+        if (fluidName.contains("Tar"))    return HytaleFluidLayer.FLUID_TAR;
+        if (fluidName.contains("Lava"))   return HytaleFluidLayer.FLUID_LAVA;
+        if (fluidName.contains("Water"))  return HytaleFluidLayer.FLUID_ZONE1_WATER;
         return 0;
     }
 

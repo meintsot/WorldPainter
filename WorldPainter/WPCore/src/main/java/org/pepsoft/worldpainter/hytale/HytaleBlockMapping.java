@@ -44,6 +44,9 @@ public class HytaleBlockMapping {
     public static final String HY_GRAVEL_MOSSY = "Soil_Gravel_Mossy";
     public static final String HY_WATER = "Water_Source";
     public static final String HY_LAVA = "Lava_Source";
+    public static final String HY_POISON = "Poison_Source";
+    public static final String HY_SLIME = "Slime_Source";
+    public static final String HY_TAR = "Tar_Source";
     public static final String HY_BEDROCK = "Rock_Bedrock";
     public static final String HY_ICE = "Rock_Ice";
     public static final String HY_SNOW = "Soil_Snow";
