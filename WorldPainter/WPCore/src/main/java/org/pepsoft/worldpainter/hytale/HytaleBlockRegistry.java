@@ -661,7 +661,7 @@ public class HytaleBlockRegistry {
         if (blockId.contains("Cracked_Lava")) {
             return 12;
         }
-        if (blockId.startsWith("Rock_Crystal_") || blockId.startsWith("Rock_Gem_") || blockId.contains("_Crystal")) {
+        if (!blockId.startsWith("Ore_") && (blockId.startsWith("Rock_Crystal_") || blockId.startsWith("Rock_Gem_") || blockId.contains("_Crystal"))) {
             return 10;
         }
         if (blockId.contains("Fire")) {

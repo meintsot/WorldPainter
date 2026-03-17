@@ -29,6 +29,7 @@ import static org.pepsoft.worldpainter.Constants.*;
 import static org.pepsoft.worldpainter.DefaultPlugin.ATTRIBUTE_MC_VERSION;
 import static org.pepsoft.worldpainter.Dimension.Role.CAVE_FLOOR;
 import static org.pepsoft.worldpainter.layers.exporters.ResourcesExporter.ResourcesExporterSettings.defaultSettings;
+import org.pepsoft.worldpainter.hytale.HytaleTerrain;
 import org.pepsoft.worldpainter.hytale.HytaleTerrainHelper;
 
 /**
@@ -38,11 +39,20 @@ import org.pepsoft.worldpainter.hytale.HytaleTerrainHelper;
 public class ResourcesExporter extends AbstractLayerExporter<Resources> implements FirstPassLayerExporter {
     public ResourcesExporter(Dimension dimension, Platform platform, ExporterSettings settings) {
         super(dimension, platform, (settings != null) ? settings : defaultSettings(platform, dimension.getAnchor(), dimension.getMinHeight(), dimension.getMaxHeight()), Resources.INSTANCE);
+        this.isHytale = HytaleTerrainHelper.isHytale(platform);
         final ResourcesExporterSettings resourcesSettings = (ResourcesExporterSettings) super.settings;
         final Set<Material> allMaterials = resourcesSettings.getMaterials();
         final List<Material> activeMaterials = new ArrayList<>(allMaterials.size());
         for (Material material: allMaterials) {
             if (resourcesSettings.getChance(material) > 0) {
+                // For Hytale, filter out invalid ore metals (e.g. Crystal, Coal, Sulfur from old worlds)
+                if (isHytale && material.name != null && material.name.contains(":Ore_")) {
+                    String oreName = material.name.substring(material.name.indexOf(":Ore_") + 1);
+                    String metal = extractOreMetal(oreName);
+                    if (metal != null && !ORE_METAL_ZONES.containsKey(metal)) {
+                        continue; // Skip invalid ore metal
+                    }
+                }
                 activeMaterials.add(material);
             }
         }
@@ -100,6 +110,13 @@ public class ResourcesExporter extends AbstractLayerExporter<Resources> implemen
                                         Math.min(dimension.getIntHeightAt(worldX, worldY - 1, Integer.MAX_VALUE),
                                                 dimension.getIntHeightAt(worldX, worldY + 1, Integer.MAX_VALUE))));
                     }
+                    // For Hytale: determine biome zone from surface terrain (once per column)
+                    final int hytaleZone;
+                    if (isHytale) {
+                        hytaleZone = getHytaleZone(tile.getTerrain(localX, localY));
+                    } else {
+                        hytaleZone = 0;
+                    }
                     final double dx = worldX / TINY_BLOBS, dy = worldY / TINY_BLOBS;
                     final double dirtX = worldX / SMALL_BLOBS, dirtY = worldY / SMALL_BLOBS;
                     // Capping to maxY really shouldn't be necessary, but we've had several reports from the wild of
@@ -120,8 +137,13 @@ public class ResourcesExporter extends AbstractLayerExporter<Resources> implemen
 //                                counts[oreType]++;
                                 final Material existingMaterial = chunk.getMaterial(x, y, z);
                                 if (existingMaterial.name != null && existingMaterial.name.startsWith("hytale:")) {
-                                    // Hytale: match ore variant to host rock type
-                                    chunk.setMaterial(x, y, z, matchHytaleOreToRock(activeMaterials[i], existingMaterial));
+                                    // Hytale: only place ores in rock/ore host blocks, respecting biome zones
+                                    String hostId = existingMaterial.name.substring(7);
+                                    if ((hostId.startsWith("Rock_") || hostId.startsWith("Ore_"))
+                                            && isHytaleOreAllowedInZone(activeMaterials[i], hytaleZone)) {
+                                        chunk.setMaterial(x, y, z, matchHytaleOreToRock(activeMaterials[i], existingMaterial));
+                                    }
+                                    // else: skip — host is not rock (soil, sand, etc.) or ore not allowed in this zone
                                 } else if (existingMaterial.isNamed(MC_DEEPSLATE) && ORE_TO_DEEPSLATE_VARIANT.containsKey(activeMaterials[i].name)) {
                                     chunk.setMaterial(x, y, z, ORE_TO_DEEPSLATE_VARIANT.get(activeMaterials[i].name));
                                 } else if (nether && (activeMaterials[i].isNamed(MC_GOLD_ORE))) {
@@ -151,6 +173,40 @@ public class ResourcesExporter extends AbstractLayerExporter<Resources> implemen
      * Match a Hytale ore to the rock type it's being placed into.
      * E.g., if placing Ore_Iron_Stone into Rock_Basalt, use Ore_Iron_Basalt instead.
      */
+    /**
+     * Valid Hytale ore+rock combinations from the block registry.
+     * Only these combinations have actual textures in-game.
+     */
+    private static final Set<String> VALID_HYTALE_ORES = Set.of(
+        // Iron: Basalt, Sandstone, Shale, Slate, Stone, Volcanic
+        "Ore_Iron_Basalt", "Ore_Iron_Sandstone", "Ore_Iron_Shale",
+        "Ore_Iron_Slate", "Ore_Iron_Stone", "Ore_Iron_Volcanic",
+        // Copper: Basalt, Sandstone, Shale, Stone, Volcanic
+        "Ore_Copper_Basalt", "Ore_Copper_Sandstone", "Ore_Copper_Shale",
+        "Ore_Copper_Stone", "Ore_Copper_Volcanic",
+        // Gold: Basalt, Sandstone, Shale, Stone, Volcanic
+        "Ore_Gold_Basalt", "Ore_Gold_Sandstone", "Ore_Gold_Shale",
+        "Ore_Gold_Stone", "Ore_Gold_Volcanic",
+        // Silver: Basalt, Sandstone, Shale, Slate, Stone, Volcanic
+        "Ore_Silver_Basalt", "Ore_Silver_Sandstone", "Ore_Silver_Shale",
+        "Ore_Silver_Slate", "Ore_Silver_Stone", "Ore_Silver_Volcanic",
+        // Cobalt: Basalt, Sandstone, Shale, Slate, Stone, Volcanic
+        "Ore_Cobalt_Basalt", "Ore_Cobalt_Sandstone", "Ore_Cobalt_Shale",
+        "Ore_Cobalt_Slate", "Ore_Cobalt_Stone", "Ore_Cobalt_Volcanic",
+        // Thorium: Basalt, Sandstone, Shale, Stone, Volcanic
+        "Ore_Thorium_Basalt", "Ore_Thorium_Sandstone", "Ore_Thorium_Shale",
+        "Ore_Thorium_Stone", "Ore_Thorium_Volcanic",
+        // Mithril: Basalt, Magma, Slate, Stone, Volcanic
+        "Ore_Mithril_Basalt", "Ore_Mithril_Magma", "Ore_Mithril_Slate",
+        "Ore_Mithril_Stone", "Ore_Mithril_Volcanic",
+        // Adamantite: Basalt, Shale, Slate, Stone, Volcanic
+        "Ore_Adamantite_Basalt", "Ore_Adamantite_Shale", "Ore_Adamantite_Slate",
+        "Ore_Adamantite_Stone", "Ore_Adamantite_Volcanic",
+        // Onyxium: Basalt, Sandstone, Shale, Stone, Volcanic
+        "Ore_Onyxium_Basalt", "Ore_Onyxium_Sandstone", "Ore_Onyxium_Shale",
+        "Ore_Onyxium_Stone", "Ore_Onyxium_Volcanic"
+    );
+
     private static Material matchHytaleOreToRock(Material ore, Material hostRock) {
         if (ore.name == null || hostRock.name == null) return ore;
         String oreName = ore.name.startsWith("hytale:") ? ore.name.substring(7) : ore.name;
@@ -169,15 +225,104 @@ public class ResourcesExporter extends AbstractLayerExporter<Resources> implemen
         else if (rockName.contains("Sandstone")) rockType = "Sandstone";
         else if (rockName.contains("Shale")) rockType = "Shale";
         else if (rockName.contains("Slate")) rockType = "Slate";
-        else if (rockName.contains("Volcanic") || rockName.contains("Magma")) rockType = "Volcanic";
-        else if (rockName.contains("Granite")) rockType = "Granite";
-        else if (rockName.contains("Limestone")) rockType = "Limestone";
+        else if (rockName.contains("Volcanic")) rockType = "Volcanic";
+        else if (rockName.contains("Magma")) rockType = "Magma";
+        // Granite → Shale (closest Hytale equivalent)
+        else if (rockName.contains("Granite")) rockType = "Shale";
+        // Limestone/Calcite/Chalk/Quartzite → Stone
         
-        String matchedOreName = "hytale:Ore_" + metal + "_" + rockType;
-        // Get the matched variant for the host rock type
-        return Material.get(matchedOreName);
+        String candidateOre = "Ore_" + metal + "_" + rockType;
+        // Only use the matched variant if it's a valid combination;
+        // otherwise fall back to the _Stone variant which always exists
+        if (VALID_HYTALE_ORES.contains(candidateOre)) {
+            return Material.get("hytale:" + candidateOre);
+        }
+        // Fall back to Stone variant
+        String stoneOre = "Ore_" + metal + "_Stone";
+        if (VALID_HYTALE_ORES.contains(stoneOre)) {
+            return Material.get("hytale:" + stoneOre);
+        }
+        return ore;
     }
 
+    /**
+     * Determine the Hytale biome zone (1-4) from the surface terrain type.
+     * Zone 1 = Emerald Grove (temperate), Zone 2 = Howling Sands (desert/arid),
+     * Zone 3 = Borea (cold/mountains), Zone 4 = Devastated Lands (volcanic).
+     * Returns 0 for unknown terrains (all ores allowed).
+     */
+    private static int getHytaleZone(Terrain terrain) {
+        HytaleTerrain ht = HytaleTerrainHelper.fromMinecraftTerrain(terrain);
+        if (ht == null || ht.getBlock() == null) return 0;
+        String blockId = ht.getBlock().id;
+        if (blockId == null || blockId.isEmpty()) return 0;
+
+        // Zone 4: Volcanic/Devastated
+        if (blockId.contains("Volcanic") || blockId.contains("Basalt") || blockId.contains("Magma")
+                || blockId.contains("Burnt") || blockId.contains("Poisoned")) {
+            return 4;
+        }
+        // Zone 3: Cold/Mountain
+        if (blockId.contains("Snow") || blockId.contains("Ice") || blockId.contains("Cold")
+                || blockId.equals("Rock_Slate") || blockId.equals("Rock_Shale")
+                || blockId.contains("Marble") || blockId.contains("Calcite") || blockId.contains("Chalk")) {
+            return 3;
+        }
+        // Zone 2: Desert/Arid
+        if (blockId.contains("Sand") || blockId.contains("Dry") || blockId.contains("Ashen")) {
+            return 2;
+        }
+        // Zone 1: Temperate (grass, dirt, stone, mossy, etc.)
+        if (blockId.contains("Grass") || blockId.contains("Dirt") || blockId.contains("Stone")
+                || blockId.contains("Mossy") || blockId.contains("Gravel")) {
+            return 1;
+        }
+        return 0; // Unknown — allow all ores
+    }
+
+    /**
+     * Ore metals and the Hytale zones (1-4) where they naturally occur.
+     * Iron is universal; rare ores only appear in higher zones.
+     */
+    private static final Map<String, Set<Integer>> ORE_METAL_ZONES = Map.of(
+        "Iron",       Set.of(1, 2, 3, 4),
+        "Copper",     Set.of(1, 2),
+        "Gold",       Set.of(1, 2, 3),
+        "Silver",     Set.of(2, 3),
+        "Cobalt",     Set.of(2, 3, 4),
+        "Thorium",    Set.of(3, 4),
+        "Mithril",    Set.of(3, 4),
+        "Adamantite", Set.of(4),
+        "Onyxium",    Set.of(4)
+    );
+
+    /**
+     * Check if a Hytale ore is allowed in the given biome zone.
+     * Zone 0 means unknown terrain — all ores allowed.
+     */
+    private static boolean isHytaleOreAllowedInZone(Material ore, int zone) {
+        if (zone == 0) return true; // Unknown terrain, allow all
+        String metal = extractOreMetal(ore.name);
+        if (metal == null) return true; // Not a recognized ore format, allow
+        Set<Integer> allowedZones = ORE_METAL_ZONES.get(metal);
+        return allowedZones != null && allowedZones.contains(zone);
+    }
+
+    /**
+     * Extract the metal name from a Hytale ore material name.
+     * E.g., "hytale:Ore_Iron_Stone" → "Iron", "Ore_Gold_Basalt" → "Gold".
+     * Returns null if the name is not a recognized ore format.
+     */
+    private static String extractOreMetal(String materialName) {
+        if (materialName == null) return null;
+        String oreName = materialName.startsWith("hytale:") ? materialName.substring(7) : materialName;
+        if (!oreName.startsWith("Ore_")) return null;
+        int secondUnderscore = oreName.indexOf('_', 4);
+        if (secondUnderscore < 0) return null;
+        return oreName.substring(4, secondUnderscore);
+    }
+
+    private final boolean isHytale;
     private final Material[] activeMaterials;
     private final PerlinNoise[] noiseGenerators;
     private final int[] minLevels, maxLevels;
@@ -417,15 +562,6 @@ public class ResourcesExporter extends AbstractLayerExporter<Resources> implemen
             // Onyxium - extremely rare, deepest levels
             settings.put(Material.get("hytale:Ore_Onyxium_Stone"),
                 new ResourceSettings(Material.get("hytale:Ore_Onyxium_Stone"), minHeight, 16, 1, random.nextLong()));
-            // Crystal - uncommon, shallow to mid depths
-            settings.put(Material.get("hytale:Ore_Crystal_Stone"),
-                new ResourceSettings(Material.get("hytale:Ore_Crystal_Stone"), 32, maxHeight - 1, 2, random.nextLong()));
-            // Coal - common, all depths
-            settings.put(Material.get("hytale:Ore_Coal_Stone"),
-                new ResourceSettings(Material.get("hytale:Ore_Coal_Stone"), minHeight, maxHeight - 1, 8, random.nextLong()));
-            // Sulfur - uncommon, volcanic zones, mid to deep
-            settings.put(Material.get("hytale:Ore_Sulfur_Stone"),
-                new ResourceSettings(Material.get("hytale:Ore_Sulfur_Stone"), minHeight, 64, 2, random.nextLong()));
             return new ResourcesExporterSettings(settings);
         }
 

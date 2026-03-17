@@ -674,11 +674,21 @@ public class HytaleChunk implements Chunk {
         }
         
         public Material getMaterial(int x, int y, int z) {
-            if (blocks == null) {
-                return Material.AIR;
+            int index = getIndex(x, y, z);
+            if (blocks != null) {
+                Material material = blocks[index];
+                if (material != null && material != Material.AIR) {
+                    return material;
+                }
             }
-            Material material = blocks[getIndex(x, y, z)];
-            return (material != null) ? material : Material.AIR;
+            // Fall back to native Hytale block storage so that first-pass
+            // exporters (e.g. ResourcesExporter) can see terrain placed
+            // via setHytaleBlock() through the standard Chunk interface.
+            HytaleBlock block = hytaleBlocks[index];
+            if (block != null && !block.isEmpty()) {
+                return Material.get(HytaleBlockRegistry.HYTALE_NAMESPACE + ":" + block.id);
+            }
+            return Material.AIR;
         }
 
         public HytaleBlock getHytaleBlock(int x, int y, int z) {
