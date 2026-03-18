@@ -3822,8 +3822,19 @@ public final class App extends JFrame implements BrushControl,
                 return result;
             }
         };
-        searchField.setToolTipText("Search prefabs by name, category, or path");
+        searchField.setToolTipText("Search prefabs by name");
         panel.add(searchField, constraints);
+
+        // Category filter dropdown
+        specificPrefabCategoryCombo = new JComboBox<>();
+        specificPrefabCategoryCombo.addItem(ALL_CATEGORIES);
+        specificPrefabCategoryCombo.setToolTipText("Filter prefabs by category");
+        specificPrefabCategoryCombo.addActionListener(e -> {
+            if (! programmaticChange) {
+                filterPrefabList();
+            }
+        });
+        panel.add(specificPrefabCategoryCombo, constraints);
 
         // Prefab list model — populated lazily once HytaleAssets is found
         specificPrefabListModel = new DefaultListModel<>();
@@ -4113,13 +4124,50 @@ public final class App extends JFrame implements BrushControl,
         if (locateAssetsButton != null) {
             locateAssetsButton.setVisible(! assetsAvailable);
         }
+        updatePrefabCategoryCombo();
         filterPrefabList();
+    }
+
+    private void updatePrefabCategoryCombo() {
+        if (specificPrefabCategoryCombo == null) {
+            return;
+        }
+        String previousSelection = (String) specificPrefabCategoryCombo.getSelectedItem();
+        programmaticChange = true;
+        try {
+            specificPrefabCategoryCombo.removeAllItems();
+            specificPrefabCategoryCombo.addItem(ALL_CATEGORIES);
+            discoveredPrefabs.stream()
+                    .map(org.pepsoft.worldpainter.hytale.PrefabFileEntry::getCategory)
+                    .distinct()
+                    .sorted(String.CASE_INSENSITIVE_ORDER)
+                    .forEach(specificPrefabCategoryCombo::addItem);
+            // Restore previous selection if it still exists
+            if (previousSelection != null) {
+                for (int i = 0; i < specificPrefabCategoryCombo.getItemCount(); i++) {
+                    if (previousSelection.equals(specificPrefabCategoryCombo.getItemAt(i))) {
+                        specificPrefabCategoryCombo.setSelectedIndex(i);
+                        return;
+                    }
+                }
+            }
+            specificPrefabCategoryCombo.setSelectedIndex(0);
+        } finally {
+            programmaticChange = false;
+        }
     }
 
     private void filterPrefabList() {
         String query = (specificPrefabSearchField != null) ? specificPrefabSearchField.getText().trim() : "";
+        String selectedCategory = (specificPrefabCategoryCombo != null)
+                ? (String) specificPrefabCategoryCombo.getSelectedItem()
+                : ALL_CATEGORIES;
+        boolean filterByCategory = selectedCategory != null && ! ALL_CATEGORIES.equals(selectedCategory);
         specificPrefabListModel.clear();
         for (org.pepsoft.worldpainter.hytale.PrefabFileEntry entry : discoveredPrefabs) {
+            if (filterByCategory && ! entry.getCategory().equals(selectedCategory)) {
+                continue;
+            }
             if (query.isEmpty() || entry.matchesSearch(query)) {
                 specificPrefabListModel.addElement(entry);
             }
@@ -7886,6 +7934,7 @@ public final class App extends JFrame implements BrushControl,
     private DefaultListModel<org.pepsoft.worldpainter.hytale.PrefabFileEntry> specificPrefabListModel;
     private java.util.List<org.pepsoft.worldpainter.hytale.PrefabFileEntry> discoveredPrefabs = java.util.Collections.emptyList();
     private JTextField specificPrefabSearchField;
+    private JComboBox<String> specificPrefabCategoryCombo;
     private JLabel specificPrefabStatusLabel;
     private JButton locateAssetsButton;
     private JPanel customPrefabLayerRowsPanel;
@@ -7985,6 +8034,7 @@ public final class App extends JFrame implements BrushControl,
 
     private static final ResourceBundle strings = ResourceBundle.getBundle("org.pepsoft.worldpainter.resources.strings"); // NOI18N
 
+    private static final String ALL_CATEGORIES = "All";
     private static final String IMPORT_WARNING_KEY = "org.pepsoft.worldpainter.importWarning";
     private static final String BRUSH_FOLDER_TIP_KEY = "org.pepsoft.worldpainter.brushFolderTip";
 
