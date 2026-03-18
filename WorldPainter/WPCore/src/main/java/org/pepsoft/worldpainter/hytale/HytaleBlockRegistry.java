@@ -205,6 +205,26 @@ public class HytaleBlockRegistry {
     }
 
     /**
+     * Check whether a block placed above a grass block should preserve the
+     * grass (return {@code true}) or cause it to convert to dirt
+     * ({@code false}). Non-solid blocks — vegetation, decorations, rubble,
+     * fluids, and special/technical blocks — preserve grass underneath.
+     */
+    public static boolean preservesGrassBelow(String blockId) {
+        if (blockId == null || blockId.equals("Empty")) {
+            return true;
+        }
+        Category cat = getCategoryForBlock(blockId);
+        if (cat == null) {
+            // Block not in registry — use name-based inference
+            cat = inferCategory(blockId, null);
+        }
+        return cat.isSurfaceOnly()
+                || cat == Category.FLUID
+                || cat == Category.SPECIAL;
+    }
+
+    /**
      * Format a block ID for display. Uses the curated HytaleTerrain name when
      * available, otherwise falls back to replacing underscores with spaces.
      */

@@ -908,6 +908,8 @@ public class HytaleWorldExporter implements WorldExporter {
                 applyCustomObjectLayers(dimension, regionCoords, chunksByCoords);
             }
 
+            convertCoveredGrass(chunksByCoords);
+
             calculateLighting(regionCoords, chunksByCoords, progressReceiver);
 
             // Final pass: enforce void columns by clearing any blocks/fluids
@@ -1118,6 +1120,40 @@ public class HytaleWorldExporter implements WorldExporter {
     }
     
     /**
+     * Post-process grass blocks: convert grass to dirt when covered by a
+     * solid/opaque block, but preserve grass when the block above is a plant,
+     * decoration, fluid, or other non-solid block. This pre-applies Hytale's
+     * in-game grass-to-dirt conversion, avoiding unnecessary runtime work.
+     * <p>
+     * Must be called after all block-placement passes (terrain, layers,
+     * custom objects, frost) but before lighting calculation.
+     */
+    private void convertCoveredGrass(Map<Long, HytaleChunk> chunksByCoords) {
+        int converted = 0;
+        for (HytaleChunk chunk : chunksByCoords.values()) {
+            for (int x = 0; x < HytaleChunk.CHUNK_SIZE; x++) {
+                for (int z = 0; z < HytaleChunk.CHUNK_SIZE; z++) {
+                    int height = chunk.getHeight(x, z);
+                    for (int y = 0; y <= height; y++) {
+                        HytaleBlock block = chunk.getHytaleBlock(x, y, z);
+                        if (block != null && block.isGrass()) {
+                            HytaleBlock above = chunk.getHytaleBlock(x, y + 1, z);
+                            if (above != null && !above.isEmpty()
+                                    && !HytaleBlockRegistry.preservesGrassBelow(above.id)) {
+                                chunk.setHytaleBlock(x, y, z, HytaleBlock.DIRT);
+                                converted++;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if (converted > 0) {
+            logger.debug("Converted {} covered grass blocks to dirt", converted);
+        }
+    }
+
+    /**
      * Final pass: enforce void columns by clearing any blocks, fluids, and
      * support data that may have been placed in void-marked columns by
      * first-pass layers, second-pass layers, custom objects, frost, or other
@@ -1308,10 +1344,14 @@ public class HytaleWorldExporter implements WorldExporter {
                     for (int y = 1; y <= height; y++) {
                         int depth = height - y;
                         HytaleBlock block;
-                        if (surfaceOnly && depth > 0) {
-                            // Vegetation and decoration blocks only go on the surface;
-                            // fill subsurface with dirt (or stone below depth 4)
-                            block = (depth <= 4) ? HytaleBlock.DIRT : HytaleBlock.STONE;
+                        if (surfaceOnly) {
+                            if (depth > 0) {
+                                // Fill subsurface with dirt (or stone below depth 4)
+                                block = (depth <= 4) ? HytaleBlock.DIRT : HytaleBlock.STONE;
+                            } else {
+                                // Surface: place grass; the plant goes on top at height+1
+                                block = HytaleBlock.GRASS;
+                            }
                         } else if (grassTerrain && depth > 0) {
                             // Grass blocks only belong on the surface; Hytale converts
                             // subsurface grass to dirt at runtime which hurts performance,
@@ -1326,6 +1366,11 @@ public class HytaleWorldExporter implements WorldExporter {
                         } else {
                             chunk.setHytaleBlock(localX, y, localZ, block);
                         }
+                    }
+                    // Place the vegetation/decoration block on top of the grass surface
+                    if (surfaceOnly) {
+                        HytaleBlock plantBlock = hytaleTerrain.getBlock(seed, worldX, worldZ, 0);
+                        chunk.setHytaleBlock(localX, height + 1, localZ, plantBlock);
                     }
                 }
                 
