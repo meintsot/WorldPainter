@@ -955,7 +955,11 @@ public class HytaleBsonChunkSerializer {
                         }
                         if (blockLight != 0 || skyLight != 15) {
                             if (builder == null) {
-                                builder = new HytaleChunkLightDataBuilder((short) 0);
+                                // Default must be FULL_SKYLIGHT so that blocks we
+                                // skip (blockLight==0 && skyLight==15) keep their
+                                // sky light instead of falling to zero.
+                                builder = new HytaleChunkLightDataBuilder((short) 0,
+                                        HytaleChunkLightDataBuilder.FULL_SKYLIGHT);
                             }
                             builder.setLight(x, localY, z, blockLight, blockLight, blockLight, skyLight);
                         }

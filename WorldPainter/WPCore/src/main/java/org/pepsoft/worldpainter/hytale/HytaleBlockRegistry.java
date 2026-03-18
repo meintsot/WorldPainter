@@ -800,7 +800,7 @@ public class HytaleBlockRegistry {
         List<String> woodNatural = new ArrayList<>();
         for (String tree : new String[]{
             "Amber", "Ash", "Aspen", "Azure", "Banyan", "Beech", "Birch", "Bottletree",
-            "Burnt", "Camphor", "Cedar", "Crystal", "Dry", "Fig_Blue", "Fir", "Fire",
+            "Burnt", "Camphor", "Cedar", "Crystal", "Dry", "Fig_Blue", "Fir",
             "Gumboab", "Jungle", "Maple", "Oak", "Palm", "Palo", "Petrified", "Poisoned",
             "Redwood", "Sallow", "Spiral", "Stormbark", "Windwillow", "Wisteria_Wild"
         }) {
@@ -811,9 +811,14 @@ public class HytaleBlockRegistry {
             woodNatural.add("Wood_" + tree + "_Branch_Long");
             woodNatural.add("Wood_" + tree + "_Branch_Corner");
         }
-        // Special cases
+        // Special cases: trees that don't follow the full Trunk/Trunk_Full/Roots/Branch pattern
         woodNatural.add("Wood_Bamboo_Trunk");
         woodNatural.add("Wood_Bamboo_Branch_Long");
+        woodNatural.add("Wood_Fire_Trunk");
+        woodNatural.add("Wood_Fire_Trunk_Full");
+        woodNatural.add("Wood_Fire_Branch_Short");
+        woodNatural.add("Wood_Fire_Branch_Long");
+        woodNatural.add("Wood_Fire_Branch_Corner");
         woodNatural.add("Wood_Gnarled_Roots");
         woodNatural.add("Wood_Ice_Trunk");
         Collections.sort(woodNatural);

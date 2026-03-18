@@ -327,7 +327,7 @@ public class HytaleMapImporter extends MapImporter {
         }
         tile.setWaterLevel(tilePixelX, tilePixelZ, waterLevel);
 
-        // Fluid type layer (detect lava vs water varieties)
+        // Fluid type layer (lava/special fluids; water stays default/no override)
         if (waterLevel > surfaceY) {
             HytaleChunk.HytaleSection sec = chunk.getSections()[waterLevel >> 5];
             if (sec != null) {
@@ -361,7 +361,7 @@ public class HytaleMapImporter extends MapImporter {
         if (fluidName.contains("Slime"))  return HytaleFluidLayer.FLUID_SLIME;
         if (fluidName.contains("Tar"))    return HytaleFluidLayer.FLUID_TAR;
         if (fluidName.contains("Lava"))   return HytaleFluidLayer.FLUID_LAVA;
-        if (fluidName.contains("Water"))  return HytaleFluidLayer.FLUID_ZONE1_WATER;
+        if (fluidName.contains("Water"))  return HytaleFluidLayer.FLUID_NONE;
         return 0;
     }
 

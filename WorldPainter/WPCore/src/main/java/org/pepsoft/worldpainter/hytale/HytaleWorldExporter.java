@@ -1331,19 +1331,12 @@ public class HytaleWorldExporter implements WorldExporter {
                 
                 // ── Fluid Layer ──────────────────────────────────────
                 // Check HytaleFluidLayer first, then fall back to FloodWithLava
-                int fluidLayerValue = tile.getLayerValue(HytaleFluidLayer.INSTANCE, tileLocalX, tileLocalZ);
+                int fluidLayerValue = HytaleFluidLayer.normalizeFluidValue(
+                    tile.getLayerValue(HytaleFluidLayer.INSTANCE, tileLocalX, tileLocalZ));
                 boolean hasFluidOverride = fluidLayerValue > 0;
                 boolean isLavaFluid = hasFluidOverride 
                     ? HytaleFluidLayer.isLava(fluidLayerValue)
                     : tile.getBitLayerValue(FloodWithLava.INSTANCE, tileLocalX, tileLocalZ);
-                
-                // Apply water tint from fluid layer if present
-                if (hasFluidOverride) {
-                    String waterTint = HytaleFluidLayer.getWaterTint(fluidLayerValue);
-                    if (waterTint != null) {
-                        chunk.setWaterTint(localX, localZ, waterTint);
-                    }
-                }
 
                 // Fill fluid (water/lava/poison/slime/tar) if below water level
                 // Surface block is at height, so fluid starts at height+1
@@ -1364,29 +1357,17 @@ public class HytaleWorldExporter implements WorldExporter {
                         chunk.getSections()[y >> 5].setFluid(localX, y & 31, localZ, 
                             fluidId, 1); // Source fluids: all have MaxFluidLevel=1 per Hytale assets
                     }
-                } else if (hasFluidOverride && fluidLayerValue != HytaleFluidLayer.FLUID_NONE) {
-                    // Fluid layer painted but no water body — create a 1-block fluid
-                    // on the surface so the user's painted fluid actually appears in-game.
-                    specialFluidColumns++;
-                    String fluidId = HytaleFluidLayer.getFluidBlockId(fluidLayerValue);
-                    fluidTypeCounts.merge(fluidId, 1, Integer::sum);
-                    int fluidY = height + 1;
-                    if (fluidY < chunk.getMaxHeight()) {
-                        chunk.setHytaleBlock(localX, fluidY, localZ, HytaleBlock.EMPTY);
-                        chunk.getSections()[fluidY >> 5].setFluid(localX, fluidY & 31, localZ,
-                            fluidId, 1);
-                    }
                 }
 
                 // ── Environment Layer ────────────────────────────────
+                // Water tinting is now solely environment-driven
                 int envLayerValue = tile.getLayerValue(HytaleEnvironmentLayer.INSTANCE, tileLocalX, tileLocalZ);
                 if (envLayerValue != HytaleEnvironmentLayer.ENV_AUTO) {
                     HytaleEnvironmentData envData = HytaleEnvironmentData.getById(envLayerValue);
                     if (envData != null) {
                         environment = envData.getName();
                         chunk.setEnvironment(localX, localZ, environment);
-                        // Apply water tint from environment if no fluid layer override
-                        if (!hasFluidOverride && envData.getWaterTint() != null) {
+                        if (envData.getWaterTint() != null) {
                             chunk.setWaterTint(localX, localZ, envData.getWaterTint());
                         }
                     }

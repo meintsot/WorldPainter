@@ -210,13 +210,15 @@ public final class HytaleAssetsLocator {
         } catch (IOException e) {
             return false;
         }
-        return installRoot.getAbsolutePath().equals(properties.getProperty(PROPERTY_SOURCE_PATH))
+        return CACHE_FORMAT_VERSION.equals(properties.getProperty(PROPERTY_CACHE_FORMAT_VERSION))
+                && installRoot.getAbsolutePath().equals(properties.getProperty(PROPERTY_SOURCE_PATH))
                 && Long.toString(assetsZip.lastModified()).equals(properties.getProperty(PROPERTY_ASSETS_ZIP_LAST_MODIFIED))
                 && Long.toString(assetsZip.length()).equals(properties.getProperty(PROPERTY_ASSETS_ZIP_LENGTH));
     }
 
     private static void writeCacheMarker(File markerFile, File installRoot, File assetsZip) throws IOException {
         final Properties properties = new Properties();
+        properties.setProperty(PROPERTY_CACHE_FORMAT_VERSION, CACHE_FORMAT_VERSION);
         properties.setProperty(PROPERTY_SOURCE_PATH, installRoot.getAbsolutePath());
         properties.setProperty(PROPERTY_ASSETS_ZIP_LAST_MODIFIED, Long.toString(assetsZip.lastModified()));
         properties.setProperty(PROPERTY_ASSETS_ZIP_LENGTH, Long.toString(assetsZip.length()));
@@ -272,6 +274,8 @@ public final class HytaleAssetsLocator {
         copyServerSubdir(serverDir, extractedAssetsDir, "BlockTypeList");
         copyServerSubdir(serverDir, extractedAssetsDir, "GameplayConfigs");
         copyServerSubdir(serverDir, extractedAssetsDir, "Prefabs");
+        copyServerSubdir(serverDir, extractedAssetsDir, "Item");
+        copyServerSubdir(serverDir, extractedAssetsDir, "Drops");
     }
 
     private static void copyServerSubdir(File serverDir, File extractedAssetsDir, String name) throws IOException {
@@ -291,11 +295,19 @@ public final class HytaleAssetsLocator {
     private static final String PROPERTY_SOURCE_PATH = "source.path";
     private static final String PROPERTY_ASSETS_ZIP_LAST_MODIFIED = "assetsZip.lastModified";
     private static final String PROPERTY_ASSETS_ZIP_LENGTH = "assetsZip.length";
+    private static final String CACHE_FORMAT_VERSION = "2";
+    private static final String PROPERTY_CACHE_FORMAT_VERSION = "cache.formatVersion";
     private static final String[] COMMON_ASSET_PREFIXES = {
             "Common/BlockTextures/",
             "Common/Icons/ItemsGenerated/",
             "Common/Icons/Items/",
             "Common/Items/",
-            "Common/UI/WorldMap/MapMarkers/"
+            "Common/UI/WorldMap/MapMarkers/",
+            "Server/BlockTypeList/",
+            "Server/GameplayConfigs/",
+            "Server/Prefabs/",
+            "Server/Item/Items/",
+            "Server/Item/ResourceTypes/",
+            "Server/Drops/"
     };
 }

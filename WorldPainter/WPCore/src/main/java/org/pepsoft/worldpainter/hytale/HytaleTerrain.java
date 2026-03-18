@@ -511,6 +511,12 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
             addTextureCandidates("Cloth_" + clothColour, topCandidates, sideCandidates);
         }
 
+        // Cloth_Block_Wool_X → try Cloth_X (wool blocks use shortened texture names)
+        if (blockId.startsWith("Cloth_Block_Wool_")) {
+            String colour = blockId.substring("Cloth_Block_Wool_".length());
+            addTextureCandidates("Cloth_" + colour, topCandidates, sideCandidates);
+        }
+
         // Rockstone_ → Rock_Stone_ mapping (e.g. Rockstone_Mossy_Brick_Beam → Rock_Stone_Mossy_Brick_Beam)
         if (blockId.startsWith("Rockstone_")) {
             String remapped = "Rock_Stone_" + blockId.substring("Rockstone_".length());
@@ -948,6 +954,10 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         if (blockId.endsWith("_Block")) {
             addGeneratedIconCandidates(blockId.substring(0, blockId.length() - "_Block".length()), candidates);
         }
+        // _Small suffix stripping (e.g. Plant_Crop_Mushroom_Block_Blue_Small → Plant_Crop_Mushroom_Block_Blue)
+        if (blockId.endsWith("_Small")) {
+            addGeneratedIconCandidates(blockId.substring(0, blockId.length() - "_Small".length()), candidates);
+        }
 
         for (String prefix : new String[] { "Rock_", "Soil_" }) {
             if (blockId.startsWith(prefix)) {
@@ -1029,6 +1039,29 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
                 }
             }
             addGeneratedIconCandidates("Cloth_" + clothColour, candidates);
+        }
+
+        // Cloth_Block_Wool_X → try Cloth_X (wool blocks use shortened texture names)
+        if (blockId.startsWith("Cloth_Block_Wool_")) {
+            String colour = blockId.substring("Cloth_Block_Wool_".length());
+            addGeneratedIconCandidates("Cloth_" + colour, candidates);
+        }
+
+        // Generic vine family fallback: Plant_Vine_X → try Plant_Vine
+        if (blockId.startsWith("Plant_Vine_")) {
+            addGeneratedIconCandidates("Plant_Vine", candidates);
+        }
+
+        // Plant_Bramble_Dead variants → try Dry variants
+        if (blockId.startsWith("Plant_Bramble_Dead")) {
+            addGeneratedIconCandidates("Plant_Bramble_Dry", candidates);
+            addGeneratedIconCandidates("Plant_Bramble", candidates);
+        }
+
+        // Plant_Fruit_X → try Plant_Crop_X (some fruits have Crop_ icons instead)
+        if (blockId.startsWith("Plant_Fruit_")) {
+            String fruit = blockId.substring("Plant_Fruit_".length());
+            addGeneratedIconCandidates("Plant_Crop_" + fruit, candidates);
         }
 
         // Rockstone_ → Rock_Stone_ mapping
@@ -1229,6 +1262,10 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
             case "Plant_Crop_Berry_Winter_Block":
                 addGeneratedIconCandidates("Plant_Bush_Winter_Berry", candidates);
                 break;
+            case "Plant_Crop_Potato_Sweet_Block":
+                addGeneratedIconCandidates("Plant_Crop_Potato", candidates);
+                addGeneratedIconCandidates("Plant_Potato_Stage_0", candidates);
+                break;
             case "Plant_Crop_Mushroom_Cap_Green":
                 addGeneratedIconCandidates("Plant_Crop_Mushroom_Block_Green", candidates);
                 addGeneratedIconCandidates("Plant_Mushroom_Green", candidates);
@@ -1338,6 +1375,43 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
             case "Plant_Moss_Short_Yellow":
                 addGeneratedIconCandidates("Plant_Moss_Yellow_Short", candidates);
                 break;
+            case "Plant_Crop_Health1":
+                addGeneratedIconCandidates("Plant_Crop_Health2", candidates);
+                break;
+            case "Plant_Crop_Stamina1":
+                addGeneratedIconCandidates("Plant_Crop_Stamina2", candidates);
+                break;
+            case "Plant_Crop_Wheat_Stage_4_Burnt":
+                addGeneratedIconCandidates("Plant_Crop_Wheat_Burnt", candidates);
+                addGeneratedIconCandidates("Plant_Crop_Wheat_Stage_4", candidates);
+                break;
+            case "Plant_Flower_Flax_White":
+                addGeneratedIconCandidates("Plant_Flower_Flax_Yellow", candidates);
+                addGeneratedIconCandidates("Plant_Flower_Flax_Pink", candidates);
+                break;
+            case "Plant_Fruit_Spiral":
+                addGeneratedIconCandidates("Plant_Fruit_Spiral_Tree", candidates);
+                break;
+            case "Plant_Sapling_Windwillow":
+                addGeneratedIconCandidates("Plant_Fruit_Windwillow", candidates);
+                break;
+            case "Plant_Seaweed_Grass":
+                addGeneratedIconCandidates("Plant_Seaweed_Small", candidates);
+                addGeneratedIconCandidates("Plant_Seaweed_Short", candidates);
+                break;
+            case "Deco_Bone_Block":
+                addGeneratedIconCandidates("Deco_Bone_Skulls_Feran", candidates);
+                break;
+            case "Deco_Bone_Femur":
+                addGeneratedIconCandidates("Deco_Bone_Ribs_Feran", candidates);
+                break;
+            case "Deco_Bone_Skull":
+                addGeneratedIconCandidates("Deco_Bone_Skulls_Feran", candidates);
+                addGeneratedIconCandidates("Deco_Bone_Skulls_Wall", candidates);
+                break;
+            case "Deco_Coral_Shell_Purple":
+                addGeneratedIconCandidates("Deco_Coral_Shell", candidates);
+                break;
             default:
                 break;
         }
@@ -1373,7 +1447,7 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
     }
 
     private void logMissingIconOnce(List<String> generatedIconCandidates) {
-        if ((block == null) || (! LOGGED_MISSING_ICON_BLOCKS.add(block.id))) {
+        if ((block == null) || "Empty".equals(block.id) || (! LOGGED_MISSING_ICON_BLOCKS.add(block.id))) {
             return;
         }
         logger.warn("No Hytale icon found for block {} (terrain {}). Checked generated icon dirs under {} with candidates {} and found no matching block textures; using colour fallback.",

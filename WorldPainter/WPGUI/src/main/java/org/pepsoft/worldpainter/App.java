@@ -815,7 +815,17 @@ public final class App extends JFrame implements BrushControl,
         } else {
             int waterLevel = tile.getWaterLevel(xInTile, yInTile);
             if (waterLevel > height) {
-                setTextIfDifferent(waterLabel, MessageFormat.format(strings.getString("fluid.level.1.depth.2"), tile.getBitLayerValue(FloodWithLava.INSTANCE, xInTile, yInTile) ? 1 : 0, waterLevel, waterLevel - height));
+                String fluidName;
+                if ((world != null) && org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(world.getPlatform())) {
+                    int fluidValue = org.pepsoft.worldpainter.hytale.HytaleFluidLayer.normalizeFluidValue(
+                            tile.getLayerValue(org.pepsoft.worldpainter.hytale.HytaleFluidLayer.INSTANCE, xInTile, yInTile));
+                    fluidName = (fluidValue > 0 && fluidValue < org.pepsoft.worldpainter.hytale.HytaleFluidLayer.FLUID_NAMES.length)
+                            ? org.pepsoft.worldpainter.hytale.HytaleFluidLayer.FLUID_NAMES[fluidValue]
+                            : (tile.getBitLayerValue(FloodWithLava.INSTANCE, xInTile, yInTile) ? "Lava" : "Water");
+                } else {
+                    fluidName = tile.getBitLayerValue(FloodWithLava.INSTANCE, xInTile, yInTile) ? "Lava" : "Water";
+                }
+                setTextIfDifferent(waterLabel, fluidName + " level: " + waterLevel + ", depth: " + (waterLevel - height));
             } else {
                 setTextIfDifferent(waterLabel, " ");
             }
@@ -3019,9 +3029,7 @@ public final class App extends JFrame implements BrushControl,
         // dockingManager.addFrame(entitiesPanelFrame);
         // dockingManager.hideFrame(entitiesPanelFrame.getKey());
 
-        fluidPanelFrame = new DockableFrameBuilder(createFluidPanel(), "Fluids", DOCK_SIDE_WEST, 3).scrollable().build();
-        dockingManager.addFrame(fluidPanelFrame);
-        dockingManager.hideFrame(fluidPanelFrame.getKey());
+        // Fluids tab removed — fluid placement is now via Flood tool buttons in the tool panel
 
         environmentPanelFrame = new DockableFrameBuilder(createEnvironmentPanel(), "Environments", DOCK_SIDE_WEST, 3).scrollable().build();
         dockingManager.addFrame(environmentPanelFrame);
@@ -3361,6 +3369,15 @@ public final class App extends JFrame implements BrushControl,
 
         toolPanel.add(createButtonForOperation(new Flood(view, false), 'f'));
         toolPanel.add(createButtonForOperation(new Flood(view, true)));
+        floodWithPoisonButton = createButtonForOperation(new Flood(view, Flood.FLUID_POISON));
+        floodWithPoisonButton.setVisible(false);
+        toolPanel.add(floodWithPoisonButton);
+        floodWithSlimeButton = createButtonForOperation(new Flood(view, Flood.FLUID_SLIME));
+        floodWithSlimeButton.setVisible(false);
+        toolPanel.add(floodWithSlimeButton);
+        floodWithTarButton = createButtonForOperation(new Flood(view, Flood.FLUID_TAR));
+        floodWithTarButton.setVisible(false);
+        toolPanel.add(floodWithTarButton);
         toolPanel.add(createButtonForOperation(new Sponge(view)));
         eyedropperToggleButton = new JToggleButton(loadScaledIcon("eyedropper"));
         eyedropperToggleButton.setMnemonic('y');
@@ -4175,71 +4192,7 @@ public final class App extends JFrame implements BrushControl,
         return panel;
     }
 
-    private JPanel createFluidPanel() {
-        final JPanel panel = new JPanel();
-        panel.setLayout(new GridBagLayout());
-        GridBagConstraints constraints = new GridBagConstraints();
-        constraints.insets = new Insets(1, 1, 1, 1);
-
-        constraints.anchor = GridBagConstraints.FIRST_LINE_START;
-        constraints.weightx = 0.0;
-        JCheckBox checkBox = new JCheckBox("Show:");
-        checkBox.setHorizontalTextPosition(SwingConstants.LEADING);
-        checkBox.setSelected(true);
-        checkBox.setToolTipText("Uncheck to hide fluid overlay from view");
-        checkBox.addActionListener(e -> {
-            if (checkBox.isSelected()) {
-                hiddenLayers.remove(org.pepsoft.worldpainter.hytale.HytaleFluidLayer.INSTANCE);
-            } else {
-                hiddenLayers.add(org.pepsoft.worldpainter.hytale.HytaleFluidLayer.INSTANCE);
-            }
-            updateLayerVisibility();
-        });
-        constraints.gridwidth = 1;
-        panel.add(checkBox, constraints);
-
-        JCheckBox soloCheckBox = new JCheckBox("Solo:");
-        soloCheckBox.setHorizontalTextPosition(SwingConstants.LEADING);
-        soloCheckBox.setToolTipText("<html>Check to show <em>only</em> fluid overlay</html>");
-        soloCheckBox.addActionListener(new SoloCheckboxHandler(soloCheckBox, org.pepsoft.worldpainter.hytale.HytaleFluidLayer.INSTANCE));
-        layerSoloCheckBoxes.put(org.pepsoft.worldpainter.hytale.HytaleFluidLayer.INSTANCE, soloCheckBox);
-        constraints.gridwidth = GridBagConstraints.REMAINDER;
-        panel.add(soloCheckBox, constraints);
-
-        JPanel grid = new JPanel(new GridLayout(0, 2, 2, 2));
-        for (int i = 1; i < org.pepsoft.worldpainter.hytale.HytaleFluidLayer.FLUID_COUNT; i++) {
-            final int fluidValue = i;
-            int argb = org.pepsoft.worldpainter.hytale.HytaleFluidLayer.FLUID_COLORS[i];
-            int rgb = argb & 0x00FFFFFF;
-            JToggleButton button = new JToggleButton(org.pepsoft.worldpainter.hytale.HytaleFluidLayer.FLUID_NAMES[i],
-                    createScaledColourIcon(rgb));
-            button.setToolTipText(org.pepsoft.worldpainter.hytale.HytaleFluidLayer.FLUID_NAMES[i]);
-            button.setMargin(App.BUTTON_INSETS);
-            button.setHorizontalAlignment(SwingConstants.LEFT);
-            if (fluidValue == 1) {
-                button.setSelected(true);
-            }
-            paintButtonGroup.add(button);
-            button.addItemListener(e -> {
-                if (e.getStateChange() == ItemEvent.SELECTED) {
-                    paintUpdater = () -> {
-                        paint = createDiscreteLayerPaint(org.pepsoft.worldpainter.hytale.HytaleFluidLayer.INSTANCE, fluidValue);
-                        paintChanged();
-                    };
-                    paintUpdater.updatePaint();
-                }
-            });
-            button.putClientProperty(KEY_PAINT_ID, createDiscreteLayerPaintId(org.pepsoft.worldpainter.hytale.HytaleFluidLayer.INSTANCE, fluidValue));
-            grid.add(button);
-        }
-        panel.add(grid, constraints);
-
-        layerControls.put(org.pepsoft.worldpainter.hytale.HytaleFluidLayer.INSTANCE, new LayerControls(org.pepsoft.worldpainter.hytale.HytaleFluidLayer.INSTANCE, checkBox, soloCheckBox));
-
-        panel.putClientProperty(KEY_ICON, new ImageIcon(org.pepsoft.worldpainter.hytale.HytaleFluidLayer.INSTANCE.getIcon()));
-
-        return panel;
-    }
+    // createFluidPanel() removed — fluid placement now uses Flood tool buttons
 
     private JPanel createEnvironmentPanel() {
         final JPanel panel = new JPanel();
@@ -6287,7 +6240,7 @@ public final class App extends JFrame implements BrushControl,
             } else if (paint instanceof TerrainPaint || paint instanceof HytaleTerrainPaint) {
                 targetHiddenLayers.remove(TERRAIN_AS_LAYER);
             }
-        } else if ((activeOperation instanceof Flood) || (activeOperation instanceof FloodWithLava)) {
+        } else if (activeOperation instanceof Flood) {
             targetHiddenLayers.remove(FLUIDS_AS_LAYER);
         }
         // The Selection layers should *never* be hidden
@@ -6435,20 +6388,22 @@ public final class App extends JFrame implements BrushControl,
         // Hytale-only layers: hidden for Minecraft
         setLayerHidden(org.pepsoft.worldpainter.hytale.HytaleEntityLayer.INSTANCE, true); // experimental — always hidden for now
         setLayerHidden(org.pepsoft.worldpainter.hytale.HytalePrefabLayer.INSTANCE, ! isHytalePlatform);
-        setLayerHidden(org.pepsoft.worldpainter.hytale.HytaleFluidLayer.INSTANCE, ! isHytalePlatform);
+        // HytaleFluidLayer is now internal (set by Flood tools), not user-visible in layers panel
         setLayerHidden(org.pepsoft.worldpainter.hytale.HytaleEnvironmentLayer.INSTANCE, ! isHytalePlatform);
         // Populate is Minecraft-only (tells MC to generate vegetation/ores); no effect on Hytale
         setLayerHidden(Populate.INSTANCE, isHytalePlatform);
         // Show/hide Hytale-only dockable frames
+        // Show/hide Hytale-only flood tool buttons
+        floodWithPoisonButton.setVisible(isHytalePlatform);
+        floodWithSlimeButton.setVisible(isHytalePlatform);
+        floodWithTarButton.setVisible(isHytalePlatform);
         if (isHytalePlatform) {
             dockingManager.showFrame(prefabsPanelFrame.getKey());
-            dockingManager.showFrame(fluidPanelFrame.getKey());
             dockingManager.showFrame(environmentPanelFrame.getKey());
             // entitiesPanelFrame hidden — experimental
             updateSpecificPrefabsList();
         } else {
             dockingManager.hideFrame(prefabsPanelFrame.getKey());
-            dockingManager.hideFrame(fluidPanelFrame.getKey());
             dockingManager.hideFrame(environmentPanelFrame.getKey());
             // entitiesPanelFrame hidden — experimental
         }
@@ -7915,6 +7870,7 @@ public final class App extends JFrame implements BrushControl,
     private JComboBox<TerrainMode> terrainModeComboBox;
     private JCheckBox terrainSoloCheckBox;
     private JToggleButton setSpawnPointToggleButton, eyedropperToggleButton;
+    private AbstractButton floodWithPoisonButton, floodWithSlimeButton, floodWithTarButton;
     private JMenuItem addNetherMenuItem, removeNetherMenuItem, addEndMenuItem, removeEndMenuItem, addCeilingMenuItem, removeCeilingMenuItem, addMasterMenuItem, removeMasterMenuItem;
     private JCheckBoxMenuItem viewSurfaceMenuItem, viewNetherMenuItem, viewEndMenuItem, extendedBlockIdsMenuItem;
     private ColourScheme selectedColourScheme;
@@ -7926,7 +7882,6 @@ public final class App extends JFrame implements BrushControl,
     private DockableFrame biomesPanelFrame;
     private DockableFrame prefabsPanelFrame;
     private DockableFrame entitiesPanelFrame;
-    private DockableFrame fluidPanelFrame;
     private DockableFrame environmentPanelFrame;
     private DefaultListModel<org.pepsoft.worldpainter.hytale.PrefabFileEntry> specificPrefabListModel;
     private java.util.List<org.pepsoft.worldpainter.hytale.PrefabFileEntry> discoveredPrefabs = java.util.Collections.emptyList();

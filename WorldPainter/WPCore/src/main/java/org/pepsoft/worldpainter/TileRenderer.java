@@ -219,7 +219,8 @@ public final class TileRenderer {
             layerList.clear();
         } else {
             layerList.removeIf(layer -> (layer instanceof Void) || (layer instanceof NotPresent) || (layer instanceof NotPresentBlock)
-                    || layer.equals(org.pepsoft.worldpainter.hytale.HytaleTerrainLayer.LO) || layer.equals(org.pepsoft.worldpainter.hytale.HytaleTerrainLayer.HI));
+                    || layer.equals(org.pepsoft.worldpainter.hytale.HytaleTerrainLayer.LO) || layer.equals(org.pepsoft.worldpainter.hytale.HytaleTerrainLayer.HI)
+                    || layer.equals(org.pepsoft.worldpainter.hytale.HytaleFluidLayer.INSTANCE));
         }
         final Layer[] layers = layerList.toArray(new Layer[layerList.size()]);
         final LayerRenderer[] renderers = new LayerRenderer[layers.length];
@@ -370,7 +371,18 @@ public final class TileRenderer {
         fluidDeltas [1][2] = fluidHeights[1][2] - waterLevel;
         int colour;
         if ((! hideFluids) && (waterLevel > intHeight)) {
-            if (tile.getBitLayerValue(FloodWithLava.INSTANCE, x, y)) {
+            if (DefaultPlugin.HYTALE.id.equals(platform.id)) {
+                int fluidValue = org.pepsoft.worldpainter.hytale.HytaleFluidLayer.normalizeFluidValue(
+                        tile.getLayerValue(org.pepsoft.worldpainter.hytale.HytaleFluidLayer.INSTANCE, x, y));
+                if (org.pepsoft.worldpainter.hytale.HytaleFluidLayer.isSpecialFluid(fluidValue)) {
+                    colour = 0xff000000 | org.pepsoft.worldpainter.hytale.HytaleFluidLayer.FLUID_RENDER_COLORS[fluidValue];
+                } else if (org.pepsoft.worldpainter.hytale.HytaleFluidLayer.isLava(fluidValue)
+                        || tile.getBitLayerValue(FloodWithLava.INSTANCE, x, y)) {
+                    colour = lavaColour;
+                } else {
+                    colour = waterColour;
+                }
+            } else if (tile.getBitLayerValue(FloodWithLava.INSTANCE, x, y)) {
                 colour = lavaColour;
             } else {
                 colour = waterColour;
@@ -554,7 +566,7 @@ public final class TileRenderer {
 
         private final BufferedImage ICON = IconUtils.scaleIcon(IconUtils.loadScaledImage("org/pepsoft/worldpainter/resources/terrain.png"), 16);
     };
-    public static final Layer FLUIDS_AS_LAYER = new Layer("org.pepsoft.synthetic.Fluids", "Water/Lava", "Areas flooded with water or lava", Layer.DataSize.NONE, false, 0) {
+    public static final Layer FLUIDS_AS_LAYER = new Layer("org.pepsoft.synthetic.Fluids", "Fluids", "Areas flooded with water, lava or other fluids", Layer.DataSize.NONE, false, 0) {
         @Override
         public BufferedImage getIcon() {
             return ICON;
