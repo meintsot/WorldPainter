@@ -95,7 +95,9 @@ public class ExceptOnTerrainOrLayerFilter extends TerrainOrLayerFilter {
     @SuppressWarnings("unchecked") // Guaranteed by code
     public static Filter create(Dimension dimension, Object item) {
         if (item instanceof List) {
-            return new AnyOfFilter(((List<Object>) item).stream()
+            // Use AllOfFilter (AND/MIN semantics): painting is blocked if the
+            // pixel matches ANY of the exception items.
+            return new AllOfFilter(((List<Object>) item).stream()
                     .map(object -> ExceptOnTerrainOrLayerFilter.create(dimension, object))
                     .collect(toList()));
         } else {
