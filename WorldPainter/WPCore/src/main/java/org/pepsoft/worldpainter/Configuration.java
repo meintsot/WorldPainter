@@ -1330,7 +1330,7 @@ public final class Configuration implements Serializable, EventLogger, Minecraft
     private int undoLevels = 100, defaultGridSize = 128, defaultContourSeparation = 10, defaultWidth = 5, defaultHeight = 5, defaultMaxHeight = DEFAULT_PLATFORM.standardMaxHeight;
     private Dimension defaultTerrainAndLayerSettings = new World2(DEFAULT_PLATFORM, World2.DEFAULT_OCEAN_SEED, TileFactoryFactory.createNoiseTileFactory(new Random().nextLong(), surface, DEFAULT_PLATFORM.minZ, defaultMaxHeight, level, waterLevel, lava, beaches, 20, 1.0)).getDimension(NORMAL_DETAIL);
     private boolean toolbarsLocked;
-    private int version = CURRENT_VERSION, worldFileBackups = 3;
+    private int version = CURRENT_VERSION, worldFileBackups = 0;
     private float defaultRange = 20, uiScale;
     private double defaultScale = 1.0;
     private LightOrigin defaultLightOrigin = LightOrigin.NORTHWEST;
@@ -1364,7 +1364,7 @@ public final class Configuration implements Serializable, EventLogger, Minecraft
     private Platform defaultPlatform;
     @Deprecated
     private Map<Platform, File> exportDirectories;
-    private boolean autosaveEnabled = true;
+    private boolean autosaveEnabled = false;
     private int autosaveDelay = 60000, autosaveInterval = 600000; // One minute delay; ten minutes interval
     private String defaultPlatformId = HYTALE.id;
     private Map<String, File> exportDirectoriesById = new HashMap<>();

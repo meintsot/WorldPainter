@@ -47,13 +47,17 @@ class HytaleBlockTextureProvider {
     }
 
     private static int getFallbackColour(String blockId) {
+        // Use semi-transparent alpha for vegetation/surface-only blocks
+        // (leaves, flowers, ferns, bushes, etc.) so they don't render as
+        // opaque cubes when actual textures are unavailable.
+        HytaleBlockRegistry.Category category = HytaleBlockRegistry.getCategoryForBlock(blockId);
+        int alpha = (category != null && category.isSurfaceOnly()) ? VEGETATION_ALPHA : 0xFF;
         Integer colour = HytaleBlockRegistry.getBlockColour(blockId);
         if (colour != null) {
-            return 0xFF000000 | colour;
+            return (alpha << 24) | (colour & 0xFFFFFF);
         }
-        HytaleBlockRegistry.Category category = HytaleBlockRegistry.getCategoryForBlock(blockId);
         if (category != null) {
-            return getCategoryColour(category);
+            return (alpha << 24) | (getCategoryColour(category) & 0xFFFFFF);
         }
         return 0xFFA0A0A0;
     }
@@ -116,6 +120,9 @@ class HytaleBlockTextureProvider {
             return tex.getRGB(sx, sy);
         }
     }
+
+    /** Alpha for vegetation blocks when no real texture is available. Matches HytaleTerrain.LEAF_ALPHA. */
+    private static final int VEGETATION_ALPHA = 0xD0;
 
     private static final Map<String, FaceTextures> CACHE = new ConcurrentHashMap<>();
 }
