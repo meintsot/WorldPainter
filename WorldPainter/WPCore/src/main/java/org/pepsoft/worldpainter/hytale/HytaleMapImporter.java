@@ -175,6 +175,14 @@ public class HytaleMapImporter extends MapImporter {
         Tile tile = dimension.getTile(tileCoords);
         if (tile == null) {
             tile = tileFactory.createTile(tileCoords.x, tileCoords.y);
+            // Mark all pixels as void; importColumn() clears void for
+            // each actually-imported pixel. This prevents tile factory
+            // noise terrain from showing in non-imported areas.
+            for (int px = 0; px < TILE_SIZE; px++) {
+                for (int pz = 0; pz < TILE_SIZE; pz++) {
+                    tile.setBitLayerValue(org.pepsoft.worldpainter.layers.Void.INSTANCE, px, pz, true);
+                }
+            }
             dimension.addTile(tile);
         }
 
@@ -290,6 +298,9 @@ public class HytaleMapImporter extends MapImporter {
                 }
             }
         }
+
+        // Clear void bit — this pixel has real imported data
+        tile.setBitLayerValue(org.pepsoft.worldpainter.layers.Void.INSTANCE, tilePixelX, tilePixelZ, false);
 
         // Set terrain height (WP uses float, half-block offset for best appearance)
         float wpHeight = Math.max(surfaceY - 0.4375f, 0);

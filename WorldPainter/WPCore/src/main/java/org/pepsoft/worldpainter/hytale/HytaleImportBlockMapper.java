@@ -126,6 +126,7 @@ public final class HytaleImportBlockMapper {
         if (id.startsWith("Ingredient_") || id.startsWith("Container_")) return HytaleTerrain.DIRT;
         if (id.startsWith("Potion_") || id.startsWith("Alchemy_") || id.startsWith("Recipe_Book_")) return HytaleTerrain.STONE;
         if (id.startsWith("Block_"))                              return HytaleTerrain.STONE;
+        if (id.startsWith("Prefab_") || id.startsWith("Spawner_")) return HytaleTerrain.STONE;
         return null;
     }
 
