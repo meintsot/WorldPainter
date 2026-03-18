@@ -98,14 +98,9 @@ public class Bo2LayerExporter extends WPObjectExporter<Bo2Layer> implements Seco
                                 if ((height < minHeight) || (height >= maxHeight)) {
                                     continue;
                                 }
-                                final Placement placement;
-                                if (noPhysics) {
-                                    placement = Placement.ON_LAND;
-                                } else {
-                                    placement = getPlacement(minecraftWorld, dimension, x, y, height, object, random);
-                                    if (placement == Placement.NONE) {
-                                        continue;
-                                    }
+                            final Placement placement = getPlacement(minecraftWorld, dimension, x, y, height, object, random);
+                                if (placement == Placement.NONE) {
+                                    continue;
                                 }
                                 final boolean randomRotationAndMirroring = object.getAttribute(ATTRIBUTE_RANDOM_ROTATION);
                                 if ((randomRotationAndMirroring || object.getAttribute(ATTRIBUTE_RANDOM_MIRRORING_ONLY))
@@ -124,7 +119,7 @@ public class Bo2LayerExporter extends WPObjectExporter<Bo2Layer> implements Seco
                                     continue;
                                 }
                                 prepareForExport(object, dimension);
-                                if (!noPhysics && ! isRoom(minecraftWorld, dimension, object, x, y, z, placement)) {
+                                if (! isRoom(minecraftWorld, dimension, object, x, y, z, placement)) {
                                     continue;
                                 }
                                 if (! fitsInExportedArea(exportedArea, object, x, y)) {
@@ -135,6 +130,7 @@ public class Bo2LayerExporter extends WPObjectExporter<Bo2Layer> implements Seco
                                     fixups.add(new WPObjectFixup(object, x, y, z, placement));
                                     continue;
                                 }
+                                // noPhysics: obliterate existing blocks when placing
                                 if (noPhysics) {
                                     renderObject(minecraftWorld, dimension, platform, object, x, y, z, true);
                                 } else {
@@ -169,8 +165,7 @@ public class Bo2LayerExporter extends WPObjectExporter<Bo2Layer> implements Seco
             final boolean noPhysics = layer.isNoPhysics();
             final Material existingMaterial = minecraftWorld.getMaterialAt(location.x, location.y, height);
             final Material materialBelow = (height > minHeight) ? minecraftWorld.getMaterialAt(location.x, location.y, height - 1) : AIR;
-            if (noPhysics
-                    || (object.getAttribute(ATTRIBUTE_SPAWN_IN_LAVA) && existingMaterial.isNamed(MC_LAVA))
+            if ((object.getAttribute(ATTRIBUTE_SPAWN_IN_LAVA) && existingMaterial.isNamed(MC_LAVA))
                     || (object.getAttribute(ATTRIBUTE_SPAWN_IN_WATER) && existingMaterial.isNamed(MC_WATER))
                     || (object.getAttribute(ATTRIBUTE_SPAWN_ON_LAND) && (! materialBelow.veryInsubstantial))
                     || (! object.getAttribute(ATTRIBUTE_NEEDS_FOUNDATION) && materialBelow.veryInsubstantial)) {
@@ -190,7 +185,7 @@ public class Bo2LayerExporter extends WPObjectExporter<Bo2Layer> implements Seco
                     return null;
                 }
                 prepareForExport(object, dimension);
-                if (!noPhysics && ! isRoom(minecraftWorld, dimension, object, location.x, location.y, height, Placement.ON_LAND)) {
+                if (! isRoom(minecraftWorld, dimension, object, location.x, location.y, height, Placement.ON_LAND)) {
                     return null;
                 }
                 if (! fitsInExportedArea(exportedArea, object, location.x, location.y)) {
@@ -199,6 +194,7 @@ public class Bo2LayerExporter extends WPObjectExporter<Bo2Layer> implements Seco
                     // after all the objects have been placed on both sides of the border
                     return new WPObjectFixup(object, location.x, location.y, height, Placement.ON_LAND);
                 }
+                // noPhysics: obliterate existing blocks when placing
                 if (noPhysics) {
                     renderObject(minecraftWorld, dimension, platform, object, location.x, location.y, height, true);
                 } else {
