@@ -908,6 +908,12 @@ public class HytaleWorldExporter implements WorldExporter {
                 applyCustomObjectLayers(dimension, regionCoords, chunksByCoords);
             }
 
+            // Re-seal fluid bodies: restore any fluid blocks that were cleared
+            // by layer exporters (caves, chasms, frost, custom objects) during
+            // post-processing. Hytale has no runtime water flow, so every fluid
+            // block must be explicitly present in the exported data.
+            sealFluidBodies(dimension, chunksByCoords);
+
             convertCoveredGrass(chunksByCoords);
 
             calculateLighting(regionCoords, chunksByCoords, progressReceiver);
@@ -1119,6 +1125,203 @@ public class HytaleWorldExporter implements WorldExporter {
         }
     }
     
+    /**
+     * Post-processing pass that ensures fluid integrity and seals shoreline edges.
+     * <p>
+     * Hytale has no runtime water flow, so every fluid block must be explicitly
+     * present in the exported chunk data. This pass handles two concerns:
+     * <ol>
+     *   <li><b>Flood empty blocks below water level:</b> Scans the entire column
+     *       from y=1 to y=waterLevel. Any empty block (no solid block and no fluid)
+     *       gets filled with the appropriate fluid. This covers both the original
+     *       water column above the terrain surface AND any blocks carved by layer
+     *       exporters (caves, chasms, custom objects) below the terrain surface.
+     *       In Minecraft these carved underwater spaces fill via runtime water
+     *       flow; Hytale requires explicit placement.</li>
+     *   <li><b>Iterative shoreline sealing:</b> At shore columns where the terrain
+     *       surface is exactly at the water level and at least one 8-connected
+     *       neighbor has fluid at that level, the surface block is replaced with
+     *       fluid. This propagates iteratively: each sealed column has its
+     *       heightmap lowered, enabling neighbors to detect it on the next pass.
+     *       The iteration continues until no more columns are sealed, ensuring
+     *       the entire shallow shelf around a water body is properly flooded.
+     *       In Minecraft, runtime water flow fills these shelves automatically.</li>
+     * </ol>
+     * <p>
+     * Must be called after all layer processing and before lighting/void passes.
+     */
+    private void sealFluidBodies(Dimension dimension, Map<Long, HytaleChunk> chunksByCoords) {
+        int sealed = 0;
+        int shorelineSealed = 0;
+
+        // Step 1: Restore fluid in all columns that have a water level.
+        // Above terrain height: forcefully replace any block (including
+        // solid blocks placed by layer exporters like ground cover) with
+        // fluid. Below terrain height: only fill empty blocks (caves,
+        // chasms carved by exporters).
+        for (HytaleChunk chunk : chunksByCoords.values()) {
+            int chunkBlockX = chunk.getxPos() << 5;
+            int chunkBlockZ = chunk.getzPos() << 5;
+
+            for (int localX = 0; localX < HytaleChunk.CHUNK_SIZE; localX++) {
+                for (int localZ = 0; localZ < HytaleChunk.CHUNK_SIZE; localZ++) {
+                    int worldX = chunkBlockX + localX - blockOffsetX;
+                    int worldZ = chunkBlockZ + localZ - blockOffsetZ;
+
+                    int waterLevel = dimension.getWaterLevelAt(worldX, worldZ);
+                    if (waterLevel == Integer.MIN_VALUE || waterLevel <= 0) {
+                        continue;
+                    }
+
+                    int terrainHeight = dimension.getIntHeightAt(worldX, worldZ);
+                    if (waterLevel <= terrainHeight) {
+                        continue; // Terrain is at or above water level; no water column
+                    }
+
+                    String fluidId = resolveFluidId(dimension, worldX, worldZ);
+
+                    // Below terrain: fill only empty blocks (underground voids)
+                    for (int y = 1; y <= terrainHeight; y++) {
+                        HytaleBlock block = chunk.getHytaleBlock(localX, y, localZ);
+                        if (block != null && !block.isEmpty()) {
+                            continue;
+                        }
+                        HytaleChunk.HytaleSection section = chunk.getSections()[y >> 5];
+                        if (section.getFluidId(localX, y & 31, localZ) == 0) {
+                            chunk.setHytaleBlock(localX, y, localZ, HytaleBlock.EMPTY);
+                            section.setFluid(localX, y & 31, localZ, fluidId, 1);
+                            sealed++;
+                        }
+                    }
+
+                    // Above terrain: forcefully restore fluid, overwriting any
+                    // blocks placed by layer exporters (ground cover, frost, etc.)
+                    for (int y = terrainHeight + 1; y <= waterLevel; y++) {
+                        chunk.setHytaleBlock(localX, y, localZ, HytaleBlock.EMPTY);
+                        chunk.getSections()[y >> 5].setFluid(localX, y & 31, localZ, fluidId, 1);
+                        sealed++;
+                    }
+                }
+            }
+        }
+
+        // Step 2: Iterative shoreline sealing.
+        // For columns that have a solid block at y=waterLevel and no fluid
+        // there yet, check if any 8-connected neighbor has fluid at that
+        // level (in the CHUNK data). If so, replace the surface block (and
+        // any decorative blocks above it) with fluid.
+        // This propagates iteratively: each sealed column now has fluid at
+        // waterLevel, enabling neighbors to detect it on the next pass.
+        // The iteration continues until no more columns are sealed, ensuring
+        // the entire shallow shelf around a water body is properly flooded.
+        //
+        // We check the actual block at waterLevel rather than relying on
+        // the heightmap, because layer processors (ground cover, frost,
+        // custom objects) and surfaceOnly terrain types can place blocks
+        // above waterLevel that raise the heightmap past waterLevel.
+        int passSealed;
+        do {
+            passSealed = 0;
+            for (HytaleChunk chunk : chunksByCoords.values()) {
+                int chunkBlockX = chunk.getxPos() << 5;
+                int chunkBlockZ = chunk.getzPos() << 5;
+
+                for (int localX = 0; localX < HytaleChunk.CHUNK_SIZE; localX++) {
+                    for (int localZ = 0; localZ < HytaleChunk.CHUNK_SIZE; localZ++) {
+                        int worldX = chunkBlockX + localX - blockOffsetX;
+                        int worldZ = chunkBlockZ + localZ - blockOffsetZ;
+
+                        int waterLevel = dimension.getWaterLevelAt(worldX, worldZ);
+                        if (waterLevel == Integer.MIN_VALUE || waterLevel <= 0) {
+                            continue;
+                        }
+
+                        // Only seal exact shoreline columns where terrain
+                        // height == waterLevel. Columns above waterLevel are
+                        // dry land and must not be carved.
+                        int terrainHeight = dimension.getIntHeightAt(worldX, worldZ);
+                        if (terrainHeight != waterLevel) {
+                            continue; // Not a shoreline column
+                        }
+                        HytaleBlock blockAtWL = chunk.getHytaleBlock(localX, waterLevel, localZ);
+                        if (blockAtWL == null || blockAtWL.isEmpty()) {
+                            continue; // No solid block at water level to seal
+                        }
+                        HytaleChunk.HytaleSection wlSection = chunk.getSections()[waterLevel >> 5];
+                        if (wlSection.getFluidId(localX, waterLevel & 31, localZ) != 0) {
+                            continue; // Already has fluid here
+                        }
+
+                        // Check 8-connected neighbors for fluid at y=waterLevel.
+                        // Uses chunk data so sealed columns from prior passes
+                        // are detected, enabling iterative propagation.
+                        boolean hasFluidNeighbor = false;
+                        for (int dz = -1; dz <= 1 && !hasFluidNeighbor; dz++) {
+                            for (int dx = -1; dx <= 1; dx++) {
+                                if (dx == 0 && dz == 0) {
+                                    continue;
+                                }
+                                int nCenteredX = chunkBlockX + localX + dx;
+                                int nCenteredZ = chunkBlockZ + localZ + dz;
+                                int nChunkX = Math.floorDiv(nCenteredX, HytaleChunk.CHUNK_SIZE);
+                                int nChunkZ = Math.floorDiv(nCenteredZ, HytaleChunk.CHUNK_SIZE);
+                                HytaleChunk nChunk = chunksByCoords.get(chunkKey(nChunkX, nChunkZ));
+                                if (nChunk == null) {
+                                    continue;
+                                }
+                                int nLocalX = Math.floorMod(nCenteredX, HytaleChunk.CHUNK_SIZE);
+                                int nLocalZ = Math.floorMod(nCenteredZ, HytaleChunk.CHUNK_SIZE);
+                                HytaleChunk.HytaleSection nSection = nChunk.getSections()[waterLevel >> 5];
+                                if (nSection.getFluidId(nLocalX, waterLevel & 31, nLocalZ) != 0) {
+                                    hasFluidNeighbor = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (hasFluidNeighbor) {
+                            String fluidId = resolveFluidId(dimension, worldX, worldZ);
+                            // Clear any decorative blocks above waterLevel
+                            // (plants, snow, etc.) placed by layer exporters.
+                            int chunkHeight = chunk.getHeight(localX, localZ);
+                            for (int y = chunkHeight; y > waterLevel; y--) {
+                                chunk.setHytaleBlock(localX, y, localZ, HytaleBlock.EMPTY);
+                            }
+                            // Replace terrain block at waterLevel with fluid
+                            chunk.setHytaleBlock(localX, waterLevel, localZ, HytaleBlock.EMPTY);
+                            wlSection.setFluid(
+                                localX, waterLevel & 31, localZ, fluidId, 1);
+                            passSealed++;
+                        }
+                    }
+                }
+            }
+            shorelineSealed += passSealed;
+        } while (passSealed > 0);
+
+        if (sealed > 0) {
+            logger.info("Fluid seal pass: restored {} missing fluid blocks", sealed);
+        }
+        if (shorelineSealed > 0) {
+            logger.info("Fluid seal pass: sealed {} shoreline edge blocks (iterative)", shorelineSealed);
+        }
+    }
+
+    /**
+     * Resolve the fluid type for a column from dimension layer data.
+     */
+    private String resolveFluidId(Dimension dimension, int worldX, int worldZ) {
+        int fluidLayerValue = HytaleFluidLayer.normalizeFluidValue(
+            dimension.getLayerValueAt(HytaleFluidLayer.INSTANCE, worldX, worldZ));
+        if (fluidLayerValue > 0) {
+            return HytaleFluidLayer.getFluidBlockId(fluidLayerValue);
+        }
+        if (dimension.getBitLayerValueAt(FloodWithLava.INSTANCE, worldX, worldZ)) {
+            return HytaleBlockMapping.HY_LAVA;
+        }
+        return HytaleBlockMapping.HY_WATER;
+    }
+
     /**
      * Post-process grass blocks: convert grass to dirt when covered by a
      * solid/opaque block, but preserve grass when the block above is a plant,
@@ -1399,7 +1602,7 @@ public class HytaleWorldExporter implements WorldExporter {
                     fluidTypeCounts.merge(fluidId, 1, Integer::sum);
                     for (int y = height + 1; y <= localWaterLevel; y++) {
                         chunk.setHytaleBlock(localX, y, localZ, HytaleBlock.EMPTY);
-                        chunk.getSections()[y >> 5].setFluid(localX, y & 31, localZ, 
+                        chunk.getSections()[y >> 5].setFluid(localX, y & 31, localZ,
                             fluidId, 1); // Source fluids: all have MaxFluidLevel=1 per Hytale assets
                     }
                 }
@@ -2076,7 +2279,9 @@ public class HytaleWorldExporter implements WorldExporter {
             int localY = height & 31;
 
             if ((material == null) || (material == Material.AIR)) {
-                section.clearFluid(location.localX, localY, location.localZ);
+                // Don't clear fluid when setting AIR — Hytale has no runtime water flow,
+                // so fluid placed by the main pass must survive cave/layer carving.
+                // If a cave carves through underwater terrain, the fluid should remain.
                 location.chunk.setHytaleBlock(location.localX, height, location.localZ, HytaleBlock.EMPTY);
                 return;
             }
@@ -2353,7 +2558,9 @@ public class HytaleWorldExporter implements WorldExporter {
             }
             if ((material == null) || (material == Material.AIR)) {
                 delegate.setHytaleBlock(dx, y, dz, HytaleBlock.EMPTY);
-                delegate.getSections()[y >> 5].clearFluid(dx, y & 31, dz);
+                // Don't clear fluid when setting AIR — Hytale has no runtime water flow,
+                // so fluid placed by the main pass must survive cave/layer carving.
+                // If a cave carves through underwater terrain, the fluid should remain.
                 return;
             }
             HytaleBlock block = HytaleBlockMapping.toHytaleBlock(material);

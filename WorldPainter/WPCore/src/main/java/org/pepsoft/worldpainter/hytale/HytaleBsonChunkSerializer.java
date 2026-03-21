@@ -801,17 +801,19 @@ public class HytaleBsonChunkSerializer {
      * Write block indices as half-byte (nibble) packed data.
      * Each byte contains two 4-bit palette indices.
      * Total: 32768 blocks / 2 = 16384 bytes
-     * 
-     * Standard convention (matching Hytale's BitUtil.setNibble):
-     * - Even indices → LOW nibble (bits 0-3)
-     * - Odd indices → HIGH nibble (bits 4-7)
+     *
+     * Hytale's BitUtil.setNibble uses XOR-based shifting:
+     *   shift = ((idx & 1) ^ 1) << 2
+     * which yields shift=4 for even indices and shift=0 for odd,
+     * meaning:
+     * - Even indices → HIGH nibble (bits 4-7)
+     * - Odd indices  → LOW nibble  (bits 0-3)
      */
     private static void writeHalfByteBlockData(ByteBuf buf, int[] blockIndices) {
         for (int i = 0; i < blockIndices.length; i += 2) {
-            int low = blockIndices[i] & 0x0F;       // Even index → LOW nibble
-            int high = (i + 1 < blockIndices.length) ? (blockIndices[i + 1] & 0x0F) : 0;  // Odd index → HIGH nibble
-            // Pack: odd index in high nibble, even in low nibble (standard nibble convention)
-            buf.writeByte((high << 4) | low);
+            int even = blockIndices[i] & 0x0F;      // Even index → HIGH nibble
+            int odd = (i + 1 < blockIndices.length) ? (blockIndices[i + 1] & 0x0F) : 0;  // Odd index → LOW nibble
+            buf.writeByte((even << 4) | odd);
         }
     }
     
@@ -946,7 +948,22 @@ public class HytaleBsonChunkSerializer {
                 for (int z = 0; z < HytaleChunk.CHUNK_SIZE; z++) {
                     for (int x = 0; x < HytaleChunk.CHUNK_SIZE; x++) {
                         int blockLight = chunk.getBlockLightLevel(x, worldY, z);
-                        int skyLight = (worldY >= chunk.getHeight(x, z)) ? 15 : 0;
+                        int skyLight;
+                        if (worldY >= chunk.getHeight(x, z)) {
+                            skyLight = 15;
+                        } else {
+                            // Blocks below their own heightmap are underground (skyLight=0),
+                            // UNLESS they are laterally exposed to sky through an adjacent
+                            // shorter column. This prevents pitch-black faces at shorelines
+                            // and terrain steps where subsurface blocks face open air/water.
+                            skyLight = 0;
+                            if ((x > 0 && worldY >= chunk.getHeight(x - 1, z))
+                                    || (x < HytaleChunk.CHUNK_SIZE - 1 && worldY >= chunk.getHeight(x + 1, z))
+                                    || (z > 0 && worldY >= chunk.getHeight(x, z - 1))
+                                    || (z < HytaleChunk.CHUNK_SIZE - 1 && worldY >= chunk.getHeight(x, z + 1))) {
+                                skyLight = 13;
+                            }
+                        }
                         if (blockLight != 0 || skyLight != 0) {
                             hasAnyLight = true;
                         }
