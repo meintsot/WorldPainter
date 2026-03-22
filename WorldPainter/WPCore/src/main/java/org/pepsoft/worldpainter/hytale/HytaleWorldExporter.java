@@ -918,7 +918,11 @@ public class HytaleWorldExporter implements WorldExporter {
 
             convertCoveredGrass(chunksByCoords);
 
-            calculateLighting(regionCoords, chunksByCoords, progressReceiver);
+            // Skip pre-baked lighting: Hytale recalculates light at runtime
+            // when players interact with blocks, which overwrites our values
+            // and causes visual artefacts. Writing empty light data lets
+            // Hytale compute lighting natively with consistent results.
+            // calculateLighting(regionCoords, chunksByCoords, progressReceiver);
 
             // Final pass: enforce void columns by clearing any blocks/fluids
             // that may have been placed by second-pass layers, custom objects,

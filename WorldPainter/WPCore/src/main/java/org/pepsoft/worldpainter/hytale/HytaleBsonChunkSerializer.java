@@ -926,9 +926,13 @@ public class HytaleBsonChunkSerializer {
      * @param sectionY The section index (0-9).
      */
     private static byte[] createCalculatedLightData(HytaleChunk chunk, int sectionY) {
-        ByteBuf lightBuffer = ByteBufAllocator.DEFAULT.buffer();
+        // Write empty light data so that Hytale calculates lighting natively.
+        // Pre-baked values caused visual artefacts when players interacted with
+        // blocks because Hytale's runtime recalculation produced different
+        // results from our export-time approximation.
+        ByteBuf lightBuffer = ByteBufAllocator.DEFAULT.buffer(3);
         try {
-            writeCalculatedSkyLightData(lightBuffer, chunk, sectionY);
+            writeEmptyLightData(lightBuffer);
             byte[] lightData = new byte[lightBuffer.readableBytes()];
             lightBuffer.readBytes(lightData);
             return lightData;

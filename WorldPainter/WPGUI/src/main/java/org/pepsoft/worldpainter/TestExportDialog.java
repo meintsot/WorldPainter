@@ -85,6 +85,13 @@ public class TestExportDialog extends WorldPainterDialog {
         checkBoxLeaves.setSelected((stepsToSkip == null) || stepsToSkip.contains(LEAVES));
         checkBoxUnderground.setSelected(checkBoxCaves.isSelected() && checkBoxResources.isSelected());
 
+        // Hytale skips pre-baked lighting entirely (runtime calculates it),
+        // so the checkbox is irrelevant — hide it to avoid confusion.
+        if (org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(world.getPlatform())) {
+            checkBoxLighting.setVisible(false);
+            checkBoxLighting.setSelected(true); // ensure LIGHTING is skipped
+        }
+
         pack();
         setLocationRelativeTo(parent);
         setControlStates();
