@@ -6436,7 +6436,8 @@ public final class App extends JFrame implements BrushControl,
         // Hytale-only layers: hidden for Minecraft
         setLayerHidden(org.pepsoft.worldpainter.hytale.HytaleEntityLayer.INSTANCE, true); // experimental — always hidden for now
         setLayerHidden(org.pepsoft.worldpainter.hytale.HytalePrefabLayer.INSTANCE, ! isHytalePlatform);
-        // HytaleFluidLayer is now internal (set by Flood tools), not user-visible in layers panel
+        // HytaleFluidLayer is internal (set by Flood tools), not user-visible in layers panel
+        setLayerHidden(org.pepsoft.worldpainter.hytale.HytaleFluidLayer.INSTANCE, true);
         setLayerHidden(org.pepsoft.worldpainter.hytale.HytaleEnvironmentLayer.INSTANCE, ! isHytalePlatform);
         // Populate is Minecraft-only (tells MC to generate vegetation/ores); no effect on Hytale
         setLayerHidden(Populate.INSTANCE, isHytalePlatform);
