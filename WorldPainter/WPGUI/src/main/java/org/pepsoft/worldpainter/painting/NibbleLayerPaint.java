@@ -28,7 +28,7 @@ import static org.pepsoft.worldpainter.Constants.TILE_SIZE_BITS;
 import static org.pepsoft.worldpainter.Constants.TILE_SIZE_MASK;
 
 /**
- * Paint which paints a nibble sized layer using a brush, with undo and dynamic level supports.
+ * Paint which paints a nibble or byte sized layer using a brush, with undo and dynamic level supports.
  *
  * <p><strong>Note:</strong> does <em>not</em> do any event inhibitation management.
  *
@@ -37,9 +37,10 @@ import static org.pepsoft.worldpainter.Constants.TILE_SIZE_MASK;
 public class NibbleLayerPaint extends LayerPaint {
     public NibbleLayerPaint(Layer layer) {
         super(layer);
-        if (layer.getDataSize() != Layer.DataSize.NIBBLE) {
-            throw new IllegalArgumentException("Layer " + layer + " not nibble-sized");
+        if ((layer.getDataSize() != Layer.DataSize.NIBBLE) && (layer.getDataSize() != Layer.DataSize.BYTE)) {
+            throw new IllegalArgumentException("Layer " + layer + " not nibble- or byte-sized");
         }
+        range = layer.getDataSize().maxValue - 1;
     }
 
     @Override
@@ -66,7 +67,7 @@ public class NibbleLayerPaint extends LayerPaint {
                     final int currentValue = tile.getLayerValue(layer, x, y);
                     final float strength = dynamicLevel * getStrength(centreX, centreY, tileXInWorld + x, tileYInWorld + y);
                     if (strength != 0f) {
-                        int targetValue = 1 + Math.round(strength * 14);
+                        int targetValue = 1 + Math.round(strength * range);
                         if (targetValue > currentValue) {
                             tile.setLayerValue(layer, x, y, targetValue);
                         }
@@ -80,7 +81,7 @@ public class NibbleLayerPaint extends LayerPaint {
                     final int currentValue = dimension.getLayerValueAt(layer, x, y);
                     final float strength = dynamicLevel * getStrength(centreX, centreY, x, y);
                     if (strength != 0f) {
-                        int targetValue = 1 + Math.round(strength * 14);
+                        int targetValue = 1 + Math.round(strength * range);
                         if (targetValue > currentValue) {
                             dimension.setLayerValueAt(layer, x, y, targetValue);
                         }
@@ -114,7 +115,7 @@ public class NibbleLayerPaint extends LayerPaint {
                     final int currentValue = tile.getLayerValue(layer, x, y);
                     final float strength = dynamicLevel * getFullStrength(centreX, centreY, tileXInWorld + x, tileYInWorld + y);
                     if (strength != 0f) {
-                        int targetValue = 14 - Math.round(strength * 14);
+                        int targetValue = range - Math.round(strength * range);
                         if (targetValue < currentValue) {
                             tile.setLayerValue(layer, x, y, targetValue);
                         }
@@ -128,7 +129,7 @@ public class NibbleLayerPaint extends LayerPaint {
                     final int currentValue = dimension.getLayerValueAt(layer, x, y);
                     final float strength = dynamicLevel * getFullStrength(centreX, centreY, x, y);
                     if (strength != 0f) {
-                        int targetValue = 14 - (int) (strength * 14 + 0.f);
+                        int targetValue = range - (int) (strength * range + 0.f);
                         if (targetValue < currentValue) {
                             dimension.setLayerValueAt(layer, x, y, targetValue);
                         }
@@ -143,7 +144,7 @@ public class NibbleLayerPaint extends LayerPaint {
         final Tile tile = dimension.getTileForEditing(x >> TILE_SIZE_BITS, y >> TILE_SIZE_BITS);
         if (tile != null) {
             final int xInTile = x & TILE_SIZE_MASK, yInTile = y & TILE_SIZE_MASK;
-            final int value = 1 + Math.round(brush.getLevel() * 14);
+            final int value = 1 + Math.round(brush.getLevel() * range);
             if (tile.getLayerValue(layer, xInTile, yInTile) < value) {
                 tile.setLayerValue(layer, xInTile, yInTile, value);
             }
@@ -154,4 +155,6 @@ public class NibbleLayerPaint extends LayerPaint {
     public void removePixel(Dimension dimension, int x, int y) {
         dimension.setLayerValueAt(layer, x, y, 0);
     }
+
+    private final int range;
 }

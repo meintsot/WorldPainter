@@ -901,18 +901,20 @@ public class HytaleWorldExporter implements WorldExporter {
             // Apply second-pass layers (caves, caverns, chasms) - CARVE then ADD_FEATURES
             applySecondPassLayers(dimension, regionCoords, chunksByCoords);
 
-            applyFrostLayer(dimension, regionCoords, chunksByCoords);
-
             if (retainChunksForCustomObjects) {
                 // Apply custom object layers after terrain generation so placement/collision checks can use the final surface.
                 applyCustomObjectLayers(dimension, regionCoords, chunksByCoords);
             }
 
             // Re-seal fluid bodies: restore any fluid blocks that were cleared
-            // by layer exporters (caves, chasms, frost, custom objects) during
+            // by layer exporters (caves, chasms, custom objects) during
             // post-processing. Hytale has no runtime water flow, so every fluid
             // block must be explicitly present in the exported data.
             sealFluidBodies(dimension, chunksByCoords);
+
+            // Apply frost AFTER sealing fluid bodies so that ice placed on
+            // water surfaces is not overwritten by the fluid restoration pass.
+            applyFrostLayer(dimension, regionCoords, chunksByCoords);
 
             convertCoveredGrass(chunksByCoords);
 
@@ -1148,7 +1150,9 @@ public class HytaleWorldExporter implements WorldExporter {
      *       In Minecraft, runtime water flow fills these shelves automatically.</li>
      * </ol>
      * <p>
-     * Must be called after all layer processing and before lighting/void passes.
+     * Must be called after all layer processing (except frost) and before
+     * frost/lighting/void passes. Frost runs after this so that ice placed on
+     * water surfaces is not overwritten.
      */
     private void sealFluidBodies(Dimension dimension, Map<Long, HytaleChunk> chunksByCoords) {
         int sealed = 0;
@@ -1195,7 +1199,7 @@ public class HytaleWorldExporter implements WorldExporter {
                     }
 
                     // Above terrain: forcefully restore fluid, overwriting any
-                    // blocks placed by layer exporters (ground cover, frost, etc.)
+                    // blocks placed by layer exporters (ground cover, etc.)
                     for (int y = terrainHeight + 1; y <= waterLevel; y++) {
                         chunk.setHytaleBlock(localX, y, localZ, HytaleBlock.EMPTY);
                         chunk.getSections()[y >> 5].setFluid(localX, y & 31, localZ, fluidId, 1);
@@ -1216,7 +1220,7 @@ public class HytaleWorldExporter implements WorldExporter {
         // the entire shallow shelf around a water body is properly flooded.
         //
         // We check the actual block at waterLevel rather than relying on
-        // the heightmap, because layer processors (ground cover, frost,
+        // the heightmap, because layer processors (ground cover,
         // custom objects) and surfaceOnly terrain types can place blocks
         // above waterLevel that raise the heightmap past waterLevel.
         int passSealed;
