@@ -215,7 +215,8 @@ public class HytaleBlockPalette extends JPanel {
         }
         
         for (String id : blockIds) {
-            if (search.isEmpty() || id.toLowerCase().contains(search)) {
+            String displayName = HytaleBlockRegistry.formatDisplayName(id).toLowerCase();
+            if (search.isEmpty() || id.toLowerCase().contains(search) || displayName.contains(search)) {
                 BlockDefinition def = registry.getBlock(id);
                 if (def != null) {
                     blockListModel.addElement(new BlockItem(id, def));
@@ -244,7 +245,7 @@ public class HytaleBlockPalette extends JPanel {
                 "DrawType: %s<br>" +
                 "Opacity: %s<br>" +
                 "Rotatable: %s</html>",
-                def.displayName,
+                HytaleBlockRegistry.formatDisplayName(item.id),
                 def.category,
                 def.material,
                 def.drawType,
@@ -398,7 +399,7 @@ public class HytaleBlockPalette extends JPanel {
         
         @Override
         public String toString() {
-            return definition.displayName;
+            return HytaleBlockRegistry.formatDisplayName(id);
         }
     }
     
@@ -413,7 +414,7 @@ public class HytaleBlockPalette extends JPanel {
             
             if (value instanceof BlockItem) {
                 BlockItem item = (BlockItem) value;
-                label.setText(item.definition.displayName);
+                label.setText(HytaleBlockRegistry.formatDisplayName(item.id));
                 
                 // Create small icon
                 BufferedImage icon = createBlockIcon(item.definition, 16);

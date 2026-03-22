@@ -739,7 +739,7 @@ public class HytaleBlockRegistry {
             "Soil_Snow", "Soil_Snow_Half",
             "Soil_Snow_Brick", "Soil_Snow_Brick_Beam", "Soil_Snow_Brick_Half",
             "Soil_Snow_Brick_Stairs", "Soil_Snow_Brick_Wall",
-            "Rock_Ice", "Rock_Ice_Icicles", "Rock_Ice_Permafrost",
+            "Rock_Ice", "Rock_Ice_Blue", "Rock_Ice_Icicles", "Rock_Ice_Permafrost",
             "Rock_Ice_Stalactite_Large", "Rock_Ice_Stalactite_Small"
         );
 

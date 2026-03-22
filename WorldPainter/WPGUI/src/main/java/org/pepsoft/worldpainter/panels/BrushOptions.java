@@ -231,6 +231,10 @@ public class BrushOptions extends javax.swing.JPanel implements Observer {
                 onlyOn = ((CombinedFilter) filter.onlyOnFilter).getFilters().stream()
                         .map(f -> toPaint((OnlyOnTerrainOrLayerFilter) f))
                         .collect(Collectors.toCollection(ArrayList::new));
+            } else if (filter.onlyOnFilter instanceof AllOfFilter) {
+                onlyOn = ((AllOfFilter) filter.onlyOnFilter).getFilters().stream()
+                        .map(f -> toPaint((OnlyOnTerrainOrLayerFilter) f))
+                        .collect(Collectors.toCollection(ArrayList::new));
             } else if (filter.onlyOnFilter != null) {
                 throw new UnsupportedOperationException("Unsupported onlyOn filter type " + filter.onlyOnFilter.getClass());
             }
@@ -242,6 +246,10 @@ public class BrushOptions extends javax.swing.JPanel implements Observer {
                         .collect(Collectors.toCollection(ArrayList::new));
             } else if (filter.exceptOnFilter instanceof CombinedFilter) {
                 exceptOn = ((CombinedFilter) filter.exceptOnFilter).getFilters().stream()
+                        .map(f -> toPaint((ExceptOnTerrainOrLayerFilter) f))
+                        .collect(Collectors.toCollection(ArrayList::new));
+            } else if (filter.exceptOnFilter instanceof AllOfFilter) {
+                exceptOn = ((AllOfFilter) filter.exceptOnFilter).getFilters().stream()
                         .map(f -> toPaint((ExceptOnTerrainOrLayerFilter) f))
                         .collect(Collectors.toCollection(ArrayList::new));
             } else if (filter.exceptOnFilter != null) {
