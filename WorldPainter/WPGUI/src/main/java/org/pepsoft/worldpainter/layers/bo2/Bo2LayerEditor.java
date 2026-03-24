@@ -156,15 +156,9 @@ public class Bo2LayerEditor extends AbstractLayerEditor<Bo2Layer> implements Lis
         spinnerBlocksPerAttempt.setValue(layer.getDensity());
         spinnerGrid.setValue(layer.getGridX());
         spinnerRandomOffset.setValue(layer.getRandomDisplacement());
-        if (checkBoxNoPhysics != null) {
-            checkBoxNoPhysics.setSelected(layer.isNoPhysics());
-        }
-        
         refreshLeafDecaySettings();
         updateCategories();
-        if (isHytaleWorld) {
-            populateBlockMappings();
-        }
+        restoreLayerBackedControls();
         
         settingsChanged();
     }
@@ -245,6 +239,7 @@ public class Bo2LayerEditor extends AbstractLayerEditor<Bo2Layer> implements Lis
             }
 
             wrapperPanel.add(bottomPanel, BorderLayout.SOUTH);
+            restoreLayerBackedControls();
         }
         return wrapperPanel;
     }
@@ -301,6 +296,15 @@ public class Bo2LayerEditor extends AbstractLayerEditor<Bo2Layer> implements Lis
     private void settingsChanged() {
         setControlStates();
         context.settingsChanged();
+    }
+
+    private void restoreLayerBackedControls() {
+        if (checkBoxNoPhysics != null) {
+            checkBoxNoPhysics.setSelected((layer != null) && layer.isNoPhysics());
+        }
+        if (isHytaleWorld && (blockMappingTableModel != null)) {
+            populateBlockMappings();
+        }
     }
     
     private void setControlStates() {
