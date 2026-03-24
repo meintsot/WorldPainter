@@ -780,16 +780,15 @@ public class HytaleRegionFile implements Closeable {
     
     /**
      * Read half-byte (nibble) packed data.
-     * Standard nibble convention (matching Hytale's BitUtil.getNibble / setNibble):
-     * - Even index → LOW nibble (bits 0-3)
-     * - Odd index → HIGH nibble (bits 4-7)
+     * Hytale's BitUtil packs even indices into the high nibble and odd indices
+     * into the low nibble.
      */
     private void readHalfByteData(ByteBuf buf, int[] output) {
         for (int i = 0; i < output.length; i += 2) {
             int b = buf.readByte() & 0xFF;
-            output[i] = b & 0x0F;                 // Even → LOW nibble
+            output[i] = (b >> 4) & 0x0F;         // Even → HIGH nibble
             if (i + 1 < output.length) {
-                output[i + 1] = (b >> 4) & 0x0F;  // Odd → HIGH nibble
+                output[i + 1] = b & 0x0F;        // Odd → LOW nibble
             }
         }
     }

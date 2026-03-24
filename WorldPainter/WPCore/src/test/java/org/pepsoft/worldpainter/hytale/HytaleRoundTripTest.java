@@ -101,6 +101,107 @@ public class HytaleRoundTripTest {
     }
 
     @Test
+    public void exportKeepsSeaLevelBeachColumnsDry() throws Exception {
+        World2 world = new World2(HYTALE, 0, 320);
+        world.setName("SeaLevelBeachExport");
+        world.setCreateGoodiesChest(false);
+
+        long seed = 77L;
+        TileFactory tileFactory = TileFactoryFactory.createFlatTileFactory(
+            seed, Terrain.GRASS, 0, 320, 64, 62, false, false);
+        Dimension.Anchor anchor = new Dimension.Anchor(DIM_NORMAL, Dimension.Role.DETAIL, false, 0);
+        Dimension dim = new Dimension(world, "Surface", seed, tileFactory, anchor);
+        dim.setEventsInhibited(true);
+
+        Tile tile = tileFactory.createTile(0, 0);
+        for (int x = 0; x < 128; x++) {
+            for (int z = 0; z < 128; z++) {
+                tile.setHeight(x, z, 64);
+                tile.setWaterLevel(x, z, 62);
+                tile.setTerrain(x, z, Terrain.GRASS);
+                HytaleTerrainLayer.setTerrainIndex(tile, x, z, HytaleTerrain.GRASS.getLayerIndex());
+            }
+        }
+        tile.setHeight(0, 0, 62);
+        tile.setTerrain(0, 0, Terrain.SAND);
+        HytaleTerrainLayer.setTerrainIndex(tile, 0, 0, HytaleTerrain.SAND.getLayerIndex());
+
+        tile.setHeight(1, 0, 61);
+        tile.setTerrain(1, 0, Terrain.SAND);
+        HytaleTerrainLayer.setTerrainIndex(tile, 1, 0, HytaleTerrain.SAND.getLayerIndex());
+
+        dim.addTile(tile);
+        dim.setEventsInhibited(false);
+        world.addDimension(dim);
+
+        File exportBaseDir = tempDir.newFolder("sea_level_beach_export");
+        new HytaleWorldExporter(world, new WorldExportSettings()).export(exportBaseDir, "SeaLevelBeachExport", null, null);
+
+        File actualWorldDir = new File(new File(new File(new File(exportBaseDir, "SeaLevelBeachExport"), "universe"), "worlds"), "default");
+        HytaleChunkStore chunkStore = new HytaleChunkStore(actualWorldDir, 0, 320);
+        try {
+            HytaleChunk chunk = (HytaleChunk) chunkStore.getChunk(0, 0);
+            assertNotNull(chunk);
+            assertEquals("Sea-level sand should remain the surface block at the shoreline",
+                HytaleTerrain.SAND.getPrimaryBlock().id, chunk.getHytaleBlock(0, 62, 0).id);
+            assertEquals("Sea-level beach columns should not be flooded away", 0,
+                chunk.getSections()[62 >> 5].getFluidId(0, 62 & 31, 0));
+            assertTrue("Adjacent underwater shelf should still contain fluid",
+                chunk.getSections()[62 >> 5].getFluidId(1, 62 & 31, 0) != 0);
+        } finally {
+            chunkStore.close();
+        }
+    }
+
+    @Test
+    public void exportTreatsSolidMossBlocksAsReplacingTerrain() throws Exception {
+        World2 world = new World2(HYTALE, 0, 320);
+        world.setName("MossBlockExport");
+        world.setCreateGoodiesChest(false);
+
+        long seed = 78L;
+        TileFactory tileFactory = TileFactoryFactory.createFlatTileFactory(
+            seed, Terrain.GRASS, 0, 320, 64, 62, false, false);
+        Dimension.Anchor anchor = new Dimension.Anchor(DIM_NORMAL, Dimension.Role.DETAIL, false, 0);
+        Dimension dim = new Dimension(world, "Surface", seed, tileFactory, anchor);
+        dim.setEventsInhibited(true);
+
+        Tile tile = tileFactory.createTile(0, 0);
+        for (int x = 0; x < 128; x++) {
+            for (int z = 0; z < 128; z++) {
+                tile.setHeight(x, z, 64);
+                tile.setWaterLevel(x, z, 62);
+                tile.setTerrain(x, z, Terrain.GRASS);
+                HytaleTerrainLayer.setTerrainIndex(tile, x, z, HytaleTerrain.GRASS.getLayerIndex());
+            }
+        }
+        HytaleTerrainLayer.setTerrainIndex(tile, 0, 0, HytaleTerrain.GREEN_MOSS_BLOCK.getLayerIndex());
+
+        dim.addTile(tile);
+        dim.setEventsInhibited(false);
+        world.addDimension(dim);
+
+        File exportBaseDir = tempDir.newFolder("moss_block_export");
+        new HytaleWorldExporter(world, new WorldExportSettings()).export(exportBaseDir, "MossBlockExport", null, null);
+
+        File actualWorldDir = new File(new File(new File(new File(exportBaseDir, "MossBlockExport"), "universe"), "worlds"), "default");
+        HytaleChunkStore chunkStore = new HytaleChunkStore(actualWorldDir, 0, 320);
+        try {
+            HytaleChunk chunk = (HytaleChunk) chunkStore.getChunk(0, 0);
+            assertNotNull(chunk);
+            assertEquals("Solid moss block terrains should replace the surface block",
+                HytaleTerrain.GREEN_MOSS_BLOCK.getPrimaryBlock().id, chunk.getHytaleBlock(0, 64, 0).id);
+            HytaleBlock aboveSurfaceBlock = chunk.getHytaleBlock(0, 65, 0);
+            assertTrue("Solid moss block terrains should not be exported as overlays above the surface",
+                (aboveSurfaceBlock == null) || aboveSurfaceBlock.isEmpty());
+            assertEquals("Solid moss block terrain should not raise the column by adding an overlay", 64,
+                chunk.getHeight(0, 0));
+        } finally {
+            chunkStore.close();
+        }
+    }
+
+    @Test
     public void chunkStoreOnlyEnumeratesPresentChunks() throws Exception {
         File worldDir = tempDir.newFolder("sparse_hytale_world");
 
