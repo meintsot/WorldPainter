@@ -155,15 +155,39 @@ public class HytaleBlockRegistry {
 
     /**
      * Ensure all Hytale blocks are registered as {@link Material} objects under
-     * the "hytale" namespace. Safe to call multiple times; only registers once.
+     * the "hytale" namespace. Surface-only blocks (vegetation, decorations,
+     * leaves) are registered with {@code veryInsubstantial = true} so that
+     * custom object layers can place objects on top of them. Safe to call
+     * multiple times; only registers once per block name.
      */
     public static synchronized void ensureMaterialsRegistered() {
         for (String name : getAllBlockNames()) {
             if (registeredMaterialNames.add(name)) {
-                Material.get(HYTALE_NAMESPACE + ":" + name);
+                String qualifiedName = HYTALE_NAMESPACE + ":" + name;
+                if (isSurfaceOnlyBlock(name)) {
+                    Material.registerSpec(qualifiedName, createSurfaceOnlySpec());
+                }
+                Material.get(qualifiedName);
             }
         }
         logger.info("Registered {} Hytale block types as Materials", getAllBlockNames().size());
+    }
+
+    private static Map<String, Object> createSurfaceOnlySpec() {
+        Map<String, Object> spec = new HashMap<>();
+        spec.put("opacity", 0);
+        spec.put("receivesLight", true);
+        spec.put("terrain", false);
+        spec.put("insubstantial", true);
+        spec.put("veryInsubstantial", true);
+        spec.put("resource", false);
+        spec.put("tileEntity", false);
+        spec.put("treeRelated", false);
+        spec.put("vegetation", true);
+        spec.put("blockLight", 0);
+        spec.put("natural", true);
+        spec.put("watery", false);
+        return spec;
     }
 
     // =========================================================================
