@@ -1314,6 +1314,24 @@ public class HytaleWorldExporter implements WorldExporter {
         }
     }
 
+    /** Deferred prefab paste — collected during column loop, executed after all terrain is placed. */
+    private static final class PendingPrefabPaste {
+        final int localX, anchorY, localZ, worldX, worldZ;
+        final String prefabPath;
+        final String prefabName; // for fallback marker (display name for both layer types)
+
+        PendingPrefabPaste(int localX, int anchorY, int localZ,
+                           int worldX, int worldZ, String prefabPath, String prefabName) {
+            this.localX = localX;
+            this.anchorY = anchorY;
+            this.localZ = localZ;
+            this.worldX = worldX;
+            this.worldZ = worldZ;
+            this.prefabPath = prefabPath;
+            this.prefabName = prefabName;
+        }
+    }
+
     /**
      * Populate a Hytale chunk with terrain data from WorldPainter dimension.
      * Uses HytaleBlockMapping for proper block conversion and sets biomes.
@@ -1340,7 +1358,8 @@ public class HytaleWorldExporter implements WorldExporter {
         int waterColumns = 0;
         int specialFluidColumns = 0;
         Map<String, Integer> fluidTypeCounts = new HashMap<>();
-        
+        List<PendingPrefabPaste> pendingPrefabPastes = new ArrayList<>();
+
         // Hytale chunk is 32x32 blocks
         for (int localX = 0; localX < HytaleChunk.CHUNK_SIZE; localX++) {
             for (int localZ = 0; localZ < HytaleChunk.CHUNK_SIZE; localZ++) {
@@ -1551,17 +1570,14 @@ public class HytaleWorldExporter implements WorldExporter {
                     }
                 }
 
-                // ── Prefab Layer ─────────────────────────────────────
+                // ── Prefab Layer (deferred) ─────────────────────────────
                 int prefabLayerValue = tile.getLayerValue(HytalePrefabLayer.INSTANCE, tileLocalX, tileLocalZ);
                 if (prefabLayerValue > 0 && prefabLayerValue < HytalePrefabLayer.PREFAB_PATHS.length) {
                     String prefabPath = HytalePrefabLayer.PREFAB_PATHS[prefabLayerValue];
                     if (prefabPath != null) {
-                        // Paste prefab blocks inline (Hytale reads blocks, not markers)
-                        if (!prefabPaster.paste(chunk, localX, height + 1, localZ, worldX, worldZ, prefabPath)) {
-                            // Fallback: keep marker for debugging if paste failed
-                            chunk.addPrefabMarker(localX, height + 1, localZ,
-                                HytalePrefabLayer.PREFAB_NAMES[prefabLayerValue], prefabPath);
-                        }
+                        pendingPrefabPastes.add(new PendingPrefabPaste(
+                                localX, height + 1, localZ, worldX, worldZ, prefabPath,
+                                HytalePrefabLayer.PREFAB_NAMES[prefabLayerValue]));
                     }
                 }
 
@@ -1606,12 +1622,10 @@ public class HytaleWorldExporter implements WorldExporter {
                     }
                     PrefabFileEntry selected = spLayer.selectPrefab(placeX, placeZ);
                     int placeHeight = tile.getIntHeight(placeX & 0x7F, placeZ & 0x7F);
-                    // Paste prefab blocks inline (Hytale reads blocks, not markers)
-                    if (!prefabPaster.paste(chunk, placeLocalX, placeHeight + 1, placeLocalZ, placeX, placeZ, selected.getRelativePath())) {
-                        // Fallback: keep marker for debugging if paste failed
-                        chunk.addPrefabMarker(placeLocalX, placeHeight + 1, placeLocalZ,
-                            selected.getDisplayName(), selected.getRelativePath());
-                    }
+                    pendingPrefabPastes.add(new PendingPrefabPaste(
+                            placeLocalX, placeHeight + 1, placeLocalZ,
+                            placeX, placeZ, selected.getRelativePath(),
+                            selected.getDisplayName()));
                 }
                 
                 // Update heightmap - WorldPainter height is the Y coordinate of the surface block
@@ -1619,7 +1633,21 @@ public class HytaleWorldExporter implements WorldExporter {
                 chunk.setHeight(localX, localZ, height);
             }
         }
-        
+
+        // ── Deferred Prefab Pastes ──────────────────────────────
+        // Execute all prefab pastes AFTER terrain is fully populated in every
+        // column, so multi-column prefabs are not overwritten by later terrain.
+        for (PendingPrefabPaste pending : pendingPrefabPastes) {
+            if (!prefabPaster.paste(chunk, pending.localX, pending.anchorY, pending.localZ,
+                    pending.worldX, pending.worldZ, pending.prefabPath)) {
+                // Fallback: keep marker for debugging if paste failed
+                if (pending.prefabName != null) {
+                    chunk.addPrefabMarker(pending.localX, pending.anchorY, pending.localZ,
+                            pending.prefabName, pending.prefabPath);
+                }
+            }
+        }
+
         // Log summary for this chunk area
         if (waterColumns > 0 || specialFluidColumns > 0) {
             logger.warn("Chunk at ({}, {}): {} water-body columns, {} surface-fluid columns, height {}-{}, waterLevel {}-{}, fluids: {}",
