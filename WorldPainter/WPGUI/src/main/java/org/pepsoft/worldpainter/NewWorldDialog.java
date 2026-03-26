@@ -328,12 +328,7 @@ public class NewWorldDialog extends WorldPainterDialog {
 
         // Export settings
         final Configuration config = Configuration.getInstance();
-        if (!DefaultPlugin.HYTALE.id.equals(platform.id)) {
-            world.setCreateGoodiesChest(config.isDefaultCreateGoodiesChest());
-            world.setMapFeatures(config.isDefaultMapFeatures());
-            world.setGameType(config.getDefaultGameType());
-            world.setAllowCheats(config.isDefaultAllowCheats());
-        }
+        config.applyDefaultGameSettings(world);
 
         world.addDimension(dimension);
         if ((! platform.capabilities.contains(NAME_BASED)) && (platform != JAVA_MCREGION)) {

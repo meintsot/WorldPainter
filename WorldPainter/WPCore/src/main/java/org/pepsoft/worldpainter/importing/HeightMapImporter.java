@@ -76,10 +76,7 @@ public class HeightMapImporter {
 
         // Export settings
         final Configuration config = Configuration.getInstance();
-        world.setCreateGoodiesChest(config.isDefaultCreateGoodiesChest());
-        world.setMapFeatures(config.isDefaultMapFeatures());
-        world.setGameType(config.getDefaultGameType());
-        world.setAllowCheats(config.isDefaultAllowCheats());
+        config.applyDefaultGameSettings(world);
         
         // Turn off smooth snow, except for high res imports
         if (! highRes) {

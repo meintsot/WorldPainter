@@ -16,6 +16,8 @@ import org.pepsoft.util.ProgressReceiver;
 import org.pepsoft.worldpainter.TileRenderer.LightOrigin;
 import org.pepsoft.worldpainter.exporting.ExportSettings;
 import org.pepsoft.worldpainter.exporting.ExportSettingsEditor;
+import org.pepsoft.worldpainter.hytale.HytaleTerrainHelper;
+import org.pepsoft.worldpainter.hytale.HytaleWorldSettings;
 import org.pepsoft.worldpainter.plugins.PlatformManager;
 import org.pepsoft.worldpainter.plugins.PlatformProvider;
 import org.pepsoft.worldpainter.themes.SimpleTheme;
@@ -73,9 +75,9 @@ public class PreferencesDialog extends WorldPainterDialog {
         initComponents();
         
         final Platform initialPlatform = Configuration.getInstance().getDefaultPlatform();
-        final boolean hytaleInitialPlatform = org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(initialPlatform);
+        final boolean hytaleInitialPlatform = HytaleTerrainHelper.isHytale(initialPlatform);
         comboBoxSurfaceMaterial.setModel(new DefaultComboBoxModel(hytaleInitialPlatform
-                ? org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.deduplicateForHytaleUi(Terrain.PICK_LIST)
+                ? HytaleTerrainHelper.deduplicateForHytaleUi(Terrain.PICK_LIST)
                 : Terrain.PICK_LIST));
         comboBoxSurfaceMaterial.setRenderer(hytaleInitialPlatform
                 ? new org.pepsoft.worldpainter.hytale.HytaleTerrainListCellRenderer(colourScheme)
@@ -116,9 +118,9 @@ public class PreferencesDialog extends WorldPainterDialog {
     
     private void updateSurfaceMaterialForPlatform(Platform platform) {
         Object previousSelection = comboBoxSurfaceMaterial.getSelectedItem();
-        final boolean hytalePlatform = org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(platform);
+        final boolean hytalePlatform = HytaleTerrainHelper.isHytale(platform);
         comboBoxSurfaceMaterial.setModel(new DefaultComboBoxModel(hytalePlatform
-                ? org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.deduplicateForHytaleUi(Terrain.PICK_LIST)
+                ? HytaleTerrainHelper.deduplicateForHytaleUi(Terrain.PICK_LIST)
                 : Terrain.PICK_LIST));
         if (hytalePlatform) {
             comboBoxSurfaceMaterial.setRenderer(new org.pepsoft.worldpainter.hytale.HytaleTerrainListCellRenderer(colourScheme));
@@ -127,6 +129,88 @@ public class PreferencesDialog extends WorldPainterDialog {
         }
         if (previousSelection instanceof Terrain) {
             comboBoxSurfaceMaterial.setSelectedItem(previousSelection);
+        }
+    }
+
+    private boolean isHytalePlatform(Platform platform) {
+        return HytaleTerrainHelper.isHytale(platform);
+    }
+
+    private List<GameType> getSupportedGameTypes(Platform platform) {
+        return isHytalePlatform(platform) ? asList(GameType.ADVENTURE, GameType.CREATIVE) : platform.supportedGameTypes;
+    }
+
+    private GameType getStoredDefaultGameType(Platform platform) {
+        return isHytalePlatform(platform) ? HytaleWorldSettings.normalizeGameType(defaultHytaleGameType) : defaultGameType;
+    }
+
+    private void storeDefaultGameSettingsForPlatform(Platform platform) {
+        if (platform == null) {
+            return;
+        }
+        if (isHytalePlatform(platform)) {
+            defaultHytaleFallDamageEnabled = checkBoxChestOfGoodies.isSelected();
+            defaultHytaleNpcSpawningEnabled = checkBoxStructures.isSelected();
+            defaultHytaleGameType = HytaleWorldSettings.normalizeGameType((GameType) comboBoxMode.getSelectedItem());
+            defaultHytalePvpEnabled = checkBoxCheats.isSelected();
+        } else {
+            defaultCreateGoodiesChest = checkBoxChestOfGoodies.isSelected();
+            defaultMapFeatures = checkBoxStructures.isSelected();
+            defaultGameType = (GameType) comboBoxMode.getSelectedItem();
+            defaultAllowCheats = checkBoxCheats.isSelected();
+        }
+    }
+
+    private void updateDefaultGameSettingsControls(Platform platform) {
+        final boolean hytalePlatform = isHytalePlatform(platform);
+        final List<GameType> supportedGameTypes = getSupportedGameTypes(platform);
+        comboBoxMode.setModel(new DefaultComboBoxModel<>(supportedGameTypes.toArray(new GameType[0])));
+        GameType selectedGameType = getStoredDefaultGameType(platform);
+        if (! supportedGameTypes.contains(selectedGameType)) {
+            selectedGameType = supportedGameTypes.get(0);
+        }
+        comboBoxMode.setSelectedItem(selectedGameType);
+
+        if (hytalePlatform) {
+            jLabel17.setText("Default Hytale world settings");
+            checkBoxChestOfGoodies.setText("Enable fall damage");
+            checkBoxChestOfGoodies.setToolTipText("Whether fall damage is enabled in newly created Hytale worlds");
+            checkBoxChestOfGoodies.setSelected(defaultHytaleFallDamageEnabled);
+            checkBoxChestOfGoodies.setEnabled(true);
+
+            checkBoxStructures.setText("Enable NPC spawning");
+            checkBoxStructures.setToolTipText("Whether NPC spawning is enabled in newly created Hytale worlds");
+            checkBoxStructures.setSelected(defaultHytaleNpcSpawningEnabled);
+
+            checkBoxCheats.setText("Enable PvP");
+            checkBoxCheats.setToolTipText("Whether player-versus-player combat is enabled in newly created Hytale worlds");
+            checkBoxCheats.setSelected(defaultHytalePvpEnabled);
+        } else {
+            jLabel17.setText("Default export settings");
+            checkBoxChestOfGoodies.setText("Include chest of goodies");
+            checkBoxChestOfGoodies.setToolTipText("Include a chest with tools and resources near spawn for you as the level designer");
+            checkBoxChestOfGoodies.setSelected(defaultCreateGoodiesChest);
+            checkBoxChestOfGoodies.setEnabled((platform != JAVA_ANVIL_1_15) && (platform != JAVA_ANVIL_1_17)); // TODO why?!?!
+
+            checkBoxStructures.setText("Structures");
+            checkBoxStructures.setToolTipText("Whether structures should be generated in newly created worlds");
+            checkBoxStructures.setSelected(defaultMapFeatures);
+
+            checkBoxCheats.setText("Allow Cheats");
+            checkBoxCheats.setToolTipText("Whether to allow cheats (single player commands)");
+            checkBoxCheats.setSelected(defaultAllowCheats);
+        }
+    }
+
+    private void updateDefaultExportSettingsLink(ExportSettings platformDefaultExportSettings) {
+        if (platformDefaultExportSettings != null) {
+            labelEditExportSettingsLink.setText("<html><u>Configure default post processing settings</u></html>");
+            labelEditExportSettingsLink.setForeground(BLUE);
+            labelEditExportSettingsLink.setCursor(new Cursor(HAND_CURSOR));
+        } else {
+            labelEditExportSettingsLink.setText("No default post processing settings for this platform");
+            labelEditExportSettingsLink.setForeground(GRAY);
+            labelEditExportSettingsLink.setCursor(null);
         }
     }
 
@@ -168,6 +252,14 @@ public class PreferencesDialog extends WorldPainterDialog {
 
             defaultTerrainAndLayerSettings = config.getDefaultTerrainAndLayerSettings(); // TODO this should be cloned too
             defaultExportSettings = (config.getDefaultExportSettings() != null) ? config.getDefaultExportSettings().clone() : null;
+            defaultCreateGoodiesChest = config.isDefaultCreateGoodiesChest();
+            defaultMapFeatures = config.isDefaultMapFeatures();
+            defaultGameType = config.getDefaultGameType();
+            defaultAllowCheats = config.isDefaultAllowCheats();
+            defaultHytaleFallDamageEnabled = config.isDefaultHytaleFallDamageEnabled();
+            defaultHytaleNpcSpawningEnabled = config.isDefaultHytaleNpcSpawningEnabled();
+            defaultHytaleGameType = config.getDefaultHytaleGameType();
+            defaultHytalePvpEnabled = config.isDefaultHytalePvpEnabled();
             checkBoxResourcesEverywhere.setSelected(config.getDefaultResourcesMinimumLevel() > 0);
 
             spinnerWidth.setValue(config.getDefaultWidth() * 128);
@@ -194,12 +286,8 @@ public class PreferencesDialog extends WorldPainterDialog {
             checkBoxExtendedBlockIds.setSelected(config.isDefaultExtendedBlockIds());
 
             // Export settings
-            checkBoxChestOfGoodies.setSelected(config.isDefaultCreateGoodiesChest());
             comboBoxWorldType.setSelectedItem(config.getDefaultGenerator().getType());
             generatorOptions = (config.getDefaultGenerator() instanceof CustomGenerator) ? ((CustomGenerator) config.getDefaultGenerator()).getName() : null;
-            checkBoxStructures.setSelected(config.isDefaultMapFeatures());
-            comboBoxMode.setSelectedItem(config.getDefaultGameType());
-            checkBoxCheats.setSelected(config.isDefaultAllowCheats());
 
             previousMaxHeight = config.getDefaultMaxHeight();
 
@@ -307,6 +395,7 @@ public class PreferencesDialog extends WorldPainterDialog {
         config.setDefaultCircularWorld(checkBoxCircular.isSelected());
         config.setDefaultHeight(((Integer) spinnerHeight.getValue()) / 128);
         final Platform platform = (Platform) comboBoxPlatform.getSelectedItem();
+        storeDefaultGameSettingsForPlatform(platform);
         config.setDefaultPlatform(platform);
         config.setDefaultMaxHeight((Integer) comboBoxHeight.getSelectedItem());
         config.setHilly(radioButtonHilly.isSelected());
@@ -322,7 +411,7 @@ public class PreferencesDialog extends WorldPainterDialog {
         config.setDefaultExtendedBlockIds(checkBoxExtendedBlockIds.isSelected());
         
         // Export settings
-        config.setDefaultCreateGoodiesChest(checkBoxChestOfGoodies.isSelected());
+        config.setDefaultCreateGoodiesChest(defaultCreateGoodiesChest);
         final MapGenerator defaultGenerator;
         final Generator generatorType = (Generator) comboBoxWorldType.getSelectedItem();
         switch (generatorType) {
@@ -340,9 +429,13 @@ public class PreferencesDialog extends WorldPainterDialog {
                 throw new InternalError("Generator type " + generatorType + " not supported");
         }
         config.setDefaultGenerator(defaultGenerator);
-        config.setDefaultMapFeatures(checkBoxStructures.isSelected());
-        config.setDefaultGameType((GameType) comboBoxMode.getSelectedItem());
-        config.setDefaultAllowCheats(checkBoxCheats.isSelected());
+        config.setDefaultMapFeatures(defaultMapFeatures);
+        config.setDefaultGameType(defaultGameType);
+        config.setDefaultAllowCheats(defaultAllowCheats);
+        config.setDefaultHytaleFallDamageEnabled(defaultHytaleFallDamageEnabled);
+        config.setDefaultHytaleNpcSpawningEnabled(defaultHytaleNpcSpawningEnabled);
+        config.setDefaultHytaleGameType(defaultHytaleGameType);
+        config.setDefaultHytalePvpEnabled(defaultHytalePvpEnabled);
 
         config.setLookAndFeel(Configuration.LookAndFeel.values()[comboBoxLookAndFeel.getSelectedIndex()]);
         if (radioButtonUIScaleAuto.isSelected()) {
@@ -480,6 +573,7 @@ public class PreferencesDialog extends WorldPainterDialog {
         }
         programmaticChange = true;
         try {
+            storeDefaultGameSettingsForPlatform(previousPlatform);
             final Platform platform = (Platform) comboBoxPlatform.getSelectedItem();
             final Generator currentGenerator = (Generator) comboBoxWorldType.getSelectedItem();
             final List<Generator> supportedGenerators = new ArrayList<>(platform.supportedGenerators);
@@ -505,13 +599,6 @@ public class PreferencesDialog extends WorldPainterDialog {
             setMaximum(spinnerWaterLevel, newMaxHeight - 1);
             setMinimum(spinnerRange, newMinHeight);
             setMaximum(spinnerRange, newMaxHeight - 1);
-            final GameType currentGameType = (GameType) comboBoxMode.getSelectedItem();
-            final List<GameType> supportedGameTypes = platform.supportedGameTypes;
-            comboBoxMode.setModel(new DefaultComboBoxModel<>(supportedGameTypes.toArray(new GameType[0])));
-            if ((currentGameType != null) && supportedGameTypes.contains(currentGameType)) {
-                comboBoxMode.setSelectedItem(currentGameType);
-            }
-            checkBoxChestOfGoodies.setEnabled((platform != JAVA_ANVIL_1_15) && (platform != JAVA_ANVIL_1_17)); // TODO why?!?!
             checkBoxExtendedBlockIds.setEnabled(platform.capabilities.contains(BLOCK_BASED) && (!platform.capabilities.contains(NAME_BASED)) && (platform != JAVA_MCREGION));
             try {
                 resizeDimension(defaultTerrainAndLayerSettings, newMinHeight, newMaxHeight, IDENTITY, true, null);
@@ -523,16 +610,14 @@ public class PreferencesDialog extends WorldPainterDialog {
             final PlatformProvider platformProvider = PlatformManager.getInstance().getPlatformProvider(platform);
             final ExportSettings platformDefaultExportSettings = platformProvider.getDefaultExportSettings(platform);
             if (platformDefaultExportSettings != null) {
-                labelEditExportSettingsLink.setForeground(BLUE);
-                labelEditExportSettingsLink.setCursor(new Cursor(HAND_CURSOR));
                 if ((defaultExportSettings != null) && (platformDefaultExportSettings.getClass() != defaultExportSettings.getClass())) {
                     defaultExportSettings = null;
                 }
             } else {
                 defaultExportSettings = null;
-                labelEditExportSettingsLink.setForeground(GRAY);
-                labelEditExportSettingsLink.setCursor(null);
             }
+            updateDefaultExportSettingsLink(platformDefaultExportSettings);
+            updateDefaultGameSettingsControls(platform);
 
             previousPlatform = platform;
             
@@ -552,21 +637,13 @@ public class PreferencesDialog extends WorldPainterDialog {
         comboBoxWorldType.setModel(new DefaultComboBoxModel<>(supportedGenerators.toArray(new Generator[0])));
         final List<Integer> supportedMaxHeights = stream(platform.maxHeights).boxed().collect(toList());
         comboBoxHeight.setModel(new DefaultComboBoxModel<>(supportedMaxHeights.toArray(new Integer[0])));
-        final List<GameType> supportedGameTypes = platform.supportedGameTypes;
-        comboBoxMode.setModel(new DefaultComboBoxModel<>(supportedGameTypes.toArray(new GameType[0])));
-        checkBoxChestOfGoodies.setEnabled((platform != JAVA_ANVIL_1_15) && (platform != JAVA_ANVIL_1_17)); // TODO why?!?!
         checkBoxExtendedBlockIds.setEnabled(platform.capabilities.contains(BLOCK_BASED) && (!platform.capabilities.contains(NAME_BASED)) && (platform != JAVA_MCREGION));
 
         // Check whether this platform supports the current default export settings (or any export settings)
         final PlatformProvider platformProvider = PlatformManager.getInstance().getPlatformProvider(platform);
         final ExportSettings platformDefaultExportSettings = platformProvider.getDefaultExportSettings(platform);
-        if (platformDefaultExportSettings != null) {
-            labelEditExportSettingsLink.setForeground(BLUE);
-            labelEditExportSettingsLink.setCursor(new Cursor(HAND_CURSOR));
-        } else {
-            labelEditExportSettingsLink.setForeground(GRAY);
-            labelEditExportSettingsLink.setCursor(null);
-        }
+        updateDefaultExportSettingsLink(platformDefaultExportSettings);
+        updateDefaultGameSettingsControls(platform);
 
         final int maxHeight = config.getDefaultMaxHeight();
         ((SpinnerNumberModel) spinnerGroundLevel.getModel()).setMaximum(maxHeight - 1);
@@ -1993,7 +2070,7 @@ public class PreferencesDialog extends WorldPainterDialog {
     }//GEN-LAST:event_comboBoxWorldTypeActionPerformed
 
     private void comboBoxModeActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_comboBoxModeActionPerformed
-        if (comboBoxMode.getSelectedItem() == GameType.CREATIVE) {
+        if ((! isHytalePlatform((Platform) comboBoxPlatform.getSelectedItem())) && (comboBoxMode.getSelectedItem() == GameType.CREATIVE)) {
             checkBoxCheats.setSelected(true);
         }
     }//GEN-LAST:event_comboBoxModeActionPerformed
@@ -2207,6 +2284,9 @@ public class PreferencesDialog extends WorldPainterDialog {
     private Dimension defaultTerrainAndLayerSettings;
     private ExportSettings defaultExportSettings;
     private Platform previousPlatform;
+    private boolean defaultCreateGoodiesChest, defaultMapFeatures, defaultAllowCheats;
+    private boolean defaultHytaleFallDamageEnabled, defaultHytaleNpcSpawningEnabled, defaultHytalePvpEnabled;
+    private GameType defaultGameType, defaultHytaleGameType;
     
     private static final long serialVersionUID = 1L;
 }

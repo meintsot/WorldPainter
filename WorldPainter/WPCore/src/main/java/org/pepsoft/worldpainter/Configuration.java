@@ -15,6 +15,8 @@ import org.pepsoft.util.swing.TiledImageViewer;
 import org.pepsoft.worldpainter.Dimension.Border;
 import org.pepsoft.worldpainter.TileRenderer.LightOrigin;
 import org.pepsoft.worldpainter.exporting.ExportSettings;
+import org.pepsoft.worldpainter.hytale.HytaleTerrainHelper;
+import org.pepsoft.worldpainter.hytale.HytaleWorldSettings;
 import org.pepsoft.worldpainter.layers.CustomLayer;
 import org.pepsoft.worldpainter.layers.Frost;
 import org.pepsoft.worldpainter.layers.Layer;
@@ -528,6 +530,30 @@ public final class Configuration implements Serializable, EventLogger, Minecraft
         this.defaultAllowCheats = defaultAllowCheats;
     }
 
+    public synchronized boolean isDefaultHytalePvpEnabled() {
+        return defaultHytalePvpEnabled;
+    }
+
+    public synchronized void setDefaultHytalePvpEnabled(boolean defaultHytalePvpEnabled) {
+        this.defaultHytalePvpEnabled = defaultHytalePvpEnabled;
+    }
+
+    public synchronized boolean isDefaultHytaleFallDamageEnabled() {
+        return defaultHytaleFallDamageEnabled;
+    }
+
+    public synchronized void setDefaultHytaleFallDamageEnabled(boolean defaultHytaleFallDamageEnabled) {
+        this.defaultHytaleFallDamageEnabled = defaultHytaleFallDamageEnabled;
+    }
+
+    public synchronized boolean isDefaultHytaleNpcSpawningEnabled() {
+        return defaultHytaleNpcSpawningEnabled;
+    }
+
+    public synchronized void setDefaultHytaleNpcSpawningEnabled(boolean defaultHytaleNpcSpawningEnabled) {
+        this.defaultHytaleNpcSpawningEnabled = defaultHytaleNpcSpawningEnabled;
+    }
+
     public synchronized MapGenerator getDefaultGenerator() {
         return defaultGeneratorObj;
     }
@@ -542,6 +568,28 @@ public final class Configuration implements Serializable, EventLogger, Minecraft
 
     public synchronized void setDefaultGameType(GameType defaultGameType) {
         defaultGameTypeObj = defaultGameType;
+    }
+
+    public synchronized GameType getDefaultHytaleGameType() {
+        return (defaultHytaleGameTypeObj != null) ? defaultHytaleGameTypeObj : GameType.ADVENTURE;
+    }
+
+    public synchronized void setDefaultHytaleGameType(GameType defaultHytaleGameType) {
+        defaultHytaleGameTypeObj = HytaleWorldSettings.normalizeGameType(defaultHytaleGameType);
+    }
+
+    public synchronized void applyDefaultGameSettings(World2 world) {
+        if (HytaleTerrainHelper.isHytale(world.getPlatform())) {
+            world.setGameType(getDefaultHytaleGameType());
+            world.setAttribute(HytaleWorldSettings.ATTRIBUTE_IS_FALL_DAMAGE_ENABLED, defaultHytaleFallDamageEnabled);
+            world.setAttribute(HytaleWorldSettings.ATTRIBUTE_IS_PVP_ENABLED, defaultHytalePvpEnabled);
+            world.setAttribute(HytaleWorldSettings.ATTRIBUTE_IS_SPAWNING_NPC, defaultHytaleNpcSpawningEnabled);
+        } else {
+            world.setCreateGoodiesChest(defaultCreateGoodiesChest);
+            world.setMapFeatures(defaultMapFeatures);
+            world.setGameType(defaultGameTypeObj);
+            world.setAllowCheats(defaultAllowCheats);
+        }
     }
 
     public synchronized byte[] getDefaultJideLayoutData() {
@@ -1138,8 +1186,17 @@ public final class Configuration implements Serializable, EventLogger, Minecraft
         if (version < 25) {
             upgradeDefaultPlatform();
         }
+        if (version < 26) {
+            defaultHytaleGameTypeObj = HytaleWorldSettings.normalizeGameType(defaultGameTypeObj);
+            defaultHytalePvpEnabled = defaultAllowCheats;
+            defaultHytaleFallDamageEnabled = defaultCreateGoodiesChest;
+            defaultHytaleNpcSpawningEnabled = defaultMapFeatures;
+        }
         if ((defaultPlatformId == null) || DEFAULT_PLATFORM.id.equals(defaultPlatformId)) {
             defaultPlatformId = HYTALE.id;
+        }
+        if (defaultHytaleGameTypeObj == null) {
+            defaultHytaleGameTypeObj = GameType.ADVENTURE;
         }
         version = CURRENT_VERSION;
 
@@ -1360,12 +1417,16 @@ public final class Configuration implements Serializable, EventLogger, Minecraft
     private int backgroundColour = -1;
     private boolean showBorders = true, showBiomes = true;
     private GameType defaultGameTypeObj = GameType.SURVIVAL;
+    private GameType defaultHytaleGameTypeObj = GameType.ADVENTURE;
     @Deprecated
     private Platform defaultPlatform;
     @Deprecated
     private Map<Platform, File> exportDirectories;
     private boolean autosaveEnabled = false;
     private int autosaveDelay = 60000, autosaveInterval = 600000; // One minute delay; ten minutes interval
+    private boolean defaultHytalePvpEnabled;
+    private boolean defaultHytaleFallDamageEnabled = true;
+    private boolean defaultHytaleNpcSpawningEnabled = true;
     private String defaultPlatformId = HYTALE.id;
     private Map<String, File> exportDirectoriesById = new HashMap<>();
     @Deprecated
@@ -1398,7 +1459,7 @@ public final class Configuration implements Serializable, EventLogger, Minecraft
     private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(Configuration.class);
     private static final long serialVersionUID = 2011041801L;
     private static final int CIRCULAR_WORLD = -1;
-    private static final int CURRENT_VERSION = 25;
+    private static final int CURRENT_VERSION = 26;
 
     public static final String ADVANCED_SETTING_PREFIX = "org.pepsoft.worldpainter";
     public static final Platform DEFAULT_PLATFORM = JAVA_ANVIL_1_20_5;
