@@ -1238,6 +1238,31 @@ public final class Material implements Serializable {
     }
 
     /**
+     * Register a material specification for a named block. Must be called
+     * <em>before</em> the first {@link #get(String, Object...)} call for
+     * this name, so that the Material constructor picks up the spec via
+     * {@link #findSpec(Identity)}. Used by platform providers (e.g. Hytale)
+     * to register blocks with correct physical properties.
+     *
+     * <p><strong>Threading contract:</strong> this method synchronizes on
+     * {@code ALL_MATERIALS} for mutual exclusion with {@link #get(Identity)}.
+     * Callers must still ensure it is called before the first {@code get()}
+     * for the same name (the registered spec is only consulted during
+     * Material construction, not retroactively).
+     *
+     * @param name the fully-qualified block name (e.g. {@code "hytale:Bush_Fern"})
+     * @param spec a map with keys matching the material spec format:
+     *             opacity, receivesLight, terrain, insubstantial,
+     *             veryInsubstantial, resource, tileEntity, vegetation,
+     *             blockLight, natural, watery, etc.
+     */
+    public static void registerSpec(String name, Map<String, Object> spec) {
+        synchronized (ALL_MATERIALS) {
+            MATERIAL_SPECS.computeIfAbsent(name, k -> new HashSet<>()).add(spec);
+        }
+    }
+
+    /**
      * Get a prototype of a known material by name. If the material is known by name, its known properties will be set
      * to arbitrary values.
      *
