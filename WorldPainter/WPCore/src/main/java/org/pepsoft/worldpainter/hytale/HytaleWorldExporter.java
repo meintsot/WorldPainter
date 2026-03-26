@@ -1427,16 +1427,37 @@ public class HytaleWorldExporter implements WorldExporter {
                 }
                 
                 if (isCustomTerrain && customMaterial != null) {
-                    // Custom terrain: resolve blocks through MixedMaterial → Material → HytaleBlock
+                    // Custom terrain: resolve blocks through MixedMaterial → Material → HytaleBlock.
+                    // Surface-only blocks (vegetation, decorations) must only appear on top;
+                    // subsurface is filled with dirt/stone just like the non-custom path.
+                    HytaleBlock surfacePlant = null;
                     for (int y = 1; y <= height; y++) {
+                        int depth = height - y;
                         Material mat = customMaterial.getMaterial(seed, worldX, worldZ, y);
                         HytaleBlock block = HytaleBlockMapping.toHytaleBlock(mat);
+                        if (HytaleBlockRegistry.isSurfaceOnlyBlock(block.id)) {
+                            // Remember the surface-only block for placement on top
+                            if (depth == 0) {
+                                surfacePlant = block;
+                            }
+                            // Subsurface gets dirt/stone; surface gets grass
+                            block = (depth > 0)
+                                    ? ((depth <= 4) ? HytaleBlock.DIRT : HytaleBlock.STONE)
+                                    : HytaleBlock.GRASS;
+                        } else if (block.isGrass() && depth > 0) {
+                            // Grass only belongs on the surface
+                            block = (depth <= 4) ? HytaleBlock.DIRT : HytaleBlock.STONE;
+                        }
                         if (block.isFluid()) {
                             chunk.setHytaleBlock(localX, y, localZ, HytaleBlock.EMPTY);
                             chunk.getSections()[y >> 5].setFluid(localX, y & 31, localZ, block.id, 1);
                         } else {
                             chunk.setHytaleBlock(localX, y, localZ, block);
                         }
+                    }
+                    // Place the vegetation/decoration block on top of the terrain
+                    if (surfacePlant != null) {
+                        chunk.setHytaleBlock(localX, height + 1, localZ, surfacePlant);
                     }
                 } else if (hytaleTerrain != null) {
                     HytaleBlock terrainBlock = hytaleTerrain.getPrimaryBlock();
