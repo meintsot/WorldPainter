@@ -260,10 +260,14 @@ public class HytaleMapImporter extends MapImporter {
     private void importColumn(HytaleChunk chunk, int localX, int localZ,
                               Tile tile, int tilePixelX, int tilePixelZ,
                               HytaleImportBlockMapper mapper) {
-        // Use heightmap from chunk
+        // Use heightmap from chunk as scan starting point
         final int height = chunk.getHeight(localX, localZ);
 
-        // Find the topmost solid block to determine terrain type
+        // Find the topmost solid terrain block. Skip surface-only blocks
+        // (leaves, plants, flowers, decorations) so that tree canopies and
+        // vegetation don't set the terrain height — only actual ground blocks
+        // (soil, rock, sand, etc.) count as terrain surface, matching the
+        // Minecraft importer's TERRAIN_MAPPING approach.
         HytaleTerrain hytaleTerrain = null;
         Terrain mcTerrain = Terrain.STONE;
         int surfaceY = height;
@@ -274,7 +278,8 @@ public class HytaleMapImporter extends MapImporter {
         for (int y = height; y >= 0; y--) {
             HytaleBlock block = chunk.getHytaleBlock(localX, y, localZ);
             if (block != null && !block.isEmpty()) {
-                // Man-made block detection
+                // Man-made block detection (still counts all non-natural blocks,
+                // including surface-only ones like decorations)
                 if (needManMadeCheck && !mapper.isNatural(block.id)) {
                     if (!surfaceFound) {
                         chunkHasManMadeAboveGround = true;
@@ -283,8 +288,10 @@ public class HytaleMapImporter extends MapImporter {
                     }
                 }
 
-                // Surface terrain detection
-                if (!surfaceFound) {
+                // Surface terrain detection — skip vegetation, leaves,
+                // decorations and other surface-only blocks so we find the
+                // actual ground beneath trees and tall plants.
+                if (!surfaceFound && !HytaleBlockRegistry.isSurfaceOnlyBlock(block.id)) {
                     hytaleTerrain = mapper.map(block.id);
                     if (hytaleTerrain != null) {
                         mcTerrain = HytaleTerrainHelper.toMinecraftTerrain(hytaleTerrain);
@@ -297,6 +304,14 @@ public class HytaleMapImporter extends MapImporter {
                     }
                 }
             }
+        }
+
+        // If no solid terrain block was found in the entire column, leave
+        // the Void bit set (it was set when the tile was created). This
+        // matches the Minecraft importer which marks empty columns as Void
+        // rather than placing false stone terrain.
+        if (!surfaceFound) {
+            return;
         }
 
         // Clear void bit — this pixel has real imported data
@@ -315,9 +330,10 @@ public class HytaleMapImporter extends MapImporter {
             }
         }
 
-        // Detect water level from fluid data
+        // Detect water level from fluid data. Scan upward from the actual
+        // terrain surface (not the heightmap, which may include vegetation).
         int waterLevel = 0; // Hytale minZ = 0
-        for (int y = height + 1; y < HytaleChunk.DEFAULT_MAX_HEIGHT && y <= height + 32; y++) {
+        for (int y = surfaceY + 1; y < HytaleChunk.DEFAULT_MAX_HEIGHT && y <= surfaceY + 32; y++) {
             HytaleChunk.HytaleSection section = chunk.getSections()[y >> 5];
             if (section != null) {
                 int fluidId = section.getFluidId(localX, y & 31, localZ);
