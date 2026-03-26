@@ -278,7 +278,6 @@ public final class HytaleTerrainHelper {
         map.put(HytaleTerrain.SHALE_COBBLE, Terrain.TUFF);
         map.put(HytaleTerrain.SLATE, Terrain.DEEPSLATE);
         map.put(HytaleTerrain.SLATE_COBBLE, Terrain.DEEPSLATE);
-        map.put(HytaleTerrain.CRACKED_SLATE, Terrain.DEEPSLATE);
         map.put(HytaleTerrain.BASALT, Terrain.BASALT);
         map.put(HytaleTerrain.BASALT_COBBLE, Terrain.BASALT);
         map.put(HytaleTerrain.AQUA_STONE, Terrain.STONE);

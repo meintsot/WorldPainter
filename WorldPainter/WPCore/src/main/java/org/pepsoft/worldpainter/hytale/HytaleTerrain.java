@@ -1909,8 +1909,6 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         HytaleBlock.of("Soil_Grass_Cold"), 0x5e855a);
     public static final HytaleTerrain COLD_MAGMA = new HytaleTerrain("Cold Magma",
         HytaleBlock.of("Rock_Magma_Cooled"), 0x180808);
-    public static final HytaleTerrain CRACKED_SLATE = new HytaleTerrain("Cracked Slate",
-        HytaleBlock.of("Rock_Slate_Cobble"), 0x484848);
     public static final HytaleTerrain CRACKED_VOLCANIC_ROCK = new HytaleTerrain("Cracked Volcanic Rock",
         HytaleBlock.of("Rock_Volcanic_Cracked_Lava"), 0x3a2020);
     public static final HytaleTerrain CYAN_CRYSTAL = new HytaleTerrain("Cyan Crystal",
@@ -2037,8 +2035,6 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         HytaleBlock.of("Plant_Leaves_Rhododendron"), 0x4e9f10);
     public static final HytaleTerrain FIR_LEAVES = new HytaleTerrain("Fir Leaves",
         HytaleBlock.of("Plant_Leaves_Fir"), 0x86bf87);
-    public static final HytaleTerrain FIR_LEAVES_TIP = new HytaleTerrain("Fir Leaves Tip",
-        HytaleBlock.of("Plant_Leaves_Fir_Red"), 0x20402f);
     public static final HytaleTerrain FIRE_LEAVES = new HytaleTerrain("Fire Leaves",
         HytaleBlock.of("Plant_Leaves_Fire"), 0x66150a);
     public static final HytaleTerrain FOREST_FLOOR_LEAVES = new HytaleTerrain("Forest Floor Leaves",
@@ -2069,8 +2065,6 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         HytaleBlock.of("Plant_Leaves_Goldentree"), 0x998238);
     public static final HytaleTerrain SNOWY_FIR_LEAVES = new HytaleTerrain("Snowy Fir Leaves",
         HytaleBlock.of("Plant_Leaves_Fir_Snow"), 0xb1c3cc);
-    public static final HytaleTerrain SNOWY_FIR_LEAVES_TIP = new HytaleTerrain("Snowy Fir Leaves Tip",
-        HytaleBlock.of("Plant_Leaves_Fir_Snow"), 0x95acbd);
     public static final HytaleTerrain SNOWY_LEAVES = new HytaleTerrain("Snowy Leaves",
         HytaleBlock.of("Plant_Leaves_Snow"), 0x7b94ad);
     public static final HytaleTerrain SPIRAL_LEAVES = new HytaleTerrain("Spiral Leaves",
@@ -2241,18 +2235,6 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         HytaleBlock.of("Plant_Crop_Berry_Winter_Block"), 0x468055);
 
     // ===== SPECIAL FLORA =====
-    public static final HytaleTerrain BLOOD_ROSE = new HytaleTerrain("Blood Rose",
-        HytaleBlock.of("Plant_Flower_Common_Red"), 0xa30508);
-    public static final HytaleTerrain BLOOD_CAP_MUSHROOM = new HytaleTerrain("Blood Cap Mushroom",
-        HytaleBlock.of("Plant_Crop_Mushroom_Cap_Red"), 0x94201c);
-    public static final HytaleTerrain BLOOD_LEAF = new HytaleTerrain("Blood Leaf",
-        HytaleBlock.of("Plant_Flower_Bushy_Red"), 0xb21424);
-    public static final HytaleTerrain AZURE_FERN = new HytaleTerrain("Azure Fern",
-        HytaleBlock.of("Plant_Fern_Forest"), 0x458ebf);
-    public static final HytaleTerrain AZURE_CAP_MUSHROOM = new HytaleTerrain("Azure Cap Mushroom",
-        HytaleBlock.of("Plant_Crop_Mushroom_Common_Blue"), 0x4771a1);
-    public static final HytaleTerrain AZURE_KELP = new HytaleTerrain("Azure Kelp",
-        HytaleBlock.of("Plant_Seaweed_Grass_Green"), 0x3173b0);
     public static final HytaleTerrain BROWN_MUSHROOM_MYCELIUM = new HytaleTerrain("Brown Mushroom Mycelium",
         HytaleBlock.of("Plant_Crop_Mushroom_Block_Brown_Mycelium"), 0x61462f);
     public static final HytaleTerrain LARGE_BOOMSHROOM = new HytaleTerrain("Large Boomshroom",
@@ -2298,11 +2280,6 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
     public static final HytaleTerrain YELLOW_MUSHROOM_SHELVES = new HytaleTerrain("Yellow Mushroom Shelves",
         HytaleBlock.of("Plant_Crop_Mushroom_Shelve_Yellow"), 0xad9b21);
 
-    // ===== STORM / ZONE-SPECIFIC =====
-    public static final HytaleTerrain STORM_THISTLE = new HytaleTerrain("Storm Thistle",
-        HytaleBlock.of("Plant_Flower_Bushy_Purple"), 0x81b9b0);
-    public static final HytaleTerrain STORM_CAP_MUSHROOM = new HytaleTerrain("Storm Cap Mushroom",
-        HytaleBlock.of("Plant_Crop_Mushroom_Cap_White"), 0x7783a1);
     public static final HytaleTerrain STORM_SAPLING = new HytaleTerrain("Storm Sapling",
         HytaleBlock.of("Plant_Sapling_Crystal"), 0x78b8c9);
 
@@ -2700,7 +2677,7 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         list.addAll(Arrays.asList(
             ASHEN_SAND, AQUA_COBBLE, AQUA_STONE, BASALT, BASALT_COBBLE,
             BLUE_CRYSTAL, BLUE_ICE, BURNED_GRASS, CALCITE, CALCITE_COBBLE,
-            CHALK, COLD_GRASS, COLD_MAGMA, CRACKED_SLATE, CRACKED_VOLCANIC_ROCK,
+            CHALK, COLD_GRASS, COLD_MAGMA, CRACKED_VOLCANIC_ROCK,
             CYAN_CRYSTAL, DEEP_GRASS, DRY_GRASS, FULL_GRASS, GRASS,
             GREEN_CRYSTAL, ICE, MARBLE, MOSSY_STONE, PINK_CRYSTAL,
             POISONED_VOLCANIC_ROCK, PURPLE_CRYSTAL, QUARTZITE, RED_CRYSTAL,
@@ -2717,12 +2694,12 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
             BEECH_LEAVES, BIRCH_LEAVES, BLUE_FIG_LEAVES, BOTTLE_TREE_LEAVES,
             BRAMBLE_LEAVES, BURNED_LEAVES, CAMPHOR_LEAVES, CEDAR_LEAVES,
             CRYSTAL_LEAVES, DEAD_LEAVES, DRY_LEAVES, FILTER_TREE_LEAVES,
-            FILTER_TREE_WOOD_AND_LEAVES, FIR_LEAVES, FIR_LEAVES_TIP,
+            FILTER_TREE_WOOD_AND_LEAVES, FIR_LEAVES,
             FIRE_LEAVES, FOREST_FLOOR_LEAVES, GIANT_PALM_LEAVES,
             GUMBOAB_LEAVES, JUNGLE_FLOOR_LEAVES, MAPLE_LEAVES, OAK_LEAVES,
             PALM_LEAVES, PALO_LEAVES, PETRIFIED_PINE_LEAVES, POISONED_LEAVES,
             RED_FIR_LEAVES, REDWOOD_LEAVES, SHALLOW_LEAVES, SNOWY_FIR_LEAVES,
-            SNOWY_FIR_LEAVES_TIP, SNOWY_LEAVES, SPIRAL_LEAVES,
+            SNOWY_LEAVES, SPIRAL_LEAVES,
             STORM_BARK_LEAVES, TROPICAL_LEAVES, WILD_WISTERIA_LEAVES,
             WILLOW_LEAVES
         ));
@@ -2767,10 +2744,8 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         list.addAll(Arrays.asList(
             BERRY_BUSH, WET_BERRY_BUSH, WINTER_BERRY_BUSH
         ));
-        // Special Flora (Mushrooms, Blood, Azure, Storm)
+        // Mushrooms & Special Flora
         list.addAll(Arrays.asList(
-            BLOOD_ROSE, BLOOD_CAP_MUSHROOM, BLOOD_LEAF,
-            AZURE_FERN, AZURE_CAP_MUSHROOM, AZURE_KELP,
             BROWN_MUSHROOM_MYCELIUM, LARGE_BOOMSHROOM, SMALL_BOOMSHROOM,
             BROWN_CAP_MUSHROOM, SPOTTED_GREEN_CAP_MUSHROOM,
             SPOTTED_ALLIUM_CAP_MUSHROOM, RED_CAP_MUSHROOM, WHITE_CAP_MUSHROOM,
@@ -2781,7 +2756,7 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
             PURPLE_GLOWING_MUSHROOM, RED_GLOWING_MUSHROOM,
             VIOLET_GLOWING_MUSHROOM, BROWN_MUSHROOM_SHELF,
             GREEN_MUSHROOM_SHELF, YELLOW_MUSHROOM_SHELVES,
-            STORM_THISTLE, STORM_CAP_MUSHROOM, STORM_SAPLING
+            STORM_SAPLING
         ));
         // Ferns & Nettles
         list.addAll(Arrays.asList(
