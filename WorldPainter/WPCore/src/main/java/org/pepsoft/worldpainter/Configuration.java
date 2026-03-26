@@ -554,6 +554,38 @@ public final class Configuration implements Serializable, EventLogger, Minecraft
         this.defaultHytaleNpcSpawningEnabled = defaultHytaleNpcSpawningEnabled;
     }
 
+    public synchronized boolean isDefaultHytaleGridEnabled() {
+        return defaultHytaleGridEnabled;
+    }
+
+    public synchronized void setDefaultHytaleGridEnabled(boolean defaultHytaleGridEnabled) {
+        this.defaultHytaleGridEnabled = defaultHytaleGridEnabled;
+    }
+
+    public synchronized int getDefaultHytaleGridSize() {
+        return defaultHytaleGridSize;
+    }
+
+    public synchronized void setDefaultHytaleGridSize(int defaultHytaleGridSize) {
+        this.defaultHytaleGridSize = defaultHytaleGridSize;
+    }
+
+    public synchronized boolean isDefaultHytaleContoursEnabled() {
+        return defaultHytaleContoursEnabled;
+    }
+
+    public synchronized void setDefaultHytaleContoursEnabled(boolean defaultHytaleContoursEnabled) {
+        this.defaultHytaleContoursEnabled = defaultHytaleContoursEnabled;
+    }
+
+    public synchronized int getDefaultHytaleContourSeparation() {
+        return defaultHytaleContourSeparation;
+    }
+
+    public synchronized void setDefaultHytaleContourSeparation(int defaultHytaleContourSeparation) {
+        this.defaultHytaleContourSeparation = defaultHytaleContourSeparation;
+    }
+
     public synchronized MapGenerator getDefaultGenerator() {
         return defaultGeneratorObj;
     }
@@ -1427,6 +1459,10 @@ public final class Configuration implements Serializable, EventLogger, Minecraft
     private boolean defaultHytalePvpEnabled;
     private boolean defaultHytaleFallDamageEnabled = true;
     private boolean defaultHytaleNpcSpawningEnabled = true;
+    private boolean defaultHytaleGridEnabled = true;
+    private int defaultHytaleGridSize = 32;
+    private boolean defaultHytaleContoursEnabled = true;
+    private int defaultHytaleContourSeparation = 10;
     private String defaultPlatformId = HYTALE.id;
     private Map<String, File> exportDirectoriesById = new HashMap<>();
     @Deprecated

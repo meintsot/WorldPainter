@@ -161,10 +161,17 @@ public final class WorldFactory {
             if (resourcesSettings != null) {
                 resourcesSettings.setMinimumLevel(config.getDefaultResourcesMinimumLevel());
             }
-            dim0.setGridEnabled(config.isDefaultGridEnabled());
-            dim0.setGridSize(config.getDefaultGridSize());
-            dim0.setContoursEnabled(config.isDefaultContoursEnabled());
-            dim0.setContourSeparation(config.getDefaultContourSeparation());
+            if (DefaultPlugin.HYTALE.id.equals(platform.id)) {
+                dim0.setGridEnabled(config.isDefaultHytaleGridEnabled());
+                dim0.setGridSize(config.getDefaultHytaleGridSize());
+                dim0.setContoursEnabled(config.isDefaultHytaleContoursEnabled());
+                dim0.setContourSeparation(config.getDefaultHytaleContourSeparation());
+            } else {
+                dim0.setGridEnabled(config.isDefaultGridEnabled());
+                dim0.setGridSize(config.getDefaultGridSize());
+                dim0.setContoursEnabled(config.isDefaultContoursEnabled());
+                dim0.setContourSeparation(config.getDefaultContourSeparation());
+            }
             dim0.setTopLayerMinDepth(defaults.getTopLayerMinDepth());
             dim0.setTopLayerVariation(defaults.getTopLayerVariation());
             dim0.setBottomless(defaults.isBottomless());
@@ -261,10 +268,17 @@ public final class WorldFactory {
             }
             frostSettings.setMode(frostSettings.MODE_SMOOTH_AT_ALL_ELEVATIONS);
             dim0.setLayerSettings(Frost.INSTANCE, frostSettings);
-            dim0.setGridEnabled(config.isDefaultGridEnabled());
-            dim0.setGridSize(config.getDefaultGridSize());
-            dim0.setContoursEnabled(config.isDefaultContoursEnabled());
-            dim0.setContourSeparation(config.getDefaultContourSeparation());
+            if (DefaultPlugin.HYTALE.id.equals(platform.id)) {
+                dim0.setGridEnabled(config.isDefaultHytaleGridEnabled());
+                dim0.setGridSize(config.getDefaultHytaleGridSize());
+                dim0.setContoursEnabled(config.isDefaultHytaleContoursEnabled());
+                dim0.setContourSeparation(config.getDefaultHytaleContourSeparation());
+            } else {
+                dim0.setGridEnabled(config.isDefaultGridEnabled());
+                dim0.setGridSize(config.getDefaultGridSize());
+                dim0.setContoursEnabled(config.isDefaultContoursEnabled());
+                dim0.setContourSeparation(config.getDefaultContourSeparation());
+            }
             dim0.setTopLayerMinDepth(defaults.getTopLayerMinDepth());
             dim0.setTopLayerVariation(defaults.getTopLayerVariation());
             dim0.setBottomless(defaults.isBottomless());

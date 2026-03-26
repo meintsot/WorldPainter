@@ -144,6 +144,35 @@ public class PreferencesDialog extends WorldPainterDialog {
         return isHytalePlatform(platform) ? HytaleWorldSettings.normalizeGameType(defaultHytaleGameType) : defaultGameType;
     }
 
+    private void storeDefaultViewSettingsForPlatform(Platform platform) {
+        if (platform == null) {
+            return;
+        }
+        if (isHytalePlatform(platform)) {
+            defaultHytaleGridEnabled = checkBoxGrid.isSelected();
+            defaultHytaleGridSize = (Integer) spinnerGrid.getValue();
+            defaultHytaleContoursEnabled = checkBoxContours.isSelected();
+            defaultHytaleContourSeparation = (Integer) spinnerContours.getValue();
+        } else {
+            // Minecraft values are stored directly via config setters in saveSettings()
+        }
+    }
+
+    private void updateDefaultViewSettingsControls(Platform platform) {
+        if (isHytalePlatform(platform)) {
+            checkBoxGrid.setSelected(defaultHytaleGridEnabled);
+            spinnerGrid.setValue(defaultHytaleGridSize);
+            checkBoxContours.setSelected(defaultHytaleContoursEnabled);
+            spinnerContours.setValue(defaultHytaleContourSeparation);
+        } else {
+            final Configuration config = Configuration.getInstance();
+            checkBoxGrid.setSelected(config.isDefaultGridEnabled());
+            spinnerGrid.setValue(config.getDefaultGridSize());
+            checkBoxContours.setSelected(config.isDefaultContoursEnabled());
+            spinnerContours.setValue(config.getDefaultContourSeparation());
+        }
+    }
+
     private void storeDefaultGameSettingsForPlatform(Platform platform) {
         if (platform == null) {
             return;
@@ -260,6 +289,10 @@ public class PreferencesDialog extends WorldPainterDialog {
             defaultHytaleNpcSpawningEnabled = config.isDefaultHytaleNpcSpawningEnabled();
             defaultHytaleGameType = config.getDefaultHytaleGameType();
             defaultHytalePvpEnabled = config.isDefaultHytalePvpEnabled();
+            defaultHytaleGridEnabled = config.isDefaultHytaleGridEnabled();
+            defaultHytaleGridSize = config.getDefaultHytaleGridSize();
+            defaultHytaleContoursEnabled = config.isDefaultHytaleContoursEnabled();
+            defaultHytaleContourSeparation = config.getDefaultHytaleContourSeparation();
             checkBoxResourcesEverywhere.setSelected(config.getDefaultResourcesMinimumLevel() > 0);
 
             spinnerWidth.setValue(config.getDefaultWidth() * 128);
@@ -383,10 +416,15 @@ public class PreferencesDialog extends WorldPainterDialog {
             config.setUndoEnabled(checkBoxUndo.isSelected());
             config.setUndoLevels(((Number) spinnerUndoLevels.getValue()).intValue());
         }
+        storeDefaultViewSettingsForPlatform((Platform) comboBoxPlatform.getSelectedItem());
         config.setDefaultGridEnabled(checkBoxGrid.isSelected());
         config.setDefaultGridSize((Integer) spinnerGrid.getValue());
         config.setDefaultContoursEnabled(checkBoxContours.isSelected());
         config.setDefaultContourSeparation((Integer) spinnerContours.getValue());
+        config.setDefaultHytaleGridEnabled(defaultHytaleGridEnabled);
+        config.setDefaultHytaleGridSize(defaultHytaleGridSize);
+        config.setDefaultHytaleContoursEnabled(defaultHytaleContoursEnabled);
+        config.setDefaultHytaleContourSeparation(defaultHytaleContourSeparation);
         config.setDefaultViewDistanceEnabled(checkBoxViewDistance.isSelected());
         config.setDefaultWalkingDistanceEnabled(checkBoxWalkingDistance.isSelected());
         config.setDefaultLightOrigin((LightOrigin) comboBoxLightDirection.getSelectedItem());
@@ -574,6 +612,7 @@ public class PreferencesDialog extends WorldPainterDialog {
         programmaticChange = true;
         try {
             storeDefaultGameSettingsForPlatform(previousPlatform);
+            storeDefaultViewSettingsForPlatform(previousPlatform);
             final Platform platform = (Platform) comboBoxPlatform.getSelectedItem();
             final Generator currentGenerator = (Generator) comboBoxWorldType.getSelectedItem();
             final List<Generator> supportedGenerators = new ArrayList<>(platform.supportedGenerators);
@@ -618,9 +657,10 @@ public class PreferencesDialog extends WorldPainterDialog {
             }
             updateDefaultExportSettingsLink(platformDefaultExportSettings);
             updateDefaultGameSettingsControls(platform);
+            updateDefaultViewSettingsControls(platform);
 
             previousPlatform = platform;
-            
+
             // Update surface material list for platform (Hytale has its own terrains)
             updateSurfaceMaterialForPlatform(platform);
         } finally {
@@ -644,6 +684,7 @@ public class PreferencesDialog extends WorldPainterDialog {
         final ExportSettings platformDefaultExportSettings = platformProvider.getDefaultExportSettings(platform);
         updateDefaultExportSettingsLink(platformDefaultExportSettings);
         updateDefaultGameSettingsControls(platform);
+        updateDefaultViewSettingsControls(platform);
 
         final int maxHeight = config.getDefaultMaxHeight();
         ((SpinnerNumberModel) spinnerGroundLevel.getModel()).setMaximum(maxHeight - 1);
@@ -2286,6 +2327,8 @@ public class PreferencesDialog extends WorldPainterDialog {
     private Platform previousPlatform;
     private boolean defaultCreateGoodiesChest, defaultMapFeatures, defaultAllowCheats;
     private boolean defaultHytaleFallDamageEnabled, defaultHytaleNpcSpawningEnabled, defaultHytalePvpEnabled;
+    private boolean defaultHytaleGridEnabled, defaultHytaleContoursEnabled;
+    private int defaultHytaleGridSize, defaultHytaleContourSeparation;
     private GameType defaultGameType, defaultHytaleGameType;
     
     private static final long serialVersionUID = 1L;

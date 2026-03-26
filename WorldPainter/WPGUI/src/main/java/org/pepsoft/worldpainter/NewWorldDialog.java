@@ -676,10 +676,17 @@ public class NewWorldDialog extends WorldPainterDialog {
         dimension.setBorderLevel(waterHeight);
         dimension.setCoverSteepTerrain(defaults.isCoverSteepTerrain());
 
-        dimension.setGridEnabled(config.isDefaultGridEnabled());
-        dimension.setGridSize(config.getDefaultGridSize());
-        dimension.setContoursEnabled(config.isDefaultContoursEnabled());
-        dimension.setContourSeparation(config.getDefaultContourSeparation());
+        if (DefaultPlugin.HYTALE.id.equals(platform.id)) {
+            dimension.setGridEnabled(config.isDefaultHytaleGridEnabled());
+            dimension.setGridSize(config.getDefaultHytaleGridSize());
+            dimension.setContoursEnabled(config.isDefaultHytaleContoursEnabled());
+            dimension.setContourSeparation(config.getDefaultHytaleContourSeparation());
+        } else {
+            dimension.setGridEnabled(config.isDefaultGridEnabled());
+            dimension.setGridSize(config.getDefaultGridSize());
+            dimension.setContoursEnabled(config.isDefaultContoursEnabled());
+            dimension.setContourSeparation(config.getDefaultContourSeparation());
+        }
 
         if (DefaultPlugin.HYTALE.id.equals(platform.id)) {
             PlatformProvider provider = PlatformManager.getInstance().getPlatformProvider(platform);
