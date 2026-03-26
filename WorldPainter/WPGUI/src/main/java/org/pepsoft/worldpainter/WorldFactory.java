@@ -17,6 +17,7 @@ import org.pepsoft.worldpainter.layers.Resources;
 import org.pepsoft.worldpainter.layers.exporters.ExporterSettings;
 import org.pepsoft.worldpainter.layers.exporters.FrostExporter;
 import org.pepsoft.worldpainter.layers.exporters.ResourcesExporter;
+import org.pepsoft.worldpainter.plugins.PlatformManager;
 import org.pepsoft.worldpainter.themes.SimpleTheme;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -141,10 +142,7 @@ public final class WorldFactory {
         world.setName(strings.getString("generated.world"));
         
         // Export settings
-        world.setCreateGoodiesChest(config.isDefaultCreateGoodiesChest());
-        world.setMapFeatures(config.isDefaultMapFeatures());
-        world.setGameType(config.getDefaultGameType());
-        world.setAllowCheats(config.isDefaultAllowCheats());
+        config.applyDefaultGameSettings(world);
         
         final Dimension dim0 = world.getDimension(NORMAL_DETAIL);
         dim0.setEventsInhibited(true);
@@ -172,7 +170,9 @@ public final class WorldFactory {
             dim0.setBottomless(defaults.isBottomless());
             dim0.setCoverSteepTerrain(defaults.isCoverSteepTerrain());
             dim0.setGenerator(config.getDefaultGenerator()); // TODOMC118 what about Nether and End?
-            dim0.setExportSettings(config.getDefaultExportSettings());
+            dim0.setExportSettings(DefaultPlugin.HYTALE.id.equals(platform.id)
+                    ? PlatformManager.getInstance().getPlatformProvider(platform).getDefaultExportSettings(platform)
+                    : config.getDefaultExportSettings());
         } finally {
             dim0.setEventsInhibited(false);
         }

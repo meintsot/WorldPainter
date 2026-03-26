@@ -6,6 +6,9 @@ import org.bson.RawBsonDocument;
 import org.junit.Test;
 import org.pepsoft.minecraft.Material;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+
 import static org.junit.Assert.*;
 
 /**
@@ -209,6 +212,29 @@ public class HytaleChunkTest {
         assertNotNull(physicsData);
         assertTrue(physicsData.length > 1);
         assertEquals(HytaleChunk.SUPPORT_DECORATIVE, readSupportValue(physicsData, blockIndex(2, 10, 3)));
+    }
+
+    @Test
+    public void testChunkStoreRoundTripPreservesHalfByteColumnPositions() throws Exception {
+        Path worldDir = Files.createTempDirectory("hytale-half-byte-roundtrip");
+
+        HytaleChunk writtenChunk = new HytaleChunk(0, 0, 0, 320);
+        writtenChunk.setHytaleBlock(0, 64, 0, HytaleBlock.SAND);
+        writtenChunk.setHytaleBlock(1, 64, 0, HytaleBlock.GRASS);
+
+        try (HytaleChunkStore writer = new HytaleChunkStore(worldDir.toFile(), 0, 320)) {
+            writer.saveChunk(writtenChunk);
+            writer.flush();
+        }
+
+        try (HytaleChunkStore reader = new HytaleChunkStore(worldDir.toFile(), 0, 320)) {
+            HytaleChunk readChunk = (HytaleChunk) reader.getChunk(0, 0);
+            assertNotNull(readChunk);
+            assertEquals("Half-byte palette round-trips should preserve the block at x=0",
+                HytaleBlock.SAND.id, readChunk.getHytaleBlock(0, 64, 0).id);
+            assertEquals("Half-byte palette round-trips should preserve the block at x=1",
+                HytaleBlock.GRASS.id, readChunk.getHytaleBlock(1, 64, 0).id);
+        }
     }
 
     private static byte[] getSerializedFluidData(HytaleChunk chunk, int sectionIndex) {

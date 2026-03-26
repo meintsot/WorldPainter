@@ -7,6 +7,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -37,5 +38,16 @@ public class HytaleBlockRegistryTest {
 
         HytaleBlockRegistry.ensureMaterialsRegistered();
         assertEquals("hytale:Wood_Test_Trunk", Material.get("hytale:Wood_Test_Trunk").name);
+    }
+
+    @Test
+    public void testMossBlockVariantsAreNotSurfaceOnly() {
+        assertEquals(HytaleBlockRegistry.Category.MOSS_BLOCKS,
+            HytaleBlockRegistry.getCategoryForBlock("Plant_Moss_Block_Green"));
+        assertFalse(HytaleBlockRegistry.isSurfaceOnlyBlock("Plant_Moss_Block_Green"));
+
+        assertEquals(HytaleBlockRegistry.Category.MOSS_VINES,
+            HytaleBlockRegistry.getCategoryForBlock("Plant_Moss_Green"));
+        assertTrue(HytaleBlockRegistry.isSurfaceOnlyBlock("Plant_Moss_Green"));
     }
 }

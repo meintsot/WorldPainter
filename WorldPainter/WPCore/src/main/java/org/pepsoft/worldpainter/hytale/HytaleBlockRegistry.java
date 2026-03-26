@@ -58,6 +58,7 @@ public class HytaleBlockRegistry {
         FERNS("Ferns", true),
         BUSHES("Bushes & Brambles", true),
         CACTUS("Cacti", true),
+        MOSS_BLOCKS("Moss Blocks"),
         MOSS_VINES("Moss & Vines", true),
         MUSHROOMS("Mushrooms", true),
         CROPS("Crops & Farming", true),
@@ -519,6 +520,9 @@ public class HytaleBlockRegistry {
         if (blockId.startsWith("Plant_Cactus_")) {
             return Category.CACTUS;
         }
+        if (blockId.startsWith("Plant_Moss_Block_")) {
+            return Category.MOSS_BLOCKS;
+        }
         if (blockId.startsWith("Plant_Moss_") || blockId.startsWith("Plant_Vine_") || blockId.equals("Plant_Barnacles")) {
             return Category.MOSS_VINES;
         }
@@ -623,7 +627,7 @@ public class HytaleBlockRegistry {
 
     private String toLegacyCategory(Category cat) {
         switch (cat) {
-            case SOIL: case SAND: case CLAY: case SNOW_ICE: case GRAVEL: case HIVE: return "Soil";
+            case SOIL: case SAND: case CLAY: case SNOW_ICE: case GRAVEL: case HIVE: case MOSS_BLOCKS: return "Soil";
             case ROCK: case ROCK_CONSTRUCTION: case CRYSTAL_GEM: case RUNIC: return "Rock";
             case ORE: return "Ore";
             case WOOD_NATURAL: case WOOD_PLANKS: return "Wood";
@@ -961,10 +965,14 @@ public class HytaleBlockRegistry {
             "Plant_Cactus_Flower"
         );
 
+        // --- MOSS BLOCKS ---
+        addBlocks(Category.MOSS_BLOCKS,
+            "Plant_Moss_Block_Blue", "Plant_Moss_Block_Green", "Plant_Moss_Block_Green_Dark",
+            "Plant_Moss_Block_Red", "Plant_Moss_Block_Yellow"
+        );
+
         // --- MOSS & VINES ---
         addBlocks(Category.MOSS_VINES,
-            "Plant_Moss_Block_Blue", "Plant_Moss_Block_Green", "Plant_Moss_Block_Green_Dark",
-            "Plant_Moss_Block_Red", "Plant_Moss_Block_Yellow",
             "Plant_Moss_Rug_Blue", "Plant_Moss_Rug_Green", "Plant_Moss_Rug_Green_Dark",
             "Plant_Moss_Rug_Lime", "Plant_Moss_Rug_Pink", "Plant_Moss_Rug_Red", "Plant_Moss_Rug_Yellow",
             "Plant_Moss_Short_Blue", "Plant_Moss_Short_Green", "Plant_Moss_Short_Green_Dark",

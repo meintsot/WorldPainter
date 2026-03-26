@@ -161,7 +161,7 @@ public class DefaultPlugin extends AbstractPlugin implements LayerProvider {
             new int[] { 320, 512, 640, 1024 }, 320,
             Integer.MIN_VALUE, Integer.MAX_VALUE, Integer.MIN_VALUE, Integer.MAX_VALUE,
             0,
-            Arrays.asList(SURVIVAL, CREATIVE, ADVENTURE),
+            Arrays.asList(ADVENTURE, CREATIVE),
             Arrays.asList(DEFAULT),
             Arrays.asList(DIM_NORMAL),
             EnumSet.of(BLOCK_BASED, NAME_BASED, SEED, NAMED_BIOMES, SET_SPAWN_POINT, PRECALCULATED_LIGHT),
