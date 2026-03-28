@@ -3040,6 +3040,128 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         }
     }
 
+    // ----- V1 migration (pre-42cd936d terrain list → current list) -----
+    // Commit 42cd936d removed 11 duplicate terrain entries. Worlds saved before
+    // that commit store the old 1-based indices. The removed positions (1-based)
+    // and their block IDs are listed below so we can compute the index shift and
+    // resolve fallbacks for the removed entries.
+
+    /**
+     * Sorted 1-based layer indices of terrains removed in commit 42cd936d.
+     */
+    private static final int[] V1_REMOVED_INDICES = {
+        14,  // CRACKED_SLATE
+        72,  // FIR_LEAVES_TIP
+        88,  // SNOWY_FIR_LEAVES_TIP
+        167, // BLOOD_ROSE
+        168, // BLOOD_CAP_MUSHROOM
+        169, // BLOOD_LEAF
+        170, // AZURE_FERN
+        171, // AZURE_CAP_MUSHROOM
+        172, // AZURE_KELP
+        195, // STORM_THISTLE
+        196  // STORM_CAP_MUSHROOM
+    };
+
+    /**
+     * Block IDs of the removed V1 terrains, same order as {@link #V1_REMOVED_INDICES}.
+     * Each of these block IDs is shared with a surviving terrain, so
+     * {@link #BLOCK_ID_MAP} will resolve them to the correct replacement.
+     */
+    private static final String[] V1_REMOVED_BLOCK_IDS = {
+        "Rock_Slate_Cobble",              // CRACKED_SLATE   → SLATE_COBBLE
+        "Plant_Leaves_Fir_Red",           // FIR_LEAVES_TIP  → (by block ID)
+        "Plant_Leaves_Fir_Snow",          // SNOWY_FIR_LEAVES_TIP → SNOWY_FIR_LEAVES
+        "Plant_Flower_Common_Red",        // BLOOD_ROSE
+        "Plant_Crop_Mushroom_Cap_Red",    // BLOOD_CAP_MUSHROOM
+        "Plant_Flower_Bushy_Red",         // BLOOD_LEAF
+        "Plant_Fern_Forest",              // AZURE_FERN      → FOREST_FERN
+        "Plant_Crop_Mushroom_Common_Blue",// AZURE_CAP_MUSHROOM → BLUE_COMMON_MUSHROOM
+        "Plant_Seaweed_Grass_Green",      // AZURE_KELP      → GREEN_SEAWEED
+        "Plant_Flower_Bushy_Purple",      // STORM_THISTLE
+        "Plant_Crop_Mushroom_Cap_White"   // STORM_CAP_MUSHROOM → WHITE_CAP_MUSHROOM
+    };
+
+    /** Resolved new layer indices for removed V1 entries (0 = clear). */
+    private static final int[] V1_REMOVED_FALLBACKS;
+    static {
+        V1_REMOVED_FALLBACKS = new int[V1_REMOVED_BLOCK_IDS.length];
+        for (int i = 0; i < V1_REMOVED_BLOCK_IDS.length; i++) {
+            HytaleTerrain fallback = BLOCK_ID_MAP.get(V1_REMOVED_BLOCK_IDS[i]);
+            V1_REMOVED_FALLBACKS[i] = (fallback != null) ? fallback.getLayerIndex() : 0;
+        }
+    }
+
+    /**
+     * Migrate per-pixel terrain indices in all tiles from the pre-42cd936d
+     * ordering (version 1, ~377 terrains including 11 duplicates) to the
+     * current ordering (~366 terrains). Only tiles with Hytale terrain data
+     * are touched.
+     *
+     * <p>The migration computes: for removed indices, substitute a fallback
+     * terrain; for all other indices, shift down by the count of removed
+     * entries that preceded them.
+     */
+    public static void migrateV1TerrainIndices(Collection<? extends Tile> tiles) {
+        int migrated = 0;
+        for (Tile tile : tiles) {
+            if (!HytaleTerrainLayer.hasTerrainData(tile)) {
+                continue;
+            }
+            for (int y = 0; y < 128; y++) {
+                for (int x = 0; x < 128; x++) {
+                    int oldIndex = HytaleTerrainLayer.getTerrainIndex(tile, x, y);
+                    if (oldIndex < 1) {
+                        continue;
+                    }
+
+                    int removedPos = Arrays.binarySearch(V1_REMOVED_INDICES, oldIndex);
+                    int newIndex;
+                    if (removedPos >= 0) {
+                        // This index was a removed terrain — use fallback
+                        newIndex = V1_REMOVED_FALLBACKS[removedPos];
+                    } else {
+                        // Shift down by the number of removed entries before this index.
+                        // binarySearch returns -(insertion point) - 1 when not found;
+                        // the insertion point equals the count of removed entries < oldIndex.
+                        int shift = -(removedPos + 1);
+                        newIndex = oldIndex - shift;
+                    }
+
+                    if (newIndex != oldIndex) {
+                        HytaleTerrainLayer.setTerrainIndex(tile, x, y, newIndex);
+                        migrated++;
+                    }
+                }
+            }
+        }
+        if (migrated > 0) {
+            logger.info("V1 terrain migration: remapped {} pixels", migrated);
+        }
+    }
+
+    /**
+     * Scan all tiles and return the highest Hytale terrain layer index found.
+     * Returns 0 if no Hytale terrain data is present.
+     */
+    public static int scanMaxTerrainIndex(Collection<? extends Tile> tiles) {
+        int max = 0;
+        for (Tile tile : tiles) {
+            if (!HytaleTerrainLayer.hasTerrainData(tile)) {
+                continue;
+            }
+            for (int y = 0; y < 128; y++) {
+                for (int x = 0; x < 128; x++) {
+                    int idx = HytaleTerrainLayer.getTerrainIndex(tile, x, y);
+                    if (idx > max) {
+                        max = idx;
+                    }
+                }
+            }
+        }
+        return max;
+    }
+
     // ----- Static factory methods -----
 
     /**

@@ -19,6 +19,8 @@ import org.pepsoft.util.undo.BufferKey;
 import org.pepsoft.util.undo.UndoListener;
 import org.pepsoft.util.undo.UndoManager;
 import org.pepsoft.worldpainter.biomeschemes.CustomBiome;
+import org.pepsoft.worldpainter.hytale.HytaleTerrain;
+import org.pepsoft.worldpainter.hytale.HytaleTerrainLayer;
 import org.pepsoft.worldpainter.brushes.Brush;
 import org.pepsoft.worldpainter.exporting.ExportSettings;
 import org.pepsoft.worldpainter.gardenofeden.Garden;
@@ -2719,6 +2721,32 @@ public class Dimension extends InstanceKeeper implements TileProvider, Serializa
         if (wpVersion < 10) {
             managedAttributes = new HashMap<>();
         }
+        if (wpVersion < 11) {
+            // Migrate Hytale terrain layer indices if this dimension has Hytale
+            // terrain data and has not already been migrated.
+            Object htv = (managedAttributes != null)
+                    ? managedAttributes.get("hytaleTerrainVersion")
+                    : null;
+            if (htv == null) {
+                Collection<? extends Tile> tileValues = tiles.values();
+                int maxIndex = HytaleTerrain.scanMaxTerrainIndex(tileValues);
+                if (maxIndex > 0) {
+                    if (maxIndex <= 40) {
+                        // V0 world (pre-ef785f11, 40-terrain list)
+                        logger.info("Migrating Hytale terrain indices from V0 (max index {})", maxIndex);
+                        HytaleTerrain.migrateV0TerrainIndices(tileValues);
+                    } else {
+                        // V1 world (pre-42cd936d, ~377-terrain list with 11 duplicates)
+                        logger.info("Migrating Hytale terrain indices from V1 (max index {})", maxIndex);
+                        HytaleTerrain.migrateV1TerrainIndices(tileValues);
+                    }
+                }
+                if (managedAttributes == null) {
+                    managedAttributes = new HashMap<>();
+                }
+                managedAttributes.put("hytaleTerrainVersion", 2);
+            }
+        }
         wpVersion = CURRENT_WP_VERSION;
 
         // Make sure customLayers isn't some weird read-only list
@@ -2836,7 +2864,7 @@ public class Dimension extends InstanceKeeper implements TileProvider, Serializa
 
     private static final long TOP_LAYER_DEPTH_SEED_OFFSET = 180728193;
     private static final float ROOT_EIGHT = (float) Math.sqrt(8.0);
-    private static final int CURRENT_WP_VERSION = 10;
+    private static final int CURRENT_WP_VERSION = 11;
     private static final BufferKey<Map<String, Object>> BUFFER_KEY_MANAGED_ATTRIBUTES = new BufferKey<>() {};
     private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(Dimension.class);
     @Serial
