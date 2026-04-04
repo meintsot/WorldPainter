@@ -132,6 +132,11 @@ public class HytaleWorldExporter implements WorldExporter {
     public Map<Integer, ChunkFactory.Stats> export(File baseDir, String name, File backupDir, ProgressReceiver progressReceiver) 
             throws IOException, ProgressReceiver.OperationCancelled {
         return doWithMdcContext(() -> {
+            // Ensure Hytale block Materials have correct properties (veryInsubstantial
+            // for surface-only blocks) BEFORE any Material.get() call during export.
+            // Without this, custom object layers cannot place on top of custom terrain.
+            HytaleBlockRegistry.ensureMaterialsRegistered();
+
             // Sanity checks
             final Set<Point> selectedTiles = worldExportSettings.getTilesToExport();
             final Set<Integer> selectedDimensions = worldExportSettings.getDimensionsToExport();
