@@ -35,6 +35,12 @@ public class HytalePlatformProvider extends AbstractPlatformProvider implements 
     
     public HytalePlatformProvider() {
         super(Version.VERSION, Collections.singletonList(HYTALE), "HytalePlatformProvider");
+        // Register Hytale block specs (in particular veryInsubstantial=true for surface-only
+        // vegetation/decoration blocks) before any Hytale world is deserialised. Material fields
+        // are transient, so readResolve() re-derives them from MATERIAL_SPECS at load time;
+        // doing this here ensures the specs are present whether or not any Hytale UI has been
+        // opened yet, fixing stale Material references in worlds saved by earlier builds.
+        HytaleBlockRegistry.ensureMaterialsRegistered();
     }
     
     // BlockBasedPlatformProvider implementation

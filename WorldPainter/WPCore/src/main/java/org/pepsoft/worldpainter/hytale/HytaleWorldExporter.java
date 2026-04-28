@@ -73,7 +73,12 @@ import static org.pepsoft.worldpainter.util.ThreadUtils.chooseThreadCountForExpo
 public class HytaleWorldExporter implements WorldExporter {
     
     private static final Logger logger = LoggerFactory.getLogger(HytaleWorldExporter.class);
-    
+
+    // Extra margin (in blocks) added to the placement bounds check so that
+    // custom objects near region edges are placed instead of deferred as
+    // fixups. 256 blocks covers the largest typical tree or structure.
+    private static final int OBJECT_BORDER_MARGIN = 256;
+
     private final World2 world;
     private final WorldExportSettings worldExportSettings;
     private final Platform platform;
@@ -1787,6 +1792,17 @@ public class HytaleWorldExporter implements WorldExporter {
                 (regionCoords.y << 10) - blockOffsetZ,
                 regionSize,
                 regionSize);
+        // Expand the bounds check area so objects whose bounding box extends
+        // past the region edge are still placed. HytaleRegionMinecraftWorld
+        // silently ignores block writes to chunks not in this region, so only
+        // the small overhanging part is lost — far better than dropping the
+        // entire object (which produces visible straight-line gaps at region
+        // boundaries).
+        Rectangle placementBounds = new Rectangle(
+                exportedArea.x - OBJECT_BORDER_MARGIN,
+                exportedArea.y - OBJECT_BORDER_MARGIN,
+                exportedArea.width + OBJECT_BORDER_MARGIN * 2,
+                exportedArea.height + OBJECT_BORDER_MARGIN * 2);
 
         HytaleRegionMinecraftWorld regionWorld = new HytaleRegionMinecraftWorld(chunksByCoords, blockOffsetX, blockOffsetZ,
                 dimension.getMinHeight(), dimension.getMaxHeight());
@@ -1804,11 +1820,7 @@ public class HytaleWorldExporter implements WorldExporter {
                 continue;
             }
             try {
-                List<Fixup> fixups = exporter.addFeatures(exportedArea, exportedArea, regionWorld);
-                if ((fixups != null) && (! fixups.isEmpty())) {
-                    logger.debug("Skipped {} border fixups for custom object layer '{}' in region {},{}",
-                            fixups.size(), bo2Layer.getName(), regionCoords.x, regionCoords.y);
-                }
+                exporter.addFeatures(exportedArea, placementBounds, regionWorld);
             } catch (RuntimeException e) {
                 logger.error("Error applying custom object layer '{}' in region {},{}",
                         bo2Layer.getName(), regionCoords.x, regionCoords.y, e);
@@ -1874,6 +1886,11 @@ public class HytaleWorldExporter implements WorldExporter {
                 (regionCoords.y << 10) - blockOffsetZ,
                 regionSize,
                 regionSize);
+        final Rectangle placementBounds = new Rectangle(
+                exportedArea.x - OBJECT_BORDER_MARGIN,
+                exportedArea.y - OBJECT_BORDER_MARGIN,
+                exportedArea.width + OBJECT_BORDER_MARGIN * 2,
+                exportedArea.height + OBJECT_BORDER_MARGIN * 2);
 
         final HytaleRegionMinecraftWorld regionWorld = new HytaleRegionMinecraftWorld(chunksByCoords, blockOffsetX, blockOffsetZ,
                 dimension.getMinHeight(), dimension.getMaxHeight());
@@ -1894,11 +1911,7 @@ public class HytaleWorldExporter implements WorldExporter {
                 continue;
             }
             try {
-                List<Fixup> fixups = exporter.carve(exportedArea, exportedArea, regionWorld);
-                if (fixups != null && !fixups.isEmpty()) {
-                    logger.debug("Skipped {} border fixups for layer '{}' CARVE in region {},{}",
-                            fixups.size(), entry.getKey().getName(), regionCoords.x, regionCoords.y);
-                }
+                exporter.carve(exportedArea, placementBounds, regionWorld);
             } catch (RuntimeException e) {
                 logger.error("Error carving layer '{}' in region {},{}", entry.getKey().getName(), regionCoords.x, regionCoords.y, e);
             }
@@ -1911,11 +1924,7 @@ public class HytaleWorldExporter implements WorldExporter {
                 continue;
             }
             try {
-                List<Fixup> fixups = exporter.addFeatures(exportedArea, exportedArea, regionWorld);
-                if (fixups != null && !fixups.isEmpty()) {
-                    logger.debug("Skipped {} border fixups for layer '{}' ADD_FEATURES in region {},{}",
-                            fixups.size(), entry.getKey().getName(), regionCoords.x, regionCoords.y);
-                }
+                exporter.addFeatures(exportedArea, placementBounds, regionWorld);
             } catch (RuntimeException e) {
                 logger.error("Error adding features for layer '{}' in region {},{}", entry.getKey().getName(), regionCoords.x, regionCoords.y, e);
             }

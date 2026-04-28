@@ -4554,12 +4554,13 @@ public final class App extends JFrame implements BrushControl,
         final String query = (terrainSearchField != null)
                 ? terrainSearchField.getText().trim().toLowerCase(Locale.ROOT)
                 : "";
+        final String queryNormalized = query.replace(' ', '_');
         org.pepsoft.worldpainter.hytale.HytaleTerrain[] pickList = org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.getAllHytaleTerrains();
         int shownCount = 0;
         for (org.pepsoft.worldpainter.hytale.HytaleTerrain ht : pickList) {
             if ((! query.isEmpty())
                     && (! ht.getName().toLowerCase(Locale.ROOT).contains(query))
-                    && ((ht.getBlock() == null) || (! ht.getBlock().id.toLowerCase(Locale.ROOT).contains(query)))) {
+                    && ((ht.getBlock() == null) || (! ht.getBlock().id.toLowerCase(Locale.ROOT).contains(queryNormalized)))) {
                 continue;
             }
             buttonPanel.add(createHytaleTerrainButton(ht));

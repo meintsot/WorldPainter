@@ -657,9 +657,15 @@ public final class Material implements Serializable {
             }
             return material;
         }
+        if ((steps % 4) != 0) {
+            String hytaleRotStr = getProperty(HYTALE_ROTATION_PROPERTY);
+            if (hytaleRotStr != null) {
+                return rotateHytaleRotation(hytaleRotStr, steps);
+            }
+        }
         return this;
     }
-    
+
     /**
      * If applicable, return a Material that is the mirror image of this one in
      * a specific axis.
@@ -694,6 +700,10 @@ public final class Material implements Serializable {
                 }
             }
             return material;
+        }
+        String hytaleRotStr = getProperty(HYTALE_ROTATION_PROPERTY);
+        if (hytaleRotStr != null) {
+            return mirrorHytaleRotation(hytaleRotStr, axis);
         }
         return this;
     }
@@ -737,6 +747,53 @@ public final class Material implements Serializable {
             }
         }
         return invertedMaterial;
+    }
+
+    private Material rotateHytaleRotation(String hytaleRotStr, int steps) {
+        try {
+            int rot = Integer.parseInt(hytaleRotStr);
+            if ((rot >= 0) && (rot <= 63)) {
+                int rx = rot >> 4;
+                int ry = (rot >> 2) & 3;
+                int rz = rot & 3;
+                ry = ((ry + (steps % 4)) + 4) % 4;
+                int newRot = (rx << 4) | (ry << 2) | rz;
+                if (newRot != rot) {
+                    return withProperty(HYTALE_ROTATION_PROPERTY, Integer.toString(newRot));
+                }
+            }
+        } catch (NumberFormatException e) {
+            // Ignore invalid rotation value
+        }
+        return this;
+    }
+
+    private Material mirrorHytaleRotation(String hytaleRotStr, Direction axis) {
+        try {
+            int rot = Integer.parseInt(hytaleRotStr);
+            if ((rot >= 0) && (rot <= 63)) {
+                int rx = rot >> 4;
+                int ry = (rot >> 2) & 3;
+                int rz = rot & 3;
+                switch (axis) {
+                    case SOUTH: // flip east/west (Hytale X-axis)
+                        ry = (4 - ry) % 4;
+                        break;
+                    case EAST: // flip north/south (Hytale Z-axis)
+                        ry = (6 - ry) % 4;
+                        break;
+                    default:
+                        return this;
+                }
+                int newRot = (rx << 4) | (ry << 2) | rz;
+                if (newRot != rot) {
+                    return withProperty(HYTALE_ROTATION_PROPERTY, Integer.toString(newRot));
+                }
+            }
+        } catch (NumberFormatException e) {
+            // Ignore invalid rotation value
+        }
+        return this;
     }
 
     /**
@@ -1238,17 +1295,15 @@ public final class Material implements Serializable {
     }
 
     /**
-     * Register a material specification for a named block. Must be called
-     * <em>before</em> the first {@link #get(String, Object...)} call for
-     * this name, so that the Material constructor picks up the spec via
-     * {@link #findSpec(Identity)}. Used by platform providers (e.g. Hytale)
-     * to register blocks with correct physical properties.
+     * Register a material specification for a named block and ensure the
+     * cached Material (if any) reflects it. If a Material with this name
+     * was already cached before the spec was registered, the stale entry is
+     * evicted so the next {@link #get(Identity)} call re-creates it with
+     * the correct properties. Used by platform providers (e.g. Hytale) to
+     * register blocks with correct physical properties.
      *
      * <p><strong>Threading contract:</strong> this method synchronizes on
      * {@code ALL_MATERIALS} for mutual exclusion with {@link #get(Identity)}.
-     * Callers must still ensure it is called before the first {@code get()}
-     * for the same name (the registered spec is only consulted during
-     * Material construction, not retroactively).
      *
      * @param name the fully-qualified block name (e.g. {@code "hytale:Bush_Fern"})
      * @param spec a map with keys matching the material spec format:
@@ -1259,6 +1314,14 @@ public final class Material implements Serializable {
     public static void registerSpec(String name, Map<String, Object> spec) {
         synchronized (ALL_MATERIALS) {
             MATERIAL_SPECS.computeIfAbsent(name, k -> new HashSet<>()).add(spec);
+            // Evict every cached Material for this name — including property-bearing
+            // variants such as hytale:Plant_Foo{hytale_rotation=5} — so the next get()
+            // rebuilds them against the newly-registered spec. Identity equality is
+            // name+properties, so removing only Identity(name, null) would leave
+            // rotated/oriented variants with stale physical flags.
+            ALL_MATERIALS.keySet().removeIf(id -> name.equals(id.name));
+            DEFAULT_MATERIALS_BY_NAME.remove(name);
+            PROTOTYPES.remove(name);
         }
     }
 
@@ -1675,6 +1738,9 @@ public final class Material implements Serializable {
 
     public static final String MINECRAFT = "minecraft";
     public static final String LEGACY = "legacy";
+
+    // Hytale rotation property name (stored on materials loaded from Hytale prefab JSON files)
+    private static final String HYTALE_ROTATION_PROPERTY = "hytale_rotation";
 
     static {
         // Read legacy MC block database

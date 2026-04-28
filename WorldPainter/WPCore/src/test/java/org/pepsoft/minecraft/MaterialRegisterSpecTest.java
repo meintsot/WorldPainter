@@ -29,6 +29,51 @@ public class MaterialRegisterSpecTest {
         assertTrue("Material without spec should be solid", mat.solid);
     }
 
+    /**
+     * Regression: before the fix, {@link Material#registerSpec} only evicted the
+     * {@code Identity(name, null)} entry from the cache. Property-bearing variants
+     * (e.g. a block that had already been materialised with {@code hytale_rotation=5})
+     * kept their stale physical flags. Exercise that path: materialise a variant,
+     * register the spec, then re-fetch and verify the variant now reflects the spec.
+     */
+    @Test
+    public void propertyVariantIsRebuiltAfterRegisterSpec() {
+        String name = "test_ns:test_rotated_block_" + System.nanoTime();
+        Map<String, String> props = new HashMap<>();
+        props.put("hytale_rotation", "5");
+
+        Material stale = Material.get(name, props);
+        assertFalse("Before registerSpec the variant has default flags", stale.veryInsubstantial);
+        assertTrue(stale.solid);
+
+        Material.registerSpec(name, createSurfaceOnlySpec());
+
+        Material fresh = Material.get(name, props);
+        assertNotSame("registerSpec must evict the stale property-bearing variant", stale, fresh);
+        assertTrue("Re-fetched variant picks up the registered spec", fresh.veryInsubstantial);
+        assertFalse(fresh.solid);
+        assertEquals("Property is preserved on the rebuilt Material", "5",
+                fresh.getProperty("hytale_rotation"));
+    }
+
+    /**
+     * registerSpec must also evict any cached prototype so getPrototype returns a
+     * fresh instance that reflects the newly-registered spec.
+     */
+    @Test
+    public void prototypeIsRebuiltAfterRegisterSpec() {
+        String name = "test_ns:test_prototype_block_" + System.nanoTime();
+
+        Material stalePrototype = Material.getPrototype(name);
+        assertFalse(stalePrototype.veryInsubstantial);
+
+        Material.registerSpec(name, createSurfaceOnlySpec());
+
+        Material freshPrototype = Material.getPrototype(name);
+        assertNotSame("registerSpec must evict the cached prototype", stalePrototype, freshPrototype);
+        assertTrue(freshPrototype.veryInsubstantial);
+    }
+
     private static Map<String, Object> createSurfaceOnlySpec() {
         Map<String, Object> spec = new HashMap<>();
         spec.put("opacity", 0);

@@ -891,6 +891,7 @@ public class MaterialSelector extends javax.swing.JPanel {
     private void filterPrimaryNames() {
         if (programmaticChange || allPrimaryNames == null) return;
         String query = filterField.getText().trim().toLowerCase(Locale.ROOT);
+        String queryNormalized = query.replace(' ', '_');
         String currentSelection = (String) comboBoxMinecraftName.getSelectedItem();
         programmaticChange = true;
         try {
@@ -903,8 +904,8 @@ public class MaterialSelector extends javax.swing.JPanel {
                     String lower = name.toLowerCase(Locale.ROOT);
                     String display = hytaleMode ? HytaleBlockRegistry.formatDisplayName(name).toLowerCase(Locale.ROOT) : lower;
                     int rank = Integer.MAX_VALUE;
-                    if (lower.contains(query) || display.contains(query)) {
-                        rank = Math.min(searchRank(lower, query), searchRank(display, query));
+                    if (lower.contains(queryNormalized) || display.contains(query)) {
+                        rank = Math.min(searchRank(lower, queryNormalized), searchRank(display, query));
                     }
                     if (rank < Integer.MAX_VALUE) {
                         ranked.add(new java.util.AbstractMap.SimpleEntry<>(name, rank));
