@@ -217,6 +217,12 @@ public final class Eyedropper extends MouseOrTabletOperation {
                     : ("value " + value);
             return new DiscreteEntry("Entities: " + label, icon);
         }
+        if (layer instanceof HytalePrefabLayer) {
+            String label = (value >= 0 && value < HytalePrefabLayer.PREFAB_NAMES.length)
+                    ? HytalePrefabLayer.PREFAB_NAMES[value]
+                    : ("value " + value);
+            return new DiscreteEntry("Prefabs: " + label, icon);
+        }
         // Generic fallback (will be tightened to per-layer cases in later tasks;
         // a dedicated test for it lands in Task 7).
         return new DiscreteEntry(layer.getName() + ": " + value, icon);

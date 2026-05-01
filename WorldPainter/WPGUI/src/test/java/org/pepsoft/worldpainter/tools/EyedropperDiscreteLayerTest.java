@@ -5,6 +5,7 @@ import org.pepsoft.worldpainter.hytale.HytaleEnvironmentData;
 import org.pepsoft.worldpainter.hytale.HytaleEnvironmentLayer;
 import org.pepsoft.worldpainter.hytale.HytaleEntityLayer;
 import org.pepsoft.worldpainter.hytale.HytaleFluidLayer;
+import org.pepsoft.worldpainter.hytale.HytalePrefabLayer;
 
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -65,5 +66,18 @@ public class EyedropperDiscreteLayerTest {
                 entry.name.contains("Dense"));
         assertTrue("expected layer-name prefix 'Entities', got: " + entry.name,
                 entry.name.startsWith("Entities"));
+    }
+
+    @Test
+    public void prefab_dungeon_returnsDungeonName() {
+        Eyedropper.DiscreteEntry entry = Eyedropper.discreteLayerEntry(
+                HytalePrefabLayer.INSTANCE, HytalePrefabLayer.PREFAB_DUNGEON);
+
+        assertNotNull(entry);
+        assertNotNull(entry.icon);
+        assertTrue("expected name to contain 'Dungeon', got: " + entry.name,
+                entry.name.contains("Dungeon"));
+        assertTrue("expected layer-name prefix 'Prefabs', got: " + entry.name,
+                entry.name.startsWith("Prefabs"));
     }
 }
