@@ -6,6 +6,9 @@ import org.pepsoft.worldpainter.hytale.HytaleEnvironmentLayer;
 import org.pepsoft.worldpainter.hytale.HytaleEntityLayer;
 import org.pepsoft.worldpainter.hytale.HytaleFluidLayer;
 import org.pepsoft.worldpainter.hytale.HytalePrefabLayer;
+import org.pepsoft.worldpainter.layers.Layer;
+
+import java.awt.image.BufferedImage;
 
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -124,5 +127,36 @@ public class EyedropperDiscreteLayerTest {
         assertNotNull(entry);
         assertTrue("expected fallback 'value 99', got: " + entry.name,
                 entry.name.contains("value 99"));
+    }
+
+    @Test
+    public void unknownDiscreteLayer_fallsBackToLayerNameAndValue() {
+        Eyedropper.DiscreteEntry entry = Eyedropper.discreteLayerEntry(
+                StubDiscreteLayer.INSTANCE, 5);
+
+        assertNotNull(entry);
+        assertNotNull("fallback must still produce an icon", entry.icon);
+        assertTrue("expected '<name>: 5' suffix, got: " + entry.name,
+                entry.name.endsWith(": 5"));
+        assertTrue("expected layer name in label, got: " + entry.name,
+                entry.name.startsWith("Stub Discrete"));
+    }
+
+    /**
+     * Minimal {@link Layer} subclass used only by the fallback test. Discrete = true
+     * so it would have hit the original {@code throw} branch in the eyedropper.
+     */
+    private static final class StubDiscreteLayer extends Layer {
+        static final StubDiscreteLayer INSTANCE = new StubDiscreteLayer();
+
+        private StubDiscreteLayer() {
+            super("test.stub.discrete", "Stub Discrete", "test only",
+                  DataSize.NIBBLE, true, 100);
+        }
+
+        @Override
+        public BufferedImage getIcon() {
+            return new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
+        }
     }
 }
