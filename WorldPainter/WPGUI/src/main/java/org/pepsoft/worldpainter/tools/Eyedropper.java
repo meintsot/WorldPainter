@@ -7,6 +7,11 @@ import org.pepsoft.worldpainter.biomeschemes.CustomBiomeManager;
 import org.pepsoft.worldpainter.hytale.HytaleTerrain;
 import org.pepsoft.worldpainter.hytale.HytaleTerrainHelper;
 import org.pepsoft.worldpainter.hytale.HytaleTerrainLayer;
+import org.pepsoft.worldpainter.hytale.HytaleEntityLayer;
+import org.pepsoft.worldpainter.hytale.HytaleEnvironmentData;
+import org.pepsoft.worldpainter.hytale.HytaleEnvironmentLayer;
+import org.pepsoft.worldpainter.hytale.HytaleFluidLayer;
+import org.pepsoft.worldpainter.hytale.HytalePrefabLayer;
 import org.pepsoft.worldpainter.layers.*;
 import org.pepsoft.worldpainter.operations.MouseOrTabletOperation;
 
@@ -168,6 +173,33 @@ public final class Eyedropper extends MouseOrTabletOperation {
     private JPopupMenu popupMenu;
 
     public enum PaintType { TERRAIN, /** All layers except biomes and annotations. */ LAYER, BIOME, ANNOTATION}
+
+    /**
+     * Result of resolving a (layer, value) pair into a popup-menu entry. Used
+     * by the eyedropper popup builder for discrete layers other than Biome
+     * and Annotations (which have their own special-cased rendering above).
+     */
+    static final class DiscreteEntry {
+        final String name;
+        final Icon icon;
+
+        DiscreteEntry(String name, Icon icon) {
+            this.name = name;
+            this.icon = icon;
+        }
+    }
+
+    /**
+     * Resolve a discrete layer (Hytale Environment / Fluid / Entity / Prefab,
+     * or any other discrete non-ReadOnly layer) and a raw value to a
+     * popup-menu entry. The icon is the layer's own icon scaled to 16x16.
+     *
+     * <p>Values that fall outside the layer's known range render with a
+     * generic "&lt;Layer name&gt;: value &lt;raw&gt;" label rather than throwing.
+     */
+    static DiscreteEntry discreteLayerEntry(Layer layer, int value) {
+        throw new UnsupportedOperationException("discreteLayerEntry not implemented yet");
+    }
 
     /**
      * A selection callback that will be notified of the selected value, or if the operation was cancelled.
