@@ -198,7 +198,15 @@ public final class Eyedropper extends MouseOrTabletOperation {
      * generic "&lt;Layer name&gt;: value &lt;raw&gt;" label rather than throwing.
      */
     static DiscreteEntry discreteLayerEntry(Layer layer, int value) {
-        throw new UnsupportedOperationException("discreteLayerEntry not implemented yet");
+        final Icon icon = new ImageIcon(scaleIcon(layer.getIcon(), 16));
+        if (layer instanceof HytaleEnvironmentLayer) {
+            HytaleEnvironmentData env = HytaleEnvironmentData.getById(value);
+            String label = (env != null) ? env.getDisplayName() : ("value " + value);
+            return new DiscreteEntry("Hytale Environment: " + label, icon);
+        }
+        // Generic fallback (will be tightened to per-layer cases in later tasks;
+        // a dedicated test for it lands in Task 7).
+        return new DiscreteEntry(layer.getName() + ": " + value, icon);
     }
 
     /**
