@@ -228,8 +228,9 @@ public final class Eyedropper extends MouseOrTabletOperation {
                     : ("value " + value);
             return new DiscreteEntry("Prefabs: " + label, icon);
         }
-        // Generic fallback (will be tightened to per-layer cases in later tasks;
-        // a dedicated test for it lands in Task 7).
+        // Generic fallback for any other discrete non-ReadOnly layer (a future
+        // Hytale layer or a third-party plugin layer). Renders without throwing;
+        // richer per-value names can be added by extending the chain above.
         return new DiscreteEntry(layer.getName() + ": " + value, icon);
     }
 
