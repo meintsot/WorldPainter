@@ -80,4 +80,49 @@ public class EyedropperDiscreteLayerTest {
         assertTrue("expected layer-name prefix 'Prefabs', got: " + entry.name,
                 entry.name.startsWith("Prefabs"));
     }
+
+    @Test
+    public void environment_invalidId_fallsBackToValueLabel() {
+        Eyedropper.DiscreteEntry entry = Eyedropper.discreteLayerEntry(
+                HytaleEnvironmentLayer.INSTANCE, 9999);
+
+        assertNotNull(entry);
+        assertTrue("expected fallback 'value 9999', got: " + entry.name,
+                entry.name.contains("value 9999"));
+    }
+
+    @Test
+    public void fluid_invalidValue_fallsBackToValueLabel() {
+        // Fluid uses HytaleFluidLayer.normalizeFluidValue, which migrates any
+        // non-negative integer into [0, FLUID_COUNT) — so a positive
+        // out-of-range value renders as a known fluid name (e.g. "Water"),
+        // not the fallback. The bounds-fallback only fires for negative
+        // inputs (which normalizeFluidValue passes through unchanged).
+        Eyedropper.DiscreteEntry entry = Eyedropper.discreteLayerEntry(
+                HytaleFluidLayer.INSTANCE, -1);
+
+        assertNotNull(entry);
+        assertTrue("expected fallback 'value -1', got: " + entry.name,
+                entry.name.contains("value -1"));
+    }
+
+    @Test
+    public void entity_invalidValue_fallsBackToValueLabel() {
+        Eyedropper.DiscreteEntry entry = Eyedropper.discreteLayerEntry(
+                HytaleEntityLayer.INSTANCE, 99);
+
+        assertNotNull(entry);
+        assertTrue("expected fallback 'value 99', got: " + entry.name,
+                entry.name.contains("value 99"));
+    }
+
+    @Test
+    public void prefab_invalidValue_fallsBackToValueLabel() {
+        Eyedropper.DiscreteEntry entry = Eyedropper.discreteLayerEntry(
+                HytalePrefabLayer.INSTANCE, 99);
+
+        assertNotNull(entry);
+        assertTrue("expected fallback 'value 99', got: " + entry.name,
+                entry.name.contains("value 99"));
+    }
 }
