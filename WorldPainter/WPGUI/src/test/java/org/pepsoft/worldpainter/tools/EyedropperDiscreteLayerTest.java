@@ -3,6 +3,7 @@ package org.pepsoft.worldpainter.tools;
 import org.junit.Test;
 import org.pepsoft.worldpainter.hytale.HytaleEnvironmentData;
 import org.pepsoft.worldpainter.hytale.HytaleEnvironmentLayer;
+import org.pepsoft.worldpainter.hytale.HytaleEntityLayer;
 import org.pepsoft.worldpainter.hytale.HytaleFluidLayer;
 
 import static org.junit.Assert.assertNotNull;
@@ -51,5 +52,18 @@ public class EyedropperDiscreteLayerTest {
         assertNotNull(entry);
         assertTrue("expected legacy 9 to migrate to 'Lava', got: " + entry.name,
                 entry.name.contains("Lava"));
+    }
+
+    @Test
+    public void entity_dense_returnsDenseName() {
+        Eyedropper.DiscreteEntry entry = Eyedropper.discreteLayerEntry(
+                HytaleEntityLayer.INSTANCE, HytaleEntityLayer.DENSITY_DENSE);
+
+        assertNotNull(entry);
+        assertNotNull(entry.icon);
+        assertTrue("expected name to contain 'Dense', got: " + entry.name,
+                entry.name.contains("Dense"));
+        assertTrue("expected layer-name prefix 'Entities', got: " + entry.name,
+                entry.name.startsWith("Entities"));
     }
 }

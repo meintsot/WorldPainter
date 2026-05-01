@@ -211,6 +211,12 @@ public final class Eyedropper extends MouseOrTabletOperation {
                     : ("value " + value);
             return new DiscreteEntry("Hytale Fluid: " + label, icon);
         }
+        if (layer instanceof HytaleEntityLayer) {
+            String label = (value >= 0 && value < HytaleEntityLayer.DENSITY_NAMES.length)
+                    ? HytaleEntityLayer.DENSITY_NAMES[value]
+                    : ("value " + value);
+            return new DiscreteEntry("Entities: " + label, icon);
+        }
         // Generic fallback (will be tightened to per-layer cases in later tasks;
         // a dedicated test for it lands in Task 7).
         return new DiscreteEntry(layer.getName() + ": " + value, icon);
