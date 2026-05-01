@@ -137,7 +137,12 @@ public final class Eyedropper extends MouseOrTabletOperation {
                         name = layer.getName();
                         icon = new ImageIcon(scaleIcon(layer.getIcon(), 16));
                     } else {
-                        throw new UnsupportedOperationException("Discrete layer " + layer + " not supported");
+                        if ((paintTypes != null) && (! paintTypes.contains(LAYER))) {
+                            return;
+                        }
+                        DiscreteEntry entry = discreteLayerEntry(layer, value);
+                        name = entry.name;
+                        icon = entry.icon;
                     }
                     popupMenu.add(new AbstractAction(name, icon) {
                         @Override
