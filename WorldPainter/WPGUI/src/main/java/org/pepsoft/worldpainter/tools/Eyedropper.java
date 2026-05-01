@@ -204,6 +204,13 @@ public final class Eyedropper extends MouseOrTabletOperation {
             String label = (env != null) ? env.getDisplayName() : ("value " + value);
             return new DiscreteEntry("Hytale Environment: " + label, icon);
         }
+        if (layer instanceof HytaleFluidLayer) {
+            int normalized = HytaleFluidLayer.normalizeFluidValue(value);
+            String label = (normalized >= 0 && normalized < HytaleFluidLayer.FLUID_NAMES.length)
+                    ? HytaleFluidLayer.FLUID_NAMES[normalized]
+                    : ("value " + value);
+            return new DiscreteEntry("Hytale Fluid: " + label, icon);
+        }
         // Generic fallback (will be tightened to per-layer cases in later tasks;
         // a dedicated test for it lands in Task 7).
         return new DiscreteEntry(layer.getName() + ": " + value, icon);

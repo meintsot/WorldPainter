@@ -3,6 +3,7 @@ package org.pepsoft.worldpainter.tools;
 import org.junit.Test;
 import org.pepsoft.worldpainter.hytale.HytaleEnvironmentData;
 import org.pepsoft.worldpainter.hytale.HytaleEnvironmentLayer;
+import org.pepsoft.worldpainter.hytale.HytaleFluidLayer;
 
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
@@ -24,5 +25,31 @@ public class EyedropperDiscreteLayerTest {
         assertTrue(
                 "name should be prefixed with the layer name, got: " + entry.name,
                 entry.name.startsWith("Hytale Environment"));
+    }
+
+    @Test
+    public void fluid_lava_returnsLavaName() {
+        Eyedropper.DiscreteEntry entry = Eyedropper.discreteLayerEntry(
+                HytaleFluidLayer.INSTANCE, HytaleFluidLayer.FLUID_LAVA);
+
+        assertNotNull(entry);
+        assertNotNull(entry.icon);
+        assertTrue("expected name to contain 'Lava', got: " + entry.name,
+                entry.name.contains("Lava"));
+        assertTrue("expected layer-name prefix, got: " + entry.name,
+                entry.name.startsWith("Hytale Fluid"));
+    }
+
+    @Test
+    public void fluid_legacyValue9_migratesToLava() {
+        // Old saves stored fluid value 9 to mean lava; the eyedropper must
+        // resolve it through HytaleFluidLayer.normalizeFluidValue rather
+        // than indexing FLUID_NAMES with the raw 9.
+        Eyedropper.DiscreteEntry entry = Eyedropper.discreteLayerEntry(
+                HytaleFluidLayer.INSTANCE, 9);
+
+        assertNotNull(entry);
+        assertTrue("expected legacy 9 to migrate to 'Lava', got: " + entry.name,
+                entry.name.contains("Lava"));
     }
 }
