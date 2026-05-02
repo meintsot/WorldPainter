@@ -12,6 +12,7 @@ import org.pepsoft.worldpainter.exporting.Fixup;
 import org.pepsoft.worldpainter.exporting.IncidentalLayerExporter;
 import org.pepsoft.worldpainter.exporting.MinecraftWorld;
 import org.pepsoft.worldpainter.exporting.SecondPassLayerExporter;
+import org.pepsoft.worldpainter.hytale.HytaleTerrainHelper;
 import org.pepsoft.worldpainter.layers.Bo2Layer;
 import org.pepsoft.worldpainter.layers.FloodWithLava;
 import org.pepsoft.worldpainter.layers.exporters.WPObjectExporter;
@@ -251,6 +252,10 @@ public class Bo2LayerExporter extends WPObjectExporter<Bo2Layer> implements Seco
                 logger.trace("Object {} @ {},{},{} potentially placeable on water or lava", object.getName(), x, y, z);
                 return Placement.FLOATING;
             }
+        } else if (flooded && HytaleTerrainHelper.isHytale(platform) && object.getAttribute(ATTRIBUTE_SPAWN_ON_LAND)) {
+            // Hytale stores blocks and fluids in separate data layers, so
+            // objects can coexist with water. Allow land objects underwater.
+            return Placement.ON_LAND;
         } else if (! flooded) {
             Material materialUnderCoords = (z > minecraftWorld.getMinHeight()) ? minecraftWorld.getMaterialAt(x, y, z - 1) : AIR;
             if (object.getAttribute(ATTRIBUTE_SPAWN_ON_LAND) && (! materialUnderCoords.veryInsubstantial)) {

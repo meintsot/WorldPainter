@@ -24,6 +24,11 @@ public final class HytaleWorldSettings {
             new AttributeKey<>("org.pepsoft.hytale.worldConfig.isFallDamageEnabled", true);
     public static final AttributeKey<Boolean> ATTRIBUTE_IS_SPAWNING_NPC =
             new AttributeKey<>("org.pepsoft.hytale.worldConfig.isSpawningNpc", true);
+    public static final AttributeKey<String> ATTRIBUTE_WORLD_GEN_TYPE =
+            new AttributeKey<>("org.pepsoft.hytale.worldConfig.worldGenType", DEFAULT_WORLD_GEN_TYPE);
+
+    public static final String DEFAULT_WORLD_GEN_TYPE = "Void";
+    public static final String[] WORLD_GEN_TYPES = {"Void", "Standard", "Elevated"};
 
     /**
      * Hytale supports Adventure and Creative modes.

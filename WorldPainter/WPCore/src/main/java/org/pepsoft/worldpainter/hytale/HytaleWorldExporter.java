@@ -350,9 +350,9 @@ public class HytaleWorldExporter implements WorldExporter {
         config.put("DisplayName", displayName);
         config.put("Seed", dim0 != null ? dim0.getMinecraftSeed() : System.currentTimeMillis());
         
-        // Use Void world gen so Hytale doesn't generate its own terrain
         Map<String, String> worldGen = new LinkedHashMap<>();
-        worldGen.put("Type", "Void");
+        worldGen.put("Type", world.getAttribute(HytaleWorldSettings.ATTRIBUTE_WORLD_GEN_TYPE)
+                .orElse(HytaleWorldSettings.DEFAULT_WORLD_GEN_TYPE));
         config.put("WorldGen", worldGen);
         
         Map<String, String> worldMap = new LinkedHashMap<>();
@@ -508,7 +508,11 @@ public class HytaleWorldExporter implements WorldExporter {
         
         // permissions.json - default with OP group
         Map<String, Object> permissions = new LinkedHashMap<>();
-        permissions.put("users", new LinkedHashMap<>());
+        Map<String, Object> users = new LinkedHashMap<>();
+        if (HytaleWorldSettings.normalizeGameType(world.getGameType()) == GameType.CREATIVE) {
+            users.put("Player", "OP");
+        }
+        permissions.put("users", users);
         Map<String, Object> groups = new LinkedHashMap<>();
         groups.put("Default", new String[0]);
         groups.put("OP", new String[]{"*"});
@@ -1830,7 +1834,10 @@ public class HytaleWorldExporter implements WorldExporter {
             }
             Bo2Layer bo2Layer = (Bo2Layer) layer;
             regionWorld.setActiveBlockMappings(bo2Layer.getHytaleBlockMappings());
-            regionWorld.setDecoratePlacedBlocks(bo2Layer.isNoPhysics());
+            // Hytale stores blocks and fluids separately, so custom-object
+            // blocks always coexist with surrounding water. Mark them all as
+            // decorative so the seal-above-terrain pass preserves them.
+            regionWorld.setDecoratePlacedBlocks(true);
             Bo2LayerExporter exporter = bo2Layer.getExporter(dimension, platform, dimension.getLayerSettings(bo2Layer));
             if (exporter == null) {
                 regionWorld.setDecoratePlacedBlocks(false);

@@ -367,6 +367,10 @@ public class ExportWorldDialog extends WPDialogWithPaintSelection {
             world.setAttribute(HytaleWorldSettings.ATTRIBUTE_IS_PVP_ENABLED, checkBoxAllowCheats.isSelected());
             world.setAttribute(HytaleWorldSettings.ATTRIBUTE_IS_SPAWNING_NPC, checkBoxMapFeatures.isSelected());
             world.setAttribute(HytaleWorldSettings.ATTRIBUTE_GAMEPLAY_CONFIG, getSelectedGameplayConfig());
+            if (comboBoxWorldGenType != null) {
+                world.setAttribute(HytaleWorldSettings.ATTRIBUTE_WORLD_GEN_TYPE,
+                        (String) comboBoxWorldGenType.getSelectedItem());
+            }
             world.setDataPacks(null);
         } else {
             world.setCreateGoodiesChest(checkBoxGoodies.isSelected());
@@ -519,7 +523,7 @@ public class ExportWorldDialog extends WPDialogWithPaintSelection {
             }
 
             setDataPackControlsVisible(false);
-            setMinecraftWorldBorderVisible(false);
+            setupHytaleWorldGenPanel();
             listDataPacks.setEnabled(false);
         } else {
             jLabel4.setText("Game settings");
@@ -539,6 +543,7 @@ public class ExportWorldDialog extends WPDialogWithPaintSelection {
 
             final boolean dataPacksSupported = platform.capabilities.contains(DATA_PACKS);
             setDataPackControlsVisible(true);
+            restoreMinecraftWorldBorderPanel();
             setMinecraftWorldBorderVisible(true);
             listDataPacks.setEnabled(dataPacksSupported);
         }
@@ -554,6 +559,52 @@ public class ExportWorldDialog extends WPDialogWithPaintSelection {
 
     private void setMinecraftWorldBorderVisible(boolean visible) {
         panelMinecraftWorldBorder.setVisible(visible);
+    }
+
+    private void setupHytaleWorldGenPanel() {
+        // Hide original Minecraft border controls
+        jLabel79.setVisible(false);
+        spinnerMcBorderCentreX.setVisible(false);
+        jLabel80.setVisible(false);
+        spinnerMcBorderCentreY.setVisible(false);
+        jLabel81.setVisible(false);
+        spinnerMcBorderSize.setVisible(false);
+        jLabel85.setVisible(false);
+        jLabel86.setVisible(false);
+
+        ((javax.swing.border.TitledBorder) panelMinecraftWorldBorder.getBorder()).setTitle("World Generation");
+
+        if (comboBoxWorldGenType == null) {
+            labelWorldGenType = new javax.swing.JLabel("Outside map borders:");
+            comboBoxWorldGenType = new javax.swing.JComboBox<>(HytaleWorldSettings.WORLD_GEN_TYPES);
+            comboBoxWorldGenType.setToolTipText("World generation type for areas outside the painted map");
+            panelMinecraftWorldBorder.add(labelWorldGenType);
+            panelMinecraftWorldBorder.add(comboBoxWorldGenType);
+        }
+        comboBoxWorldGenType.setSelectedItem(world.getAttribute(HytaleWorldSettings.ATTRIBUTE_WORLD_GEN_TYPE)
+                .orElse(HytaleWorldSettings.DEFAULT_WORLD_GEN_TYPE));
+        labelWorldGenType.setVisible(true);
+        comboBoxWorldGenType.setVisible(true);
+        panelMinecraftWorldBorder.setVisible(true);
+        panelMinecraftWorldBorder.revalidate();
+    }
+
+    private void restoreMinecraftWorldBorderPanel() {
+        jLabel79.setVisible(true);
+        spinnerMcBorderCentreX.setVisible(true);
+        jLabel80.setVisible(true);
+        spinnerMcBorderCentreY.setVisible(true);
+        jLabel81.setVisible(true);
+        spinnerMcBorderSize.setVisible(true);
+        jLabel85.setVisible(true);
+        jLabel86.setVisible(true);
+        ((javax.swing.border.TitledBorder) panelMinecraftWorldBorder.getBorder()).setTitle("World Border");
+        if (labelWorldGenType != null) {
+            labelWorldGenType.setVisible(false);
+        }
+        if (comboBoxWorldGenType != null) {
+            comboBoxWorldGenType.setVisible(false);
+        }
     }
 
     private String getSelectedGameplayConfig() {
@@ -1238,6 +1289,8 @@ public class ExportWorldDialog extends WPDialogWithPaintSelection {
     private final List<Platform> supportedPlatforms = new ArrayList<>();
     private final DefaultListModel<File> dataPacksListModel = new DefaultListModel<>();
     private boolean disableDisabledLayersWarning;
+    private javax.swing.JComboBox<String> comboBoxWorldGenType;
+    private javax.swing.JLabel labelWorldGenType;
 
     private static String previouslyAcknowledgedWarnings;
     private static Reference<World2> warningsForWorld;
