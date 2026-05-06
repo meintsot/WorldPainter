@@ -1829,11 +1829,15 @@ public class HytaleWorldExporter implements WorldExporter {
         HytaleRegionMinecraftWorld regionWorld = new HytaleRegionMinecraftWorld(chunksByCoords, blockOffsetX, blockOffsetZ,
                 dimension.getMinHeight(), dimension.getMaxHeight());
 
+        List<Bo2Layer> bo2Layers = new ArrayList<>();
         for (Layer layer: layers) {
-            if (! (layer instanceof Bo2Layer)) {
-                continue;
+            if (layer instanceof Bo2Layer) {
+                bo2Layers.add((Bo2Layer) layer);
             }
-            Bo2Layer bo2Layer = (Bo2Layer) layer;
+        }
+        Collections.sort(bo2Layers);
+
+        for (Bo2Layer bo2Layer : bo2Layers) {
             regionWorld.setActiveBlockMappings(bo2Layer.getHytaleBlockMappings());
             // Hytale stores blocks and fluids separately, so custom-object
             // blocks always coexist with surrounding water. Track them for
@@ -1985,6 +1989,7 @@ public class HytaleWorldExporter implements WorldExporter {
         if (firstPassLayers.isEmpty()) {
             return;
         }
+        Collections.sort(firstPassLayers);
 
         // Instantiate all exporters
         List<FirstPassLayerExporter> exporters = new ArrayList<>();
