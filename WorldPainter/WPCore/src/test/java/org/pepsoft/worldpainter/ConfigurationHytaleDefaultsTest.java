@@ -60,4 +60,47 @@ public class ConfigurationHytaleDefaultsTest {
     public void hytalePlatformOnlyAdvertisesSupportedGameTypes() {
         assertEquals(Arrays.asList(ADVENTURE, CREATIVE), DefaultPlugin.HYTALE.supportedGameTypes);
     }
+
+    /**
+     * TP-38: Hytale grid/contour defaults must be platform-appropriate, not
+     * the Minecraft-oriented {@code 128} block grid. Hytale chunks are 32
+     * blocks across so the grid default is 32. These getters back the
+     * "Edit > Preferences > Defaults" platform-specific defaults that
+     * {@code WorldFactory} consults at world creation.
+     */
+    @Test
+    public void freshConfigurationExposesHytaleGridDefaultsAt32Enabled() {
+        Configuration config = new Configuration();
+
+        assertTrue("Hytale grid is enabled by default — chunks-aligned grid is useful",
+                config.isDefaultHytaleGridEnabled());
+        assertEquals("Hytale grid default size matches chunk size (32)",
+                32, config.getDefaultHytaleGridSize());
+    }
+
+    @Test
+    public void freshConfigurationExposesHytaleContourDefaults() {
+        Configuration config = new Configuration();
+
+        assertTrue("Hytale contour overlay enabled by default",
+                config.isDefaultHytaleContoursEnabled());
+        assertEquals("Hytale contour separation default is 10 blocks",
+                10, config.getDefaultHytaleContourSeparation());
+    }
+
+    @Test
+    public void hytaleGridSettersAreIndependentFromMinecraftSettings() {
+        // The bug TP-38 fixed was a single shared default. Verify the per-platform
+        // setters do not bleed into each other.
+        Configuration config = new Configuration();
+        config.setDefaultGridEnabled(false);
+        config.setDefaultGridSize(128);
+        config.setDefaultHytaleGridEnabled(true);
+        config.setDefaultHytaleGridSize(32);
+
+        assertFalse("Minecraft default unaffected by Hytale setter", config.isDefaultGridEnabled());
+        assertEquals(128, config.getDefaultGridSize());
+        assertTrue("Hytale default unaffected by Minecraft setter", config.isDefaultHytaleGridEnabled());
+        assertEquals(32, config.getDefaultHytaleGridSize());
+    }
 }
