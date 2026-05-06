@@ -1215,19 +1215,20 @@ public class HytaleWorldExporter implements WorldExporter {
 
     /**
      * Restore fluid in the {@code [terrainHeight + 1, waterLevel]} range of a
-     * single chunk column. Blocks marked {@link HytaleChunk#SUPPORT_DECORATIVE}
-     * (placed by Bo2 custom-object layers with "Disable physics") are
-     * preserved — Hytale stores blocks and fluids separately, so the
-     * decorative block coexists with the surrounding water. Non-decorative
-     * blocks (e.g. ground-cover/terrain plants that bled into the water
-     * column during chunk generation) are cleared and replaced with fluid.
+     * single chunk column. Blocks placed by Bo2 custom-object layers are
+     * preserved with a transient seal-protection marker; Hytale stores blocks
+     * and fluids separately, so the block coexists with the surrounding water.
+     * Unmarked blocks with no support value (e.g. ground-cover/terrain plants
+     * that bled into the water column during chunk generation) are cleared and
+     * replaced with fluid.
      *
      * @return Number of (x, y, z) cells modified.
      */
     static int sealAboveTerrainColumn(HytaleChunk chunk, int localX, int localZ, int terrainHeight, int waterLevel, String fluidId) {
         int sealed = 0;
         for (int y = terrainHeight + 1; y <= waterLevel; y++) {
-            if (chunk.getSupportValue(localX, y, localZ) != HytaleChunk.SUPPORT_DECORATIVE) {
+            if ((chunk.getSupportValue(localX, y, localZ) == HytaleChunk.SUPPORT_NONE)
+                    && (! chunk.isSealProtected(localX, y, localZ))) {
                 chunk.setHytaleBlock(localX, y, localZ, HytaleBlock.EMPTY);
             }
             chunk.getSections()[y >> 5].setFluid(localX, y & 31, localZ, fluidId, 1);
@@ -1835,12 +1836,19 @@ public class HytaleWorldExporter implements WorldExporter {
             Bo2Layer bo2Layer = (Bo2Layer) layer;
             regionWorld.setActiveBlockMappings(bo2Layer.getHytaleBlockMappings());
             // Hytale stores blocks and fluids separately, so custom-object
-            // blocks always coexist with surrounding water. Mark them all as
-            // decorative so the seal-above-terrain pass preserves them.
-            regionWorld.setDecoratePlacedBlocks(true);
+            // blocks always coexist with surrounding water. Track them for
+            // the seal-above-terrain pass without abusing BlockPhysics support
+            // distances. noPhysics layers still get DECORATIVE
+            // (physics-exempt); other layers keep normal support data so
+            // Hytale can compute structural support on demand.
+            regionWorld.setPlacedBlockSupportValue(bo2Layer.isNoPhysics()
+                    ? HytaleChunk.SUPPORT_DECORATIVE
+                    : HytaleChunk.SUPPORT_NONE);
+            regionWorld.setProtectPlacedBlocksFromFluidSeal(true);
             Bo2LayerExporter exporter = bo2Layer.getExporter(dimension, platform, dimension.getLayerSettings(bo2Layer));
             if (exporter == null) {
-                regionWorld.setDecoratePlacedBlocks(false);
+                regionWorld.setPlacedBlockSupportValue(HytaleChunk.SUPPORT_NONE);
+                regionWorld.setProtectPlacedBlocksFromFluidSeal(false);
                 continue;
             }
             try {
@@ -1849,7 +1857,8 @@ public class HytaleWorldExporter implements WorldExporter {
                 logger.error("Error applying custom object layer '{}' in region {},{}",
                         bo2Layer.getName(), regionCoords.x, regionCoords.y, e);
             } finally {
-                regionWorld.setDecoratePlacedBlocks(false);
+                regionWorld.setPlacedBlockSupportValue(HytaleChunk.SUPPORT_NONE);
+                regionWorld.setProtectPlacedBlocksFromFluidSeal(false);
             }
         }
     }
@@ -2185,8 +2194,12 @@ public class HytaleWorldExporter implements WorldExporter {
             this.activeBlockMappings = mappings;
         }
 
-        void setDecoratePlacedBlocks(boolean decoratePlacedBlocks) {
-            this.decoratePlacedBlocks = decoratePlacedBlocks;
+        void setPlacedBlockSupportValue(int placedBlockSupportValue) {
+            this.placedBlockSupportValue = placedBlockSupportValue;
+        }
+
+        void setProtectPlacedBlocksFromFluidSeal(boolean protectPlacedBlocksFromFluidSeal) {
+            this.protectPlacedBlocksFromFluidSeal = protectPlacedBlocksFromFluidSeal;
         }
 
         @Override
@@ -2274,12 +2287,14 @@ public class HytaleWorldExporter implements WorldExporter {
             if (material.isNamed(MC_WATER)) {
                 location.chunk.setHytaleBlock(location.localX, height, location.localZ, HytaleBlock.EMPTY);
                 section.setFluid(location.localX, localY, location.localZ, HytaleBlockMapping.HY_WATER, 1);
-                location.chunk.setDecorative(location.localX, height, location.localZ, decoratePlacedBlocks);
+                location.chunk.setSupportValue(location.localX, height, location.localZ, HytaleChunk.SUPPORT_NONE);
+                location.chunk.setSealProtected(location.localX, height, location.localZ, false);
                 return;
             } else if (material.isNamed(MC_LAVA)) {
                 location.chunk.setHytaleBlock(location.localX, height, location.localZ, HytaleBlock.EMPTY);
                 section.setFluid(location.localX, localY, location.localZ, HytaleBlockMapping.HY_LAVA, 1);
-                location.chunk.setDecorative(location.localX, height, location.localZ, decoratePlacedBlocks);
+                location.chunk.setSupportValue(location.localX, height, location.localZ, HytaleChunk.SUPPORT_NONE);
+                location.chunk.setSealProtected(location.localX, height, location.localZ, false);
                 return;
             }
 
@@ -2287,11 +2302,18 @@ public class HytaleWorldExporter implements WorldExporter {
             if (block.isFluid()) {
                 location.chunk.setHytaleBlock(location.localX, height, location.localZ, HytaleBlock.EMPTY);
                 section.setFluid(location.localX, localY, location.localZ, block.id, 1);
-                location.chunk.setDecorative(location.localX, height, location.localZ, decoratePlacedBlocks);
+                location.chunk.setSupportValue(location.localX, height, location.localZ, HytaleChunk.SUPPORT_NONE);
+                location.chunk.setSealProtected(location.localX, height, location.localZ, false);
             } else {
                 section.clearFluid(location.localX, localY, location.localZ);
                 location.chunk.setHytaleBlock(location.localX, height, location.localZ, block);
-                location.chunk.setDecorative(location.localX, height, location.localZ, decoratePlacedBlocks);
+                if (block.isEmpty()) {
+                    location.chunk.setSupportValue(location.localX, height, location.localZ, HytaleChunk.SUPPORT_NONE);
+                    location.chunk.setSealProtected(location.localX, height, location.localZ, false);
+                } else {
+                    location.chunk.setSupportValue(location.localX, height, location.localZ, placedBlockSupportValue);
+                    location.chunk.setSealProtected(location.localX, height, location.localZ, protectPlacedBlocksFromFluidSeal);
+                }
             }
         }
 
@@ -2427,7 +2449,8 @@ public class HytaleWorldExporter implements WorldExporter {
         private final int blockOffsetX, blockOffsetZ;
         private final int minHeight, maxHeight;
         private java.util.Map<String, String> activeBlockMappings;
-        private boolean decoratePlacedBlocks;
+        private int placedBlockSupportValue;
+        private boolean protectPlacedBlocksFromFluidSeal;
 
         private static final class Location {
             private Location(HytaleChunk chunk, int localX, int localZ) {

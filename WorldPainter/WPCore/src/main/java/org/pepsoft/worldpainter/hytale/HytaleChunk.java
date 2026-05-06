@@ -8,6 +8,7 @@ import org.pepsoft.minecraft.TileEntity;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.BitSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -194,7 +195,9 @@ public class HytaleChunk implements Chunk {
         HytaleBlock effective = (block != null) ? block : HytaleBlock.EMPTY;
         getSection(y).setHytaleBlock(x, y & 31, z, effective);
         if (effective.isEmpty()) {
-            getSection(y).setSupportValue(x, y & 31, z, SUPPORT_NONE);
+            HytaleSection section = getSection(y);
+            section.setSupportValue(x, y & 31, z, SUPPORT_NONE);
+            section.setSealProtected(x, y & 31, z, false);
         }
         if (!effective.isEmpty() && y > getHeight(x, z)) {
             setHeight(x, z, y);
@@ -223,6 +226,16 @@ public class HytaleChunk implements Chunk {
 
     public void setDecorative(int x, int y, int z, boolean decorative) {
         setSupportValue(x, y, z, decorative ? SUPPORT_DECORATIVE : SUPPORT_NONE);
+    }
+
+    boolean isSealProtected(int x, int y, int z) {
+        if (y < 0 || y >= maxHeight) return false;
+        return getSection(y).isSealProtected(x, y & 31, z);
+    }
+
+    void setSealProtected(int x, int y, int z, boolean sealProtected) {
+        if (y < 0 || y >= maxHeight) return;
+        getSection(y).setSealProtected(x, y & 31, z, sealProtected);
     }
     
     @Override
@@ -643,6 +656,7 @@ public class HytaleChunk implements Chunk {
         private final byte[] skyLight;
         private byte[] supportData;
         private int nonZeroSupportCount;
+        private BitSet sealProtectedBlocks;
         
         // Palette for efficient storage
         private final List<Material> palette = new ArrayList<>();
@@ -871,6 +885,28 @@ public class HytaleChunk implements Chunk {
 
         public byte[] getSupportData() {
             return (nonZeroSupportCount > 0) ? supportData : null;
+        }
+
+        boolean isSealProtected(int x, int y, int z) {
+            return (sealProtectedBlocks != null) && sealProtectedBlocks.get(getIndex(x, y, z));
+        }
+
+        void setSealProtected(int x, int y, int z, boolean sealProtected) {
+            if ((sealProtectedBlocks == null) && (! sealProtected)) {
+                return;
+            }
+            int index = getIndex(x, y, z);
+            if (sealProtected) {
+                if (sealProtectedBlocks == null) {
+                    sealProtectedBlocks = new BitSet(SECTION_SIZE);
+                }
+                sealProtectedBlocks.set(index);
+            } else {
+                sealProtectedBlocks.clear(index);
+                if (sealProtectedBlocks.isEmpty()) {
+                    sealProtectedBlocks = null;
+                }
+            }
         }
         
         /**

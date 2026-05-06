@@ -215,6 +215,21 @@ public class HytaleChunkTest {
     }
 
     @Test
+    public void testSealProtectionDoesNotSerializeAsPhysicsSupport() {
+        HytaleChunk chunk = new HytaleChunk(0, 0, 0, 320);
+
+        chunk.setHytaleBlock(2, 10, 3, HytaleBlock.of("Wood_Oak_Trunk"));
+        chunk.setSealProtected(2, 10, 3, true);
+
+        byte[] physicsData = getSerializedBlockPhysicsData(chunk, 0);
+        assertNotNull(physicsData);
+        assertEquals("Sections without real physics overrides should serialize as empty BlockPhysics",
+                1, physicsData.length);
+        assertEquals(0, physicsData[0]);
+        assertEquals(HytaleChunk.SUPPORT_NONE, readSupportValue(physicsData, blockIndex(2, 10, 3)));
+    }
+
+    @Test
     public void testChunkStoreRoundTripPreservesHalfByteColumnPositions() throws Exception {
         Path worldDir = Files.createTempDirectory("hytale-half-byte-roundtrip");
 

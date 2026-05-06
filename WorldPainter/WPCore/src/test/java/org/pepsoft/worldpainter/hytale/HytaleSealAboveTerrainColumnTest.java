@@ -11,9 +11,10 @@ import static org.junit.Assert.*;
  *
  * <p>Previously this loop unconditionally cleared every block above terrain up
  * to the water level, which wiped out underwater prefabs/plants placed by Bo2
- * custom-object layers. The fix preserves blocks marked
- * {@link HytaleChunk#SUPPORT_DECORATIVE} so they survive the seal pass while
- * the surrounding water is still restored.
+ * custom-object layers. The fix preserves Bo2-placed blocks with a transient
+ * seal-protection marker, and still preserves decorative physics-exempt
+ * blocks, so they survive the seal pass while the surrounding water is
+ * restored.
  */
 public class HytaleSealAboveTerrainColumnTest {
 
@@ -86,6 +87,36 @@ public class HytaleSealAboveTerrainColumnTest {
             int fluidId = chunk.getSections()[y >> 5].getFluidId(5, y & 31, 5);
             assertTrue("Empty cells in water column should be filled with fluid at y=" + y,
                     fluidId > 0);
+        }
+    }
+
+    @Test
+    public void sealPreservesProtectedNormalBlocksWithoutChangingSupport() {
+        HytaleChunk chunk = new HytaleChunk(0, 0, 0, 320);
+
+        // Simulate a Bo2 layer WITHOUT "Disable physics" placing a tree log
+        // underwater. Normal blocks must keep SUPPORT_NONE so Hytale computes
+        // real structural support on demand; the transient seal marker is what
+        // keeps the block from being mistaken for a stray terrain plant.
+        HytaleBlock log = HytaleBlock.of("Log_Oak", 0);
+        for (int y = TERRAIN_HEIGHT + 1; y <= TERRAIN_HEIGHT + 3; y++) {
+            chunk.setHytaleBlock(5, y, 5, log);
+            chunk.setSealProtected(5, y, 5, true);
+        }
+
+        HytaleWorldExporter.sealAboveTerrainColumn(
+                chunk, 5, 5, TERRAIN_HEIGHT, WATER_LEVEL, FLUID_ID);
+
+        for (int y = TERRAIN_HEIGHT + 1; y <= TERRAIN_HEIGHT + 3; y++) {
+            HytaleBlock survived = chunk.getHytaleBlock(5, y, 5);
+            assertNotNull("Structural block at y=" + y + " must survive seal pass", survived);
+            assertEquals("Log block at y=" + y + " must survive seal pass",
+                    log.id, survived.id);
+            assertEquals("Normal object blocks should not get synthetic support at y=" + y,
+                    HytaleChunk.SUPPORT_NONE, chunk.getSupportValue(5, y, 5));
+
+            int fluidId = chunk.getSections()[y >> 5].getFluidId(5, y & 31, 5);
+            assertTrue("Water fluid must be restored around log at y=" + y, fluidId > 0);
         }
     }
 
