@@ -1237,6 +1237,29 @@ public class HytaleWorldExporter implements WorldExporter {
         return sealed;
     }
 
+    static List<Layer> sortFirstPassLayers(Set<Layer> layers) {
+        List<Layer> firstPassLayers = new ArrayList<>();
+        for (Layer layer : layers) {
+            Class<? extends LayerExporter> exporterType = layer.getExporterType();
+            if (exporterType != null && FirstPassLayerExporter.class.isAssignableFrom(exporterType)) {
+                firstPassLayers.add(layer);
+            }
+        }
+        Collections.sort(firstPassLayers);
+        return firstPassLayers;
+    }
+
+    static List<Bo2Layer> sortBo2Layers(Set<Layer> layers) {
+        List<Bo2Layer> bo2Layers = new ArrayList<>();
+        for (Layer layer : layers) {
+            if (layer instanceof Bo2Layer) {
+                bo2Layers.add((Bo2Layer) layer);
+            }
+        }
+        Collections.sort(bo2Layers);
+        return bo2Layers;
+    }
+
     /**
      * Resolve the fluid type for a column from dimension layer data.
      */
@@ -1829,15 +1852,7 @@ public class HytaleWorldExporter implements WorldExporter {
         HytaleRegionMinecraftWorld regionWorld = new HytaleRegionMinecraftWorld(chunksByCoords, blockOffsetX, blockOffsetZ,
                 dimension.getMinHeight(), dimension.getMaxHeight());
 
-        List<Bo2Layer> bo2Layers = new ArrayList<>();
-        for (Layer layer: layers) {
-            if (layer instanceof Bo2Layer) {
-                bo2Layers.add((Bo2Layer) layer);
-            }
-        }
-        Collections.sort(bo2Layers);
-
-        for (Bo2Layer bo2Layer : bo2Layers) {
+        for (Bo2Layer bo2Layer : sortBo2Layers(layers)) {
             regionWorld.setActiveBlockMappings(bo2Layer.getHytaleBlockMappings());
             // Hytale stores blocks and fluids separately, so custom-object
             // blocks always coexist with surrounding water. Track them for
@@ -1978,18 +1993,10 @@ public class HytaleWorldExporter implements WorldExporter {
             return;
         }
 
-        // Collect first-pass layers
-        List<Layer> firstPassLayers = new ArrayList<>();
-        for (Layer layer : layers) {
-            Class<? extends LayerExporter> exporterType = layer.getExporterType();
-            if (exporterType != null && FirstPassLayerExporter.class.isAssignableFrom(exporterType)) {
-                firstPassLayers.add(layer);
-            }
-        }
+        List<Layer> firstPassLayers = sortFirstPassLayers(layers);
         if (firstPassLayers.isEmpty()) {
             return;
         }
-        Collections.sort(firstPassLayers);
 
         // Instantiate all exporters
         List<FirstPassLayerExporter> exporters = new ArrayList<>();
