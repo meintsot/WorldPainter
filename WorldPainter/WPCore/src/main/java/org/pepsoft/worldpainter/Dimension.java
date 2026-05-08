@@ -2633,6 +2633,9 @@ public class Dimension extends InstanceKeeper implements TileProvider, Serializa
                 customLayers.addAll(getAllLayers(false).stream().filter(layer -> layer instanceof CustomLayer).map(layer -> (CustomLayer) layer).collect(Collectors.toList()));
             }
         }
+        if (gridSize < 2) {
+            gridSize = 128;
+        }
         if (wpVersion < 2) {
             if (overlay != null) {
                 fixOverlayCoords = true;

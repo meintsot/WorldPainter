@@ -776,10 +776,19 @@ public class HytaleChunk implements Chunk {
         
         /**
          * Set rotation at the given position.
+         * Keeps the HytaleBlock in {@code hytaleBlocks} in sync so that
+         * {@link #getHytaleBlock(int, int, int)} reflects the new rotation.
+         *
          * @param rotation Rotation value 0-63 (rx*16 + ry*4 + rz where each is 0-3)
          */
         public void setRotation(int x, int y, int z, int rotation) {
-            rotations[getIndex(x, y, z)] = (byte) (rotation & 0x3F);
+            int index = getIndex(x, y, z);
+            byte rotByte = (byte) (rotation & 0x3F);
+            rotations[index] = rotByte;
+            HytaleBlock current = hytaleBlocks[index];
+            if (current != null && !current.isEmpty() && (current.rotation & 0x3F) != (rotByte & 0x3F)) {
+                hytaleBlocks[index] = current.withRotation(rotByte & 0xFF);
+            }
         }
         
         /**
@@ -852,7 +861,7 @@ public class HytaleChunk implements Chunk {
             }
             int index = getIndex(x, y, z);
             int packed = supportData[index >> 1] & 0xFF;
-            return ((index & 1) == 0) ? (packed & 0xF) : ((packed >> 4) & 0xF);
+            return ((index & 1) == 0) ? ((packed >> 4) & 0xF) : (packed & 0xF);
         }
 
         public void setSupportValue(int x, int y, int z, int supportValue) {
@@ -866,14 +875,14 @@ public class HytaleChunk implements Chunk {
             int index = getIndex(x, y, z);
             int byteIndex = index >> 1;
             int packed = supportData[byteIndex] & 0xFF;
-            int oldValue = ((index & 1) == 0) ? (packed & 0xF) : ((packed >> 4) & 0xF);
+            int oldValue = ((index & 1) == 0) ? ((packed >> 4) & 0xF) : (packed & 0xF);
             if (oldValue == value) {
                 return;
             }
             if ((index & 1) == 0) {
-                packed = (packed & 0xF0) | value;
-            } else {
                 packed = (packed & 0x0F) | (value << 4);
+            } else {
+                packed = (packed & 0xF0) | value;
             }
             supportData[byteIndex] = (byte) packed;
             if ((oldValue == SUPPORT_NONE) && (value != SUPPORT_NONE)) {

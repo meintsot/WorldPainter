@@ -1309,6 +1309,28 @@ public class HytaleWorldExporter implements WorldExporter {
         }
     }
 
+    static HytaleBlock getSurfaceOnlySubstrate(Terrain terrain, MixedMaterial customMaterial, long seed, int x, int z,
+                                               int y) {
+        if (customMaterial != null) {
+            for (int scanY = y; scanY >= Math.max(0, y - 8); scanY--) {
+                HytaleBlock candidate = HytaleBlockMapping.toHytaleBlock(customMaterial.getMaterial(seed, x, z, scanY));
+                if ((candidate != null) && (! candidate.isEmpty()) && (! candidate.isFluid())
+                        && (! HytaleBlockRegistry.isSurfaceOnlyBlock(candidate.id))) {
+                    return candidate;
+                }
+            }
+            return HytaleBlock.DIRT;
+        }
+
+        HytaleTerrain baseTerrain = HytaleTerrainHelper.fromMinecraftTerrain(terrain);
+        HytaleBlock candidate = (baseTerrain != null) ? baseTerrain.getBlock(seed, x, z, 0) : HytaleBlock.GRASS;
+        if ((candidate == null) || candidate.isEmpty() || candidate.isFluid()
+                || HytaleBlockRegistry.isSurfaceOnlyBlock(candidate.id)) {
+            return HytaleBlock.DIRT;
+        }
+        return candidate;
+    }
+
     /**
      * Final pass: enforce void columns by clearing any blocks, fluids, and
      * support data that may have been placed in void-marked columns by
@@ -1514,10 +1536,11 @@ public class HytaleWorldExporter implements WorldExporter {
                             if (depth == 0) {
                                 surfacePlant = block;
                             }
-                            // Subsurface gets dirt/stone; surface gets grass
+                            // Subsurface gets dirt/stone; surface keeps the
+                            // terrain substrate instead of synthesising grass.
                             block = (depth > 0)
                                     ? ((depth <= 4) ? HytaleBlock.DIRT : HytaleBlock.STONE)
-                                    : HytaleBlock.GRASS;
+                                    : getSurfaceOnlySubstrate(localTerrain, customMaterial, seed, worldX, worldZ, y);
                         } else if (block.isGrass() && depth > 0) {
                             // Grass only belongs on the surface
                             block = (depth <= 4) ? HytaleBlock.DIRT : HytaleBlock.STONE;
@@ -1545,8 +1568,9 @@ public class HytaleWorldExporter implements WorldExporter {
                                 // Fill subsurface with dirt (or stone below depth 4)
                                 block = (depth <= 4) ? HytaleBlock.DIRT : HytaleBlock.STONE;
                             } else {
-                                // Surface: place grass; the plant goes on top at height+1
-                                block = HytaleBlock.GRASS;
+                                // Surface: preserve the underlying terrain
+                                // substrate; the plant goes on top at height+1.
+                                block = getSurfaceOnlySubstrate(localTerrain, customMaterial, seed, worldX, worldZ, y);
                             }
                         } else if (grassTerrain && depth > 0) {
                             // Grass blocks only belong on the surface; Hytale converts

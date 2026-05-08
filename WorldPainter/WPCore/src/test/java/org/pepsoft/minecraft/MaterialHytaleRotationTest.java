@@ -15,11 +15,11 @@ import static org.junit.Assert.assertSame;
  * about Minecraft orientation schemes (FACING, AXIS, etc.), so a rotated or
  * mirrored prefab kept its branches pointing in the original direction.
  *
- * <p>The fix transforms the {@code ry} (yaw) component of {@code hytale_rotation}
- * while leaving {@code rx} (pitch) and {@code rz} (roll) untouched, since
- * branch directionality is encoded entirely in yaw. Encoding:
- * {@code rotation = rx * 16 + ry * 4 + rz}. Yaw values:
- * {@code 0=north, 1=east, 2=south, 3=west}.
+ * <p>The fix transforms the {@code yaw} component of {@code hytale_rotation}
+ * while leaving pitch and roll untouched, since branch directionality is
+ * encoded entirely in yaw. Hytale encodes {@code RotationTuple.index()} as
+ * {@code rotation = roll * 16 + pitch * 4 + yaw}. Yaw values:
+ * {@code 0=north, 1=west, 2=south, 3=east}.
  *
  * <p>Tests use unique block names per case to avoid Material cache contamination
  * across tests.
@@ -30,29 +30,27 @@ public class MaterialHytaleRotationTest {
 
     @Test
     public void rotateOneStepShiftsYawClockwise() {
-        // ry=1 (east) → rotate 1 step (90° CW) → ry=2 (south)
-        // rotation 4 == rx=0, ry=1, rz=0 → expected 8 == rx=0, ry=2, rz=0
-        Material east = Material.get(uniqueName("east_yaw"), HYTALE_ROTATION, "4");
+        // yaw=3 (east) -> rotate 1 step (90 degrees CW) -> yaw=2 (south).
+        Material east = Material.get(uniqueName("east_yaw"), HYTALE_ROTATION, "3");
         Material rotated = east.rotate(1, DefaultPlugin.HYTALE);
 
         assertEquals("Rotating east by 90° must produce south",
-                "8", rotated.getProperty(HYTALE_ROTATION));
+                "2", rotated.getProperty(HYTALE_ROTATION));
     }
 
     @Test
     public void rotateTwoStepsMovesEastToWest() {
-        // ry=1 (east) → rotate 2 steps (180°) → ry=3 (west)
-        // 4 → 12 (rx=0, ry=3, rz=0)
-        Material east = Material.get(uniqueName("east_to_west"), HYTALE_ROTATION, "4");
+        // yaw=3 (east) -> rotate 2 steps (180 degrees) -> yaw=1 (west).
+        Material east = Material.get(uniqueName("east_to_west"), HYTALE_ROTATION, "3");
         Material rotated = east.rotate(2, DefaultPlugin.HYTALE);
 
-        assertEquals("12", rotated.getProperty(HYTALE_ROTATION));
+        assertEquals("1", rotated.getProperty(HYTALE_ROTATION));
     }
 
     @Test
     public void rotateFourStepsIsIdentity() {
         // (steps % 4) == 0 short-circuits before reaching the hytale path.
-        Material east = Material.get(uniqueName("identity_full_turn"), HYTALE_ROTATION, "4");
+        Material east = Material.get(uniqueName("identity_full_turn"), HYTALE_ROTATION, "3");
         Material rotated = east.rotate(4, DefaultPlugin.HYTALE);
 
         // 4 full quarter-turns must be a no-op.
@@ -61,21 +59,21 @@ public class MaterialHytaleRotationTest {
 
     @Test
     public void rotateNorthByOneStepProducesEast() {
-        // ry=0 (north) → rotate 1 step → ry=1 (east). 0 → 4.
+        // yaw=0 (north) -> rotate 1 step clockwise -> yaw=3 (east).
         Material north = Material.get(uniqueName("north_to_east"), HYTALE_ROTATION, "0");
         Material rotated = north.rotate(1, DefaultPlugin.HYTALE);
 
-        assertEquals("4", rotated.getProperty(HYTALE_ROTATION));
+        assertEquals("3", rotated.getProperty(HYTALE_ROTATION));
     }
 
     @Test
     public void rotatePreservesPitchAndRoll() {
-        // rx=2 (180° pitch), ry=1 (east), rz=3 (270° roll) → 2*16 + 1*4 + 3 = 39
-        // Rotate 1 step: ry becomes 2, rx and rz unchanged → 2*16 + 2*4 + 3 = 43
+        // roll=2, pitch=1, yaw=3 (east) -> 2*16 + 1*4 + 3 = 39.
+        // Rotate 1 step: yaw becomes 2, roll and pitch unchanged -> 38.
         Material twisted = Material.get(uniqueName("twisted"), HYTALE_ROTATION, "39");
         Material rotated = twisted.rotate(1, DefaultPlugin.HYTALE);
 
-        assertEquals("43", rotated.getProperty(HYTALE_ROTATION));
+        assertEquals("38", rotated.getProperty(HYTALE_ROTATION));
     }
 
     @Test
@@ -101,58 +99,58 @@ public class MaterialHytaleRotationTest {
     @Test
     public void mirrorSouthFlipsEastAndWest() {
         // Direction.SOUTH mirrors across the X-axis (flips east/west), leaves
-        // north/south alone. ry=1 (east) → ry=3 (west). 4 → 12.
-        Material east = Material.get(uniqueName("mirror_s_east"), HYTALE_ROTATION, "4");
+        // north/south alone. yaw=3 (east) -> yaw=1 (west).
+        Material east = Material.get(uniqueName("mirror_s_east"), HYTALE_ROTATION, "3");
         Material mirrored = east.mirror(Direction.SOUTH, DefaultPlugin.HYTALE);
 
-        assertEquals("12", mirrored.getProperty(HYTALE_ROTATION));
+        assertEquals("1", mirrored.getProperty(HYTALE_ROTATION));
     }
 
     @Test
     public void mirrorSouthLeavesNorthAndSouthUnchanged() {
         Material north = Material.get(uniqueName("mirror_s_north"), HYTALE_ROTATION, "0");
         Material mirroredNorth = north.mirror(Direction.SOUTH, DefaultPlugin.HYTALE);
-        // ry=0 → (4-0)%4=0 → unchanged → fast path returns receiver.
+        // yaw=0 -> unchanged -> fast path returns receiver.
         assertSame("North block mirrored across X-axis stays north",
                 north, mirroredNorth);
 
-        Material south = Material.get(uniqueName("mirror_s_south"), HYTALE_ROTATION, "8");
+        Material south = Material.get(uniqueName("mirror_s_south"), HYTALE_ROTATION, "2");
         Material mirroredSouth = south.mirror(Direction.SOUTH, DefaultPlugin.HYTALE);
-        // ry=2 → (4-2)%4=2 → unchanged.
+        // yaw=2 -> unchanged.
         assertSame(south, mirroredSouth);
     }
 
     @Test
     public void mirrorEastFlipsNorthAndSouth() {
         // Direction.EAST mirrors across the Z-axis (flips north/south), leaves
-        // east/west alone. ry=0 (north) → ry=2 (south). 0 → 8.
+        // east/west alone. yaw=0 (north) -> yaw=2 (south).
         Material north = Material.get(uniqueName("mirror_e_north"), HYTALE_ROTATION, "0");
         Material mirrored = north.mirror(Direction.EAST, DefaultPlugin.HYTALE);
 
-        assertEquals("8", mirrored.getProperty(HYTALE_ROTATION));
+        assertEquals("2", mirrored.getProperty(HYTALE_ROTATION));
     }
 
     @Test
     public void mirrorEastLeavesEastAndWestUnchanged() {
-        // ry=1 (east) → (6-1)%4=1 → unchanged.
-        Material east = Material.get(uniqueName("mirror_e_east"), HYTALE_ROTATION, "4");
+        // yaw=3 (east) -> unchanged.
+        Material east = Material.get(uniqueName("mirror_e_east"), HYTALE_ROTATION, "3");
         Material mirroredEast = east.mirror(Direction.EAST, DefaultPlugin.HYTALE);
         assertSame(east, mirroredEast);
 
-        // ry=3 (west) → (6-3)%4=3 → unchanged.
-        Material west = Material.get(uniqueName("mirror_e_west"), HYTALE_ROTATION, "12");
+        // yaw=1 (west) -> unchanged.
+        Material west = Material.get(uniqueName("mirror_e_west"), HYTALE_ROTATION, "1");
         Material mirroredWest = west.mirror(Direction.EAST, DefaultPlugin.HYTALE);
         assertSame(west, mirroredWest);
     }
 
     @Test
     public void mirrorPreservesPitchAndRoll() {
-        // rx=1 (90° pitch), ry=1 (east), rz=2 (180° roll) → 16 + 4 + 2 = 22.
-        // Mirror across X-axis (Direction.SOUTH): ry 1 → 3, rx/rz unchanged → 16 + 12 + 2 = 30.
-        Material twisted = Material.get(uniqueName("mirror_twisted"), HYTALE_ROTATION, "22");
+        // roll=1, pitch=1, yaw=3 (east) -> 16 + 4 + 3 = 23.
+        // Mirror across X-axis (Direction.SOUTH): yaw 3 -> 1, roll/pitch unchanged -> 21.
+        Material twisted = Material.get(uniqueName("mirror_twisted"), HYTALE_ROTATION, "23");
         Material mirrored = twisted.mirror(Direction.SOUTH, DefaultPlugin.HYTALE);
 
-        assertEquals("30", mirrored.getProperty(HYTALE_ROTATION));
+        assertEquals("21", mirrored.getProperty(HYTALE_ROTATION));
     }
 
     @Test

@@ -2,6 +2,8 @@ package org.pepsoft.worldpainter.hytale;
 
 import org.junit.Test;
 import org.pepsoft.minecraft.Material;
+import org.pepsoft.worldpainter.DefaultPlugin;
+import org.pepsoft.worldpainter.objects.RotatedObject;
 import org.pepsoft.worldpainter.objects.WPObject;
 
 import javax.vecmath.Point3i;
@@ -59,6 +61,36 @@ public class HytalePrefabJsonObjectTest {
 
         HytaleBlock block = HytaleBlockMapping.toHytaleBlock(material);
         assertEquals(23, block.rotation & 0xFF);
+    }
+
+    @Test
+    public void testRotatedPrefabMovesBranchAndRotatesHytaleYaw() throws IOException {
+        File file = File.createTempFile("wp-hytale-branch-prefab-", ".prefab.json");
+        file.deleteOnExit();
+
+        try (FileWriter writer = new FileWriter(file)) {
+            writer.write("{\n" +
+                    "  \"version\": 8,\n" +
+                    "  \"anchorX\": 10,\n" +
+                    "  \"anchorY\": 20,\n" +
+                    "  \"anchorZ\": 30,\n" +
+                    "  \"blocks\": [\n" +
+                    "    {\"x\": 9, \"y\": 20, \"z\": 29, \"name\": \"Rock_Stone\"},\n" +
+                    "    {\"x\": 11, \"y\": 20, \"z\": 31, \"name\": \"Rock_Stone\"},\n" +
+                    "    {\"x\": 10, \"y\": 20, \"z\": 29, \"name\": \"Wood_Oak_Branch_Long\", \"rotation\": 0}\n" +
+                    "  ]\n" +
+                    "}\n");
+        }
+
+        WPObject object = HytalePrefabJsonObject.load(file);
+        WPObject rotated = new RotatedObject(object, 1, DefaultPlugin.HYTALE);
+
+        assertEquals(new Point3i(3, 3, 1), rotated.getDimensions());
+        assertEquals(new Point3i(-1, -1, 0), rotated.getOffset());
+
+        Material branch = rotated.getMaterial(2, 1, 0);
+        assertEquals("hytale:Wood_Oak_Branch_Long", branch.name);
+        assertEquals("3", branch.getProperty(HytalePrefabJsonObject.HYTALE_ROTATION_PROPERTY));
     }
 
 }

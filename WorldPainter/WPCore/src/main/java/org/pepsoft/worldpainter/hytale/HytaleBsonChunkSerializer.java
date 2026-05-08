@@ -523,6 +523,7 @@ public class HytaleBsonChunkSerializer {
      */
     private static BsonDocument createBlockPhysicsBson(byte[] supportData) {
         BsonDocument doc = new BsonDocument();
+        doc.put("Version", new BsonInt32(0));
 
         if (supportData == null) {
             ByteBuf buf = ByteBufAllocator.DEFAULT.buffer(1);
@@ -827,7 +828,7 @@ public class HytaleBsonChunkSerializer {
             buf.writeByte(PALETTE_TYPE_EMPTY);
             return;
         }
-        
+
         byte[] rotations = section.getRotations();
         
         // Build rotation palette

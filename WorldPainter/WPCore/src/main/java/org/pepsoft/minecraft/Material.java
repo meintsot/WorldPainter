@@ -753,11 +753,11 @@ public final class Material implements Serializable {
         try {
             int rot = Integer.parseInt(hytaleRotStr);
             if ((rot >= 0) && (rot <= 63)) {
-                int rx = rot >> 4;
-                int ry = (rot >> 2) & 3;
-                int rz = rot & 3;
-                ry = ((ry + (steps % 4)) + 4) % 4;
-                int newRot = (rx << 4) | (ry << 2) | rz;
+                int roll = rot >> 4;
+                int pitch = (rot >> 2) & 3;
+                int yaw = rot & 3;
+                yaw = ((yaw - (steps % 4)) + 4) % 4;
+                int newRot = (roll << 4) | (pitch << 2) | yaw;
                 if (newRot != rot) {
                     return withProperty(HYTALE_ROTATION_PROPERTY, Integer.toString(newRot));
                 }
@@ -772,20 +772,20 @@ public final class Material implements Serializable {
         try {
             int rot = Integer.parseInt(hytaleRotStr);
             if ((rot >= 0) && (rot <= 63)) {
-                int rx = rot >> 4;
-                int ry = (rot >> 2) & 3;
-                int rz = rot & 3;
+                int roll = rot >> 4;
+                int pitch = (rot >> 2) & 3;
+                int yaw = rot & 3;
                 switch (axis) {
                     case SOUTH: // flip east/west (Hytale X-axis)
-                        ry = (4 - ry) % 4;
+                        yaw = (4 - yaw) % 4;
                         break;
                     case EAST: // flip north/south (Hytale Z-axis)
-                        ry = (6 - ry) % 4;
+                        yaw = (6 - yaw) % 4;
                         break;
                     default:
                         return this;
                 }
-                int newRot = (rx << 4) | (ry << 2) | rz;
+                int newRot = (roll << 4) | (pitch << 2) | yaw;
                 if (newRot != rot) {
                     return withProperty(HYTALE_ROTATION_PROPERTY, Integer.toString(newRot));
                 }
