@@ -969,8 +969,11 @@ public class NewWorldDialog extends WorldPainterDialog {
                 Terrain mt = org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.toMinecraftTerrain(hytaleTerrain);
                 for (int ty = 0; ty < TILE_SIZE; ty++) {
                     for (int tx = 0; tx < TILE_SIZE; tx++) {
-                        tile.setTerrain(tx, ty, mt);
-                        org.pepsoft.worldpainter.hytale.HytaleTerrainLayer.setTerrainIndex(tile, tx, ty, hytaleTerrain.getLayerIndex());
+                        boolean toPlants = org.pepsoft.worldpainter.hytale.HytalePlantsLayer.routePaint(
+                                tile, tx, ty, hytaleTerrain);
+                        if (! toPlants) {
+                            tile.setTerrain(tx, ty, mt);
+                        }
                     }
                 }
             }

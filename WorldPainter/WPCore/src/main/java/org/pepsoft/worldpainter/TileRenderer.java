@@ -220,6 +220,7 @@ public final class TileRenderer {
         } else {
             layerList.removeIf(layer -> (layer instanceof Void) || (layer instanceof NotPresent) || (layer instanceof NotPresentBlock)
                     || layer.equals(org.pepsoft.worldpainter.hytale.HytaleTerrainLayer.LO) || layer.equals(org.pepsoft.worldpainter.hytale.HytaleTerrainLayer.HI)
+                    || layer.equals(org.pepsoft.worldpainter.hytale.HytalePlantsLayer.LO) || layer.equals(org.pepsoft.worldpainter.hytale.HytalePlantsLayer.HI)
                     || layer.equals(org.pepsoft.worldpainter.hytale.HytaleFluidLayer.INSTANCE));
         }
         final Layer[] layers = layerList.toArray(new Layer[layerList.size()]);
@@ -409,6 +410,20 @@ public final class TileRenderer {
                         } else {
                             hytaleTerrain = HytaleTerrainHelper.fromMinecraftTerrain(terrain);
                             colour = 0xff000000 | hytaleTerrain.getEffectiveColour();
+                        }
+                    }
+                    // Plant overlay: blend the painted plant's colour over the substrate so
+                    // users can see where they painted. Substrate hue still shows through, so
+                    // "Bush on Stone" looks distinct from "Bush on Grass" on the 2D map.
+                    int plantIndex = org.pepsoft.worldpainter.hytale.HytalePlantsLayer.getPlantIndex(tile, x, y);
+                    if (plantIndex > 0) {
+                        HytaleTerrain plantTerrain = HytaleTerrain.getByLayerIndex(plantIndex);
+                        if (plantTerrain != null) {
+                            int plantColour = plantTerrain.getEffectiveColour();
+                            int sr = (colour >> 16) & 0xFF, sg = (colour >> 8) & 0xFF, sb = colour & 0xFF;
+                            int pr = (plantColour >> 16) & 0xFF, pg = (plantColour >> 8) & 0xFF, pb = plantColour & 0xFF;
+                            int r = (sr + pr * 2) / 3, g = (sg + pg * 2) / 3, b = (sb + pb * 2) / 3;
+                            colour = 0xff000000 | (r << 16) | (g << 8) | b;
                         }
                     }
                 } else {

@@ -28,6 +28,16 @@ public final class HytaleWorldSettings {
             new AttributeKey<>("org.pepsoft.hytale.worldConfig.isSpawningNpc", true);
     public static final AttributeKey<String> ATTRIBUTE_WORLD_GEN_TYPE =
             new AttributeKey<>("org.pepsoft.hytale.worldConfig.worldGenType", DEFAULT_WORLD_GEN_TYPE);
+    /**
+     * When {@code true}, plants painted via {@link HytalePlantsLayer} are exported with support
+     * value {@link HytaleChunk#SUPPORT_DECORATIVE} (= IS_DECO = 15) so Hytale's physics cascade
+     * does not chain-break them when the player removes one. Tradeoff: IS_DECO blocks bypass the
+     * gathering interaction, so the player gets the block itself instead of the configured drops
+     * (e.g. berries from a bush). Default {@code false} — drops > chain-break for player UX. Users
+     * who care about preserving large painted plant patches in-game can opt in at export time.
+     */
+    public static final AttributeKey<Boolean> ATTRIBUTE_PLANTS_PHYSICS_EXEMPT =
+            new AttributeKey<>("org.pepsoft.hytale.worldConfig.plantsPhysicsExempt", false);
 
     /**
      * Hytale supports Adventure and Creative modes.

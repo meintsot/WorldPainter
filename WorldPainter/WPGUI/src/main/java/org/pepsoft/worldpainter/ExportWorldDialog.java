@@ -371,6 +371,10 @@ public class ExportWorldDialog extends WPDialogWithPaintSelection {
                 world.setAttribute(HytaleWorldSettings.ATTRIBUTE_WORLD_GEN_TYPE,
                         (String) comboBoxWorldGenType.getSelectedItem());
             }
+            if (checkBoxPlantsPhysicsExempt != null) {
+                world.setAttribute(HytaleWorldSettings.ATTRIBUTE_PLANTS_PHYSICS_EXEMPT,
+                        checkBoxPlantsPhysicsExempt.isSelected());
+            }
             world.setDataPacks(null);
         } else {
             world.setCreateGoodiesChest(checkBoxGoodies.isSelected());
@@ -574,17 +578,53 @@ public class ExportWorldDialog extends WPDialogWithPaintSelection {
 
         ((javax.swing.border.TitledBorder) panelMinecraftWorldBorder.getBorder()).setTitle("World Generation");
 
+        // The form-defined GroupLayout has explicit constraints for the Minecraft border
+        // controls; calling panel.add(...) without GroupLayout constraints leaves new
+        // components at (0,0) with zero size. Swap to a vertical BoxLayout for the Hytale
+        // controls so add() actually positions them. We restore GroupLayout in
+        // restoreMinecraftWorldBorderPanel() if the user switches platforms back.
+        if (! (panelMinecraftWorldBorder.getLayout() instanceof javax.swing.BoxLayout)) {
+            panelMinecraftWorldBorder.setLayout(new javax.swing.BoxLayout(panelMinecraftWorldBorder, javax.swing.BoxLayout.Y_AXIS));
+        }
+
         if (comboBoxWorldGenType == null) {
             labelWorldGenType = new javax.swing.JLabel("Outside map borders:");
             comboBoxWorldGenType = new javax.swing.JComboBox<>(HytaleWorldSettings.WORLD_GEN_TYPES);
             comboBoxWorldGenType.setToolTipText("World generation type for areas outside the painted map");
-            panelMinecraftWorldBorder.add(labelWorldGenType);
-            panelMinecraftWorldBorder.add(comboBoxWorldGenType);
+            comboBoxWorldGenType.setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
+            javax.swing.JPanel worldGenRow = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 4, 0));
+            worldGenRow.setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
+            worldGenRow.add(labelWorldGenType);
+            worldGenRow.add(comboBoxWorldGenType);
+            panelMinecraftWorldBorder.add(worldGenRow);
+        }
+        if (checkBoxPlantsPhysicsExempt == null) {
+            labelPlantsPhysicsExempt = new javax.swing.JLabel("Plants physics-exempt:");
+            checkBoxPlantsPhysicsExempt = new javax.swing.JCheckBox();
+            String tooltip = "<html>When enabled, plants painted on non-natural substrates (e.g. Bush on Stone)<br>"
+                    + "are exported with the IS_DECO support flag so Hytale's physics cascade<br>"
+                    + "does not chain-break them when one is removed.<br><br>"
+                    + "<b>Tradeoff:</b> IS_DECO blocks bypass Hytale's gathering interaction, so the<br>"
+                    + "player gets the block itself when breaking the plant instead of the<br>"
+                    + "configured drops (e.g. berries from a Bush).<br><br>"
+                    + "Off by default — leave off if drops matter, enable if you care more about<br>"
+                    + "preserving large painted plant patches.</html>";
+            labelPlantsPhysicsExempt.setToolTipText(tooltip);
+            checkBoxPlantsPhysicsExempt.setToolTipText(tooltip);
+            javax.swing.JPanel plantsRow = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 4, 0));
+            plantsRow.setAlignmentX(java.awt.Component.LEFT_ALIGNMENT);
+            plantsRow.add(labelPlantsPhysicsExempt);
+            plantsRow.add(checkBoxPlantsPhysicsExempt);
+            panelMinecraftWorldBorder.add(plantsRow);
         }
         comboBoxWorldGenType.setSelectedItem(world.getAttribute(HytaleWorldSettings.ATTRIBUTE_WORLD_GEN_TYPE)
                 .orElse(HytaleWorldSettings.DEFAULT_WORLD_GEN_TYPE));
+        checkBoxPlantsPhysicsExempt.setSelected(world.getAttribute(HytaleWorldSettings.ATTRIBUTE_PLANTS_PHYSICS_EXEMPT)
+                .orElse(false));
         labelWorldGenType.setVisible(true);
         comboBoxWorldGenType.setVisible(true);
+        labelPlantsPhysicsExempt.setVisible(true);
+        checkBoxPlantsPhysicsExempt.setVisible(true);
         panelMinecraftWorldBorder.setVisible(true);
         panelMinecraftWorldBorder.revalidate();
     }
@@ -604,6 +644,12 @@ public class ExportWorldDialog extends WPDialogWithPaintSelection {
         }
         if (comboBoxWorldGenType != null) {
             comboBoxWorldGenType.setVisible(false);
+        }
+        if (labelPlantsPhysicsExempt != null) {
+            labelPlantsPhysicsExempt.setVisible(false);
+        }
+        if (checkBoxPlantsPhysicsExempt != null) {
+            checkBoxPlantsPhysicsExempt.setVisible(false);
         }
     }
 
@@ -1291,6 +1337,8 @@ public class ExportWorldDialog extends WPDialogWithPaintSelection {
     private boolean disableDisabledLayersWarning;
     private javax.swing.JComboBox<String> comboBoxWorldGenType;
     private javax.swing.JLabel labelWorldGenType;
+    private javax.swing.JCheckBox checkBoxPlantsPhysicsExempt;
+    private javax.swing.JLabel labelPlantsPhysicsExempt;
 
     private static String previouslyAcknowledgedWarnings;
     private static Reference<World2> warningsForWorld;

@@ -350,8 +350,11 @@ public class FillDialog extends WPDialogWithPaintSelection implements Listener, 
                             set = (strength > 0.95f) || (Math.random() < strength);
                         }
                         if (set) {
-                            tile.setTerrain(x, y, fallback);
-                            org.pepsoft.worldpainter.hytale.HytaleTerrainLayer.setTerrainIndex(tile, x, y, layerIndex);
+                            boolean toPlants = org.pepsoft.worldpainter.hytale.HytalePlantsLayer.routePaint(
+                                    tile, x, y, hytaleTerrain);
+                            if (! toPlants) {
+                                tile.setTerrain(x, y, fallback);
+                            }
                         }
                     }
                 }

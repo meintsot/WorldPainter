@@ -1417,6 +1417,12 @@ public class HytaleWorldExporter implements WorldExporter {
         int waterLevel = tile.getWaterLevel(0, 0);
         Terrain terrain = tile.getTerrain(0, 0);
         long seed = dimension.getMinecraftSeed();
+        // Read per-export Hytale flag once per chunk: if true, plants painted via
+        // HytalePlantsLayer are written with SUPPORT_DECORATIVE so Hytale's physics cascade
+        // skips them (no chain-break, but the gathering system also skips them so broken
+        // plants drop themselves instead of resources). User-controlled via the export dialog.
+        final boolean plantsPhysicsExempt = world.getAttribute(HytaleWorldSettings.ATTRIBUTE_PLANTS_PHYSICS_EXEMPT)
+                .orElse(false);
 
         // Collect specific prefab layers for this dimension
         List<HytaleSpecificPrefabLayer> specificPrefabLayers = new ArrayList<>();
@@ -1593,7 +1599,36 @@ public class HytaleWorldExporter implements WorldExporter {
                         chunk.setHytaleBlock(localX, height + 1, localZ, plantBlock);
                     }
                 }
-                
+
+                // ── Plant Overlay Layer ──────────────────────────────
+                // Surface-only HytaleTerrains (plants, decorations) painted on
+                // top of a substrate land here. Place the plant block at
+                // height + 1 without touching the substrate at height — this
+                // is what makes "paint Stone, paint Bush" produce stone-with-
+                // bush-on-top instead of overwriting stone with grass.
+                //
+                // Optionally mark the placed block IS_DECO (support value 15) so
+                // Hytale's physics cascade does not chain-break it. Tradeoff:
+                // IS_DECO also bypasses the gathering interaction, so the
+                // player gets the block itself (e.g. a Plant_Bush item) instead
+                // of the configured drops (e.g. berries). Gated on the
+                // {@link HytaleWorldSettings#ATTRIBUTE_PLANTS_PHYSICS_EXEMPT}
+                // export attribute, which the user toggles in the export dialog.
+                int plantIndex = HytalePlantsLayer.getPlantIndex(tile, tileLocalX, tileLocalZ);
+                if (plantIndex > 0) {
+                    HytaleTerrain plantTerrain = HytaleTerrain.getByLayerIndex(plantIndex);
+                    if (plantTerrain != null) {
+                        HytaleBlock plantBlock = plantTerrain.getBlock(seed, worldX, worldZ, 0);
+                        if ((plantBlock != null) && (! plantBlock.isEmpty()) && (! plantBlock.isFluid())
+                                && ((height + 1) < dimension.getMaxHeight())) {
+                            chunk.setHytaleBlock(localX, height + 1, localZ, plantBlock);
+                            if (plantsPhysicsExempt) {
+                                chunk.setDecorative(localX, height + 1, localZ, true);
+                            }
+                        }
+                    }
+                }
+
                 // ── Fluid Layer ──────────────────────────────────────
                 // Check HytaleFluidLayer first, then fall back to FloodWithLava
                 int fluidLayerValue = HytaleFluidLayer.normalizeFluidValue(
