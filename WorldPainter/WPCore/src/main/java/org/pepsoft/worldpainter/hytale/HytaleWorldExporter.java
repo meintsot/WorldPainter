@@ -1600,6 +1600,36 @@ public class HytaleWorldExporter implements WorldExporter {
                     }
                 }
 
+                // ── Fluid Layer ──────────────────────────────────────
+                // Check HytaleFluidLayer first, then fall back to FloodWithLava
+                int fluidLayerValue = HytaleFluidLayer.normalizeFluidValue(
+                    tile.getLayerValue(HytaleFluidLayer.INSTANCE, tileLocalX, tileLocalZ));
+                boolean hasFluidOverride = fluidLayerValue > 0;
+                boolean isLavaFluid = hasFluidOverride
+                    ? HytaleFluidLayer.isLava(fluidLayerValue)
+                    : tile.getBitLayerValue(FloodWithLava.INSTANCE, tileLocalX, tileLocalZ);
+
+                // Fill fluid (water/lava/poison/slime/tar) if below water level
+                // Surface block is at height, so fluid starts at height+1
+                // waterLevel is the TOP surface of fluid (inclusive)
+                if (localWaterLevel > height) {
+                    waterColumns++;
+                    String fluidId;
+                    if (hasFluidOverride) {
+                        fluidId = HytaleFluidLayer.getFluidBlockId(fluidLayerValue);
+                    } else if (isLavaFluid) {
+                        fluidId = HytaleBlockMapping.HY_LAVA;
+                    } else {
+                        fluidId = HytaleBlockMapping.HY_WATER;
+                    }
+                    fluidTypeCounts.merge(fluidId, 1, Integer::sum);
+                    for (int y = height + 1; y <= localWaterLevel; y++) {
+                        chunk.setHytaleBlock(localX, y, localZ, HytaleBlock.EMPTY);
+                        chunk.getSections()[y >> 5].setFluid(localX, y & 31, localZ,
+                            fluidId, 1); // Source fluids: all have MaxFluidLevel=1 per Hytale assets
+                    }
+                }
+
                 // ── Plant Overlay Layer ──────────────────────────────
                 // Surface-only HytaleTerrains (plants, decorations) painted on
                 // top of a substrate land here. Place the plant block at
@@ -1622,40 +1652,13 @@ public class HytaleWorldExporter implements WorldExporter {
                         if ((plantBlock != null) && (! plantBlock.isEmpty()) && (! plantBlock.isFluid())
                                 && ((height + 1) < dimension.getMaxHeight())) {
                             chunk.setHytaleBlock(localX, height + 1, localZ, plantBlock);
+                            // Seal-protect so the post-export sealAboveTerrainColumn pass
+                            // does not clear this plant on flooded columns.
+                            chunk.setSealProtected(localX, height + 1, localZ, true);
                             if (plantsPhysicsExempt) {
                                 chunk.setDecorative(localX, height + 1, localZ, true);
                             }
                         }
-                    }
-                }
-
-                // ── Fluid Layer ──────────────────────────────────────
-                // Check HytaleFluidLayer first, then fall back to FloodWithLava
-                int fluidLayerValue = HytaleFluidLayer.normalizeFluidValue(
-                    tile.getLayerValue(HytaleFluidLayer.INSTANCE, tileLocalX, tileLocalZ));
-                boolean hasFluidOverride = fluidLayerValue > 0;
-                boolean isLavaFluid = hasFluidOverride 
-                    ? HytaleFluidLayer.isLava(fluidLayerValue)
-                    : tile.getBitLayerValue(FloodWithLava.INSTANCE, tileLocalX, tileLocalZ);
-
-                // Fill fluid (water/lava/poison/slime/tar) if below water level
-                // Surface block is at height, so fluid starts at height+1
-                // waterLevel is the TOP surface of fluid (inclusive)
-                if (localWaterLevel > height) {
-                    waterColumns++;
-                    String fluidId;
-                    if (hasFluidOverride) {
-                        fluidId = HytaleFluidLayer.getFluidBlockId(fluidLayerValue);
-                    } else if (isLavaFluid) {
-                        fluidId = HytaleBlockMapping.HY_LAVA;
-                    } else {
-                        fluidId = HytaleBlockMapping.HY_WATER;
-                    }
-                    fluidTypeCounts.merge(fluidId, 1, Integer::sum);
-                    for (int y = height + 1; y <= localWaterLevel; y++) {
-                        chunk.setHytaleBlock(localX, y, localZ, HytaleBlock.EMPTY);
-                        chunk.getSections()[y >> 5].setFluid(localX, y & 31, localZ,
-                            fluidId, 1); // Source fluids: all have MaxFluidLevel=1 per Hytale assets
                     }
                 }
 
@@ -2259,6 +2262,17 @@ public class HytaleWorldExporter implements WorldExporter {
             this.blockOffsetZ = blockOffsetZ;
             this.minHeight = minHeight;
             this.maxHeight = maxHeight;
+        }
+
+        @Override
+        public boolean fluidsCoexistWithBlocks() {
+            // Hytale stores blocks and fluids in separate data layers, so an
+            // insubstantial block (plant/decoration) placed in a flooded voxel
+            // is not washed away — both coexist. WPObjectUtils.placeBlock uses
+            // this to skip the Minecraft-specific "would be washed away" gate
+            // that otherwise drops Bo2 plant blocks on flooded columns
+            // (TP-53 follow-up).
+            return true;
         }
 
         void setActiveBlockMappings(java.util.Map<String, String> mappings) {

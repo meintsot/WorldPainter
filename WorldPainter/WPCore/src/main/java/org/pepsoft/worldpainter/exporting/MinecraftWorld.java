@@ -120,4 +120,14 @@ public interface MinecraftWorld extends ChunkProvider {
      * for the specified coordinates.
      */
     int getHighestNonAirBlock(int x, int y);
+
+    /**
+     * Whether this world stores blocks and fluids in independent layers, so that an "insubstantial" block (a plant,
+     * decoration, etc.) can coexist with water in the same voxel without being washed away. Hytale exporters return
+     * {@code true}; Minecraft-style exporters return {@code false} (the default), preserving the long-standing
+     * Minecraft behaviour of refusing to overwrite water with a non-waterloggable insubstantial block.
+     */
+    default boolean fluidsCoexistWithBlocks() {
+        return false;
+    }
 }

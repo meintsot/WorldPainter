@@ -77,6 +77,7 @@ public final class HytalePrefabPaster {
 
             HytaleBlock hBlock = HytaleBlock.of(block.blockName, block.rotation);
             chunk.setHytaleBlock(bx, by, bz, hBlock);
+            chunk.setSealProtected(bx, by, bz, true);
         }
 
         // Also paste fluids
