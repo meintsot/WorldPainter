@@ -1002,6 +1002,12 @@ public final class Configuration implements Serializable, EventLogger, Minecraft
         if (viewDistance == 0) {
             viewDistance = 192; // 12 chunks (default of Minecraft 1.18.2)
         }
+        if (defaultGridSize < 2) {
+            defaultGridSize = 128;
+        }
+        if (defaultHytaleGridSize < 2) {
+            defaultHytaleGridSize = 32;
+        }
         
         // New legacy mechanism with version number
         if (version < 1) {

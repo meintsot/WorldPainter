@@ -1,4 +1,5 @@
 .idea
+.codex/
 *.iml
 logs
 exporttimings.csv

@@ -1309,6 +1309,28 @@ public class HytaleWorldExporter implements WorldExporter {
         }
     }
 
+    static HytaleBlock getSurfaceOnlySubstrate(Terrain terrain, MixedMaterial customMaterial, long seed, int x, int z,
+                                               int y) {
+        if (customMaterial != null) {
+            for (int scanY = y; scanY >= Math.max(0, y - 8); scanY--) {
+                HytaleBlock candidate = HytaleBlockMapping.toHytaleBlock(customMaterial.getMaterial(seed, x, z, scanY));
+                if ((candidate != null) && (! candidate.isEmpty()) && (! candidate.isFluid())
+                        && (! HytaleBlockRegistry.isSurfaceOnlyBlock(candidate.id))) {
+                    return candidate;
+                }
+            }
+            return HytaleBlock.DIRT;
+        }
+
+        HytaleTerrain baseTerrain = HytaleTerrainHelper.fromMinecraftTerrain(terrain);
+        HytaleBlock candidate = (baseTerrain != null) ? baseTerrain.getBlock(seed, x, z, 0) : HytaleBlock.GRASS;
+        if ((candidate == null) || candidate.isEmpty() || candidate.isFluid()
+                || HytaleBlockRegistry.isSurfaceOnlyBlock(candidate.id)) {
+            return HytaleBlock.DIRT;
+        }
+        return candidate;
+    }
+
     /**
      * Final pass: enforce void columns by clearing any blocks, fluids, and
      * support data that may have been placed in void-marked columns by
@@ -1395,6 +1417,12 @@ public class HytaleWorldExporter implements WorldExporter {
         int waterLevel = tile.getWaterLevel(0, 0);
         Terrain terrain = tile.getTerrain(0, 0);
         long seed = dimension.getMinecraftSeed();
+        // Read per-export Hytale flag once per chunk: if true, plants painted via
+        // HytalePlantsLayer are written with SUPPORT_DECORATIVE so Hytale's physics cascade
+        // skips them (no chain-break, but the gathering system also skips them so broken
+        // plants drop themselves instead of resources). User-controlled via the export dialog.
+        final boolean plantsPhysicsExempt = world.getAttribute(HytaleWorldSettings.ATTRIBUTE_PLANTS_PHYSICS_EXEMPT)
+                .orElse(false);
 
         // Collect specific prefab layers for this dimension
         List<HytaleSpecificPrefabLayer> specificPrefabLayers = new ArrayList<>();
@@ -1514,10 +1542,11 @@ public class HytaleWorldExporter implements WorldExporter {
                             if (depth == 0) {
                                 surfacePlant = block;
                             }
-                            // Subsurface gets dirt/stone; surface gets grass
+                            // Subsurface gets dirt/stone; surface keeps the
+                            // terrain substrate instead of synthesising grass.
                             block = (depth > 0)
                                     ? ((depth <= 4) ? HytaleBlock.DIRT : HytaleBlock.STONE)
-                                    : HytaleBlock.GRASS;
+                                    : getSurfaceOnlySubstrate(localTerrain, customMaterial, seed, worldX, worldZ, y);
                         } else if (block.isGrass() && depth > 0) {
                             // Grass only belongs on the surface
                             block = (depth <= 4) ? HytaleBlock.DIRT : HytaleBlock.STONE;
@@ -1545,8 +1574,9 @@ public class HytaleWorldExporter implements WorldExporter {
                                 // Fill subsurface with dirt (or stone below depth 4)
                                 block = (depth <= 4) ? HytaleBlock.DIRT : HytaleBlock.STONE;
                             } else {
-                                // Surface: place grass; the plant goes on top at height+1
-                                block = HytaleBlock.GRASS;
+                                // Surface: preserve the underlying terrain
+                                // substrate; the plant goes on top at height+1.
+                                block = getSurfaceOnlySubstrate(localTerrain, customMaterial, seed, worldX, worldZ, y);
                             }
                         } else if (grassTerrain && depth > 0) {
                             // Grass blocks only belong on the surface; Hytale converts
@@ -1569,7 +1599,36 @@ public class HytaleWorldExporter implements WorldExporter {
                         chunk.setHytaleBlock(localX, height + 1, localZ, plantBlock);
                     }
                 }
-                
+
+                // ── Plant Overlay Layer ──────────────────────────────
+                // Surface-only HytaleTerrains (plants, decorations) painted on
+                // top of a substrate land here. Place the plant block at
+                // height + 1 without touching the substrate at height — this
+                // is what makes "paint Stone, paint Bush" produce stone-with-
+                // bush-on-top instead of overwriting stone with grass.
+                //
+                // Optionally mark the placed block IS_DECO (support value 15) so
+                // Hytale's physics cascade does not chain-break it. Tradeoff:
+                // IS_DECO also bypasses the gathering interaction, so the
+                // player gets the block itself (e.g. a Plant_Bush item) instead
+                // of the configured drops (e.g. berries). Gated on the
+                // {@link HytaleWorldSettings#ATTRIBUTE_PLANTS_PHYSICS_EXEMPT}
+                // export attribute, which the user toggles in the export dialog.
+                int plantIndex = HytalePlantsLayer.getPlantIndex(tile, tileLocalX, tileLocalZ);
+                if (plantIndex > 0) {
+                    HytaleTerrain plantTerrain = HytaleTerrain.getByLayerIndex(plantIndex);
+                    if (plantTerrain != null) {
+                        HytaleBlock plantBlock = plantTerrain.getBlock(seed, worldX, worldZ, 0);
+                        if ((plantBlock != null) && (! plantBlock.isEmpty()) && (! plantBlock.isFluid())
+                                && ((height + 1) < dimension.getMaxHeight())) {
+                            chunk.setHytaleBlock(localX, height + 1, localZ, plantBlock);
+                            if (plantsPhysicsExempt) {
+                                chunk.setDecorative(localX, height + 1, localZ, true);
+                            }
+                        }
+                    }
+                }
+
                 // ── Fluid Layer ──────────────────────────────────────
                 // Check HytaleFluidLayer first, then fall back to FloodWithLava
                 int fluidLayerValue = HytaleFluidLayer.normalizeFluidValue(

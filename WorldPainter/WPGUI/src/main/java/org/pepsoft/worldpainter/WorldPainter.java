@@ -26,6 +26,7 @@ import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionListener;
 import java.awt.geom.AffineTransform;
+import java.awt.geom.Rectangle2D;
 import java.awt.image.BufferedImage;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
@@ -42,6 +43,7 @@ import static java.util.Collections.singleton;
 import static java.util.Collections.unmodifiableSet;
 import static org.pepsoft.util.AwtUtils.doLaterOnEventThread;
 import static org.pepsoft.util.AwtUtils.doOnEventThread;
+import static org.pepsoft.util.GUIUtils.getUIScale;
 import static org.pepsoft.worldpainter.Configuration.OverlayType.SCALE_ON_LOAD;
 import static org.pepsoft.worldpainter.Constants.*;
 import static org.pepsoft.worldpainter.DefaultPlugin.JAVA_ANVIL;
@@ -705,6 +707,10 @@ public class WorldPainter extends WorldPainterView implements MouseMotionListene
         if (dimension != null) {
             // Paint anything else:
             final Graphics2D g2 = (Graphics2D) g;
+            // The upstream grid is suppressed (see setPaintGrid); paint our own
+            // version which honors the configured grid size at every zoom level.
+            paintWpGrid(g2);
+
             final Color savedColour = g2.getColor();
             final Object savedAAValue = g2.getRenderingHint(RenderingHints.KEY_ANTIALIASING);
 //            final Object savedInterpolationValue = g2.getRenderingHint(RenderingHints.KEY_INTERPOLATION);
@@ -739,6 +745,153 @@ public class WorldPainter extends WorldPainterView implements MouseMotionListene
                 g2.setFont(savedFont);
             }
         }
+    }
+
+    @Override
+    public boolean isPaintGrid() {
+        return wpPaintGrid;
+    }
+
+    /**
+     * The upstream {@link org.pepsoft.util.swing.TiledImageViewer#paintGridIfApplicable}
+     * silently doubles the on-screen grid spacing whenever the view is zoomed out,
+     * so we suppress its painting entirely (super's flag stays {@code false}) and
+     * track our own enable flag, which {@link #paintWpGrid} consumes.
+     */
+    @Override
+    public void setPaintGrid(boolean paintGrid) {
+        if (paintGrid != this.wpPaintGrid) {
+            this.wpPaintGrid = paintGrid;
+            repaint();
+        }
+    }
+
+    private void paintWpGrid(Graphics2D g2) {
+        if (! wpPaintGrid) {
+            return;
+        }
+        final int gridSize = getGridSize();
+        final int zoom = getZoom();
+        final int effective = effectiveGridSize(gridSize, zoom);
+        if (effective == 0) {
+            return;
+        }
+
+        final Color savedColour = g2.getColor();
+        final Stroke savedStroke = g2.getStroke();
+        final Font savedFont = g2.getFont();
+        final Object savedTextAAHint = g2.getRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING);
+        try {
+            final Rectangle clipInWorld = viewToWorld(g2.getClipBounds());
+            final int x1 = ((clipInWorld.x / effective) - 1) * effective;
+            final int x2 = ((clipInWorld.x + clipInWorld.width) / effective + 1) * effective;
+            final int y1 = ((clipInWorld.y / effective) - 1) * effective;
+            final int y2 = ((clipInWorld.y + clipInWorld.height) / effective + 1) * effective;
+            g2.setColor(getGridColour());
+
+            final int labelScale = getLabelScale();
+            final Rectangle2D fontBounds = GRID_BOLD_FONT.getStringBounds(
+                    (labelScale < 5) ? "-00000" : "-000000", g2.getFontRenderContext());
+            final int fontHeight = (int) Math.round(fontBounds.getHeight());
+            final int fontWidth = (int) Math.round(fontBounds.getWidth());
+            final int leftClear = fontWidth + 4, topClear = fontHeight + 6;
+
+            final Stroke normalStroke = new BasicStroke(1, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10.0f, new float[] {2f, 2f}, 0.0f);
+            final Stroke regionBorderStroke = new BasicStroke(1, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10.0f, new float[] {6f, 2f}, 0.0f);
+
+            final boolean drawRegionBorders = (effective <= 512) && ((effective & (effective - 1)) == 0);
+            final int width = getWidth(), height = getHeight();
+            int xLabelSkip = effective, yLabelSkip = effective;
+            final float scale = (float) Math.pow(2.0, zoom);
+
+            while ((xLabelSkip * scale) < fontWidth) {
+                xLabelSkip += effective;
+            }
+            while ((yLabelSkip * scale) < fontHeight) {
+                yLabelSkip += effective;
+            }
+
+            g2.setStroke(normalStroke);
+            g2.setFont(GRID_NORMAL_FONT);
+            boolean normalFontInstalled = true;
+            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_GASP);
+            boolean normalStrokeInstalled = true;
+
+            for (int x = x1; x <= x2; x += effective) {
+                if ((x == 0) || (drawRegionBorders && ((x % 512) == 0))) {
+                    g2.setStroke(regionBorderStroke);
+                    normalStrokeInstalled = false;
+                } else if (! normalStrokeInstalled) {
+                    g2.setStroke(normalStroke);
+                    normalStrokeInstalled = true;
+                }
+                Point lineStartInView = worldToView(x, 0);
+                if (lineStartInView.x + 2 >= leftClear) {
+                    if ((x % xLabelSkip) == 0) {
+                        g2.drawLine(lineStartInView.x, 0, lineStartInView.x, height);
+                        if (drawRegionBorders && ((x % 512) == 0)) {
+                            g2.setFont(GRID_BOLD_FONT);
+                            normalFontInstalled = false;
+                        } else if (! normalFontInstalled) {
+                            g2.setFont(GRID_NORMAL_FONT);
+                            normalFontInstalled = true;
+                        }
+                        g2.drawString(Integer.toString(x * labelScale), lineStartInView.x + 2, fontHeight + 2);
+                    } else {
+                        g2.drawLine(lineStartInView.x, topClear, lineStartInView.x, height);
+                    }
+                }
+            }
+
+            for (int y = y1; y <= y2; y += effective) {
+                if ((y == 0) || (drawRegionBorders && ((y % 512) == 0))) {
+                    g2.setStroke(regionBorderStroke);
+                    normalStrokeInstalled = false;
+                } else if (! normalStrokeInstalled) {
+                    g2.setStroke(normalStroke);
+                    normalStrokeInstalled = true;
+                }
+                Point lineStartInView = worldToView(0, y);
+                if ((y % yLabelSkip) == 0) {
+                    if (lineStartInView.y + 2 >= topClear) {
+                        g2.drawLine(0, lineStartInView.y, width, lineStartInView.y);
+                    }
+                    if (drawRegionBorders && ((y % 512) == 0)) {
+                        g2.setFont(GRID_BOLD_FONT);
+                        normalFontInstalled = false;
+                    } else if (! normalFontInstalled) {
+                        g2.setFont(GRID_NORMAL_FONT);
+                        normalFontInstalled = true;
+                    }
+                    g2.drawString(Integer.toString(y * labelScale), 2, lineStartInView.y - 2);
+                } else if (lineStartInView.y + 2 >= topClear) {
+                    g2.drawLine(leftClear, lineStartInView.y, width, lineStartInView.y);
+                }
+            }
+        } finally {
+            g2.setColor(savedColour);
+            g2.setStroke(savedStroke);
+            g2.setFont(savedFont);
+            g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, savedTextAAHint);
+        }
+    }
+
+    /**
+     * Compute the grid spacing to render given the user's configured grid size and
+     * the current zoom level. Unlike the upstream
+     * {@link org.pepsoft.util.swing.TiledImageViewer#paintGridIfApplicable} this does
+     * not auto-double the spacing on zoom-out — the user's choice is honored at
+     * every zoom level. Returns {@code 0} when on-screen lines would be denser than
+     * 2 pixels apart, signalling that the grid should be hidden for that frame.
+     *
+     * @param gridSize The user's configured grid size in world blocks.
+     * @param zoom The current zoom level as a power of two (positive zooms in,
+     *             negative zooms out).
+     * @return The grid size to render at, or {@code 0} to hide the grid entirely.
+     */
+    static int effectiveGridSize(int gridSize, int zoom) {
+        final double pixelSpacing = gridSize * Math.pow(2.0, zoom);
+        return (pixelSpacing < 2.0) ? 0 : gridSize;
     }
 
     private void drawBrushEtc(Graphics2D g2, float scale, boolean dashed) {
@@ -1069,6 +1222,7 @@ public class WorldPainter extends WorldPainterView implements MouseMotionListene
             viewDistance;
     private boolean drawBrush, drawOverlays, drawContours, drawViewDistance, drawWalkingDistance,
             drawGameBorder = true, drawBorders = true, drawBiomes = true;
+    private boolean wpPaintGrid;
     private BrushShape brushShape;
     private ColourScheme colourScheme;
     private LightOrigin lightOrigin = LightOrigin.NORTHWEST;
@@ -1082,6 +1236,8 @@ public class WorldPainter extends WorldPainterView implements MouseMotionListene
     private static final int DAY_WALK_DISTANCE_RADIUS = 3328;
     private static final int DAY_NIGHT_WALK_DISTANCE_RADIUS = 5120;
     private static final Font NORMAL_FONT = new Font("SansSerif", Font.PLAIN, 10);
+    private static final Font GRID_NORMAL_FONT = new Font("SansSerif", Font.PLAIN, (int) (10 * getUIScale()));
+    private static final Font GRID_BOLD_FONT = new Font("SansSerif", Font.BOLD, (int) (10 * getUIScale()));
     private static final Logger logger = LoggerFactory.getLogger(WorldPainter.class);
     private static final long serialVersionUID = 1L;
 

@@ -4,8 +4,8 @@ import org.pepsoft.worldpainter.ColourScheme;
 import org.pepsoft.worldpainter.Dimension;
 import org.pepsoft.worldpainter.Terrain;
 import org.pepsoft.worldpainter.Tile;
+import org.pepsoft.worldpainter.hytale.HytalePlantsLayer;
 import org.pepsoft.worldpainter.hytale.HytaleTerrain;
-import org.pepsoft.worldpainter.hytale.HytaleTerrainLayer;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -133,11 +133,14 @@ public final class HytaleTerrainPaint extends AbstractPaint {
 
     @Override
     public void applyPixel(Dimension dimension, int x, int y) {
-        dimension.setTerrainAt(x, y, fallbackTerrain);
         final int tileX = x >> TILE_SIZE_BITS, tileY = y >> TILE_SIZE_BITS;
         final Tile tile = dimension.getTileForEditing(tileX, tileY);
-        if (tile != null) {
-            HytaleTerrainLayer.setTerrainIndex(tile, x & TILE_SIZE_MASK, y & TILE_SIZE_MASK, layerIndex);
+        if (tile == null) {
+            return;
+        }
+        boolean toPlants = HytalePlantsLayer.routePaint(tile, x & TILE_SIZE_MASK, y & TILE_SIZE_MASK, hytaleTerrain);
+        if (! toPlants) {
+            dimension.setTerrainAt(x, y, fallbackTerrain);
         }
     }
 
@@ -152,7 +155,9 @@ public final class HytaleTerrainPaint extends AbstractPaint {
     }
 
     private void applyToTile(Tile tile, int x, int y) {
-        tile.setTerrain(x, y, fallbackTerrain);
-        HytaleTerrainLayer.setTerrainIndex(tile, x, y, layerIndex);
+        boolean toPlants = HytalePlantsLayer.routePaint(tile, x, y, hytaleTerrain);
+        if (! toPlants) {
+            tile.setTerrain(x, y, fallbackTerrain);
+        }
     }
 }

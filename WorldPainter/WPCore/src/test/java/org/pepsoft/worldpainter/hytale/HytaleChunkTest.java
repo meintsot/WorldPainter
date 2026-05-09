@@ -207,11 +207,18 @@ public class HytaleChunkTest {
 
         chunk.setHytaleBlock(2, 10, 3, HytaleBlock.of("Wood_Oak_Trunk"));
         chunk.setDecorative(2, 10, 3, true);
+        chunk.setHytaleBlock(3, 10, 3, HytaleBlock.of("Plant_Leaves_Oak"));
+
+        BsonDocument physicsDoc = getSerializedBlockPhysicsDoc(chunk, 0);
+        assertEquals("BlockPhysics is a versioned Hytale component",
+                0, physicsDoc.getInt32("Version").getValue());
 
         byte[] physicsData = getSerializedBlockPhysicsData(chunk, 0);
         assertNotNull(physicsData);
         assertTrue(physicsData.length > 1);
         assertEquals(HytaleChunk.SUPPORT_DECORATIVE, readSupportValue(physicsData, blockIndex(2, 10, 3)));
+        assertEquals("Adjacent blocks must not inherit the decorative marker through reversed nibble packing",
+                HytaleChunk.SUPPORT_NONE, readSupportValue(physicsData, blockIndex(3, 10, 3)));
     }
 
     @Test
@@ -264,14 +271,17 @@ public class HytaleChunkTest {
     }
 
     private static byte[] getSerializedBlockPhysicsData(HytaleChunk chunk, int sectionIndex) {
+        return getSerializedBlockPhysicsDoc(chunk, sectionIndex).getBinary("Data").getData();
+    }
+
+    private static BsonDocument getSerializedBlockPhysicsDoc(HytaleChunk chunk, int sectionIndex) {
         BsonDocument root = new RawBsonDocument(HytaleBsonChunkSerializer.serializeChunk(chunk));
         BsonDocument components = root.getDocument("Components");
         BsonDocument chunkColumn = components.getDocument("ChunkColumn");
         BsonArray sections = chunkColumn.getArray("Sections");
         BsonDocument sectionHolder = sections.get(sectionIndex).asDocument();
         BsonDocument sectionComponents = sectionHolder.getDocument("Components");
-        BsonDocument physicsDoc = sectionComponents.getDocument("BlockPhysics");
-        return physicsDoc.getBinary("Data").getData();
+        return sectionComponents.getDocument("BlockPhysics");
     }
 
     private static int readFluidLevel(byte[] fluidData, int index) {
@@ -328,9 +338,9 @@ public class HytaleChunkTest {
         int byteIndex = 1 + (index >> 1);
         int packed = physicsData[byteIndex] & 0xFF;
         if ((index & 1) == 0) {
-            return packed & 0xF;
+            return (packed >> 4) & 0xF;
         }
-        return (packed >> 4) & 0xF;
+        return packed & 0xF;
     }
 
     private static int blockIndex(int x, int y, int z) {

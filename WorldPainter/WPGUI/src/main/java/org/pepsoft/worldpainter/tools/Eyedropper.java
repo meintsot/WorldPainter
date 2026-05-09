@@ -4,6 +4,7 @@ import org.pepsoft.util.DesktopUtils;
 import org.pepsoft.worldpainter.*;
 import org.pepsoft.worldpainter.biomeschemes.BiomeHelper;
 import org.pepsoft.worldpainter.biomeschemes.CustomBiomeManager;
+import org.pepsoft.worldpainter.hytale.HytalePlantsLayer;
 import org.pepsoft.worldpainter.hytale.HytaleTerrain;
 import org.pepsoft.worldpainter.hytale.HytaleTerrainHelper;
 import org.pepsoft.worldpainter.hytale.HytaleTerrainLayer;
@@ -109,6 +110,28 @@ public final class Eyedropper extends MouseOrTabletOperation {
                             callback.terrainSelected(terrain);
                         }
                     });
+                }
+                // Hytale plant overlay (TP-60): if a surface-only HytaleTerrain has been
+                // painted on top of the substrate at this pixel, surface it as a separate
+                // pickable entry so the user can grab the plant rather than the substrate.
+                if (HytaleTerrainHelper.isHytale(dimension.getWorld().getPlatform())) {
+                    final Tile plantTile = dimension.getTile(x >> TILE_SIZE_BITS, y >> TILE_SIZE_BITS);
+                    if (plantTile != null) {
+                        final int plantIndex = HytalePlantsLayer.getPlantIndex(
+                                plantTile, x & TILE_SIZE_MASK, y & TILE_SIZE_MASK);
+                        if (plantIndex > 0) {
+                            final HytaleTerrain plant = HytaleTerrain.getByLayerIndex(plantIndex);
+                            if (plant != null) {
+                                popupMenu.add(new AbstractAction(plant.getName(),
+                                        new ImageIcon(plant.getScaledIcon(16, colourScheme))) {
+                                    @Override
+                                    public void actionPerformed(ActionEvent e) {
+                                        callback.hytaleTerrainSelected(plant);
+                                    }
+                                });
+                            }
+                        }
+                    }
                 }
             }
             if (layers != null) {

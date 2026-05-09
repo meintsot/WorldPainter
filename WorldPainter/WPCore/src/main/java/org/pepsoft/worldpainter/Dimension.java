@@ -2633,6 +2633,9 @@ public class Dimension extends InstanceKeeper implements TileProvider, Serializa
                 customLayers.addAll(getAllLayers(false).stream().filter(layer -> layer instanceof CustomLayer).map(layer -> (CustomLayer) layer).collect(Collectors.toList()));
             }
         }
+        if (gridSize < 2) {
+            gridSize = 128;
+        }
         if (wpVersion < 2) {
             if (overlay != null) {
                 fixOverlayCoords = true;
@@ -2745,6 +2748,23 @@ public class Dimension extends InstanceKeeper implements TileProvider, Serializa
                     managedAttributes = new HashMap<>();
                 }
                 managedAttributes.put("hytaleTerrainVersion", 2);
+            }
+        }
+        if (wpVersion < 12) {
+            // TP-60: surface-only HytaleTerrains (plants, decorations) used to be stored in
+            // HytaleTerrainLayer where they overwrote the substrate. Move them into the new
+            // HytalePlantsLayer so the substrate is preserved and the plant becomes a height+1
+            // overlay. Idempotent — gated by a managed attribute so reopened saves don't
+            // re-migrate.
+            Object migrated = (managedAttributes != null)
+                    ? managedAttributes.get("hytalePlantsLayerMigrated")
+                    : null;
+            if (migrated == null) {
+                org.pepsoft.worldpainter.hytale.HytalePlantsLayer.migrateSurfaceOnlyFromTerrainLayer(tiles.values());
+                if (managedAttributes == null) {
+                    managedAttributes = new HashMap<>();
+                }
+                managedAttributes.put("hytalePlantsLayerMigrated", Boolean.TRUE);
             }
         }
         wpVersion = CURRENT_WP_VERSION;
@@ -2864,7 +2884,7 @@ public class Dimension extends InstanceKeeper implements TileProvider, Serializa
 
     private static final long TOP_LAYER_DEPTH_SEED_OFFSET = 180728193;
     private static final float ROOT_EIGHT = (float) Math.sqrt(8.0);
-    private static final int CURRENT_WP_VERSION = 11;
+    private static final int CURRENT_WP_VERSION = 12;
     private static final BufferKey<Map<String, Object>> BUFFER_KEY_MANAGED_ATTRIBUTES = new BufferKey<>() {};
     private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(Dimension.class);
     @Serial
