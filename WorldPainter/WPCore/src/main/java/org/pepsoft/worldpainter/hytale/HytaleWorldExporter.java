@@ -506,17 +506,8 @@ public class HytaleWorldExporter implements WorldExporter {
         Files.write(new File(saveDir, "bans.json").toPath(),
                 "[]".getBytes(StandardCharsets.UTF_8));
         
-        // permissions.json - default with OP group
-        Map<String, Object> permissions = new LinkedHashMap<>();
-        Map<String, Object> users = new LinkedHashMap<>();
-        if (HytaleWorldSettings.normalizeGameType(world.getGameType()) == GameType.CREATIVE) {
-            users.put("Player", "OP");
-        }
-        permissions.put("users", users);
-        Map<String, Object> groups = new LinkedHashMap<>();
-        groups.put("Default", new String[0]);
-        groups.put("OP", new String[]{"*"});
-        permissions.put("groups", groups);
+        // permissions.json - Creative exports auto-OP via Default group; see TP-52
+        Map<String, Object> permissions = HytaleWorldSettings.buildPermissionsJson(world.getGameType());
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         Files.write(new File(saveDir, "permissions.json").toPath(),
                 gson.toJson(permissions).getBytes(StandardCharsets.UTF_8));

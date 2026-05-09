@@ -1,5 +1,7 @@
 package org.pepsoft.worldpainter.hytale;
 
+import java.util.Map;
+
 import org.junit.Test;
 import org.pepsoft.worldpainter.GameType;
 
@@ -97,11 +99,60 @@ public class HytaleWorldSettingsTest {
     @Test
     public void onlyCreativeQualifiesForAutoOpInPermissionsJson() {
         // TP-52: this is the exact predicate HytaleWorldExporter uses to decide
-        // whether to add Player → OP to permissions.json.
+        // whether to grant the Default group full permissions in permissions.json.
         for (GameType gt : GameType.values()) {
             boolean shouldAutoOp = HytaleWorldSettings.normalizeGameType(gt) == CREATIVE;
-            assertEquals("Only CREATIVE should auto-OP Player; got " + gt,
+            assertEquals("Only CREATIVE should auto-OP players; got " + gt,
                     gt == CREATIVE, shouldAutoOp);
         }
+    }
+
+    /**
+     * TP-52 (revised): Hytale's {@code permissions.json} keys users by player UUID,
+     * not by display name — the original {@code "Player": "OP"} entry the exporter
+     * wrote was format-invalid and silently ignored by Hytale, leaving the player
+     * unprivileged. WorldPainter cannot know the player's auth UUID at export time,
+     * so the fix grants the {@code Default} group {@code ["*"]} (all permissions)
+     * for Creative exports. Every user joining a Creative-mode export is therefore
+     * effectively OP without typing {@code /op} themselves.
+     */
+    @Test
+    public void permissionsJsonGrantsDefaultGroupWildcardForCreative() {
+        Map<String, Object> permissions = HytaleWorldSettings.buildPermissionsJson(CREATIVE);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> groups = (Map<String, Object>) permissions.get("groups");
+        assertArrayEquals("Creative export must grant Default group all permissions so the first joiner is OP-equivalent without typing /op",
+                new String[]{"*"}, (String[]) groups.get("Default"));
+    }
+
+    @Test
+    public void permissionsJsonLeavesDefaultGroupEmptyForAdventure() {
+        Map<String, Object> permissions = HytaleWorldSettings.buildPermissionsJson(ADVENTURE);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> groups = (Map<String, Object>) permissions.get("groups");
+        assertArrayEquals("Non-Creative exports must keep Default empty so players are not silently OPed",
+                new String[]{}, (String[]) groups.get("Default"));
+    }
+
+    @Test
+    public void permissionsJsonAlwaysDefinesOpGroupWithWildcard() {
+        for (GameType gt : GameType.values()) {
+            Map<String, Object> permissions = HytaleWorldSettings.buildPermissionsJson(gt);
+            @SuppressWarnings("unchecked")
+            Map<String, Object> groups = (Map<String, Object>) permissions.get("groups");
+            assertArrayEquals("OP group must always exist with wildcard for " + gt,
+                    new String[]{"*"}, (String[]) groups.get("OP"));
+        }
+    }
+
+    @Test
+    public void permissionsJsonHasEmptyUsersMap() {
+        // The exporter cannot know the singleplayer player's auth UUID, so users
+        // must be empty — privileges are granted via the Default group instead.
+        Map<String, Object> permissions = HytaleWorldSettings.buildPermissionsJson(CREATIVE);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> users = (Map<String, Object>) permissions.get("users");
+        assertTrue("users map must be empty — Hytale keys users by UUID which WP cannot know at export",
+                users.isEmpty());
     }
 }

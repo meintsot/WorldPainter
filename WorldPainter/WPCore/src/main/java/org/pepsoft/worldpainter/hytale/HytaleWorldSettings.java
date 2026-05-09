@@ -1,5 +1,8 @@
 package org.pepsoft.worldpainter.hytale;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 import org.pepsoft.util.AttributeKey;
 import org.pepsoft.worldpainter.GameType;
 
@@ -51,5 +54,28 @@ public final class HytaleWorldSettings {
      */
     public static String toHytaleGameModeName(GameType gameType) {
         return (normalizeGameType(gameType) == CREATIVE) ? "Creative" : "Adventure";
+    }
+
+    /**
+     * Build the {@code permissions.json} payload Hytale expects in a save's root directory.
+     *
+     * <p>TP-52: Hytale keys the {@code users} map by player auth UUID with a
+     * {@code {"groups": [...]}} value — display-name keys with string values are silently
+     * ignored. WorldPainter cannot know the singleplayer player's UUID at export time, so
+     * to honour the "Creative export should already be OPed" intent we instead grant the
+     * {@code Default} group {@code ["*"]} (all permissions) for Creative exports. Every
+     * user joining a Creative export is therefore admin-equivalent without typing
+     * {@code /op}. Adventure-mode exports leave {@code Default} empty so non-admin
+     * multiplayer behaviour is unchanged.
+     */
+    public static Map<String, Object> buildPermissionsJson(GameType gameType) {
+        Map<String, Object> permissions = new LinkedHashMap<>();
+        permissions.put("users", new LinkedHashMap<>());
+        boolean creative = (normalizeGameType(gameType) == CREATIVE);
+        Map<String, Object> groups = new LinkedHashMap<>();
+        groups.put("Default", creative ? new String[]{"*"} : new String[0]);
+        groups.put("OP", new String[]{"*"});
+        permissions.put("groups", groups);
+        return permissions;
     }
 }
