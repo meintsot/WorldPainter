@@ -116,7 +116,11 @@ public class WPObjectUtils {
         }
         // Don't replace water with insubstantial blocks that don't have a waterlogged property (assume such a block
         // would be washed away), except air. We are slightly guessing at what the user would want to happen here...
-        if ((! material.veryInsubstantial) || (! existingMaterialContainsWater) || material.containsWater() || material.empty) {
+        // The "wash away" assumption is Minecraft-specific: in Hytale (and any other engine where blocks and fluids
+        // live in independent layers) an insubstantial block coexists with water in the same voxel just fine. Worlds
+        // that opt in via {@link MinecraftWorld#fluidsCoexistWithBlocks()} bypass this gate.
+        if (world.fluidsCoexistWithBlocks()
+                || (! material.veryInsubstantial) || (! existingMaterialContainsWater) || material.containsWater() || material.empty) {
             world.setMaterialAt(x, y, height, material);
             if (connectBlocks && (checkReverseConnections != null)) {
                 makeReverseConnections(world, x, y, height, checkReverseConnections);

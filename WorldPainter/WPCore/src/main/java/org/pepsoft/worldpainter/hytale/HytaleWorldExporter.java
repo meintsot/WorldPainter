@@ -2264,6 +2264,17 @@ public class HytaleWorldExporter implements WorldExporter {
             this.maxHeight = maxHeight;
         }
 
+        @Override
+        public boolean fluidsCoexistWithBlocks() {
+            // Hytale stores blocks and fluids in separate data layers, so an
+            // insubstantial block (plant/decoration) placed in a flooded voxel
+            // is not washed away — both coexist. WPObjectUtils.placeBlock uses
+            // this to skip the Minecraft-specific "would be washed away" gate
+            // that otherwise drops Bo2 plant blocks on flooded columns
+            // (TP-53 follow-up).
+            return true;
+        }
+
         void setActiveBlockMappings(java.util.Map<String, String> mappings) {
             this.activeBlockMappings = mappings;
         }
