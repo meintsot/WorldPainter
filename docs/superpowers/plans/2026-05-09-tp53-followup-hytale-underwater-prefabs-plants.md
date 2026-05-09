@@ -6,6 +6,10 @@
 
 **Architecture:** Two surgical one-line additions: a `chunk.setSealProtected(..., true)` call placed immediately after each `chunk.setHytaleBlock(...)` call in (1) `HytalePrefabPaster.paste()` (every prefab block) and (2) the plant-export inner loop of `HytaleWorldExporter` (every plant block). Each change is paired with a regression test in the existing project test style: a unit-level test for the prefab paster and a hybrid-level test for the plant export.
 
+> **Mid-execution revision (post-implementation note):** Task 2's "single one-line addition" turned out to be insufficient on its own. The inline fluid loop in `populateChunkFromTile` runs in the same per-pixel iteration as the plant overlay block and calls `chunk.setHytaleBlock(y, EMPTY)` for cells in the flooded range; `HytaleChunk.setHytaleBlock` clears the seal-protected flag whenever a block becomes empty. So a plant placed BEFORE the fluid loop has both block and flag wiped before the post-export seal pass ever runs.
+>
+> The implemented Task 2 fix is therefore **two coupled edits**: (a) **move** the plant-overlay block to run AFTER the inline fluid loop, and (b) add the unconditional `setSealProtected` call as originally planned. The steps below in Task 2 still describe the original one-line approach for historical context — see the design spec at `docs/superpowers/specs/2026-05-09-tp53-followup-hytale-underwater-prefabs-plants-design.md` (Change 2 + Risks sections) for the canonical description of what was actually delivered.
+
 **Tech Stack:** Java 17, Maven (from `WorldPainter/`), JUnit 4. Tests follow existing patterns in `WorldPainter/WPCore/src/test/java/org/pepsoft/worldpainter/hytale/`:
 - `HytaleSealAboveTerrainColumnTest` — direct in-memory `HytaleChunk` tests around `sealAboveTerrainColumn`.
 - `Tp60PlantSubstrateTest` — end-to-end export + region readback regression tests.
