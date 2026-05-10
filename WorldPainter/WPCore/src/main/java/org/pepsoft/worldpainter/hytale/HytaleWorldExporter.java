@@ -506,8 +506,16 @@ public class HytaleWorldExporter implements WorldExporter {
         Files.write(new File(saveDir, "bans.json").toPath(),
                 "[]".getBytes(StandardCharsets.UTF_8));
         
-        // permissions.json - Creative exports auto-OP via Default group; see TP-52
-        Map<String, Object> permissions = HytaleWorldSettings.buildPermissionsJson(world.getGameType());
+        // permissions.json - Creative exports auto-OP the user via their discovered UUID; see TP-52
+        UUID playerUuid = HytaleWorldSettings.detectHytalePlayerUuid(HytaleWorldSettings.defaultHytaleSavesDir())
+                .orElse(null);
+        if (playerUuid == null) {
+            logger.info("No existing Hytale player UUID found; permissions.json will not auto-OP. " +
+                    "Player can /op self once after joining.");
+        } else {
+            logger.info("Detected Hytale player UUID {} for permissions.json auto-OP", playerUuid);
+        }
+        Map<String, Object> permissions = HytaleWorldSettings.buildPermissionsJson(world.getGameType(), playerUuid);
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         Files.write(new File(saveDir, "permissions.json").toPath(),
                 gson.toJson(permissions).getBytes(StandardCharsets.UTF_8));
