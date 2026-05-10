@@ -1,5 +1,13 @@
 package org.pepsoft.worldpainter.hytale;
 
+import java.io.File;
+import java.io.FileFilter;
+import java.io.FilenameFilter;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+
 import org.pepsoft.util.AttributeKey;
 import org.pepsoft.worldpainter.GameType;
 
@@ -51,5 +59,109 @@ public final class HytaleWorldSettings {
      */
     public static String toHytaleGameModeName(GameType gameType) {
         return (normalizeGameType(gameType) == CREATIVE) ? "Creative" : "Adventure";
+    }
+
+    /**
+     * Build the {@code permissions.json} payload Hytale expects in a save's root directory.
+     *
+     * <p>TP-52: Hytale's PermissionsModule passes every key in the {@code users} map through
+     * {@link UUID#fromString} during {@code syncLoad()}. The original exporter wrote
+     * {@code "Player": "OP"} — a non-UUID key with a string value — which crashed parsing
+     * with {@code IllegalArgumentException: Invalid UUID string: Player} and disabled the
+     * entire module, leaving Creative worlds unjoinable. The corrected payload writes the
+     * player's discovered UUID into the {@code users} map with groups {@code ["OP"]} so
+     * Hytale spawns them already opped on first join (Hytale merges in the gameplay-mode
+     * group automatically). Empirically, granting {@code Default = ["*"]} does NOT bypass
+     * permission checks — admin commands still report "You do not have permission" — so
+     * we keep {@code Default} empty and rely on explicit OP-group membership instead.
+     *
+     * @param gameType   the world's game type; only {@link GameType#CREATIVE} triggers auto-OP
+     * @param playerUuid the user's persistent Hytale client UUID, or {@code null} if unknown.
+     *                   When {@code null} the {@code users} map is left empty so the file
+     *                   still parses cleanly; the player can {@code /op self} once.
+     */
+    public static Map<String, Object> buildPermissionsJson(GameType gameType, UUID playerUuid) {
+        Map<String, Object> permissions = new LinkedHashMap<>();
+        Map<String, Object> users = new LinkedHashMap<>();
+        if ((normalizeGameType(gameType) == CREATIVE) && (playerUuid != null)) {
+            Map<String, Object> userEntry = new LinkedHashMap<>();
+            userEntry.put("groups", new String[]{"OP"});
+            users.put(playerUuid.toString(), userEntry);
+        }
+        permissions.put("users", users);
+        Map<String, Object> groups = new LinkedHashMap<>();
+        groups.put("Default", new String[0]);
+        groups.put("OP", new String[]{"*"});
+        permissions.put("groups", groups);
+        return permissions;
+    }
+
+    /**
+     * Default Hytale singleplayer saves directory: {@code %APPDATA%/Hytale/UserData/Saves}.
+     * Returns {@code null} on platforms or installs where this directory cannot be located
+     * (e.g. {@code APPDATA} unset, or Hytale never installed).
+     */
+    public static File defaultHytaleSavesDir() {
+        String appdata = System.getenv("APPDATA");
+        if ((appdata == null) || appdata.isEmpty()) {
+            return null;
+        }
+        return new File(appdata, "Hytale/UserData/Saves");
+    }
+
+    /**
+     * Discover the user's persistent Hytale client UUID by scanning their existing saves.
+     *
+     * <p>Hytale stores each player's per-world state at
+     * {@code <saveDir>/universe/players/<uuid>.json}. The UUID embedded in those filenames
+     * is the user's local auth UUID — stable across saves on the same Hytale install. The
+     * exporter uses this to pre-OP the user in newly exported Creative worlds, since
+     * WorldPainter has no other handle on the user's client identity.
+     *
+     * <p>Returns the UUID from the most recently modified player file across all saves so
+     * that on a shared install the most recently active user wins. Returns {@link
+     * Optional#empty()} when the directory is missing, has no saves, or no filename parses
+     * as a UUID (the typical first-time-user case) — callers must fall back to writing a
+     * permissions.json without auto-OP.
+     */
+    public static Optional<UUID> detectHytalePlayerUuid(File savesDir) {
+        if ((savesDir == null) || !savesDir.isDirectory()) {
+            return Optional.empty();
+        }
+        FileFilter dirsOnly = File::isDirectory;
+        FilenameFilter jsonFiles = (d, name) -> name.endsWith(".json");
+
+        File mostRecent = null;
+        File[] worldDirs = savesDir.listFiles(dirsOnly);
+        if (worldDirs == null) {
+            return Optional.empty();
+        }
+        for (File worldDir : worldDirs) {
+            File playersDir = new File(worldDir, "universe/players");
+            if (!playersDir.isDirectory()) {
+                continue;
+            }
+            File[] playerFiles = playersDir.listFiles(jsonFiles);
+            if (playerFiles == null) {
+                continue;
+            }
+            for (File playerFile : playerFiles) {
+                String name = playerFile.getName();
+                String stem = name.substring(0, name.length() - ".json".length());
+                try {
+                    UUID.fromString(stem);
+                } catch (IllegalArgumentException notAUuid) {
+                    continue;
+                }
+                if ((mostRecent == null) || (playerFile.lastModified() > mostRecent.lastModified())) {
+                    mostRecent = playerFile;
+                }
+            }
+        }
+        if (mostRecent == null) {
+            return Optional.empty();
+        }
+        String stem = mostRecent.getName().substring(0, mostRecent.getName().length() - ".json".length());
+        return Optional.of(UUID.fromString(stem));
     }
 }
