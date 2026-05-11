@@ -42,7 +42,12 @@ public class HytalePrefabJsonObjectTest {
 
         assertTrue(object.getName().startsWith("wp-hytale-prefab-"));
         assertEquals(new Point3i(2, 1, 2), object.getDimensions());
-        assertEquals(new Point3i(0, 0, -1), object.getOffset());
+        // TP-49 follow-up: vertical anchor (anchorY) is now ignored at load time
+        // so the prefab's lowest block (the fluid at Hytale y=19, mapped to WP
+        // z=0) lands at the placement Y. Horizontal anchor components are still
+        // honoured (anchorX == bounds.minX and anchorZ == bounds.minZ here, so
+        // those offsets remain zero).
+        assertEquals(new Point3i(0, 0, 0), object.getOffset());
 
         Material topMaterial = object.getMaterial(0, 0, 1);
         assertEquals("hytale:Soil_Grass", topMaterial.name);
@@ -61,6 +66,39 @@ public class HytalePrefabJsonObjectTest {
 
         HytaleBlock block = HytaleBlockMapping.toHytaleBlock(material);
         assertEquals(23, block.rotation & 0xFF);
+    }
+
+    @Test
+    public void treePrefabWithAnchorAboveBottomIsNotBuriedOnTerrain() throws IOException {
+        // TP-49 follow-up: real Hytale tree prefabs author anchorY at the
+        // trunk's planting block (often >= 1 above bounds.minY) with trunk
+        // blocks extending DOWN to bounds.minY. Treating that anchor as the
+        // placement point puts those bottom trunk blocks below terrain — the
+        // "buried trunk" visual Ferstborn reported. The loader must ignore the
+        // vertical anchor so the prefab's lowest block lands at terrain+1.
+        File file = File.createTempFile("wp-hytale-tree-prefab-", ".prefab.json");
+        file.deleteOnExit();
+
+        try (FileWriter writer = new FileWriter(file)) {
+            writer.write("{\n" +
+                    "  \"version\": 8,\n" +
+                    "  \"anchorX\": 0,\n" +
+                    "  \"anchorY\": 3,\n" +
+                    "  \"anchorZ\": 0,\n" +
+                    "  \"blocks\": [\n" +
+                    "    {\"x\": 0, \"y\": 0, \"z\": 0, \"name\": \"Wood_Ash_Trunk\"},\n" +
+                    "    {\"x\": 0, \"y\": 1, \"z\": 0, \"name\": \"Wood_Ash_Trunk\"},\n" +
+                    "    {\"x\": 0, \"y\": 2, \"z\": 0, \"name\": \"Wood_Ash_Trunk\"},\n" +
+                    "    {\"x\": 0, \"y\": 3, \"z\": 0, \"name\": \"Wood_Ash_Trunk\"},\n" +
+                    "    {\"x\": 0, \"y\": 4, \"z\": 0, \"name\": \"Wood_Ash_Trunk\"}\n" +
+                    "  ]\n" +
+                    "}\n");
+        }
+
+        WPObject object = HytalePrefabJsonObject.load(file);
+
+        assertEquals("vertical anchor must be ignored so the prefab's lowest block lands at the placement Y",
+                0, object.getOffset().z);
     }
 
     @Test
