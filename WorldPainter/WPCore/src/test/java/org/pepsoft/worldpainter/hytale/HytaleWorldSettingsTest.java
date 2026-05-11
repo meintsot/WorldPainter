@@ -184,6 +184,47 @@ public class HytaleWorldSettingsTest {
     }
 
     @Test
+    public void creativeExportDefinesCreativeGroupWithWildcardSoFerstbornHytaleKeepsAdmin() {
+        // TP-52 follow-up: Ferstborn's Hytale (likely release build) REPLACES
+        // the user's groups field on join with ["Adventure", "Creative"] —
+        // stripping our auto-OP assignment. On the dev's pre-release Hytale,
+        // join APPENDS those groups so ["OP"] is preserved. Comparing on-disk
+        // permissions.json across both:
+        //   dev Creative saves:       ["OP", "Adventure", "Creative"]
+        //   Ferstborn Creative save:  ["Adventure", "Creative"]   ← OP gone
+        // The chat log "You're now OP! / No longer OP. / You're now OP!" on
+        // Ferstborn's join confirms OP was briefly granted then revoked by
+        // Hytale's group sync, then manually re-granted via /op self.
+        //
+        // To survive both behaviours we also grant ["*"] to the runtime-injected
+        // Creative gameplay-mode group. The user is always in that group after
+        // Hytale's sync (regardless of append-vs-replace semantics), so admin
+        // permissions are retained via Creative-group membership even if OP is
+        // stripped.
+        Map<String, Object> permissions = HytaleWorldSettings.buildPermissionsJson(CREATIVE, TEST_UUID);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> groups = (Map<String, Object>) permissions.get("groups");
+        assertArrayEquals("Creative group must grant [*] for Creative exports so admin survives Hytale's "
+                        + "group sync (TP-52: Ferstborn's Hytale replaces user.groups on join)",
+                new String[]{"*"}, (String[]) groups.get("Creative"));
+    }
+
+    @Test
+    public void adventureExportDoesNotDefineCreativeGroupWildcard() {
+        // Symmetry: only Creative-mode exports should grant Creative=[*].
+        // Adventure exports must not silently turn the world into an admin-for-all
+        // server.
+        Map<String, Object> permissions = HytaleWorldSettings.buildPermissionsJson(ADVENTURE, TEST_UUID);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> groups = (Map<String, Object>) permissions.get("groups");
+        Object creativeGroup = groups.get("Creative");
+        assertTrue("Adventure exports must not define a wildcard Creative group; "
+                        + "found " + creativeGroup,
+                (creativeGroup == null)
+                        || (((String[]) creativeGroup).length == 0));
+    }
+
+    @Test
     public void detectHytalePlayerUuidFindsUuidFromExistingSave() throws Exception {
         // A save the user has played has universe/players/<uuid>.json
         File savesDir = temp.newFolder("Saves");
