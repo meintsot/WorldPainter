@@ -70,20 +70,36 @@ public final class HytaleWorldSettings {
      * with {@code IllegalArgumentException: Invalid UUID string: Player} and disabled the
      * entire module, leaving Creative worlds unjoinable. The corrected payload writes the
      * player's discovered UUID into the {@code users} map with groups {@code ["OP"]} so
-     * Hytale spawns them already opped on first join (Hytale merges in the gameplay-mode
-     * group automatically). Empirically, granting {@code Default = ["*"]} does NOT bypass
-     * permission checks — admin commands still report "You do not have permission" — so
-     * we keep {@code Default} empty and rely on explicit OP-group membership instead.
+     * Hytale spawns them already opped on first join. Empirically, granting
+     * {@code Default = ["*"]} does NOT bypass permission checks — admin commands still
+     * report "You do not have permission" — so we keep {@code Default} empty and rely on
+     * explicit group membership instead.
      *
-     * @param gameType   the world's game type; only {@link GameType#CREATIVE} triggers auto-OP
+     * <p>TP-52 follow-up: Hytale's join logic differs by version. Pre-release builds
+     * (developer's local install) APPEND the gameplay-mode groups to the user's existing
+     * {@code groups} list, preserving {@code OP}; release builds (Ferstborn's report)
+     * REPLACE the list with the gameplay-mode defaults, stripping {@code OP}. To survive
+     * both, Creative exports also grant {@code ["*"]} to the runtime-injected
+     * {@code Creative} gameplay-mode group itself. The user is always in that group after
+     * Hytale's sync regardless of append-vs-replace semantics, so admin permissions are
+     * retained via Creative-group membership even when {@code OP} is removed from the
+     * user's groups field. In multiplayer Creative WP exports this also gives every
+     * joining player admin permissions, which matches the "creative build server" use case
+     * these exports are intended for. Adventure exports remain unchanged — no wildcard on
+     * any gameplay-mode group, so normal multiplayer adventure permissions apply.
+     *
+     * @param gameType   the world's game type; only {@link GameType#CREATIVE} triggers
+     *                   auto-OP and the Creative-group wildcard
      * @param playerUuid the user's persistent Hytale client UUID, or {@code null} if unknown.
      *                   When {@code null} the {@code users} map is left empty so the file
-     *                   still parses cleanly; the player can {@code /op self} once.
+     *                   still parses cleanly; the player can {@code /op self} once. (The
+     *                   Creative-group wildcard still applies if the export is Creative.)
      */
     public static Map<String, Object> buildPermissionsJson(GameType gameType, UUID playerUuid) {
         Map<String, Object> permissions = new LinkedHashMap<>();
         Map<String, Object> users = new LinkedHashMap<>();
-        if ((normalizeGameType(gameType) == CREATIVE) && (playerUuid != null)) {
+        final boolean creative = (normalizeGameType(gameType) == CREATIVE);
+        if (creative && (playerUuid != null)) {
             Map<String, Object> userEntry = new LinkedHashMap<>();
             userEntry.put("groups", new String[]{"OP"});
             users.put(playerUuid.toString(), userEntry);
@@ -92,6 +108,9 @@ public final class HytaleWorldSettings {
         Map<String, Object> groups = new LinkedHashMap<>();
         groups.put("Default", new String[0]);
         groups.put("OP", new String[]{"*"});
+        if (creative) {
+            groups.put("Creative", new String[]{"*"});
+        }
         permissions.put("groups", groups);
         return permissions;
     }
