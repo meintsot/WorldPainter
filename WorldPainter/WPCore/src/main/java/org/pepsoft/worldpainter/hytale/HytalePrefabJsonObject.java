@@ -263,12 +263,17 @@ public final class HytalePrefabJsonObject {
 
     private static Point3i calculateOffset(JsonObject root, Bounds bounds) {
         int anchorX = getInt(root, "anchorX", bounds.minX);
-        int anchorY = getInt(root, "anchorY", bounds.minY);
         int anchorZ = getInt(root, "anchorZ", bounds.minZ);
+        // TP-49 follow-up: horizontal anchors (X / Z) still position the prefab in
+        // the X/Z plane, but the vertical anchor is ignored. Hytale tree prefabs
+        // author anchorY at the trunk's planting block with trunk blocks extending
+        // DOWN to bounds.minY; honouring anchorY for placement put those bottom
+        // trunk blocks below terrain. Aligning bounds.minY with the placement Y
+        // keeps the prefab's lowest block flush with terrain+1.
         return new Point3i(
                 -(anchorX - bounds.minX),
                 -(anchorZ - bounds.minZ),
-                -(anchorY - bounds.minY));
+                0);
     }
 
     private static String deriveName(String fileName) {

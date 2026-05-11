@@ -64,7 +64,12 @@ public final class HytalePrefabPaster {
 
         for (PrefabBlock block : data.blocks) {
             int bx = anchorX + block.x - data.anchorX;
-            int by = anchorY + block.y - data.anchorY;
+            // TP-49 follow-up: align the prefab's lowest block (data.minY) with
+            // the placement Y instead of using data.anchorY. Hytale tree prefabs
+            // place anchorY at the trunk's planting block with trunk blocks
+            // extending down to data.minY; honouring anchorY here put those
+            // bottom trunk blocks below terrain.
+            int by = anchorY + block.y - data.minY;
             int bz = anchorZ + block.z - data.anchorZ;
 
             // Only place blocks that fall within this chunk's column bounds
@@ -83,7 +88,7 @@ public final class HytalePrefabPaster {
         // Also paste fluids
         for (PrefabFluid fluid : data.fluids) {
             int fx = anchorX + fluid.x - data.anchorX;
-            int fy = anchorY + fluid.y - data.anchorY;
+            int fy = anchorY + fluid.y - data.minY;
             int fz = anchorZ + fluid.z - data.anchorZ;
 
             if (fx < 0 || fx >= HytaleChunk.CHUNK_SIZE || fz < 0 || fz >= HytaleChunk.CHUNK_SIZE) {
@@ -189,7 +194,19 @@ public final class HytalePrefabPaster {
             }
         }
 
-        return new PrefabBlockData(anchorX, anchorY, anchorZ, blocks, fluids);
+        // TP-49: derive the lowest authored Y across blocks and fluids so paste()
+        // can align that level with the placement Y (rather than aligning anchorY).
+        int minY = Integer.MAX_VALUE;
+        for (PrefabBlock b : blocks) {
+            if (b.y < minY) minY = b.y;
+        }
+        for (PrefabFluid f : fluids) {
+            if (f.y < minY) minY = f.y;
+        }
+        if (minY == Integer.MAX_VALUE) {
+            minY = anchorY;
+        }
+        return new PrefabBlockData(anchorX, anchorY, anchorZ, minY, blocks, fluids);
     }
 
     // ── JSON helpers ──────────────────────────────────────────────────
@@ -218,19 +235,22 @@ public final class HytalePrefabPaster {
 
     // ── Data classes ──────────────────────────────────────────────────
 
-    private static final PrefabBlockData EMPTY_PREFAB = new PrefabBlockData(0, 0, 0,
+    private static final PrefabBlockData EMPTY_PREFAB = new PrefabBlockData(0, 0, 0, 0,
             Collections.emptyList(), Collections.emptyList());
 
     static final class PrefabBlockData {
         final int anchorX, anchorY, anchorZ;
+        /** Lowest authored Y across blocks and fluids — used as the vertical placement reference. */
+        final int minY;
         final List<PrefabBlock> blocks;
         final List<PrefabFluid> fluids;
 
-        PrefabBlockData(int anchorX, int anchorY, int anchorZ,
+        PrefabBlockData(int anchorX, int anchorY, int anchorZ, int minY,
                         List<PrefabBlock> blocks, List<PrefabFluid> fluids) {
             this.anchorX = anchorX;
             this.anchorY = anchorY;
             this.anchorZ = anchorZ;
+            this.minY = minY;
             this.blocks = blocks;
             this.fluids = fluids;
         }
