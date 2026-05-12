@@ -2,57 +2,57 @@
   "Zone1_Drifting_Plains": {
     "coverage": 12,
     "plants": [
-      {"terrain": "Plant_Grass_Tall",    "weight": 60},
-      {"terrain": "Plant_Flower_White",  "weight": 20},
-      {"terrain": "Plant_Flower_Yellow", "weight": 20}
+      {"terrain": "Plant_Grass_Lush_Tall",    "weight": 60},
+      {"terrain": "Plant_Flower_Common_White",  "weight": 20},
+      {"terrain": "Plant_Flower_Common_Yellow", "weight": 20}
     ]
   },
   "Zone1_Seedling_Woods": {
     "coverage": 22,
     "plants": [
-      {"terrain": "Sapling_Oak",       "weight": 50},
-      {"terrain": "Plant_Grass_Tall",  "weight": 30},
+      {"terrain": "Plant_Sapling_Oak",       "weight": 50},
+      {"terrain": "Plant_Grass_Lush_Tall",  "weight": 30},
       {"terrain": "Plant_Bush",        "weight": 20}
     ]
   },
   "Zone1_Swamps": {
     "coverage": 18,
     "plants": [
-      {"terrain": "Plant_Grass_Tall", "weight": 60},
+      {"terrain": "Plant_Grass_Lush_Tall", "weight": 60},
       {"terrain": "Plant_Bush",       "weight": 40}
     ]
   },
   "Zone2_Deserts": {
     "coverage": 1,
     "plants": [
-      {"terrain": "Plant_Cactus",    "weight": 80},
-      {"terrain": "Plant_Dead_Bush", "weight": 20}
+      {"terrain": "Plant_Cactus_1",    "weight": 80},
+      {"terrain": "Plant_Bush_Dead", "weight": 20}
     ]
   },
   "Zone2_Savannas": {
     "coverage": 8,
     "plants": [
-      {"terrain": "Plant_Grass_Tall", "weight": 100}
+      {"terrain": "Plant_Grass_Lush_Tall", "weight": 100}
     ]
   },
   "Zone3_Frostmarch_Tundra": {
     "coverage": 4,
     "plants": [
-      {"terrain": "Plant_Grass_Frosted", "weight": 70},
-      {"terrain": "Sapling_Pine",        "weight": 30}
+      {"terrain": "Plant_Grass_Winter", "weight": 70},
+      {"terrain": "Plant_Sapling_Spruce",        "weight": 30}
     ]
   },
   "Zone3_Boreal_Forest": {
     "coverage": 25,
     "plants": [
-      {"terrain": "Sapling_Pine",        "weight": 70},
-      {"terrain": "Plant_Grass_Frosted", "weight": 30}
+      {"terrain": "Plant_Sapling_Spruce",        "weight": 70},
+      {"terrain": "Plant_Grass_Winter", "weight": 30}
     ]
   },
   "Zone4_Charred_Woodlands": {
     "coverage": 6,
     "plants": [
-      {"terrain": "Plant_Dead_Bush", "weight": 100}
+      {"terrain": "Plant_Bush_Dead", "weight": 100}
     ]
   }
 }

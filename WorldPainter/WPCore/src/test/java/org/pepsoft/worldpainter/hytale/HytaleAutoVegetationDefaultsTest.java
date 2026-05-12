@@ -13,7 +13,7 @@ public class HytaleAutoVegetationDefaultsTest {
     @Test
     public void parsesWellFormedJson() {
         String json = "{ \"Zone1_Drifting_Plains\": { \"coverage\": 12, " +
-                "\"plants\": [ {\"terrain\": \"Plant_Grass_Tall\", \"weight\": 60} ] } }";
+                "\"plants\": [ {\"terrain\": \"Plant_Grass_Lush_Tall\", \"weight\": 60} ] } }";
 
         Map<Integer, HytaleAutoVegetationSettings.BiomeVegetationConfig> parsed =
                 HytaleAutoVegetationDefaults.parse(new StringReader(json));
@@ -40,7 +40,7 @@ public class HytaleAutoVegetationDefaultsTest {
     public void unknownPlantTerrainIsDropped() {
         String json = "{ \"Zone1_Drifting_Plains\": { \"coverage\": 12, \"plants\": [ " +
                 "{\"terrain\": \"Plant_DoesNotExist\", \"weight\": 50}, " +
-                "{\"terrain\": \"Plant_Grass_Tall\",   \"weight\": 50} " +
+                "{\"terrain\": \"Plant_Grass_Lush_Tall\",   \"weight\": 50} " +
                 "] } }";
 
         Map<Integer, HytaleAutoVegetationSettings.BiomeVegetationConfig> parsed =
