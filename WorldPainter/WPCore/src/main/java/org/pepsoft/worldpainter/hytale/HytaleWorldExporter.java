@@ -1702,6 +1702,9 @@ public class HytaleWorldExporter implements WorldExporter {
                                             && HytaleAutoVegetationAlgorithm.isValidSubstrateFor(plantBlock, substrate)) {
                                         chunk.setHytaleBlock(localX, height + 1, localZ, plantBlock);
                                         chunk.setSealProtected(localX, height + 1, localZ, true);
+                                        if (plantsPhysicsExempt) {
+                                            chunk.setDecorative(localX, height + 1, localZ, true);
+                                        }
                                     }
                                 }
                             }
