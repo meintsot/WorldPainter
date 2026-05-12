@@ -38,6 +38,10 @@ public final class HytaleAutoVegetationDialog extends JDialog {
         return accepted;
     }
 
+    public HytaleAutoVegetationSettings getSettings() {
+        return settings;
+    }
+
     // ── Working state (in-dialog copies) ─────────────────────────────
 
     /** JCheckBox for the global "Enabled" toggle. */

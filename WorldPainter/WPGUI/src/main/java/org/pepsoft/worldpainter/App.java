@@ -5496,20 +5496,23 @@ public final class App extends JFrame implements BrushControl,
             if ((world == null) || (dimension == null)) {
                 return;
             }
-            org.pepsoft.worldpainter.hytale.HytaleAutoVegetationSettings settings =
+            org.pepsoft.worldpainter.hytale.HytaleAutoVegetationSettings existing =
                     (org.pepsoft.worldpainter.hytale.HytaleAutoVegetationSettings)
                             dimension.getLayerSettings(org.pepsoft.worldpainter.hytale.HytaleAutoVegetationLayer.INSTANCE);
-            if (settings == null) {
-                settings = new org.pepsoft.worldpainter.hytale.HytaleAutoVegetationSettings();
-                org.pepsoft.worldpainter.hytale.HytaleAutoVegetationDefaults.applyShippedDefaultsTo(settings);
-                dimension.setLayerSettings(org.pepsoft.worldpainter.hytale.HytaleAutoVegetationLayer.INSTANCE, settings);
+            org.pepsoft.worldpainter.hytale.HytaleAutoVegetationSettings working;
+            if (existing == null) {
+                working = new org.pepsoft.worldpainter.hytale.HytaleAutoVegetationSettings();
+                org.pepsoft.worldpainter.hytale.HytaleAutoVegetationDefaults.applyShippedDefaultsTo(working);
+            } else {
+                working = existing.clone();
             }
             final org.pepsoft.worldpainter.hytale.HytaleAutoVegetationDialog dialog =
-                    new org.pepsoft.worldpainter.hytale.HytaleAutoVegetationDialog(App.this, settings);
+                    new org.pepsoft.worldpainter.hytale.HytaleAutoVegetationDialog(App.this, working);
             dialog.setVisible(true);
-            // dialog.isAccepted() is true if the user clicked OK; the settings object was
-            // mutated in place by the dialog, so the dimension's changeNo already reflects
-            // the update and the world will prompt to save on close.
+            if (dialog.isAccepted()) {
+                dimension.setLayerSettings(org.pepsoft.worldpainter.hytale.HytaleAutoVegetationLayer.INSTANCE,
+                        dialog.getSettings());
+            }
         });
         menu.add(autoVegetationSettingsMenuItem);
 
@@ -6470,6 +6473,7 @@ public final class App extends JFrame implements BrushControl,
         // HytaleFluidLayer is internal (set by Flood tools), not user-visible in layers panel
         setLayerHidden(org.pepsoft.worldpainter.hytale.HytaleFluidLayer.INSTANCE, true);
         setLayerHidden(org.pepsoft.worldpainter.hytale.HytaleEnvironmentLayer.INSTANCE, ! isHytalePlatform);
+        setLayerHidden(org.pepsoft.worldpainter.hytale.HytaleAutoVegetationLayer.INSTANCE, ! isHytalePlatform);
         // Populate is Minecraft-only (tells MC to generate vegetation/ores); no effect on Hytale
         setLayerHidden(Populate.INSTANCE, isHytalePlatform);
         // Show/hide Hytale-only dockable frames

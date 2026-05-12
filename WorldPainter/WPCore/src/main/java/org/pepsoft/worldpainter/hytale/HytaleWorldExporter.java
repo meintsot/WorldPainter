@@ -1681,7 +1681,7 @@ public class HytaleWorldExporter implements WorldExporter {
                             // Reuse the exporter's existing terrain-derived biome
                             // mapping for auto-biome cells.
                             biomeId = HytaleBiome.fromTerrainBiomeName(
-                                    hytaleTerrain != null ? hytaleTerrain.getName() : null).getId();
+                                    mapTerrainToBiome(localTerrain)).getId();
                         }
                         HytaleAutoVegetationSettings.BiomeVegetationConfig cfg =
                                 autoVegSettings.getByBiome().get(biomeId);
