@@ -1661,6 +1661,54 @@ public class HytaleWorldExporter implements WorldExporter {
                     }
                 }
 
+                // ── Auto Vegetation Layer ─────────────────────────────
+                // Biome-driven procedural plant placement. Yields to any
+                // user-painted plant at this pixel. Curated defaults are
+                // lazily seeded the first time the layer is exported on a
+                // dimension that has no settings yet.
+                if (tile.getBitLayerValue(HytaleAutoVegetationLayer.INSTANCE, tileLocalX, tileLocalZ)
+                        && (plantIndex == 0)) {
+                    HytaleAutoVegetationSettings autoVegSettings = (HytaleAutoVegetationSettings)
+                            dimension.getLayerSettings(HytaleAutoVegetationLayer.INSTANCE);
+                    if (autoVegSettings == null) {
+                        autoVegSettings = new HytaleAutoVegetationSettings();
+                        HytaleAutoVegetationDefaults.applyShippedDefaultsTo(autoVegSettings);
+                        dimension.setLayerSettings(HytaleAutoVegetationLayer.INSTANCE, autoVegSettings);
+                    }
+                    if (autoVegSettings.isEnabled()) {
+                        int biomeId = tile.getLayerValue(Biome.INSTANCE, tileLocalX, tileLocalZ);
+                        if (biomeId == HytaleBiome.BIOME_AUTO) {
+                            // Reuse the exporter's existing terrain-derived biome
+                            // mapping for auto-biome cells.
+                            biomeId = HytaleBiome.fromTerrainBiomeName(
+                                    hytaleTerrain != null ? hytaleTerrain.getName() : null).getId();
+                        }
+                        HytaleAutoVegetationSettings.BiomeVegetationConfig cfg =
+                                autoVegSettings.getByBiome().get(biomeId);
+                        if (cfg != null) {
+                            long pixelSeed = HytaleAutoVegetationAlgorithm.seedFor(
+                                    autoVegSettings.getSeed(),
+                                    tile.getX(), tile.getY(),
+                                    tileLocalX, tileLocalZ);
+                            Random rng = new Random(pixelSeed);
+                            UUID pickedTerrainId = HytaleAutoVegetationAlgorithm.pick(cfg, rng);
+                            if (pickedTerrainId != null) {
+                                HytaleTerrain pickedTerrain = HytaleTerrain.getById(pickedTerrainId);
+                                if (pickedTerrain != null) {
+                                    HytaleBlock plantBlock = pickedTerrain.getBlock(seed, worldX, worldZ, 0);
+                                    HytaleBlock substrate = chunk.getHytaleBlock(localX, height, localZ);
+                                    if ((plantBlock != null) && (! plantBlock.isEmpty()) && (! plantBlock.isFluid())
+                                            && ((height + 1) < dimension.getMaxHeight())
+                                            && HytaleAutoVegetationAlgorithm.isValidSubstrateFor(plantBlock, substrate)) {
+                                        chunk.setHytaleBlock(localX, height + 1, localZ, plantBlock);
+                                        chunk.setSealProtected(localX, height + 1, localZ, true);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
                 // ── Environment Layer ────────────────────────────────
                 // Water tinting is now solely environment-driven
                 int envLayerValue = tile.getLayerValue(HytaleEnvironmentLayer.INSTANCE, tileLocalX, tileLocalZ);
