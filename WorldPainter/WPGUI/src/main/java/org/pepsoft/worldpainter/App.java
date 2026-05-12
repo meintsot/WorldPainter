@@ -322,6 +322,9 @@ public final class App extends JFrame implements BrushControl,
 
             ACTION_EXPORT_WORLD.setEnabled(false);
             ACTION_MERGE_WORLD.setEnabled(false);
+            if (autoVegetationSettingsMenuItem != null) {
+                autoVegetationSettingsMenuItem.setEnabled(false);
+            }
 
             // Unload all custom terrain types
             clearCustomTerrains();
@@ -5483,6 +5486,36 @@ public final class App extends JFrame implements BrushControl,
         menuItem.setMnemonic('b');
         menu.add(menuItem);
 
+        menu.addSeparator();
+
+        autoVegetationSettingsMenuItem = new JMenuItem("Auto Vegetation Settings...");
+        autoVegetationSettingsMenuItem.setToolTipText("Configure the Hytale Auto Vegetation layer (Hytale worlds only)");
+        autoVegetationSettingsMenuItem.setMnemonic('a');
+        autoVegetationSettingsMenuItem.setEnabled(false);
+        autoVegetationSettingsMenuItem.addActionListener(e -> {
+            if ((world == null) || (dimension == null)) {
+                return;
+            }
+            org.pepsoft.worldpainter.hytale.HytaleAutoVegetationSettings existing =
+                    (org.pepsoft.worldpainter.hytale.HytaleAutoVegetationSettings)
+                            dimension.getLayerSettings(org.pepsoft.worldpainter.hytale.HytaleAutoVegetationLayer.INSTANCE);
+            org.pepsoft.worldpainter.hytale.HytaleAutoVegetationSettings working;
+            if (existing == null) {
+                working = new org.pepsoft.worldpainter.hytale.HytaleAutoVegetationSettings();
+                org.pepsoft.worldpainter.hytale.HytaleAutoVegetationDefaults.applyShippedDefaultsTo(working);
+            } else {
+                working = existing.clone();
+            }
+            final org.pepsoft.worldpainter.hytale.HytaleAutoVegetationDialog dialog =
+                    new org.pepsoft.worldpainter.hytale.HytaleAutoVegetationDialog(App.this, working);
+            dialog.setVisible(true);
+            if (dialog.isAccepted()) {
+                dimension.setLayerSettings(org.pepsoft.worldpainter.hytale.HytaleAutoVegetationLayer.INSTANCE,
+                        dialog.getSettings());
+            }
+        });
+        menu.add(autoVegetationSettingsMenuItem);
+
         menuItem = new JMenuItem("Run script...");
         menuItem.addActionListener(e -> {
             try {
@@ -6440,6 +6473,7 @@ public final class App extends JFrame implements BrushControl,
         // HytaleFluidLayer is internal (set by Flood tools), not user-visible in layers panel
         setLayerHidden(org.pepsoft.worldpainter.hytale.HytaleFluidLayer.INSTANCE, true);
         setLayerHidden(org.pepsoft.worldpainter.hytale.HytaleEnvironmentLayer.INSTANCE, ! isHytalePlatform);
+        setLayerHidden(org.pepsoft.worldpainter.hytale.HytaleAutoVegetationLayer.INSTANCE, ! isHytalePlatform);
         // Populate is Minecraft-only (tells MC to generate vegetation/ores); no effect on Hytale
         setLayerHidden(Populate.INSTANCE, isHytalePlatform);
         // Show/hide Hytale-only dockable frames
@@ -7286,6 +7320,9 @@ public final class App extends JFrame implements BrushControl,
         ACTION_MERGE_WORLD.putValue(Action.SHORT_DESCRIPTION, hytalePlatform
             ? "Merging changes back into imported Hytale worlds is not supported yet."
             : "Merge the changes in a previously Imported world back to the original Minecraft map.");
+        if (autoVegetationSettingsMenuItem != null) {
+            autoVegetationSettingsMenuItem.setEnabled(hytalePlatform);
+        }
     }
 
         private boolean isHytaleWorldLoaded() {
@@ -7923,6 +7960,7 @@ public final class App extends JFrame implements BrushControl,
     private AbstractButton floodWithPoisonButton, floodWithSlimeButton, floodWithTarButton;
     private JMenuItem addNetherMenuItem, removeNetherMenuItem, addEndMenuItem, removeEndMenuItem, addCeilingMenuItem, removeCeilingMenuItem, addMasterMenuItem, removeMasterMenuItem;
     private JCheckBoxMenuItem viewSurfaceMenuItem, viewNetherMenuItem, viewEndMenuItem, extendedBlockIdsMenuItem;
+    private JMenuItem autoVegetationSettingsMenuItem;
     private ColourScheme selectedColourScheme;
     private BiomeHelper biomeHelper;
     private SortedMap<String, BrushGroup> customBrushes;

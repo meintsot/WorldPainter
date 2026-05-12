@@ -2927,14 +2927,19 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
 
     /** Map from block ID to terrain for quick lookup (includes ALL terrains). */
     private static final Map<String, HytaleTerrain> BLOCK_ID_MAP;
+    /** Map from terrain UUID to terrain for quick lookup (includes ALL terrains). */
+    private static final Map<UUID, HytaleTerrain> UUID_MAP;
     static {
-        Map<String, HytaleTerrain> map = new HashMap<>();
+        Map<String, HytaleTerrain> blockMap = new HashMap<>();
+        Map<UUID, HytaleTerrain> uuidMap = new HashMap<>();
         for (HytaleTerrain t : ALL_TERRAINS) {
             if (t.block != null) {
-                map.putIfAbsent(t.block.id, t);
+                blockMap.putIfAbsent(t.block.id, t);
             }
+            uuidMap.put(t.id, t);
         }
-        BLOCK_ID_MAP = Collections.unmodifiableMap(map);
+        BLOCK_ID_MAP = Collections.unmodifiableMap(blockMap);
+        UUID_MAP = Collections.unmodifiableMap(uuidMap);
     }
 
     // ----- V0 migration (pre-ef785f11 terrain list → current list) -----
@@ -3213,6 +3218,14 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
      */
     public static HytaleTerrain getByBlockId(String blockId) {
         return BLOCK_ID_MAP.get(blockId);
+    }
+
+    /**
+     * Look up a terrain by its UUID (as returned by {@link #getId()}).
+     * Returns {@code null} if no terrain with that ID is registered.
+     */
+    public static HytaleTerrain getById(UUID id) {
+        return UUID_MAP.get(id);
     }
 
     // ----- Inner classes -----
