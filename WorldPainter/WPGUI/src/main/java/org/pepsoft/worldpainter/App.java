@@ -322,6 +322,9 @@ public final class App extends JFrame implements BrushControl,
 
             ACTION_EXPORT_WORLD.setEnabled(false);
             ACTION_MERGE_WORLD.setEnabled(false);
+            if (autoVegetationSettingsMenuItem != null) {
+                autoVegetationSettingsMenuItem.setEnabled(false);
+            }
 
             // Unload all custom terrain types
             clearCustomTerrains();
@@ -5483,6 +5486,33 @@ public final class App extends JFrame implements BrushControl,
         menuItem.setMnemonic('b');
         menu.add(menuItem);
 
+        menu.addSeparator();
+
+        autoVegetationSettingsMenuItem = new JMenuItem("Auto Vegetation Settings...");
+        autoVegetationSettingsMenuItem.setToolTipText("Configure the Hytale Auto Vegetation layer (Hytale worlds only)");
+        autoVegetationSettingsMenuItem.setMnemonic('a');
+        autoVegetationSettingsMenuItem.setEnabled(false);
+        autoVegetationSettingsMenuItem.addActionListener(e -> {
+            if ((world == null) || (dimension == null)) {
+                return;
+            }
+            org.pepsoft.worldpainter.hytale.HytaleAutoVegetationSettings settings =
+                    (org.pepsoft.worldpainter.hytale.HytaleAutoVegetationSettings)
+                            dimension.getLayerSettings(org.pepsoft.worldpainter.hytale.HytaleAutoVegetationLayer.INSTANCE);
+            if (settings == null) {
+                settings = new org.pepsoft.worldpainter.hytale.HytaleAutoVegetationSettings();
+                org.pepsoft.worldpainter.hytale.HytaleAutoVegetationDefaults.applyShippedDefaultsTo(settings);
+                dimension.setLayerSettings(org.pepsoft.worldpainter.hytale.HytaleAutoVegetationLayer.INSTANCE, settings);
+            }
+            final org.pepsoft.worldpainter.hytale.HytaleAutoVegetationDialog dialog =
+                    new org.pepsoft.worldpainter.hytale.HytaleAutoVegetationDialog(App.this, settings);
+            dialog.setVisible(true);
+            // dialog.isAccepted() is true if the user clicked OK; the settings object was
+            // mutated in place by the dialog, so the dimension's changeNo already reflects
+            // the update and the world will prompt to save on close.
+        });
+        menu.add(autoVegetationSettingsMenuItem);
+
         menuItem = new JMenuItem("Run script...");
         menuItem.addActionListener(e -> {
             try {
@@ -7286,6 +7316,9 @@ public final class App extends JFrame implements BrushControl,
         ACTION_MERGE_WORLD.putValue(Action.SHORT_DESCRIPTION, hytalePlatform
             ? "Merging changes back into imported Hytale worlds is not supported yet."
             : "Merge the changes in a previously Imported world back to the original Minecraft map.");
+        if (autoVegetationSettingsMenuItem != null) {
+            autoVegetationSettingsMenuItem.setEnabled(hytalePlatform);
+        }
     }
 
         private boolean isHytaleWorldLoaded() {
@@ -7923,6 +7956,7 @@ public final class App extends JFrame implements BrushControl,
     private AbstractButton floodWithPoisonButton, floodWithSlimeButton, floodWithTarButton;
     private JMenuItem addNetherMenuItem, removeNetherMenuItem, addEndMenuItem, removeEndMenuItem, addCeilingMenuItem, removeCeilingMenuItem, addMasterMenuItem, removeMasterMenuItem;
     private JCheckBoxMenuItem viewSurfaceMenuItem, viewNetherMenuItem, viewEndMenuItem, extendedBlockIdsMenuItem;
+    private JMenuItem autoVegetationSettingsMenuItem;
     private ColourScheme selectedColourScheme;
     private BiomeHelper biomeHelper;
     private SortedMap<String, BrushGroup> customBrushes;
