@@ -40,7 +40,8 @@ public class DefaultPlugin extends AbstractPlugin implements LayerProvider {
             org.pepsoft.worldpainter.hytale.HytaleEntityLayer.INSTANCE,
             org.pepsoft.worldpainter.hytale.HytalePrefabLayer.INSTANCE,
             org.pepsoft.worldpainter.hytale.HytaleFluidLayer.INSTANCE,
-            org.pepsoft.worldpainter.hytale.HytaleEnvironmentLayer.INSTANCE);
+            org.pepsoft.worldpainter.hytale.HytaleEnvironmentLayer.INSTANCE,
+            org.pepsoft.worldpainter.hytale.HytaleAutoVegetationLayer.INSTANCE);
     }
 
     /**
