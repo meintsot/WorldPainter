@@ -42,12 +42,12 @@ public class HytalePrefabJsonObjectTest {
 
         assertTrue(object.getName().startsWith("wp-hytale-prefab-"));
         assertEquals(new Point3i(2, 1, 2), object.getDimensions());
-        // TP-49 follow-up: vertical anchor (anchorY) is now ignored at load time
-        // so the prefab's lowest block (the fluid at Hytale y=19, mapped to WP
-        // z=0) lands at the placement Y. Horizontal anchor components are still
-        // honoured (anchorX == bounds.minX and anchorZ == bounds.minZ here, so
-        // those offsets remain zero).
-        assertEquals(new Point3i(0, 0, 0), object.getOffset());
+        // anchorY is honoured: the prefab block at Hytale y == anchorY (20) is the
+        // planting reference and lands at the placement Y. The fluid at Hytale
+        // y=19 sits one unit below — i.e. offset.z = -(anchorY - bounds.minY)
+        // = -(20 - 19) = -1. Horizontal anchors match bounds.min so their
+        // offsets remain zero.
+        assertEquals(new Point3i(0, 0, -1), object.getOffset());
 
         Material topMaterial = object.getMaterial(0, 0, 1);
         assertEquals("hytale:Soil_Grass", topMaterial.name);
@@ -69,13 +69,11 @@ public class HytalePrefabJsonObjectTest {
     }
 
     @Test
-    public void treePrefabWithAnchorAboveBottomIsNotBuriedOnTerrain() throws IOException {
-        // TP-49 follow-up: real Hytale tree prefabs author anchorY at the
-        // trunk's planting block (often >= 1 above bounds.minY) with trunk
-        // blocks extending DOWN to bounds.minY. Treating that anchor as the
-        // placement point puts those bottom trunk blocks below terrain — the
-        // "buried trunk" visual Ferstborn reported. The loader must ignore the
-        // vertical anchor so the prefab's lowest block lands at terrain+1.
+    public void treePrefabHonoursAnchorYForPlacement() throws IOException {
+        // Hytale prefabs author anchorY as the planting reference — the Y level
+        // intended to sit just above the terrain surface. Blocks at prefab
+        // y < anchorY are intentionally buried (roots / sunken trunk), so the
+        // WPObject's offset.z must equal -(anchorY - bounds.minY).
         File file = File.createTempFile("wp-hytale-tree-prefab-", ".prefab.json");
         file.deleteOnExit();
 
@@ -97,8 +95,8 @@ public class HytalePrefabJsonObjectTest {
 
         WPObject object = HytalePrefabJsonObject.load(file);
 
-        assertEquals("vertical anchor must be ignored so the prefab's lowest block lands at the placement Y",
-                0, object.getOffset().z);
+        assertEquals("offset.z must encode anchorY so blocks below the anchor sit underground",
+                -3, object.getOffset().z);
     }
 
     @Test
