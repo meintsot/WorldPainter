@@ -39,8 +39,12 @@ if exist "%PROJECT_DIR%WorldPainter\mvnw.cmd" (
 rem Check if mvn is on PATH
 where mvn >nul 2>&1
 if not errorlevel 1 (
-    set "MVN_CMD=mvn"
-    goto :mvn_found
+    rem Resolve the actual path: cmd's `call "mvn"` (with quotes) refuses to
+    rem PATH-resolve a bare name, so we must store the full mvn.cmd path here.
+    for /f "delims=" %%F in ('where mvn 2^>nul') do (
+        set "MVN_CMD=%%F"
+        goto :mvn_found
+    )
 )
 
 rem Check MAVEN_HOME
