@@ -34,8 +34,12 @@ if exist "%PROJECT_DIR%WorldPainter\mvnw.cmd" (
 )
 where mvn >nul 2>&1
 if not errorlevel 1 (
-    set "MVN_CMD=mvn"
-    goto :mvn_found
+    rem Resolve the actual path: cmd's `call "mvn"` (with quotes) refuses to
+    rem PATH-resolve a bare name, so we must store the full mvn.cmd path here.
+    for /f "delims=" %%F in ('where mvn 2^>nul') do (
+        set "MVN_CMD=%%F"
+        goto :mvn_found
+    )
 )
 if defined MAVEN_HOME (
     if exist "%MAVEN_HOME%\bin\mvn.cmd" (
@@ -112,8 +116,15 @@ echo [INFO] Build succeeded. Copying fat JAR to dist folder...
 set "DIST_DIR=%SCRIPT_DIR%dist"
 if not exist "%DIST_DIR%" mkdir "%DIST_DIR%"
 
+rem Pick the most-recently-modified fat JAR; stale artifacts from older
+rem project versions (e.g. WPGUI-2.x-SNAPSHOT-full.jar) can otherwise win
+rem the alphabetical sort and mask the current build.
 set "FAT_JAR="
-for %%f in (WPGUI\target\WPGUI-*-full.jar) do set "FAT_JAR=%%f"
+for /f "delims=" %%f in ('dir /B /O:-D "WPGUI\target\WPGUI-*-full.jar" 2^>nul') do (
+    set "FAT_JAR=WPGUI\target\%%f"
+    goto :fat_jar_found
+)
+:fat_jar_found
 
 if not defined FAT_JAR (
     echo [ERROR] Fat JAR not found in WPGUI\target\
