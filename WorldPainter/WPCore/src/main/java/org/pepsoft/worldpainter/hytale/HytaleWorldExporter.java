@@ -1898,12 +1898,15 @@ public class HytaleWorldExporter implements WorldExporter {
                 (regionCoords.y << 10) - blockOffsetZ,
                 regionSize,
                 regionSize);
-        // Expand the bounds check area so objects whose bounding box extends
-        // past the region edge are still placed. HytaleRegionMinecraftWorld
-        // silently ignores block writes to chunks not in this region, so only
-        // the small overhanging part is lost — far better than dropping the
-        // entire object (which produces visible straight-line gaps at region
-        // boundaries).
+        // Expand both the iteration area and the bounds-fit check by OBJECT_BORDER_MARGIN.
+        // The chunk-position-seeded random in Bo2LayerExporter makes tree placement
+        // deterministic per-chunk, so each region also iterating the overlap strip into
+        // its neighbours generates the same trees the neighbouring region would generate
+        // for those chunks. HytaleRegionMinecraftWorld silently drops writes to chunks not
+        // in this region's map (and getMaterialAt falls back to dimension terrain there),
+        // so each region writes only its own portion of any boundary-straddling tree —
+        // combined, the two regions cover the full footprint without the cross-shaped
+        // seams that the strict-region iteration produced at WP X=0 / Z=0.
         Rectangle placementBounds = new Rectangle(
                 exportedArea.x - OBJECT_BORDER_MARGIN,
                 exportedArea.y - OBJECT_BORDER_MARGIN,
@@ -1911,7 +1914,7 @@ public class HytaleWorldExporter implements WorldExporter {
                 exportedArea.height + OBJECT_BORDER_MARGIN * 2);
 
         HytaleRegionMinecraftWorld regionWorld = new HytaleRegionMinecraftWorld(chunksByCoords, blockOffsetX, blockOffsetZ,
-                dimension.getMinHeight(), dimension.getMaxHeight());
+                dimension.getMinHeight(), dimension.getMaxHeight(), dimension);
 
         for (Bo2Layer bo2Layer : sortBo2Layers(layers)) {
             regionWorld.setActiveBlockMappings(bo2Layer.getHytaleBlockMappings());
@@ -1932,7 +1935,7 @@ public class HytaleWorldExporter implements WorldExporter {
                 continue;
             }
             try {
-                exporter.addFeatures(exportedArea, placementBounds, regionWorld);
+                exporter.addFeatures(placementBounds, placementBounds, regionWorld);
             } catch (RuntimeException e) {
                 logger.error("Error applying custom object layer '{}' in region {},{}",
                         bo2Layer.getName(), regionCoords.x, regionCoords.y, e);
@@ -2256,11 +2259,17 @@ public class HytaleWorldExporter implements WorldExporter {
     private static final class HytaleRegionMinecraftWorld implements MinecraftWorld {
         private HytaleRegionMinecraftWorld(Map<Long, HytaleChunk> chunksByCoords, int blockOffsetX, int blockOffsetZ,
                                            int minHeight, int maxHeight) {
+            this(chunksByCoords, blockOffsetX, blockOffsetZ, minHeight, maxHeight, null);
+        }
+
+        private HytaleRegionMinecraftWorld(Map<Long, HytaleChunk> chunksByCoords, int blockOffsetX, int blockOffsetZ,
+                                           int minHeight, int maxHeight, Dimension terrainFallbackDimension) {
             this.chunksByCoords = chunksByCoords;
             this.blockOffsetX = blockOffsetX;
             this.blockOffsetZ = blockOffsetZ;
             this.minHeight = minHeight;
             this.maxHeight = maxHeight;
+            this.terrainFallbackDimension = terrainFallbackDimension;
         }
 
         @Override
@@ -2304,6 +2313,15 @@ public class HytaleWorldExporter implements WorldExporter {
             }
             Location location = toLocation(x, y);
             if (location == null) {
+                // Chunk is in an adjacent region (not loaded here). When a fallback dimension
+                // is supplied (custom-object placement pass), approximate the missing chunk's
+                // content as solid up to the dimension's terrain height, AIR above. Without
+                // this, substrate checks for objects whose centers lie in a neighbouring
+                // region but whose footprints extend into this region would fail and leave
+                // visible seams at region boundaries.
+                if ((terrainFallbackDimension != null) && (height <= terrainFallbackDimension.getIntHeightAt(x, y))) {
+                    return Material.STONE;
+                }
                 return Material.AIR;
             }
             HytaleBlock block = location.chunk.getHytaleBlock(location.localX, height, location.localZ);
@@ -2532,6 +2550,12 @@ public class HytaleWorldExporter implements WorldExporter {
         private final Map<Long, Chunk> chunkViews = new HashMap<>();
         private final int blockOffsetX, blockOffsetZ;
         private final int minHeight, maxHeight;
+        // When non-null, getMaterialAt falls back to this dimension's terrain for chunks
+        // that live in adjacent regions (i.e. not in chunksByCoords). Used during per-region
+        // custom-object placement so neighbouring regions iterating the OBJECT_BORDER_MARGIN
+        // overlap strip make the same substrate-check decisions as the originating region,
+        // which fixes visible seams where trees crossed region boundaries.
+        private final Dimension terrainFallbackDimension;
         private java.util.Map<String, String> activeBlockMappings;
         private int placedBlockSupportValue;
         private boolean protectPlacedBlocksFromFluidSeal;
