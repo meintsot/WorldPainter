@@ -27,6 +27,7 @@ import org.pepsoft.worldpainter.layers.Frost;
 import org.pepsoft.worldpainter.layers.FloodWithLava;
 import org.pepsoft.worldpainter.layers.bo2.Bo2LayerExporter;
 import org.pepsoft.worldpainter.layers.exporters.FrostExporter;
+import org.pepsoft.worldpainter.objects.WPObject;
 import org.pepsoft.worldpainter.exporting.LayerExporter;
 import org.pepsoft.worldpainter.exporting.FirstPassLayerExporter;
 import org.pepsoft.worldpainter.exporting.SecondPassLayerExporter;
@@ -36,6 +37,7 @@ import org.pepsoft.worldpainter.vo.EventVO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.vecmath.Point3i;
 import java.awt.*;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -1949,7 +1951,7 @@ public class HytaleWorldExporter implements WorldExporter {
                 (regionCoords.y << 10) - blockOffsetZ,
                 regionSize,
                 regionSize);
-        // Expand both the iteration area and the bounds-fit check by OBJECT_BORDER_MARGIN.
+        // Expand both the iteration area and the bounds-fit check for custom object footprints.
         // The chunk-position-seeded random in Bo2LayerExporter makes tree placement
         // deterministic per-chunk, so each region also iterating the overlap strip into
         // its neighbours generates the same trees the neighbouring region would generate
@@ -1957,12 +1959,9 @@ public class HytaleWorldExporter implements WorldExporter {
         // in this region's map (and getMaterialAt falls back to dimension terrain there),
         // so each region writes only its own portion of any boundary-straddling tree —
         // combined, the two regions cover the full footprint without the cross-shaped
-        // seams that the strict-region iteration produced at WP X=0 / Z=0.
-        Rectangle placementBounds = new Rectangle(
-                exportedArea.x - OBJECT_BORDER_MARGIN,
-                exportedArea.y - OBJECT_BORDER_MARGIN,
-                exportedArea.width + OBJECT_BORDER_MARGIN * 2,
-                exportedArea.height + OBJECT_BORDER_MARGIN * 2);
+        // seams that the strict-region iteration produced at WP X=0 / Z=0. The margin is
+        // computed per layer below; large custom objects can extend farther than the old
+        // fixed margin.
 
         HytaleRegionMinecraftWorld regionWorld = new HytaleRegionMinecraftWorld(chunksByCoords, blockOffsetX, blockOffsetZ,
                 dimension.getMinHeight(), dimension.getMaxHeight(), dimension);
@@ -1985,6 +1984,8 @@ public class HytaleWorldExporter implements WorldExporter {
                 regionWorld.setProtectPlacedBlocksFromFluidSeal(false);
                 continue;
             }
+            final int objectBorderMargin = getObjectBorderMargin(bo2Layer);
+            final Rectangle placementBounds = expandToBo2ChunkAlignedBounds(exportedArea, objectBorderMargin);
             try {
                 exporter.addFeatures(placementBounds, placementBounds, regionWorld);
             } catch (RuntimeException e) {
@@ -1995,6 +1996,31 @@ public class HytaleWorldExporter implements WorldExporter {
                 regionWorld.setProtectPlacedBlocksFromFluidSeal(false);
             }
         }
+    }
+
+    private static int getObjectBorderMargin(Bo2Layer layer) {
+        int margin = OBJECT_BORDER_MARGIN;
+        try {
+            for (WPObject object : layer.getObjectProvider().getAllObjects()) {
+                final Point3i dimensions = object.getDimensions();
+                final Point3i offset = object.getOffset();
+                margin = Math.max(margin, Math.max(
+                        Math.max(Math.abs(offset.x), Math.abs(offset.x + dimensions.x - 1)),
+                        Math.max(Math.abs(offset.y), Math.abs(offset.y + dimensions.y - 1))));
+            }
+        } catch (UnsupportedOperationException e) {
+            logger.debug("Could not enumerate custom objects for layer {}; using default border margin",
+                    layer.getName(), e);
+        }
+        return margin + layer.getRandomDisplacement() + 16;
+    }
+
+    private static Rectangle expandToBo2ChunkAlignedBounds(Rectangle area, int margin) {
+        final int x1 = (area.x - margin) & ~0xf;
+        final int y1 = (area.y - margin) & ~0xf;
+        final int x2 = (area.x + area.width + margin + 15) & ~0xf;
+        final int y2 = (area.y + area.height + margin + 15) & ~0xf;
+        return new Rectangle(x1, y1, x2 - x1, y2 - y1);
     }
 
     private void applyFrostLayer(Dimension dimension, Point regionCoords, Map<Long, HytaleChunk> chunksByCoords) {
