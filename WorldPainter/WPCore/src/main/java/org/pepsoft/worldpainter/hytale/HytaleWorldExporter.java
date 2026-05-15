@@ -842,6 +842,11 @@ public class HytaleWorldExporter implements WorldExporter {
             int chunksExported = 0;
             int totalChunks = 32 * 32;
             Map<Long, HytaleChunk> chunksByCoords = new HashMap<>();
+            // Region-level pending prefab pastes — populated per-chunk inside
+            // populateChunkFromTile, executed AFTER the chunk loop so multi-chunk prefabs
+            // can be routed to the right chunk instead of being clipped at 32-block
+            // chunk boundaries.
+            List<PendingPrefabPaste> regionPrefabPastes = new ArrayList<>();
             
             for (int localZ = 0; localZ < 32; localZ++) {
                 for (int localX = 0; localX < 32; localX++) {
@@ -880,7 +885,7 @@ public class HytaleWorldExporter implements WorldExporter {
                     
                     // Fill chunk with terrain data from WorldPainter
                     // Pass original block coordinates so tile lookups work correctly
-                    populateChunkFromTile(chunk, dimension, tile, originalBlockX, originalBlockZ);
+                    populateChunkFromTile(chunk, dimension, tile, originalBlockX, originalBlockZ, regionPrefabPastes);
 
                     // Paint ceiling terrain hanging from above, if a ceiling dimension exists
                     if (ceilingDimension != null) {
@@ -906,6 +911,31 @@ public class HytaleWorldExporter implements WorldExporter {
                     chunksExported++;
                     if (progressReceiver != null && chunksExported % 32 == 0) {
                         progressReceiver.setProgress((float) chunksExported / totalChunks);
+                    }
+                }
+            }
+
+            // ── Region-level prefab pastes ─────────────────────────────
+            // Execute all prefab pastes AFTER every chunk in the region is populated, so
+            // multi-chunk prefabs (HytalePrefabLayer + HytaleSpecificPrefabLayer) can be
+            // routed to the correct chunk in chunksByCoords. Blocks that land in chunks
+            // outside this region are dropped silently; the adjacent region's iteration
+            // will write them. This is what fixes the per-chunk 32-block clipping that
+            // turned big prefabs into grids of chopped quadrants.
+            for (PendingPrefabPaste pending : regionPrefabPastes) {
+                boolean pasted = prefabPaster.paste(chunksByCoords,
+                        pending.worldX, pending.anchorY, pending.worldZ,
+                        blockOffsetX, blockOffsetZ, pending.prefabPath);
+                if (!pasted && pending.prefabName != null) {
+                    // Fallback: keep a marker on the chunk containing the anchor so the
+                    // missing prefab is visible during debugging.
+                    HytaleChunk anchorChunk = lookupAnchorChunk(chunksByCoords,
+                            pending.worldX, pending.worldZ);
+                    if (anchorChunk != null) {
+                        int aLocalX = Math.floorMod(pending.worldX + blockOffsetX, HytaleChunk.CHUNK_SIZE);
+                        int aLocalZ = Math.floorMod(pending.worldZ + blockOffsetZ, HytaleChunk.CHUNK_SIZE);
+                        anchorChunk.addPrefabMarker(aLocalX, pending.anchorY, aLocalZ,
+                                pending.prefabName, pending.prefabPath);
                     }
                 }
             }
@@ -1414,7 +1444,8 @@ public class HytaleWorldExporter implements WorldExporter {
      * Populate a Hytale chunk with terrain data from WorldPainter dimension.
      * Uses HytaleBlockMapping for proper block conversion and sets biomes.
      */
-    private void populateChunkFromTile(HytaleChunk chunk, Dimension dimension, Tile tile, int worldBlockX, int worldBlockZ) {
+    private void populateChunkFromTile(HytaleChunk chunk, Dimension dimension, Tile tile, int worldBlockX, int worldBlockZ,
+                                       List<PendingPrefabPaste> regionPrefabPastes) {
         int waterLevel = tile.getWaterLevel(0, 0);
         Terrain terrain = tile.getTerrain(0, 0);
         long seed = dimension.getMinecraftSeed();
@@ -1442,7 +1473,10 @@ public class HytaleWorldExporter implements WorldExporter {
         int waterColumns = 0;
         int specialFluidColumns = 0;
         Map<String, Integer> fluidTypeCounts = new HashMap<>();
-        List<PendingPrefabPaste> pendingPrefabPastes = new ArrayList<>();
+        // Prefab pastes are appended to the region-level list and executed AFTER all
+        // chunks in the region are populated, so multi-chunk prefabs can be routed to
+        // the correct chunk (see exportRegion's post-loop paste pass).
+        final List<PendingPrefabPaste> pendingPrefabPastes = regionPrefabPastes;
 
         // Hytale chunk is 32x32 blocks
         for (int localX = 0; localX < HytaleChunk.CHUNK_SIZE; localX++) {
@@ -1752,19 +1786,9 @@ public class HytaleWorldExporter implements WorldExporter {
             }
         }
 
-        // ── Deferred Prefab Pastes ──────────────────────────────
-        // Execute all prefab pastes AFTER terrain is fully populated in every
-        // column, so multi-column prefabs are not overwritten by later terrain.
-        for (PendingPrefabPaste pending : pendingPrefabPastes) {
-            if (!prefabPaster.paste(chunk, pending.localX, pending.anchorY, pending.localZ,
-                    pending.worldX, pending.worldZ, pending.prefabPath)) {
-                // Fallback: keep marker for debugging if paste failed
-                if (pending.prefabName != null) {
-                    chunk.addPrefabMarker(pending.localX, pending.anchorY, pending.localZ,
-                            pending.prefabName, pending.prefabPath);
-                }
-            }
-        }
+        // (Prefab pastes are now executed at the region level — see exportRegion —
+        // so multi-chunk prefabs can be routed to the right chunk rather than being
+        // clipped at this chunk's 32-block bounds.)
 
         // Log summary for this chunk area
         if (waterColumns > 0 || specialFluidColumns > 0) {
@@ -2034,8 +2058,12 @@ public class HytaleWorldExporter implements WorldExporter {
                 exportedArea.width + OBJECT_BORDER_MARGIN * 2,
                 exportedArea.height + OBJECT_BORDER_MARGIN * 2);
 
+        // Use the dimension-aware regionWorld so substrate / material lookups for
+        // chunks in adjacent regions fall back to dimension terrain (STONE below
+        // surface, AIR above) rather than always returning AIR, keeping placement
+        // decisions consistent between regions iterating the overlap strip.
         final HytaleRegionMinecraftWorld regionWorld = new HytaleRegionMinecraftWorld(chunksByCoords, blockOffsetX, blockOffsetZ,
-                dimension.getMinHeight(), dimension.getMaxHeight());
+                dimension.getMinHeight(), dimension.getMaxHeight(), dimension);
 
         // Instantiate all exporters
         Map<Layer, SecondPassLayerExporter> exporters = new LinkedHashMap<>();
@@ -2047,13 +2075,18 @@ public class HytaleWorldExporter implements WorldExporter {
         }
 
         // Stage 1: CARVE - remove blocks (caves, tunnels, etc.)
+        // Pass placementBounds as both iteration area and fit-check bounds (matching
+        // the Bo2 fix). Each region also iterates the OBJECT_BORDER_MARGIN overlap
+        // strip into its neighbours, so caves/chasms/decorations that straddle a
+        // region boundary are carved/added by both regions (each writes only the
+        // chunks it owns; the rest is silently dropped by HytaleRegionMinecraftWorld).
         for (Map.Entry<Layer, SecondPassLayerExporter> entry : exporters.entrySet()) {
             SecondPassLayerExporter exporter = entry.getValue();
             if (!exporter.getStages().contains(SecondPassLayerExporter.Stage.CARVE)) {
                 continue;
             }
             try {
-                exporter.carve(exportedArea, placementBounds, regionWorld);
+                exporter.carve(placementBounds, placementBounds, regionWorld);
             } catch (RuntimeException e) {
                 logger.error("Error carving layer '{}' in region {},{}", entry.getKey().getName(), regionCoords.x, regionCoords.y, e);
             }
@@ -2066,7 +2099,7 @@ public class HytaleWorldExporter implements WorldExporter {
                 continue;
             }
             try {
-                exporter.addFeatures(exportedArea, placementBounds, regionWorld);
+                exporter.addFeatures(placementBounds, placementBounds, regionWorld);
             } catch (RuntimeException e) {
                 logger.error("Error adding features for layer '{}' in region {},{}", entry.getKey().getName(), regionCoords.x, regionCoords.y, e);
             }
@@ -2280,6 +2313,14 @@ public class HytaleWorldExporter implements WorldExporter {
 
     private static long chunkKey(int chunkX, int chunkZ) {
         return (((long) chunkX) << 32) ^ (chunkZ & 0xFFFFFFFFL);
+    }
+
+    private HytaleChunk lookupAnchorChunk(Map<Long, HytaleChunk> chunksByCoords, int wpBlockX, int wpBlockZ) {
+        int centredX = wpBlockX + blockOffsetX;
+        int centredZ = wpBlockZ + blockOffsetZ;
+        int hChunkX = Math.floorDiv(centredX, HytaleChunk.CHUNK_SIZE);
+        int hChunkZ = Math.floorDiv(centredZ, HytaleChunk.CHUNK_SIZE);
+        return chunksByCoords.get(chunkKey(hChunkX, hChunkZ));
     }
 
     private static final class HytaleRegionMinecraftWorld implements MinecraftWorld {

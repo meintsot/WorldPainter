@@ -44,7 +44,88 @@ public final class HytalePrefabPaster {
     }
 
     /**
-     * Paste a prefab's blocks into a chunk at the given anchor position.
+     * Paste a prefab spanning multiple chunks within the current region. Each block of
+     * the prefab is routed to the correct chunk in {@code chunksByCoords}; blocks that
+     * land in chunks outside the current region's map are silently dropped (the
+     * adjacent region's paste will write them). Use this overload for region-level
+     * post-population pastes so multi-chunk prefabs are not clipped at 32-block chunk
+     * boundaries.
+     *
+     * @param chunksByCoords  the current region's Hytale chunks keyed by
+     *                        {@code (hChunkX, hChunkZ)} via the same key scheme used
+     *                        by {@link #chunkKey(int, int)}
+     * @param anchorWorldX    WorldPainter X coord of the anchor column
+     * @param anchorY         world Y of the anchor (typically surface height + 1)
+     * @param anchorWorldZ    WorldPainter Z coord of the anchor column
+     * @param blockOffsetX    the world centring offset on X (Hytale = WP + offset)
+     * @param blockOffsetZ    the world centring offset on Z
+     * @param prefabPath      relative path like
+     *                        {@code Prefabs/Trees/Oak/Stage_5/Oak_Stage5_003.prefab.json}
+     * @return true if the prefab was loaded and at least attempted to paste
+     */
+    public boolean paste(Map<Long, HytaleChunk> chunksByCoords,
+                         int anchorWorldX, int anchorY, int anchorWorldZ,
+                         int blockOffsetX, int blockOffsetZ,
+                         String prefabPath) {
+        PrefabBlockData data = loadPrefab(prefabPath);
+        if (data == null || data.blocks.isEmpty()) {
+            return false;
+        }
+
+        for (PrefabBlock block : data.blocks) {
+            int wpBX = anchorWorldX + block.x - data.anchorX;
+            int wpBZ = anchorWorldZ + block.z - data.anchorZ;
+            int by = anchorY + block.y - data.anchorY;
+            HytaleChunk targetChunk = lookupChunk(chunksByCoords, wpBX, wpBZ,
+                    blockOffsetX, blockOffsetZ);
+            if (targetChunk == null) continue;
+            if (by < 0 || by >= targetChunk.getMaxHeight()) continue;
+            int localX = Math.floorMod(wpBX + blockOffsetX, HytaleChunk.CHUNK_SIZE);
+            int localZ = Math.floorMod(wpBZ + blockOffsetZ, HytaleChunk.CHUNK_SIZE);
+            HytaleBlock hBlock = HytaleBlock.of(block.blockName, block.rotation);
+            targetChunk.setHytaleBlock(localX, by, localZ, hBlock);
+            targetChunk.setSealProtected(localX, by, localZ, true);
+        }
+
+        for (PrefabFluid fluid : data.fluids) {
+            int wpBX = anchorWorldX + fluid.x - data.anchorX;
+            int wpBZ = anchorWorldZ + fluid.z - data.anchorZ;
+            int fy = anchorY + fluid.y - data.anchorY;
+            HytaleChunk targetChunk = lookupChunk(chunksByCoords, wpBX, wpBZ,
+                    blockOffsetX, blockOffsetZ);
+            if (targetChunk == null) continue;
+            if (fy < 0 || fy >= targetChunk.getMaxHeight()) continue;
+            int localX = Math.floorMod(wpBX + blockOffsetX, HytaleChunk.CHUNK_SIZE);
+            int localZ = Math.floorMod(wpBZ + blockOffsetZ, HytaleChunk.CHUNK_SIZE);
+            int sectionIndex = fy >> 5;
+            if (sectionIndex >= 0 && sectionIndex < targetChunk.getSections().length) {
+                targetChunk.getSections()[sectionIndex].setFluid(localX, fy & 31, localZ,
+                        fluid.fluidName, fluid.level);
+            }
+        }
+
+        return true;
+    }
+
+    private static HytaleChunk lookupChunk(Map<Long, HytaleChunk> chunksByCoords,
+                                           int wpBlockX, int wpBlockZ,
+                                           int blockOffsetX, int blockOffsetZ) {
+        int centredX = wpBlockX + blockOffsetX;
+        int centredZ = wpBlockZ + blockOffsetZ;
+        int hChunkX = Math.floorDiv(centredX, HytaleChunk.CHUNK_SIZE);
+        int hChunkZ = Math.floorDiv(centredZ, HytaleChunk.CHUNK_SIZE);
+        return chunksByCoords.get(chunkKey(hChunkX, hChunkZ));
+    }
+
+    static long chunkKey(int chunkX, int chunkZ) {
+        return (((long) chunkX) << 32) ^ (chunkZ & 0xFFFFFFFFL);
+    }
+
+    /**
+     * Paste a prefab's blocks into a single chunk at the given anchor position.
+     * Blocks whose footprint extends past the chunk's 32x32 column bounds are dropped.
+     * Prefer {@link #paste(Map, int, int, int, int, int, String)} for multi-chunk
+     * prefabs to avoid the chunk-boundary cutoff.
      *
      * @param chunk      the chunk to paste into
      * @param anchorX    chunk-local X of the anchor column (0-31)
