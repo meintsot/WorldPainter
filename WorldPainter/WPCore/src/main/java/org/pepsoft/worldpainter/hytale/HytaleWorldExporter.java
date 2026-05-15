@@ -2511,10 +2511,14 @@ public class HytaleWorldExporter implements WorldExporter {
 
         @Override
         public boolean isChunkPresent(int x, int y) {
-            int centeredBlockX = x << 4;
-            int centeredBlockZ = y << 4;
-            int hChunkX = Math.floorDiv(centeredBlockX, HytaleChunk.CHUNK_SIZE);
-            int hChunkZ = Math.floorDiv(centeredBlockZ, HytaleChunk.CHUNK_SIZE);
+            // x and y are MC chunk coords (each 16 WP blocks). Convert to Hytale chunk
+            // coords (32 centred blocks per chunk) by going via WP block → centred block
+            // → Hytale chunk. The previous implementation skipped the centring offset,
+            // which made callers see the wrong Hytale chunk for non-zero offsets.
+            int centredBlockX = (x << 4) + blockOffsetX;
+            int centredBlockZ = (y << 4) + blockOffsetZ;
+            int hChunkX = Math.floorDiv(centredBlockX, HytaleChunk.CHUNK_SIZE);
+            int hChunkZ = Math.floorDiv(centredBlockZ, HytaleChunk.CHUNK_SIZE);
             return chunksByCoords.containsKey(chunkKey(hChunkX, hChunkZ));
         }
 
