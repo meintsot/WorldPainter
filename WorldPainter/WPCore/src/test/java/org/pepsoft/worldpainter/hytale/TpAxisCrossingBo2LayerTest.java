@@ -32,6 +32,7 @@ import static org.pepsoft.worldpainter.Constants.DIM_NORMAL;
 import static org.pepsoft.worldpainter.DefaultPlugin.HYTALE;
 import static org.pepsoft.worldpainter.objects.WPObject.ATTRIBUTE_COLLISION_MODE;
 import static org.pepsoft.worldpainter.objects.WPObject.ATTRIBUTE_RANDOM_ROTATION;
+import static org.pepsoft.minecraft.Constants.MC_OAK_LOG;
 
 /**
  * Regression test for custom objects crossing the centred Hytale X/Z axes.
@@ -187,6 +188,161 @@ public class TpAxisCrossingBo2LayerTest {
         } finally {
             region.close();
         }
+    }
+
+    /**
+     * Regression for the dense-tree boundary scar: under high-density Bo2 placement
+     * (gridX=1, density=100), trees centred near a region boundary used to receive
+     * asymmetric {@code isRoom} verdicts (one region's chunks had prior trunks; the
+     * other side fell back to AIR), which left a 1-block-wide deficit at the region
+     * boundary column. After the fix, both regions should skip {@code isRoom} for
+     * any tree whose footprint straddles a chunk they don't own, so the
+     * boundary column has roughly the same tree-block density as its neighbours.
+     */
+    @Test
+    public void denseBo2NearBoundaryHasSymmetricColumnDensity() throws Exception {
+        WPObject trunk = new SolidTrunkObject("dense-trunk", new Point3i(3, 3, 5),
+                new Point3i(-1, -1, 0));
+        trunk.setAttribute(ATTRIBUTE_RANDOM_ROTATION, Boolean.FALSE);
+        // Default collision mode (SOLID) so isRoom does collision checks.
+
+        Bo2Layer layer = new Bo2Layer(new Bo2ObjectTube("dense-trunks", Collections.singletonList(trunk)),
+                "Dense trunks across boundary", new Color(64, 160, 64));
+        layer.setDensity(100);
+        layer.setGridX(1);
+        layer.setGridY(1);
+        layer.setNoPhysics(false);
+
+        World2 world = new World2(HYTALE, 0, 320);
+        world.setName("TpDenseBo2");
+        world.setCreateGoodiesChest(false);
+
+        long seed = 1234L;
+        TileFactory tileFactory = TileFactoryFactory.createFlatTileFactory(
+                seed, Terrain.GRASS, 0, 320, TERRAIN_HEIGHT, 62, false, false);
+        Dimension dimension = new Dimension(world, "Surface", seed, tileFactory,
+                new Dimension.Anchor(DIM_NORMAL, Dimension.Role.DETAIL, false, 0));
+        dimension.setEventsInhibited(true);
+        for (int tileX = -1; tileX <= 0; tileX++) {
+            for (int tileZ = -1; tileZ <= 0; tileZ++) {
+                Tile tile = tileFactory.createTile(tileX, tileZ);
+                for (int x = 0; x < 128; x++) {
+                    for (int z = 0; z < 128; z++) {
+                        tile.setHeight(x, z, TERRAIN_HEIGHT);
+                        tile.setTerrain(x, z, Terrain.GRASS);
+                        HytaleTerrainLayer.setTerrainIndex(tile, x, z, HytaleTerrain.GRASS.getLayerIndex());
+                        tile.setLayerValue(layer, x, z, 15);
+                    }
+                }
+                dimension.addTile(tile);
+            }
+        }
+        dimension.setEventsInhibited(false);
+        world.addDimension(dimension);
+
+        File exportBaseDir = tempDir.newFolder("tp_dense_bo2_export");
+        new HytaleWorldExporter(world, new WorldExportSettings())
+                .export(exportBaseDir, "TpDenseBo2", null, null);
+
+        File chunksDir = new File(new File(new File(new File(exportBaseDir, "TpDenseBo2"), "universe"),
+                "worlds"), "default/chunks");
+
+        // Count trunk blocks on each column near the X=0 boundary across a chunkZ slice.
+        // Pick chunkZ=-1 so we look at Hytale Z in [-32..-1] which is in regionZ=-1 — but the
+        // result needs to be readable regardless of which regionZ; just collect what's present.
+        int[] cnts = new int[5];
+        int[] wpX = {-3, -2, -1, 0, 1};
+        for (int i = 0; i < wpX.length; i++) {
+            cnts[i] = countTrunkBlocksAt(chunksDir, wpX[i]);
+        }
+        System.out.println("Trunk counts across boundary (WP X=-3,-2,-1,0,1): "
+                + cnts[0] + ", " + cnts[1] + ", " + cnts[2] + ", " + cnts[3] + ", " + cnts[4]);
+
+        // Boundary columns at WP X=-1 (region -1's last) and X=0 (region 0's first) must be
+        // similar in density to their non-boundary neighbours. Without the fix the boundary
+        // column was on the order of 10x sparser than its neighbours.
+        int neighbourAvg = (cnts[0] + cnts[4]) / 2;
+        assertTrue("WP X=-1 should have similar density to neighbours: got " + cnts[2]
+                        + " vs neighbour avg " + neighbourAvg,
+                cnts[2] >= neighbourAvg / 2);
+        assertTrue("WP X=0 should have similar density to neighbours: got " + cnts[3]
+                        + " vs neighbour avg " + neighbourAvg,
+                cnts[3] >= neighbourAvg / 2);
+    }
+
+    private static int countTrunkBlocksAt(File chunksDir, int worldX) throws Exception {
+        int total = 0;
+        for (int worldZ = -128; worldZ < 128; worldZ++) {
+            int chunkX = Math.floorDiv(worldX, HytaleChunk.CHUNK_SIZE);
+            int chunkZ = Math.floorDiv(worldZ, HytaleChunk.CHUNK_SIZE);
+            int regionX = Math.floorDiv(chunkX, 32);
+            int regionZ = Math.floorDiv(chunkZ, 32);
+            int localChunkX = Math.floorMod(chunkX, 32);
+            int localChunkZ = Math.floorMod(chunkZ, 32);
+            int localX = Math.floorMod(worldX, HytaleChunk.CHUNK_SIZE);
+            int localZ = Math.floorMod(worldZ, HytaleChunk.CHUNK_SIZE);
+
+            File regionFile = new File(chunksDir, HytaleRegionFile.getRegionFileName(regionX, regionZ));
+            if (!regionFile.isFile()) continue;
+            HytaleRegionFile region = new HytaleRegionFile(regionFile.toPath());
+            try {
+                region.open();
+                if (!region.hasChunk(localChunkX, localChunkZ)) continue;
+                HytaleChunk chunk = region.readChunk(localChunkX, localChunkZ, 0, HytaleChunk.DEFAULT_MAX_HEIGHT);
+                for (int y = TERRAIN_HEIGHT + 1; y < TERRAIN_HEIGHT + 6; y++) {
+                    HytaleBlock b = chunk.getHytaleBlock(localX, y, localZ);
+                    if (b != null && !b.isEmpty() && b.id != null
+                            && b.id.equals(HytaleBlockMapping.HY_OAK_LOG)) {
+                        total++;
+                    }
+                }
+            } finally {
+                region.close();
+            }
+        }
+        return total;
+    }
+
+    private static final class SolidTrunkObject extends NamedObjectWithAttributes {
+        private SolidTrunkObject(String name, Point3i dimensions, Point3i offset) {
+            super(name);
+            this.dimensions = dimensions;
+            setAttribute(WPObject.ATTRIBUTE_OFFSET, offset);
+        }
+
+        @Override
+        public Point3i getDimensions() {
+            return new Point3i(dimensions);
+        }
+
+        @Override
+        public Material getMaterial(int x, int y, int z) {
+            return Material.get(MC_OAK_LOG);
+        }
+
+        @Override
+        public boolean getMask(int x, int y, int z) {
+            return true;
+        }
+
+        @Override
+        public List<Entity> getEntities() {
+            return null;
+        }
+
+        @Override
+        public List<TileEntity> getTileEntities() {
+            return null;
+        }
+
+        @Override
+        public SolidTrunkObject clone() {
+            return (SolidTrunkObject) super.clone();
+        }
+
+        private final Point3i dimensions;
+
+        private static final long serialVersionUID = 1L;
     }
 
     private static final class FlatCanopyObject extends NamedObjectWithAttributes {

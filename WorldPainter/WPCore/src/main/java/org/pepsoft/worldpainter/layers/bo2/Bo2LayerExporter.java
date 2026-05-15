@@ -120,7 +120,25 @@ public class Bo2LayerExporter extends WPObjectExporter<Bo2Layer> implements Seco
                                     continue;
                                 }
                                 prepareForExport(object, dimension);
-                                if (! isRoom(minecraftWorld, dimension, object, x, y, z, placement)) {
+                                // When an exporter iterates an expanded area that overlaps an adjacent region
+                                // (e.g. the Hytale per-region pass), trees whose footprints straddle a region
+                                // boundary used to get asymmetric isRoom verdicts: the region whose chunks
+                                // are loaded would see real prior trees and reject; the other would see
+                                // fallback AIR and accept. That left a 1-block-wide scar at every region
+                                // boundary. Skip isRoom whenever ANY corner of the footprint lands in a chunk
+                                // we don't own, so both regions make the same (skip) decision and the tree
+                                // is placed by both — each writes only the overlap that falls in its own
+                                // chunks.
+                                final Point3i dims = object.getDimensions();
+                                final Point3i off = object.getOffset();
+                                final int leftX = x + off.x, rightX = x + off.x + dims.x - 1;
+                                final int topY = y + off.y, bottomY = y + off.y + dims.y - 1;
+                                final boolean footprintEntirelyInOwnRegion =
+                                        minecraftWorld.isChunkPresent(leftX >> 4, topY >> 4)
+                                        && minecraftWorld.isChunkPresent(leftX >> 4, bottomY >> 4)
+                                        && minecraftWorld.isChunkPresent(rightX >> 4, topY >> 4)
+                                        && minecraftWorld.isChunkPresent(rightX >> 4, bottomY >> 4);
+                                if (footprintEntirelyInOwnRegion && (! isRoom(minecraftWorld, dimension, object, x, y, z, placement))) {
                                     continue;
                                 }
                                 if (! fitsInExportedArea(exportedArea, object, x, y)) {
