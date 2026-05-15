@@ -532,10 +532,22 @@ public class BrushOptions extends javax.swing.JPanel implements Observer {
                 throw new UnsupportedOperationException("Paint of layer type " + layerValue.layer.getClass() + " and value " + layerValue.value + " not supported");
             }
         } else if (paint instanceof Layer) {
-            return new ImageIcon(((Layer) paint).getIcon());
+            return iconFor((Layer) paint);
         } else {
             throw new UnsupportedOperationException("Paint of type " + paint.getClass() + " not supported");
         }
+    }
+
+    /**
+     * Build an ImageIcon for a layer, returning null if the layer has no icon
+     * (which {@link JMenuItem} accepts without crashing). This avoids the NPE
+     * from passing {@code new ImageIcon(null)} to {@link ImageIcon#ImageIcon(java.awt.Image)}
+     * when a layer's {@code getIcon()} returns null (e.g. some Hytale byte
+     * layers like HyTerHi / HyTerLo).
+     */
+    private static ImageIcon iconFor(Layer layer) {
+        java.awt.image.BufferedImage img = layer.getIcon();
+        return (img != null) ? new ImageIcon(img) : null;
     }
 
     private Object toPaint(Layer layer, int value) {
@@ -744,8 +756,9 @@ public class BrushOptions extends javax.swing.JPanel implements Observer {
         LayerManager.getInstance().getLayers().stream()
             .filter(layer -> ! layer.equals(Biome.INSTANCE))
             .forEach(layer -> {
-                JMenuItem menuItem = new JMenuItem(layer.getName(), new ImageIcon(layer.getIcon()));
-                menuItem.addActionListener(e -> listener.objectSelected(layer, layer.getName(), new ImageIcon(layer.getIcon())));
+                ImageIcon icon = iconFor(layer);
+                JMenuItem menuItem = new JMenuItem(layer.getName(), icon);
+                menuItem.addActionListener(e -> listener.objectSelected(layer, layer.getName(), iconFor(layer)));
                 layerMenu.add(menuItem);
             });
         final List<CustomLayer> customLayers = app.getCustomLayers();
@@ -757,16 +770,18 @@ public class BrushOptions extends javax.swing.JPanel implements Observer {
                     String palette = entry.getKey();
                     JMenu paletteMenu = new JMenu(palette != null ? palette : "Hidden Layers");
                     entry.getValue().forEach(layer -> {
-                        JMenuItem menuItem = new JMenuItem(layer.getName(), new ImageIcon(layer.getIcon()));
-                        menuItem.addActionListener(e -> listener.objectSelected(layer, layer.getName(), new ImageIcon(layer.getIcon())));
+                        ImageIcon icon = iconFor(layer);
+                        JMenuItem menuItem = new JMenuItem(layer.getName(), icon);
+                        menuItem.addActionListener(e -> listener.objectSelected(layer, layer.getName(), iconFor(layer)));
                         paletteMenu.add(menuItem);
                     });
                     return paletteMenu;
                 }).forEach(layerMenu::add);
         } else {
             customLayers.forEach(layer -> {
-                JMenuItem menuItem = new JMenuItem(layer.getName(), new ImageIcon(layer.getIcon()));
-                menuItem.addActionListener(e -> listener.objectSelected(layer, layer.getName(), new ImageIcon(layer.getIcon())));
+                ImageIcon icon = iconFor(layer);
+                JMenuItem menuItem = new JMenuItem(layer.getName(), icon);
+                menuItem.addActionListener(e -> listener.objectSelected(layer, layer.getName(), iconFor(layer)));
                 layerMenu.add(menuItem);
             });
         }
