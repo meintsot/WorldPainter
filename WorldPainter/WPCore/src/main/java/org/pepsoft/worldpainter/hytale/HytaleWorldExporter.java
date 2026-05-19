@@ -1340,7 +1340,8 @@ public class HytaleWorldExporter implements WorldExporter {
         }
     }
 
-    static HytaleBlock getSurfaceOnlySubstrate(Terrain terrain, MixedMaterial customMaterial, long seed, int x, int z,
+    static HytaleBlock getSurfaceOnlySubstrate(Terrain terrain, MixedMaterial customMaterial,
+                                               HytaleTerrain hytaleSubstrate, long seed, int x, int z,
                                                int y) {
         if (customMaterial != null) {
             for (int scanY = y; scanY >= Math.max(0, y - 8); scanY--) {
@@ -1348,6 +1349,17 @@ public class HytaleWorldExporter implements WorldExporter {
                 if ((candidate != null) && (! candidate.isEmpty()) && (! candidate.isFluid())
                         && (! HytaleBlockRegistry.isSurfaceOnlyBlock(candidate.id))) {
                     return candidate;
+                }
+            }
+            // Mix has no solid block (e.g. all plants). Honour the HytaleTerrain painted
+            // at this pixel via HytaleTerrainLayer before falling back to DIRT, so a
+            // user who paints Sand and then a plant-mix Custom Terrain on top gets
+            // Sand at the surface instead of a synthesised DIRT.
+            if (hytaleSubstrate != null) {
+                HytaleBlock fromLayer = hytaleSubstrate.getBlock(seed, x, z, 0);
+                if ((fromLayer != null) && (! fromLayer.isEmpty()) && (! fromLayer.isFluid())
+                        && (! HytaleBlockRegistry.isSurfaceOnlyBlock(fromLayer.id))) {
+                    return fromLayer;
                 }
             }
             return HytaleBlock.DIRT;
@@ -1563,6 +1575,13 @@ public class HytaleWorldExporter implements WorldExporter {
                     chunk.setHytaleBlock(localX, 0, localZ, HytaleBlock.BEDROCK);
                 }
                 
+                // Surface-only block sampled from a custom-terrain MixedMaterial at depth 0.
+                // Placement is deferred to after the inline fluid loop below so that the
+                // loop's setHytaleBlock(EMPTY) over [height+1, waterLevel] does not wipe
+                // the plant on flooded columns. The post-export sealAboveTerrainColumn pass
+                // also skips this voxel once it's seal-protected. Mirrors the fix a2358135
+                // applied to the HytalePlantsLayer overlay path.
+                HytaleBlock pendingCustomTerrainSurfacePlant = null;
                 if (isCustomTerrain && customMaterial != null) {
                     // Custom terrain: resolve blocks through MixedMaterial → Material → HytaleBlock.
                     // Surface-only blocks (vegetation, decorations) must only appear on top;
@@ -1581,7 +1600,7 @@ public class HytaleWorldExporter implements WorldExporter {
                             // terrain substrate instead of synthesising grass.
                             block = (depth > 0)
                                     ? ((depth <= 4) ? HytaleBlock.DIRT : HytaleBlock.STONE)
-                                    : getSurfaceOnlySubstrate(localTerrain, customMaterial, seed, worldX, worldZ, y);
+                                    : getSurfaceOnlySubstrate(localTerrain, customMaterial, hytaleTerrain, seed, worldX, worldZ, y);
                         } else if (block.isGrass() && depth > 0) {
                             // Grass only belongs on the surface
                             block = (depth <= 4) ? HytaleBlock.DIRT : HytaleBlock.STONE;
@@ -1593,10 +1612,10 @@ public class HytaleWorldExporter implements WorldExporter {
                             chunk.setHytaleBlock(localX, y, localZ, block);
                         }
                     }
-                    // Place the vegetation/decoration block on top of the terrain
-                    if (surfacePlant != null) {
-                        chunk.setHytaleBlock(localX, height + 1, localZ, surfacePlant);
-                    }
+                    // Capture the vegetation/decoration block for placement AFTER the inline
+                    // fluid loop below. Placing it now would let the fluid loop overwrite it
+                    // with EMPTY on flooded columns.
+                    pendingCustomTerrainSurfacePlant = surfacePlant;
                 } else if (hytaleTerrain != null) {
                     HytaleBlock terrainBlock = hytaleTerrain.getPrimaryBlock();
                     boolean surfaceOnly = HytaleBlockRegistry.isSurfaceOnlyBlock(terrainBlock.id);
@@ -1611,7 +1630,10 @@ public class HytaleWorldExporter implements WorldExporter {
                             } else {
                                 // Surface: preserve the underlying terrain
                                 // substrate; the plant goes on top at height+1.
-                                block = getSurfaceOnlySubstrate(localTerrain, customMaterial, seed, worldX, worldZ, y);
+                                // Pass null for the Hytale-terrain substrate fallback because
+                                // this branch is entered when hytaleTerrain itself is the
+                                // surface-only block, so it can't double as substrate here.
+                                block = getSurfaceOnlySubstrate(localTerrain, customMaterial, null, seed, worldX, worldZ, y);
                             }
                         } else if (grassTerrain && depth > 0) {
                             // Grass blocks only belong on the surface; Hytale converts
@@ -1662,6 +1684,23 @@ public class HytaleWorldExporter implements WorldExporter {
                         chunk.setHytaleBlock(localX, y, localZ, HytaleBlock.EMPTY);
                         chunk.getSections()[y >> 5].setFluid(localX, y & 31, localZ,
                             fluidId, 1); // Source fluids: all have MaxFluidLevel=1 per Hytale assets
+                    }
+                }
+
+                // ── Custom-Terrain Surface Plant (deferred from above) ───
+                // Place the plant captured from the custom-terrain MixedMaterial
+                // AFTER the fluid loop so a flooded column does not wipe it, and
+                // seal-protect so the post-export seal pass leaves it alone.
+                // HytalePlantsLayer paints below override this default, so this
+                // runs before the overlay block.
+                if ((pendingCustomTerrainSurfacePlant != null)
+                        && (! pendingCustomTerrainSurfacePlant.isEmpty())
+                        && (! pendingCustomTerrainSurfacePlant.isFluid())
+                        && ((height + 1) < dimension.getMaxHeight())) {
+                    chunk.setHytaleBlock(localX, height + 1, localZ, pendingCustomTerrainSurfacePlant);
+                    chunk.setSealProtected(localX, height + 1, localZ, true);
+                    if (plantsPhysicsExempt) {
+                        chunk.setDecorative(localX, height + 1, localZ, true);
                     }
                 }
 
