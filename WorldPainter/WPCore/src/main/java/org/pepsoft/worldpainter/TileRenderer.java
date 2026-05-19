@@ -400,6 +400,19 @@ public final class TileRenderer {
                     if (htIndex > 0) {
                         hytaleTerrain = HytaleTerrain.getByLayerIndex(htIndex);
                         colour = 0xff000000 | hytaleTerrain.getEffectiveColour();
+                        // Custom Terrain overlay: when a Custom Terrain has been painted on
+                        // top of a Hytale substrate ("paint Sand via Hytale palette, then a
+                        // plant-mix Custom Terrain on top"), blend the user's chosen Custom
+                        // Terrain colour over the substrate so the painted area is visible
+                        // on the 2D map. Matches the HytalePlantsLayer overlay blend below.
+                        Terrain terrain = tile.getTerrain(x, y);
+                        if (terrain.isCustom()) {
+                            int customColour = terrain.getColour(seed, worldX, worldY, height, intHeight, platform, colourScheme);
+                            int sr = (colour >> 16) & 0xFF, sg = (colour >> 8) & 0xFF, sb = colour & 0xFF;
+                            int cr = (customColour >> 16) & 0xFF, cg = (customColour >> 8) & 0xFF, cb = customColour & 0xFF;
+                            int r = (sr + cr * 2) / 3, g = (sg + cg * 2) / 3, b = (sb + cb * 2) / 3;
+                            colour = 0xff000000 | (r << 16) | (g << 8) | b;
+                        }
                     } else {
                         Terrain terrain = tile.getTerrain(x, y);
                         if (terrain.isCustom()) {
