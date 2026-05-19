@@ -38,6 +38,12 @@ import static org.pepsoft.worldpainter.Constants.TILE_SIZE_MASK;
 public final class TerrainPaint extends AbstractPaint {
     public TerrainPaint(Terrain terrain) {
         this.terrain = terrain;
+        // Painting a Custom Terrain on top of a previously painted Hytale terrain
+        // (e.g. Sand via the Hytale palette → tile.terrain + HytaleTerrainLayer both
+        // set) used to clear HytaleTerrainLayer here, losing the substrate. The
+        // exporter's getSurfaceOnlySubstrate uses HytaleTerrainLayer as the substrate
+        // fallback for plant-only MixedMaterials, so preserve it for Custom Terrains.
+        this.clearHytaleSubstrate = ! terrain.isCustom();
     }
 
     public Terrain getTerrain() {
@@ -74,7 +80,9 @@ public final class TerrainPaint extends AbstractPaint {
                         final float strength = dynamicLevel * getStrength(centreX, centreY, tileXInWorld + x, tileYInWorld + y);
                         if ((strength > 0.95f) || (Math.random() < strength)) {
                             tile.setTerrain(x, y, terrain);
-                            HytaleTerrainLayer.setTerrainIndex(tile, x, y, 0);
+                            if (clearHytaleSubstrate) {
+                                HytaleTerrainLayer.setTerrainIndex(tile, x, y, 0);
+                            }
                         }
                     }
                 }
@@ -84,7 +92,9 @@ public final class TerrainPaint extends AbstractPaint {
                         final float strength = dynamicLevel * getFullStrength(centreX, centreY, tileXInWorld + x, tileYInWorld + y);
                         if (strength > 0.75f) {
                             tile.setTerrain(x, y, terrain);
-                            HytaleTerrainLayer.setTerrainIndex(tile, x, y, 0);
+                            if (clearHytaleSubstrate) {
+                                HytaleTerrainLayer.setTerrainIndex(tile, x, y, 0);
+                            }
                         }
                     }
                 }
@@ -97,8 +107,10 @@ public final class TerrainPaint extends AbstractPaint {
                         final float strength = dynamicLevel * getStrength(centreX, centreY, x, y);
                         if ((strength > 0.95f) || (Math.random() < strength)) {
                             dimension.setTerrainAt(x, y, terrain);
-                            dimension.setLayerValueAt(HytaleTerrainLayer.LO, x, y, 0);
-                            dimension.setLayerValueAt(HytaleTerrainLayer.HI, x, y, 0);
+                            if (clearHytaleSubstrate) {
+                                dimension.setLayerValueAt(HytaleTerrainLayer.LO, x, y, 0);
+                                dimension.setLayerValueAt(HytaleTerrainLayer.HI, x, y, 0);
+                            }
                         }
                     }
                 }
@@ -108,8 +120,10 @@ public final class TerrainPaint extends AbstractPaint {
                         final float strength = dynamicLevel * getFullStrength(centreX, centreY, x, y);
                         if (strength > 0.75f) {
                             dimension.setTerrainAt(x, y, terrain);
-                            dimension.setLayerValueAt(HytaleTerrainLayer.LO, x, y, 0);
-                            dimension.setLayerValueAt(HytaleTerrainLayer.HI, x, y, 0);
+                            if (clearHytaleSubstrate) {
+                                dimension.setLayerValueAt(HytaleTerrainLayer.LO, x, y, 0);
+                                dimension.setLayerValueAt(HytaleTerrainLayer.HI, x, y, 0);
+                            }
                         }
                     }
                 }
@@ -152,8 +166,10 @@ public final class TerrainPaint extends AbstractPaint {
     @Override
     public void applyPixel(Dimension dimension, int x, int y) {
         dimension.setTerrainAt(x, y, terrain);
-        dimension.setLayerValueAt(HytaleTerrainLayer.LO, x, y, 0);
-        dimension.setLayerValueAt(HytaleTerrainLayer.HI, x, y, 0);
+        if (clearHytaleSubstrate) {
+            dimension.setLayerValueAt(HytaleTerrainLayer.LO, x, y, 0);
+            dimension.setLayerValueAt(HytaleTerrainLayer.HI, x, y, 0);
+        }
     }
 
     @Override
@@ -167,4 +183,5 @@ public final class TerrainPaint extends AbstractPaint {
     }
 
     private final Terrain terrain;
+    private final boolean clearHytaleSubstrate;
 }
