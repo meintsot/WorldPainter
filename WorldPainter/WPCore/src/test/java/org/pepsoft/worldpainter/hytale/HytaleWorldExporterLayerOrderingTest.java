@@ -143,7 +143,7 @@ public class HytaleWorldExporterLayerOrderingTest {
 
     @Test
     public void surfaceOnlyPlantsKeepUnderlyingStoneSubstrate() {
-        HytaleBlock substrate = HytaleWorldExporter.getSurfaceOnlySubstrate(Terrain.STONE, null, 0L, 0, 0, 64);
+        HytaleBlock substrate = HytaleWorldExporter.getSurfaceOnlySubstrate(Terrain.STONE, null, null, 0L, 0, 0, 64);
 
         assertEquals("Plants painted over stone must not synthesize grass below them",
                 HytaleBlock.STONE.id, substrate.id);
@@ -151,7 +151,7 @@ public class HytaleWorldExporterLayerOrderingTest {
 
     @Test
     public void surfaceOnlyPlantsKeepUnderlyingGrassSubstrate() {
-        HytaleBlock substrate = HytaleWorldExporter.getSurfaceOnlySubstrate(Terrain.GRASS, null, 0L, 0, 0, 64);
+        HytaleBlock substrate = HytaleWorldExporter.getSurfaceOnlySubstrate(Terrain.GRASS, null, null, 0L, 0, 0, 64);
 
         assertEquals("Plants painted over grass must leave the grass surface intact",
                 HytaleBlock.GRASS.id, substrate.id);
