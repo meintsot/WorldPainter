@@ -336,53 +336,69 @@ public class HytaleMapImporter extends MapImporter {
             }
         }
 
-        // Detect water level from fluid data. Scan upward from the actual
-        // terrain surface (not the heightmap, which may include vegetation).
-        int waterLevel = 0; // Hytale minZ = 0
-        for (int y = surfaceY + 1; y < HytaleChunk.DEFAULT_MAX_HEIGHT && y <= surfaceY + 32; y++) {
-            HytaleSection section = chunk.getSections()[y >> 5];
-            if (section != null) {
-                int fluidId = section.getFluidId(localX, y & 31, localZ);
-                if (fluidId > 0) {
-                    // Found fluid above surface
-                    waterLevel = y;
-                    // Look for top of fluid column
-                    for (int fy = y + 1; fy < HytaleChunk.DEFAULT_MAX_HEIGHT; fy++) {
-                        HytaleSection fSec = chunk.getSections()[fy >> 5];
-                        if (fSec == null || fSec.getFluidId(localX, fy & 31, localZ) == 0) {
-                            waterLevel = fy - 1;
-                            break;
-                        }
-                    }
-                    break;
-                }
-            }
-        }
+        int waterLevel = detectWaterLevel(chunk, localX, localZ, surfaceY);
         tile.setWaterLevel(tilePixelX, tilePixelZ, waterLevel);
 
-        // Fluid type layer (lava/special fluids; water stays default/no override)
-        if (waterLevel > surfaceY) {
-            HytaleSection sec = chunk.getSections()[waterLevel >> 5];
-            if (sec != null) {
-                int fId = sec.getFluidId(localX, waterLevel & 31, localZ);
-                if (fId > 0) {
-                    String fluidName = sec.getFluidPalette().get(fId);
-                    int fluidLayerValue = mapFluidToLayer(fluidName);
-                    if (fluidLayerValue > 0) {
-                        tile.setLayerValue(HytaleFluidLayer.INSTANCE, tilePixelX, tilePixelZ, fluidLayerValue);
-                    }
+        applyFluidLayerForColumn(chunk, tile, localX, localZ, tilePixelX, tilePixelZ, surfaceY, waterLevel);
+        applyEnvironmentLayerForColumn(chunk, tile, localX, localZ, tilePixelX, tilePixelZ);
+    }
+
+    /**
+     * Scan upward from the actual terrain surface (not the heightmap, which may include
+     * vegetation) to find the fluid column's top y-coordinate. Returns 0 (Hytale minZ)
+     * when no fluid is present above the surface within the 32-block search window.
+     */
+    private int detectWaterLevel(HytaleChunk chunk, int localX, int localZ, int surfaceY) {
+        for (int y = surfaceY + 1; y < HytaleChunk.DEFAULT_MAX_HEIGHT && y <= surfaceY + 32; y++) {
+            HytaleSection section = chunk.getSections()[y >> 5];
+            if (section == null) continue;
+            int fluidId = section.getFluidId(localX, y & 31, localZ);
+            if (fluidId == 0) continue;
+            // Found fluid above surface — find the top of the column
+            for (int fy = y + 1; fy < HytaleChunk.DEFAULT_MAX_HEIGHT; fy++) {
+                HytaleSection fSec = chunk.getSections()[fy >> 5];
+                if (fSec == null || fSec.getFluidId(localX, fy & 31, localZ) == 0) {
+                    return fy - 1;
                 }
             }
+            return y;
         }
+        return 0;
+    }
 
-        // Environment layer
-        String envName = chunk.getEnvironment(localX, localZ);
-        if (envName != null && !envName.equals("Default")) {
-            HytaleEnvironmentData envData = HytaleEnvironmentData.getByName(envName);
-            if (envData != null && envData.getId() > 0 && envData.getId() < 255) {
-                tile.setLayerValue(HytaleEnvironmentLayer.INSTANCE, tilePixelX, tilePixelZ, envData.getId());
-            }
+    /**
+     * Write the HytaleFluidLayer override for a column when its fluid is anything other
+     * than the default water (lava, poison, slime, tar). Water columns remain at the
+     * default no-override value.
+     */
+    private void applyFluidLayerForColumn(HytaleChunk chunk, Tile tile,
+                                          int localX, int localZ, int tilePixelX, int tilePixelZ,
+                                          int surfaceY, int waterLevel) {
+        if (waterLevel <= surfaceY) return;
+        HytaleSection sec = chunk.getSections()[waterLevel >> 5];
+        if (sec == null) return;
+        int fId = sec.getFluidId(localX, waterLevel & 31, localZ);
+        if (fId <= 0) return;
+        String fluidName = sec.getFluidPalette().get(fId);
+        int fluidLayerValue = mapFluidToLayer(fluidName);
+        if (fluidLayerValue > 0) {
+            tile.setLayerValue(HytaleFluidLayer.INSTANCE, tilePixelX, tilePixelZ, fluidLayerValue);
         }
+    }
+
+    /**
+     * Write the HytaleEnvironmentLayer override for a column when the chunk's environment
+     * is non-default. Default-environment columns get no override so the biome's environment
+     * remains in effect.
+     */
+    private void applyEnvironmentLayerForColumn(HytaleChunk chunk, Tile tile,
+                                                int localX, int localZ,
+                                                int tilePixelX, int tilePixelZ) {
+        String envName = chunk.getEnvironment(localX, localZ);
+        if (envName == null || envName.equals("Default")) return;
+        HytaleEnvironmentData envData = HytaleEnvironmentData.getByName(envName);
+        if (envData == null || envData.getId() <= 0 || envData.getId() >= 255) return;
+        tile.setLayerValue(HytaleEnvironmentLayer.INSTANCE, tilePixelX, tilePixelZ, envData.getId());
     }
 
     /**
