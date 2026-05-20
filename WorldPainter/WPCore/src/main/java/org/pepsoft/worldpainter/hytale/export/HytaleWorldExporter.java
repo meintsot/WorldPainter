@@ -92,9 +92,9 @@ public class HytaleWorldExporter implements WorldExporter {
     // fixups. 256 blocks covers the largest typical tree or structure.
     private static final int OBJECT_BORDER_MARGIN = 256;
 
-    private final World2 world;
-    private final WorldExportSettings worldExportSettings;
-    private final Platform platform;
+    protected final World2 world;
+    protected final WorldExportSettings worldExportSettings;
+    protected final Platform platform;
     private final Semaphore performingFixups = new Semaphore(1);
     private static final BlockBasedExportSettings HYTALE_LIGHTING_SETTINGS = new BlockBasedExportSettings() {
         @Override
@@ -125,8 +125,10 @@ public class HytaleWorldExporter implements WorldExporter {
     // Prefab paster for inlining prefab blocks during export (initialized at export time)
     private HytalePrefabPaster prefabPaster;
 
-    // Original chunk store for merging imported data (entities, health, metadata) on re-export
-    private HytaleChunkStore originalChunkStore;
+    // Original chunk store for merging imported data (entities, health, metadata) on re-export.
+    // Protected so subclasses (e.g. HytaleWorldMerger) can pre-set this to a backup directory
+    // before invoking export(); when non-null, openOriginalChunkStore() leaves it untouched.
+    protected HytaleChunkStore originalChunkStore;
     
     public HytaleWorldExporter(World2 world, WorldExportSettings exportSettings) {
         this.world = world;
@@ -694,6 +696,11 @@ public class HytaleWorldExporter implements WorldExporter {
      * and metadata can be merged back into re-exported chunks.
      */
     private void openOriginalChunkStore(Dimension dimension) {
+        // Skip if a subclass (e.g. HytaleWorldMerger) has already wired up the original chunk store
+        // to point at a backup directory.
+        if (originalChunkStore != null) {
+            return;
+        }
         File importedFrom = world.getImportedFrom();
         if (importedFrom == null || !importedFrom.exists()) {
             return;
