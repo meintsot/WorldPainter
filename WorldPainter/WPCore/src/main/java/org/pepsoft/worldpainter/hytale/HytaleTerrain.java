@@ -2300,8 +2300,13 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         HytaleBlock.of("Plant_Fern_Wet_Giant"), 0x4a8c2f);
     public static final HytaleTerrain BLUE_NETTLE = new HytaleTerrain("Blue Nettle",
         HytaleBlock.of("Plant_Flower_Bushy_Blue"), 0x235ca6);
+    // TP-61: 'Large Fern' in Hytale is the Winter-biome large-scale fern variant
+    // (per the community wiki at wand.com/wikis/hytale/Plants). Previously this
+    // mapped to Plant_Fern_Jungle_Trunk which is a prefab sub-component used by
+    // the Jungle_Ferns prefab — painting it produced a thin pole instead of a
+    // proper large fern.
     public static final HytaleTerrain LARGE_FERN = new HytaleTerrain("Large Fern",
-        HytaleBlock.of("Plant_Fern_Jungle_Trunk"), 0x19a626);
+        HytaleBlock.of("Plant_Fern_Winter"), 0x19a626);
     public static final HytaleTerrain CYAN_FESTUCA = new HytaleTerrain("Cyan Festuca",
         HytaleBlock.of("Plant_Flower_Bushy_Cyan"), 0x2eb2b0);
     public static final HytaleTerrain NETTLE = new HytaleTerrain("Nettle",
@@ -2318,8 +2323,13 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         HytaleBlock.of("Plant_Flower_Bushy_Red"), 0xbf1518);
     public static final HytaleTerrain PURPLE_FLOWERS = new HytaleTerrain("Purple Flowers",
         HytaleBlock.of("Plant_Flower_Bushy_Purple"), 0x5e1496);
+    // TP-61 follow-up: 'Frost Leaf' in Hytale is the white bushy flower variant,
+    // not the winter fern (per wand.com/wikis/hytale/Plants, where "Frost Leaf"
+    // is documented with image Plant_Flower_Bushy_White). Reassigned here so the
+    // sibling Large Fern fix can take Plant_Fern_Winter without a duplicate-block
+    // collision.
     public static final HytaleTerrain FROST_LEAF = new HytaleTerrain("Frost Leaf",
-        HytaleBlock.of("Plant_Fern_Winter"), 0x37402d);
+        HytaleBlock.of("Plant_Flower_Bushy_White"), 0x37402d);
 
     // ===== FLOWERS =====
     public static final HytaleTerrain YELLOW_ARID_FLOWER_BUSH = new HytaleTerrain("Yellow Arid Flower Bush",
