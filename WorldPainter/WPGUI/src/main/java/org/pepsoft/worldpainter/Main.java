@@ -252,7 +252,20 @@ public class Main {
                     logger.info("Hardware acceleration method: Quartz");
                     break;
                 default:
-                    logger.info("Hardware acceleration method: default");
+                    if (SystemUtils.isWindows()) {
+                        // TP-47: disable the Direct3D pipeline so screen-capture tools
+                        // (Win+Shift+S, Snipping Tool, Win+PrtScn, OBS) can actually
+                        // capture the TalePainter window. With D3D enabled (Java's
+                        // default on Windows) the window appears black/empty in
+                        // screenshots because rendering happens directly to a D3D
+                        // surface the OS capture API can't read. Users wanting maximum
+                        // 2D performance can still pick Direct3D explicitly via
+                        // Preferences → Performance.
+                        System.setProperty("sun.java2d.d3d", "false");
+                        logger.info("Hardware acceleration method: default (Direct3D disabled on Windows for screenshot support — see TP-47)");
+                    } else {
+                        logger.info("Hardware acceleration method: default");
+                    }
                     break;
             }
         } else {
