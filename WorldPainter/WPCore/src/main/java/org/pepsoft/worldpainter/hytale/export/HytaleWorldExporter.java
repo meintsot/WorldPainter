@@ -742,17 +742,19 @@ public class HytaleWorldExporter implements WorldExporter {
                 applyCustomObjectLayers(dimension, regionCoords, chunksByCoords);
             }
 
+            HytaleChunkPostProcessor postProcessor = new HytaleChunkPostProcessor(blockOffsetX, blockOffsetZ);
+
             // Re-seal fluid bodies: restore any fluid blocks that were cleared
             // by layer exporters (caves, chasms, custom objects) during
             // post-processing. Hytale has no runtime water flow, so every fluid
             // block must be explicitly present in the exported data.
-            sealFluidBodies(dimension, chunksByCoords);
+            postProcessor.sealFluidBodies(dimension, chunksByCoords);
 
             // Apply frost AFTER sealing fluid bodies so that ice placed on
             // water surfaces is not overwritten by the fluid restoration pass.
             applyFrostLayer(dimension, regionCoords, chunksByCoords);
 
-            convertCoveredGrass(chunksByCoords);
+            postProcessor.convertCoveredGrass(chunksByCoords);
 
             // Skip pre-baked lighting: Hytale recalculates light at runtime
             // when players interact with blocks, which overwrites our values
@@ -763,7 +765,7 @@ public class HytaleWorldExporter implements WorldExporter {
             // Final pass: enforce void columns by clearing any blocks/fluids
             // that may have been placed by second-pass layers, custom objects,
             // frost, or lighting. This guarantees void areas are truly empty.
-            enforceVoidColumns(dimension, chunksByCoords);
+            postProcessor.enforceVoidColumns(dimension, chunksByCoords);
 
             for (int localZ = 0; localZ < 32; localZ++) {
                 for (int localX = 0; localX < 32; localX++) {
@@ -966,98 +968,6 @@ public class HytaleWorldExporter implements WorldExporter {
             }
         }
     }
-    
-    /**
-     * Post-processing pass that ensures fluid integrity without carving away
-     * dry shoreline terrain.
-     * <p>
-     * Hytale has no runtime water flow, so every fluid block must be explicitly
-     * present in the exported chunk data. This pass restores missing fluid in
-     * underwater voids and overwrites any above-terrain blocks that intrude into
-     * the intended water column. Sea-level shoreline columns remain dry land; the
-     * exporter should not replace valid beach blocks simply because adjacent
-     * columns contain water.
-     * <p>
-     * Must be called after all layer processing (except frost) and before
-     * frost/lighting/void passes. Frost runs after this so that ice placed on
-     * water surfaces is not overwritten.
-     */
-    private void sealFluidBodies(Dimension dimension, Map<Long, HytaleChunk> chunksByCoords) {
-        int sealed = 0;
-
-        // Restore fluid in all columns that have a water level.
-        // Above terrain height: forcefully replace any block (including
-        // solid blocks placed by layer exporters like ground cover) with
-        // fluid. Below terrain height: only fill empty blocks (caves,
-        // chasms carved by exporters).
-        for (HytaleChunk chunk : chunksByCoords.values()) {
-            int chunkBlockX = chunk.getxPos() << 5;
-            int chunkBlockZ = chunk.getzPos() << 5;
-
-            for (int localX = 0; localX < HytaleChunk.CHUNK_SIZE; localX++) {
-                for (int localZ = 0; localZ < HytaleChunk.CHUNK_SIZE; localZ++) {
-                    int worldX = chunkBlockX + localX - blockOffsetX;
-                    int worldZ = chunkBlockZ + localZ - blockOffsetZ;
-
-                    int waterLevel = dimension.getWaterLevelAt(worldX, worldZ);
-                    if (waterLevel == Integer.MIN_VALUE || waterLevel <= 0) {
-                        continue;
-                    }
-
-                    int terrainHeight = dimension.getIntHeightAt(worldX, worldZ);
-                    if (waterLevel <= terrainHeight) {
-                        continue; // Terrain is at or above water level; no water column
-                    }
-
-                    String fluidId = resolveFluidId(dimension, worldX, worldZ);
-
-                    // Below terrain: fill only empty blocks (underground voids)
-                    for (int y = 1; y <= terrainHeight; y++) {
-                        HytaleBlock block = chunk.getHytaleBlock(localX, y, localZ);
-                        if (block != null && !block.isEmpty()) {
-                            continue;
-                        }
-                        HytaleChunk.HytaleSection section = chunk.getSections()[y >> 5];
-                        if (section.getFluidId(localX, y & 31, localZ) == 0) {
-                            chunk.setHytaleBlock(localX, y, localZ, HytaleBlock.EMPTY);
-                            section.setFluid(localX, y & 31, localZ, fluidId, 1);
-                            sealed++;
-                        }
-                    }
-
-                    sealed += sealAboveTerrainColumn(chunk, localX, localZ, terrainHeight, waterLevel, fluidId);
-                }
-            }
-        }
-
-        if (sealed > 0) {
-            logger.info("Fluid seal pass: restored {} missing fluid blocks", sealed);
-        }
-    }
-
-    /**
-     * Restore fluid in the {@code [terrainHeight + 1, waterLevel]} range of a
-     * single chunk column. Blocks placed by Bo2 custom-object layers are
-     * preserved with a transient seal-protection marker; Hytale stores blocks
-     * and fluids separately, so the block coexists with the surrounding water.
-     * Unmarked blocks with no support value (e.g. ground-cover/terrain plants
-     * that bled into the water column during chunk generation) are cleared and
-     * replaced with fluid.
-     *
-     * @return Number of (x, y, z) cells modified.
-     */
-    static int sealAboveTerrainColumn(HytaleChunk chunk, int localX, int localZ, int terrainHeight, int waterLevel, String fluidId) {
-        int sealed = 0;
-        for (int y = terrainHeight + 1; y <= waterLevel; y++) {
-            if ((chunk.getSupportValue(localX, y, localZ) == HytaleChunk.SUPPORT_NONE)
-                    && (! chunk.isSealProtected(localX, y, localZ))) {
-                chunk.setHytaleBlock(localX, y, localZ, HytaleBlock.EMPTY);
-            }
-            chunk.getSections()[y >> 5].setFluid(localX, y & 31, localZ, fluidId, 1);
-            sealed++;
-        }
-        return sealed;
-    }
 
     static List<Layer> sortFirstPassLayers(Set<Layer> layers) {
         List<Layer> firstPassLayers = new ArrayList<>();
@@ -1080,55 +990,6 @@ public class HytaleWorldExporter implements WorldExporter {
         }
         Collections.sort(bo2Layers);
         return bo2Layers;
-    }
-
-    /**
-     * Resolve the fluid type for a column from dimension layer data.
-     */
-    private String resolveFluidId(Dimension dimension, int worldX, int worldZ) {
-        int fluidLayerValue = HytaleFluidLayer.normalizeFluidValue(
-            dimension.getLayerValueAt(HytaleFluidLayer.INSTANCE, worldX, worldZ));
-        if (fluidLayerValue > 0) {
-            return HytaleFluidLayer.getFluidBlockId(fluidLayerValue);
-        }
-        if (dimension.getBitLayerValueAt(FloodWithLava.INSTANCE, worldX, worldZ)) {
-            return HytaleBlockMapping.HY_LAVA;
-        }
-        return HytaleBlockMapping.HY_WATER;
-    }
-
-    /**
-     * Post-process grass blocks: convert grass to dirt when covered by a
-     * solid/opaque block, but preserve grass when the block above is a plant,
-     * decoration, fluid, or other non-solid block. This pre-applies Hytale's
-     * in-game grass-to-dirt conversion, avoiding unnecessary runtime work.
-     * <p>
-     * Must be called after all block-placement passes (terrain, layers,
-     * custom objects, frost) but before lighting calculation.
-     */
-    private void convertCoveredGrass(Map<Long, HytaleChunk> chunksByCoords) {
-        int converted = 0;
-        for (HytaleChunk chunk : chunksByCoords.values()) {
-            for (int x = 0; x < HytaleChunk.CHUNK_SIZE; x++) {
-                for (int z = 0; z < HytaleChunk.CHUNK_SIZE; z++) {
-                    int height = chunk.getHeight(x, z);
-                    for (int y = 0; y <= height; y++) {
-                        HytaleBlock block = chunk.getHytaleBlock(x, y, z);
-                        if (block != null && block.isGrass()) {
-                            HytaleBlock above = chunk.getHytaleBlock(x, y + 1, z);
-                            if (above != null && !above.isEmpty()
-                                    && !HytaleBlockRegistry.preservesGrassBelow(above.id)) {
-                                chunk.setHytaleBlock(x, y, z, HytaleBlock.DIRT);
-                                converted++;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        if (converted > 0) {
-            logger.debug("Converted {} covered grass blocks to dirt", converted);
-        }
     }
 
     static HytaleBlock getSurfaceOnlySubstrate(Terrain terrain, MixedMaterial customMaterial,
@@ -1163,66 +1024,6 @@ public class HytaleWorldExporter implements WorldExporter {
             return HytaleBlock.DIRT;
         }
         return candidate;
-    }
-
-    /**
-     * Final pass: enforce void columns by clearing any blocks, fluids, and
-     * support data that may have been placed in void-marked columns by
-     * first-pass layers, second-pass layers, custom objects, frost, or other
-     * processing steps. This guarantees void areas are truly empty in the
-     * exported chunk data.
-     */
-    private void enforceVoidColumns(Dimension dimension, Map<Long, HytaleChunk> chunksByCoords) {
-        int cleared = 0;
-        for (Map.Entry<Long, HytaleChunk> entry : chunksByCoords.entrySet()) {
-            HytaleChunk chunk = entry.getValue();
-            int hyChunkX = chunk.getxPos();
-            int hyChunkZ = chunk.getzPos();
-
-            // Convert to world block coords and then to tile coords
-            int blockX = (hyChunkX << 5) - blockOffsetX;
-            int blockZ = (hyChunkZ << 5) - blockOffsetZ;
-            int tileX = blockX >> 7;
-            int tileZ = blockZ >> 7;
-
-            Tile tile = dimension.getTile(tileX, tileZ);
-            if (tile == null) {
-                continue;
-            }
-
-            int maxHeight = chunk.getMaxHeight();
-            for (int localX = 0; localX < HytaleChunk.CHUNK_SIZE; localX++) {
-                for (int localZ = 0; localZ < HytaleChunk.CHUNK_SIZE; localZ++) {
-                    int worldX = blockX + localX;
-                    int worldZ = blockZ + localZ;
-                    int tileLocalX = worldX & 0x7F;
-                    int tileLocalZ = worldZ & 0x7F;
-
-                    if (!tile.getBitLayerValue(org.pepsoft.worldpainter.layers.Void.INSTANCE, tileLocalX, tileLocalZ)) {
-                        continue;
-                    }
-
-                    // This column is void — clear everything
-                    chunk.setHeight(localX, localZ, 0);
-                    for (int y = 0; y < maxHeight; y++) {
-                        HytaleBlock existing = chunk.getHytaleBlock(localX, y, localZ);
-                        if (existing != null && !existing.isEmpty()) {
-                            chunk.setHytaleBlock(localX, y, localZ, HytaleBlock.EMPTY);
-                            cleared++;
-                        }
-                        HytaleChunk.HytaleSection section = chunk.getSections()[y >> 5];
-                        int localY = y & 31;
-                        if (section.getFluidId(localX, localY, localZ) > 0) {
-                            section.clearFluid(localX, localY, localZ);
-                            cleared++;
-                        }
-                    }
-                }
-            }
-        }
-        if (cleared > 0) {
-            logger.info("Void enforcement pass cleared {} blocks/fluids", cleared);
-        }
     }
 
     /** Deferred prefab paste — collected during column loop, executed after all terrain is placed. */

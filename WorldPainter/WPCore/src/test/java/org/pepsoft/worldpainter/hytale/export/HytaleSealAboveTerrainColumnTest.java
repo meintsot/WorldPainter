@@ -10,7 +10,7 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 /**
- * Regression test for {@link HytaleWorldExporter#sealAboveTerrainColumn}, the
+ * Regression test for {@link HytaleChunkPostProcessor#sealAboveTerrainColumn}, the
  * helper that restores fluid above terrain in the water column at the end of a
  * region export.
  *
@@ -38,7 +38,7 @@ public class HytaleSealAboveTerrainColumnTest {
         chunk.setHytaleBlock(5, TERRAIN_HEIGHT + 1, 5, strayPlant);
         // Note: setDecorative is *not* called, so support remains SUPPORT_NONE.
 
-        int sealed = HytaleWorldExporter.sealAboveTerrainColumn(
+        int sealed = HytaleChunkPostProcessor.sealAboveTerrainColumn(
                 chunk, 5, 5, TERRAIN_HEIGHT, WATER_LEVEL, FLUID_ID);
 
         assertEquals("Seal pass should touch every cell from terrain+1 to waterLevel",
@@ -70,7 +70,7 @@ public class HytaleSealAboveTerrainColumnTest {
             chunk.getSections()[y >> 5].clearFluid(5, y & 31, 5);
         }
 
-        HytaleWorldExporter.sealAboveTerrainColumn(
+        HytaleChunkPostProcessor.sealAboveTerrainColumn(
                 chunk, 5, 5, TERRAIN_HEIGHT, WATER_LEVEL, FLUID_ID);
 
         // Seaweed blocks must survive the seal pass.
@@ -109,7 +109,7 @@ public class HytaleSealAboveTerrainColumnTest {
             chunk.setSealProtected(5, y, 5, true);
         }
 
-        HytaleWorldExporter.sealAboveTerrainColumn(
+        HytaleChunkPostProcessor.sealAboveTerrainColumn(
                 chunk, 5, 5, TERRAIN_HEIGHT, WATER_LEVEL, FLUID_ID);
 
         for (int y = TERRAIN_HEIGHT + 1; y <= TERRAIN_HEIGHT + 3; y++) {
@@ -140,7 +140,7 @@ public class HytaleSealAboveTerrainColumnTest {
         chunk.setHytaleBlock(5, TERRAIN_HEIGHT + 2, 5, stray);
         // No setDecorative -> SUPPORT_NONE
 
-        HytaleWorldExporter.sealAboveTerrainColumn(
+        HytaleChunkPostProcessor.sealAboveTerrainColumn(
                 chunk, 5, 5, TERRAIN_HEIGHT, WATER_LEVEL, FLUID_ID);
 
         HytaleBlock atOne = chunk.getHytaleBlock(5, TERRAIN_HEIGHT + 1, 5);

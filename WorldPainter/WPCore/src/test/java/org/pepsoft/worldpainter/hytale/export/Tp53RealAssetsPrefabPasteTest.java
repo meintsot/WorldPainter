@@ -18,7 +18,7 @@ import static org.junit.Assert.*;
  * Hytale prefab (rather than a synthetic fixture). Confirms that a real
  * {@code Plants/Seaweed/Normal/Seaweed_Normal_001.prefab.json} pasted by
  * {@link HytalePrefabPaster} into a flooded column survives the post-export
- * seal pass at {@link HytaleWorldExporter#sealAboveTerrainColumn}.
+ * seal pass at {@link HytaleChunkPostProcessor#sealAboveTerrainColumn}.
  *
  * <p>This test is opt-in: it skips if the user's HytaleAssets directory cannot
  * be located. To run it explicitly, set the system property
@@ -82,7 +82,7 @@ public class Tp53RealAssetsPrefabPasteTest {
                         + "(found " + placedSeaweedCount + ")",
                 placedSeaweedCount >= 1);
 
-        HytaleWorldExporter.sealAboveTerrainColumn(
+        HytaleChunkPostProcessor.sealAboveTerrainColumn(
                 chunk, 5, 5, TERRAIN_HEIGHT, WATER_LEVEL, FLUID_ID);
 
         int survivedSeaweedCount = countSeaweedBlocks(chunk);

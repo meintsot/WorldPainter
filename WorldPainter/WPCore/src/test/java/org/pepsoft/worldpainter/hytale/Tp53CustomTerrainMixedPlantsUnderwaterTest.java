@@ -37,7 +37,7 @@ import static org.pepsoft.worldpainter.DefaultPlugin.HYTALE;
  * {@code setSealProtected}. The fluid loop's
  * {@code chunk.setHytaleBlock(localX, y, localZ, HytaleBlock.EMPTY)} on flooded
  * columns wiped the plant; the post-export
- * {@link HytaleWorldExporter#sealAboveTerrainColumn} pass wiped it again. Result:
+ * {@link HytaleChunkPostProcessor#sealAboveTerrainColumn} pass wiped it again. Result:
  * zero plant blocks at terrain+1 underwater for custom-terrain MixedMaterials,
  * even though the sibling {@link HytalePlantsLayer} overlay placed plants
  * correctly (the original {@code a2358135} fix covered only that overlay path).

@@ -25,7 +25,7 @@ import static org.junit.Assert.*;
  * <p>Prior to the fix, {@code paste()} called {@code chunk.setHytaleBlock(...)}
  * with no follow-up {@code setSealProtected(...)} call, so each pasted block
  * defaulted to {@code SUPPORT_NONE} with {@code isSealProtected() == false},
- * and {@link HytaleWorldExporter#sealAboveTerrainColumn} cleared it.
+ * and {@link HytaleChunkPostProcessor#sealAboveTerrainColumn} cleared it.
  *
  * <p>The fix adds {@code chunk.setSealProtected(bx, by, bz, true)} immediately
  * after the per-block {@code setHytaleBlock} call in {@link HytalePrefabPaster#paste}.
@@ -65,7 +65,7 @@ public class Tp53UnderwaterPrefabPasterTest {
         assertEquals(SEAWEED_ID, placed.id);
 
         // Run the seal pass over the flooded column.
-        HytaleWorldExporter.sealAboveTerrainColumn(
+        HytaleChunkPostProcessor.sealAboveTerrainColumn(
                 chunk, 5, 5, TERRAIN_HEIGHT, WATER_LEVEL, FLUID_ID);
 
         HytaleBlock survived = chunk.getHytaleBlock(5, TERRAIN_HEIGHT + 1, 5);
@@ -104,7 +104,7 @@ public class Tp53UnderwaterPrefabPasterTest {
                 5, 5, "Prefabs/Test/TallSeaweed.prefab.json");
         assertTrue(pasted);
 
-        HytaleWorldExporter.sealAboveTerrainColumn(
+        HytaleChunkPostProcessor.sealAboveTerrainColumn(
                 chunk, 5, 5, TERRAIN_HEIGHT, WATER_LEVEL, FLUID_ID);
 
         // Every plant block must remain. y=51..60 (10 blocks).
@@ -134,7 +134,7 @@ public class Tp53UnderwaterPrefabPasterTest {
         paster.paste(chunk, 5, TERRAIN_HEIGHT + 1, 5, 5, 5, "Prefabs/Test/DryBlock.prefab.json");
 
         // No flooding: waterLevel == terrainHeight, so seal pass loop is empty.
-        HytaleWorldExporter.sealAboveTerrainColumn(
+        HytaleChunkPostProcessor.sealAboveTerrainColumn(
                 chunk, 5, 5, TERRAIN_HEIGHT, /*waterLevel*/ TERRAIN_HEIGHT, FLUID_ID);
 
         HytaleBlock placed = chunk.getHytaleBlock(5, TERRAIN_HEIGHT + 1, 5);
