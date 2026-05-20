@@ -305,29 +305,6 @@ public class HytaleWorldExporter implements WorldExporter {
     }
     
     /**
-     * Copy a directory tree from source to target.
-     */
-    private static void copyDirectory(Path source, Path target) throws IOException {
-        Files.createDirectories(target);
-        try (java.util.stream.Stream<Path> stream = Files.walk(source)) {
-            stream.forEach(src -> {
-                Path dst = target.resolve(source.relativize(src));
-                try {
-                    if (Files.isDirectory(src)) {
-                        Files.createDirectories(dst);
-                    } else {
-                        Files.copy(src, dst, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-                    }
-                } catch (IOException e) {
-                    throw new UncheckedIOException(e);
-                }
-            });
-        } catch (java.io.UncheckedIOException e) {
-            throw e.getCause();
-        }
-    }
-    
-    /**
      * Recursively delete a directory tree.
      */
     private static void deleteRecursive(Path path) throws IOException {
@@ -536,83 +513,6 @@ public class HytaleWorldExporter implements WorldExporter {
             
             return collectedStats;
         }, "dimension.name", dimension.getName());
-    }
-    
-    /**
-     * Export terrain data as JSON for use with custom Hytale plugins/mods.
-     * This includes heightmap, block types, and coordinates translated to Hytale coordinate system.
-     */
-    private void exportTerrainDataAsJson(File worldDir, Dimension dimension, Set<Point> tileCoords, 
-            ProgressReceiver progressReceiver) throws IOException {
-        
-        Map<String, Object> terrainData = new LinkedHashMap<>();
-        terrainData.put("format", "TalePainter Hytale Terrain Export");
-        terrainData.put("version", 1);
-        terrainData.put("blockOffsetX", blockOffsetX);
-        terrainData.put("blockOffsetZ", blockOffsetZ);
-        terrainData.put("tileCount", tileCoords.size());
-        
-        List<Map<String, Object>> tiles = new ArrayList<>();
-        
-        int tileIndex = 0;
-        int totalTiles = tileCoords.size();
-        
-        for (Point tileCoord : tileCoords) {
-            Tile tile = dimension.getTile(tileCoord.x, tileCoord.y);
-            if (tile == null) continue;
-            
-            Map<String, Object> tileData = new LinkedHashMap<>();
-            
-            // Original WorldPainter coordinates
-            tileData.put("originalTileX", tileCoord.x);
-            tileData.put("originalTileZ", tileCoord.y);
-            
-            // Hytale world coordinates (with offset applied)
-            int hytaleBlockX = tileCoord.x * 128 + blockOffsetX;
-            int hytaleBlockZ = tileCoord.y * 128 + blockOffsetZ;
-            tileData.put("hytaleBlockX", hytaleBlockX);
-            tileData.put("hytaleBlockZ", hytaleBlockZ);
-            
-            // Heightmap data (128x128 = 16384 values per tile)
-            int[] heightmap = new int[128 * 128];
-            for (int z = 0; z < 128; z++) {
-                for (int x = 0; x < 128; x++) {
-                    heightmap[z * 128 + x] = tile.getIntHeight(x, z);
-                }
-            }
-            tileData.put("heightmap", heightmap);
-            
-            // Water level data
-            int[] waterLevels = new int[128 * 128];
-            for (int z = 0; z < 128; z++) {
-                for (int x = 0; x < 128; x++) {
-                    waterLevels[z * 128 + x] = tile.getWaterLevel(x, z);
-                }
-            }
-            tileData.put("waterLevels", waterLevels);
-            
-            tiles.add(tileData);
-            
-            tileIndex++;
-            if (progressReceiver != null && tileIndex % 10 == 0) {
-                try {
-                    progressReceiver.setProgress((float) tileIndex / totalTiles * 0.5f);
-                } catch (ProgressReceiver.OperationCancelled e) {
-                    return;
-                }
-            }
-        }
-        
-        terrainData.put("tiles", tiles);
-        
-        // Write terrain data to JSON file
-        Gson gson = new GsonBuilder().setPrettyPrinting().create();
-        String json = gson.toJson(terrainData);
-        
-        File terrainFile = new File(worldDir, "terrain_data.json");
-        Files.write(terrainFile.toPath(), json.getBytes(StandardCharsets.UTF_8));
-        
-        logger.info("Exported terrain data for {} tiles to {}", tiles.size(), terrainFile);
     }
     
     /**
@@ -2100,64 +2000,6 @@ public class HytaleWorldExporter implements WorldExporter {
         // Beaches, rivers, and everything else default to grassland so that
         // vegetation near sand/water edges keeps a natural green tint.
         return "Grassland";
-    }
-    
-    /**
-     * Get the surface material for a terrain type.
-     */
-    private Material getSurfaceMaterial(Terrain terrain) {
-        if (terrain == null) {
-            return Material.GRASS_BLOCK;
-        }
-        
-        String name = terrain.getName().toLowerCase();
-        
-        if (name.contains("sand") || name.contains("desert")) {
-            return name.contains("red") ? Material.RED_SAND : Material.SAND;
-        }
-        if (name.contains("snow")) {
-            return Material.SNOW_BLOCK;
-        }
-        if (name.contains("stone") || name.contains("rock")) {
-            return Material.STONE;
-        }
-        if (name.contains("gravel")) {
-            return Material.GRAVEL;
-        }
-        if (name.contains("clay")) {
-            return Material.CLAY;
-        }
-        if (name.contains("dirt")) {
-            return Material.DIRT;
-        }
-        
-        return Material.GRASS_BLOCK;
-    }
-    
-    /**
-     * Get the subsurface material for a terrain type.
-     */
-    private Material getSubsurfaceMaterial(Terrain terrain) {
-        if (terrain == null) {
-            return Material.DIRT;
-        }
-        
-        String name = terrain.getName().toLowerCase();
-        
-        if (name.contains("sand") || name.contains("desert")) {
-            return name.contains("red") ? Material.RED_SAND : Material.SAND;
-        }
-        if (name.contains("snow")) {
-            return Material.DIRT;
-        }
-        if (name.contains("stone") || name.contains("rock")) {
-            return Material.STONE;
-        }
-        if (name.contains("gravel")) {
-            return Material.GRAVEL;
-        }
-        
-        return Material.DIRT;
     }
     
     private ExecutorService createExecutorService(String operation, int jobCount) {
