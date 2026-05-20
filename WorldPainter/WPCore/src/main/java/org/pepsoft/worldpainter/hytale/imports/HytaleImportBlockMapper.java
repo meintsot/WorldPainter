@@ -1,4 +1,6 @@
-package org.pepsoft.worldpainter.hytale;
+package org.pepsoft.worldpainter.hytale.imports;
+
+import org.pepsoft.worldpainter.hytale.*;
 
 import org.pepsoft.worldpainter.Terrain;
 

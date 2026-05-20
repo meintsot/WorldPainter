@@ -1,4 +1,6 @@
-package org.pepsoft.worldpainter.hytale;
+package org.pepsoft.worldpainter.hytale.chunk;
+
+import org.pepsoft.worldpainter.hytale.*;
 
 import com.github.luben.zstd.Zstd;
 import io.netty.buffer.ByteBuf;

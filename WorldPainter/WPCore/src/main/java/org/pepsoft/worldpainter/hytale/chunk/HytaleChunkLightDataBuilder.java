@@ -1,4 +1,6 @@
-package org.pepsoft.worldpainter.hytale;
+package org.pepsoft.worldpainter.hytale.chunk;
+
+import org.pepsoft.worldpainter.hytale.*;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.ByteBufAllocator;

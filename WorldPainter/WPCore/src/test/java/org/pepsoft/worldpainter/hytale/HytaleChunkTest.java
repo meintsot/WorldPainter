@@ -1,5 +1,10 @@
 package org.pepsoft.worldpainter.hytale;
 
+import org.pepsoft.worldpainter.hytale.chunk.HytaleChunk;
+import org.pepsoft.worldpainter.hytale.chunk.HytaleChunkStore;
+import org.pepsoft.worldpainter.hytale.chunk.HytaleRegionFile;
+import org.pepsoft.worldpainter.hytale.chunk.HytaleBsonChunkSerializer;
+
 import org.bson.BsonArray;
 import org.bson.BsonDocument;
 import org.bson.RawBsonDocument;

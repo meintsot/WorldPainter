@@ -1,4 +1,8 @@
-package org.pepsoft.worldpainter.hytale;
+package org.pepsoft.worldpainter.hytale.export;
+
+import org.pepsoft.worldpainter.hytale.*;
+
+import org.pepsoft.worldpainter.hytale.export.HytaleWorldExporter;
 
 import org.junit.Test;
 import org.pepsoft.worldpainter.Terrain;

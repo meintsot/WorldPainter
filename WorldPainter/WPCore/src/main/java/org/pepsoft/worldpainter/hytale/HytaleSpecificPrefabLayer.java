@@ -1,5 +1,7 @@
 package org.pepsoft.worldpainter.hytale;
 
+import org.pepsoft.worldpainter.hytale.prefab.HytalePrefabJsonObject;
+
 import org.pepsoft.worldpainter.layers.CustomLayer;
 
 import java.awt.*;

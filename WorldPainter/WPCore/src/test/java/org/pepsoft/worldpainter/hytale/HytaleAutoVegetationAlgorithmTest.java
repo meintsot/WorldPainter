@@ -1,5 +1,7 @@
 package org.pepsoft.worldpainter.hytale;
 
+import org.pepsoft.worldpainter.hytale.vegetation.HytaleAutoVegetationAlgorithm;
+
 import org.junit.Test;
 
 import java.util.*;

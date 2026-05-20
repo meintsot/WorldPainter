@@ -1,5 +1,9 @@
 package org.pepsoft.worldpainter.hytale;
 
+import org.pepsoft.worldpainter.hytale.chunk.HytaleChunk;
+import org.pepsoft.worldpainter.hytale.chunk.HytaleChunkStore;
+import org.pepsoft.worldpainter.hytale.chunk.HytaleRegionFile;
+
 import org.junit.Test;
 import org.pepsoft.minecraft.ChunkStore;
 import org.pepsoft.minecraft.Chunk;

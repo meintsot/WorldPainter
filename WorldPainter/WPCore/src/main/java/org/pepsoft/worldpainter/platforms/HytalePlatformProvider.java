@@ -1,5 +1,11 @@
 package org.pepsoft.worldpainter.platforms;
 
+import org.pepsoft.worldpainter.hytale.chunk.HytaleChunk;
+import org.pepsoft.worldpainter.hytale.chunk.HytaleChunkStore;
+import org.pepsoft.worldpainter.hytale.export.HytaleWorldExporter;
+import org.pepsoft.worldpainter.hytale.export.HytalePostProcessor;
+import org.pepsoft.worldpainter.hytale.imports.HytaleMapImporter;
+
 import org.pepsoft.minecraft.Chunk;
 import org.pepsoft.minecraft.ChunkStore;
 import org.pepsoft.minecraft.MinecraftCoords;

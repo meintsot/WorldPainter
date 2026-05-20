@@ -1,5 +1,7 @@
 package org.pepsoft.worldpainter.hytale;
 
+import org.pepsoft.worldpainter.hytale.prefab.HytalePrefabJsonObject;
+
 import org.junit.Test;
 import org.pepsoft.minecraft.Material;
 import org.pepsoft.worldpainter.DefaultPlugin;

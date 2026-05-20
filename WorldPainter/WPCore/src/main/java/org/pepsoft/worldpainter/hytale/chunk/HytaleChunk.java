@@ -1,4 +1,6 @@
-package org.pepsoft.worldpainter.hytale;
+package org.pepsoft.worldpainter.hytale.chunk;
+
+import org.pepsoft.worldpainter.hytale.*;
 
 import org.pepsoft.minecraft.Chunk;
 import org.pepsoft.minecraft.Entity;
@@ -228,12 +230,12 @@ public class HytaleChunk implements Chunk {
         setSupportValue(x, y, z, decorative ? SUPPORT_DECORATIVE : SUPPORT_NONE);
     }
 
-    boolean isSealProtected(int x, int y, int z) {
+    public boolean isSealProtected(int x, int y, int z) {
         if (y < 0 || y >= maxHeight) return false;
         return getSection(y).isSealProtected(x, y & 31, z);
     }
 
-    void setSealProtected(int x, int y, int z, boolean sealProtected) {
+    public void setSealProtected(int x, int y, int z, boolean sealProtected) {
         if (y < 0 || y >= maxHeight) return;
         getSection(y).setSealProtected(x, y & 31, z, sealProtected);
     }

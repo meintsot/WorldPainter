@@ -1,4 +1,6 @@
-package org.pepsoft.worldpainter.hytale;
+package org.pepsoft.worldpainter.hytale.prefab;
+
+import org.pepsoft.worldpainter.hytale.*;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

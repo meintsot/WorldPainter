@@ -1,5 +1,9 @@
 package org.pepsoft.worldpainter.importing;
 
+import org.pepsoft.worldpainter.hytale.chunk.HytaleChunk;
+import org.pepsoft.worldpainter.hytale.chunk.HytaleChunkStore;
+import org.pepsoft.worldpainter.hytale.imports.HytaleMapImporter;
+
 import org.pepsoft.minecraft.ChunkStore;
 import org.pepsoft.minecraft.MinecraftCoords;
 import org.pepsoft.util.ProgressReceiver;

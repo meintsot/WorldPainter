@@ -1,4 +1,6 @@
-package org.pepsoft.worldpainter.hytale;
+package org.pepsoft.worldpainter.hytale.chunk;
+
+import org.pepsoft.worldpainter.hytale.*;
 
 import org.pepsoft.minecraft.Chunk;
 import org.pepsoft.minecraft.ChunkStore;

@@ -1,5 +1,7 @@
 package org.pepsoft.worldpainter.hytale;
 
+import org.pepsoft.worldpainter.hytale.assets.HytaleAssetsLocator;
+
 import org.pepsoft.util.GUIUtils;
 import org.pepsoft.worldpainter.ColourScheme;
 

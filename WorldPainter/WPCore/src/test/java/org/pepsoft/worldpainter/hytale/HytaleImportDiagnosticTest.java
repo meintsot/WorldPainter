@@ -1,5 +1,8 @@
 package org.pepsoft.worldpainter.hytale;
 
+import org.pepsoft.worldpainter.hytale.chunk.HytaleChunk;
+import org.pepsoft.worldpainter.hytale.chunk.HytaleRegionFile;
+
 import org.junit.Test;
 
 import java.io.File;

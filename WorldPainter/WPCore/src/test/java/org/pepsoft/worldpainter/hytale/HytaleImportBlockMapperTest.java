@@ -1,5 +1,7 @@
 package org.pepsoft.worldpainter.hytale;
 
+import org.pepsoft.worldpainter.hytale.imports.HytaleImportBlockMapper;
+
 import org.junit.Test;
 import org.pepsoft.worldpainter.Terrain;
 

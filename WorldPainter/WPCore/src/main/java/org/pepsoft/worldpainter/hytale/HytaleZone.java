@@ -1,5 +1,7 @@
 package org.pepsoft.worldpainter.hytale;
 
+import org.pepsoft.worldpainter.hytale.export.HytaleWorldExporter;
+
 import java.awt.Rectangle;
 import java.io.Serializable;
 import java.util.*;

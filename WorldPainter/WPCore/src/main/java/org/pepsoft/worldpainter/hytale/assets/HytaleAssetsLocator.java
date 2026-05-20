@@ -1,4 +1,6 @@
-package org.pepsoft.worldpainter.hytale;
+package org.pepsoft.worldpainter.hytale.assets;
+
+import org.pepsoft.worldpainter.hytale.*;
 
 import org.pepsoft.util.FileUtils;
 import org.pepsoft.worldpainter.Configuration;

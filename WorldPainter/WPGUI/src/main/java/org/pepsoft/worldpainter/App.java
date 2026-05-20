@@ -5,6 +5,11 @@
 
 package org.pepsoft.worldpainter;
 
+import org.pepsoft.worldpainter.hytale.prefab.HytalePrefabDiscovery;
+import org.pepsoft.worldpainter.hytale.prefab.HytalePrefabJsonObject;
+import org.pepsoft.worldpainter.hytale.vegetation.HytaleAutoVegetationDefaults;
+import org.pepsoft.worldpainter.hytale.assets.HytaleAssetsLocator;
+
 import com.jidesoft.docking.*;
 import com.jidesoft.swing.JideLabel;
 import org.jetbrains.annotations.NonNls;
@@ -3952,7 +3957,7 @@ public final class App extends JFrame implements BrushControl,
                     continue;
                 }
                 try {
-                    org.pepsoft.worldpainter.objects.WPObject obj = org.pepsoft.worldpainter.hytale.HytalePrefabJsonObject.load(prefabFile);
+                    org.pepsoft.worldpainter.objects.WPObject obj = org.pepsoft.worldpainter.hytale.prefab.HytalePrefabJsonObject.load(prefabFile);
                     if (obj != null) {
                         wpObjects.add(obj);
                     }
@@ -4107,18 +4112,18 @@ public final class App extends JFrame implements BrushControl,
         java.io.File serverDir = (assetsDir != null) ? new java.io.File(assetsDir, "Server") : null;
         boolean assetsAvailable = false;
         if (serverDir != null && serverDir.isDirectory()) {
-            discoveredPrefabs = org.pepsoft.worldpainter.hytale.HytalePrefabDiscovery.discoverPrefabs(serverDir);
+            discoveredPrefabs = org.pepsoft.worldpainter.hytale.prefab.HytalePrefabDiscovery.discoverPrefabs(serverDir);
             if (! discoveredPrefabs.isEmpty()) {
                 specificPrefabStatusLabel.setText(discoveredPrefabs.size() + " prefabs found from local HytaleAssets");
                 assetsAvailable = true;
             } else {
-                discoveredPrefabs = org.pepsoft.worldpainter.hytale.HytalePrefabDiscovery.loadBundledPrefabs();
+                discoveredPrefabs = org.pepsoft.worldpainter.hytale.prefab.HytalePrefabDiscovery.loadBundledPrefabs();
                 specificPrefabStatusLabel.setText(discoveredPrefabs.isEmpty()
                     ? "<html><i>No prefabs available. Use <b>Locate Assets</b> to set your Hytale folder.</i></html>"
                     : "<html><i>Using bundled prefab catalog. Use <b>Locate Assets</b> for full prefab support.</i></html>");
             }
         } else {
-            discoveredPrefabs = org.pepsoft.worldpainter.hytale.HytalePrefabDiscovery.loadBundledPrefabs();
+            discoveredPrefabs = org.pepsoft.worldpainter.hytale.prefab.HytalePrefabDiscovery.loadBundledPrefabs();
             specificPrefabStatusLabel.setText(discoveredPrefabs.isEmpty()
                 ? "<html><i>No HytaleAssets found. Use <b>Locate Assets</b> below.</i></html>"
                 : "<html><i>Using bundled prefab catalog. Use <b>Locate Assets</b> for full support.</i></html>");
@@ -4624,7 +4629,7 @@ public final class App extends JFrame implements BrushControl,
     private void initHytaleAssetsDir() {
         if (hytaleAssetsDirInitialized) return;
         hytaleAssetsDirInitialized = true;
-        java.io.File assetsDir = org.pepsoft.worldpainter.hytale.HytaleAssetsLocator.ensureAssetsConfigured();
+        java.io.File assetsDir = org.pepsoft.worldpainter.hytale.assets.HytaleAssetsLocator.ensureAssetsConfigured();
         if (assetsDir != null) {
             logger.info("Using Hytale assets at: {}", assetsDir.getAbsolutePath());
             return;
@@ -4671,7 +4676,7 @@ public final class App extends JFrame implements BrushControl,
             return null;
         }
         final java.io.File selectedDir = fileChooser.getSelectedFile();
-        final java.io.File configuredDir = org.pepsoft.worldpainter.hytale.HytaleAssetsLocator.configureAssetsSource(selectedDir);
+        final java.io.File configuredDir = org.pepsoft.worldpainter.hytale.assets.HytaleAssetsLocator.configureAssetsSource(selectedDir);
         if (configuredDir == null) {
             beepAndShowError(this,
                     "The selected directory is not a usable Hytale assets source.\n" +
@@ -5502,7 +5507,7 @@ public final class App extends JFrame implements BrushControl,
             org.pepsoft.worldpainter.hytale.HytaleAutoVegetationSettings working;
             if (existing == null) {
                 working = new org.pepsoft.worldpainter.hytale.HytaleAutoVegetationSettings();
-                org.pepsoft.worldpainter.hytale.HytaleAutoVegetationDefaults.applyShippedDefaultsTo(working);
+                org.pepsoft.worldpainter.hytale.vegetation.HytaleAutoVegetationDefaults.applyShippedDefaultsTo(working);
             } else {
                 working = existing.clone();
             }

@@ -1,4 +1,6 @@
-package org.pepsoft.worldpainter.hytale;
+package org.pepsoft.worldpainter.hytale.vegetation;
+
+import org.pepsoft.worldpainter.hytale.*;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;

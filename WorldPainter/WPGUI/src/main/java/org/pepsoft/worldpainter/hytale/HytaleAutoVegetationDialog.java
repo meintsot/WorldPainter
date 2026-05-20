@@ -1,5 +1,7 @@
 package org.pepsoft.worldpainter.hytale;
 
+import org.pepsoft.worldpainter.hytale.vegetation.HytaleAutoVegetationDefaults;
+
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
 import java.awt.*;

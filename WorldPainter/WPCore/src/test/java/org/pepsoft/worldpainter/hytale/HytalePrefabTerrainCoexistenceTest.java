@@ -1,5 +1,7 @@
 package org.pepsoft.worldpainter.hytale;
 
+import org.pepsoft.worldpainter.hytale.chunk.HytaleChunk;
+
 import org.junit.Test;
 
 import static org.junit.Assert.*;

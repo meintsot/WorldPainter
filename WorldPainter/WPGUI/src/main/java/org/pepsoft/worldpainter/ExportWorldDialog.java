@@ -16,7 +16,7 @@ import org.pepsoft.worldpainter.Dimension.Anchor;
 import org.pepsoft.worldpainter.World2.BorderSettings;
 import org.pepsoft.worldpainter.biomeschemes.CustomBiomeManager;
 import org.pepsoft.worldpainter.exporting.WorldExportSettings;
-import org.pepsoft.worldpainter.hytale.HytaleAssetsLocator;
+import org.pepsoft.worldpainter.hytale.assets.HytaleAssetsLocator;
 import org.pepsoft.worldpainter.hytale.HytaleTerrainHelper;
 import org.pepsoft.worldpainter.hytale.HytaleWorldSettings;
 import org.pepsoft.worldpainter.layers.CustomLayer;

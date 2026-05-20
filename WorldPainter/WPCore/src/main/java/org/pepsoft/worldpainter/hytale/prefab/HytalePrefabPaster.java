@@ -1,4 +1,8 @@
-package org.pepsoft.worldpainter.hytale;
+package org.pepsoft.worldpainter.hytale.prefab;
+
+import org.pepsoft.worldpainter.hytale.*;
+
+import org.pepsoft.worldpainter.hytale.chunk.HytaleChunk;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;

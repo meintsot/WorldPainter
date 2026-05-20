@@ -11,6 +11,8 @@
 
 package org.pepsoft.worldpainter;
 
+import org.pepsoft.worldpainter.hytale.assets.HytaleAssetsLocator;
+
 import org.pepsoft.minecraft.MapGenerator;
 import org.pepsoft.minecraft.Material;
 import org.pepsoft.minecraft.SeededGenerator;
@@ -793,7 +795,7 @@ public class NewWorldDialog extends WorldPainterDialog {
     }
 
     private void initHytaleAssetsDir() {
-        org.pepsoft.worldpainter.hytale.HytaleAssetsLocator.ensureAssetsConfigured();
+        org.pepsoft.worldpainter.hytale.assets.HytaleAssetsLocator.ensureAssetsConfigured();
     }
 
     private void updateSurfaceMaterialModel() {

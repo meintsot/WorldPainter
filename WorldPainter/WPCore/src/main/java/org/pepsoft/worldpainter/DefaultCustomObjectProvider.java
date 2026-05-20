@@ -1,7 +1,7 @@
 package org.pepsoft.worldpainter;
 
 import com.google.common.collect.ImmutableList;
-import org.pepsoft.worldpainter.hytale.HytalePrefabJsonObject;
+import org.pepsoft.worldpainter.hytale.prefab.HytalePrefabJsonObject;
 import org.pepsoft.worldpainter.layers.bo2.*;
 import org.pepsoft.worldpainter.objects.WPObject;
 import org.pepsoft.worldpainter.plugins.AbstractPlugin;

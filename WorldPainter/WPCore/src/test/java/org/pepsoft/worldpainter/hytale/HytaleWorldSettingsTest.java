@@ -1,5 +1,7 @@
 package org.pepsoft.worldpainter.hytale;
 
+import org.pepsoft.worldpainter.hytale.export.HytaleWorldExporter;
+
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;

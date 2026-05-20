@@ -1,5 +1,10 @@
 package org.pepsoft.worldpainter.hytale;
 
+import org.pepsoft.worldpainter.hytale.chunk.HytaleChunk;
+import org.pepsoft.worldpainter.hytale.chunk.HytaleChunkStore;
+import org.pepsoft.worldpainter.hytale.export.HytaleWorldExporter;
+import org.pepsoft.worldpainter.hytale.imports.HytaleMapImporter;
+
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;

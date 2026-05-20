@@ -1,4 +1,14 @@
-package org.pepsoft.worldpainter.hytale;
+package org.pepsoft.worldpainter.hytale.export;
+
+import org.pepsoft.worldpainter.hytale.*;
+
+import org.pepsoft.worldpainter.hytale.chunk.HytaleChunk;
+import org.pepsoft.worldpainter.hytale.chunk.HytaleChunkStore;
+import org.pepsoft.worldpainter.hytale.chunk.HytaleRegionFile;
+import org.pepsoft.worldpainter.hytale.prefab.HytalePrefabPaster;
+import org.pepsoft.worldpainter.hytale.prefab.HytalePrefabJsonObject;
+import org.pepsoft.worldpainter.hytale.vegetation.HytaleAutoVegetationAlgorithm;
+import org.pepsoft.worldpainter.hytale.vegetation.HytaleAutoVegetationDefaults;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;

@@ -1,5 +1,7 @@
 package org.pepsoft.worldpainter.hytale;
 
+import org.pepsoft.worldpainter.hytale.chunk.HytaleBsonChunkSerializer;
+
 import org.bson.BsonArray;
 import org.bson.BsonBinary;
 import org.bson.BsonDocument;

@@ -1,5 +1,8 @@
 package org.pepsoft.worldpainter.hytale;
 
+import org.pepsoft.worldpainter.hytale.chunk.HytaleChunk;
+import org.pepsoft.worldpainter.hytale.chunk.HytaleBsonChunkSerializer;
+
 import org.junit.Test;
 
 import static org.junit.Assert.assertNotEquals;

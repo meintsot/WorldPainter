@@ -1,4 +1,10 @@
-package org.pepsoft.worldpainter.hytale;
+package org.pepsoft.worldpainter.hytale.export;
+
+import org.pepsoft.worldpainter.hytale.*;
+
+import org.pepsoft.worldpainter.hytale.chunk.HytaleChunk;
+import org.pepsoft.worldpainter.hytale.export.HytaleWorldExporter;
+import org.pepsoft.worldpainter.hytale.prefab.HytalePrefabPaster;
 
 import org.junit.Assume;
 import org.junit.Test;

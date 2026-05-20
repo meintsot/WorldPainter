@@ -1,4 +1,6 @@
-package org.pepsoft.worldpainter.hytale;
+package org.pepsoft.worldpainter.hytale.prefab;
+
+import org.pepsoft.worldpainter.hytale.*;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -357,7 +359,7 @@ public final class HytalePrefabJsonObject {
 
     private static final String PREFAB_JSON_EXTENSION = ".prefab.json";
     private static final String DEFAULT_ENTITY_ID = HytaleBlockRegistry.HYTALE_NAMESPACE + ":prefab_entity";
-    static final String HYTALE_ROTATION_PROPERTY = "hytale_rotation";
+    public static final String HYTALE_ROTATION_PROPERTY = "hytale_rotation";
 
     private static final Logger logger = LoggerFactory.getLogger(HytalePrefabJsonObject.class);
 }

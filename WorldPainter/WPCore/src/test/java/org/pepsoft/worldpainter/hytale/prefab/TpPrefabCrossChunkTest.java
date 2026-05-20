@@ -1,4 +1,9 @@
-package org.pepsoft.worldpainter.hytale;
+package org.pepsoft.worldpainter.hytale.prefab;
+
+import org.pepsoft.worldpainter.hytale.*;
+
+import org.pepsoft.worldpainter.hytale.chunk.HytaleChunk;
+import org.pepsoft.worldpainter.hytale.prefab.HytalePrefabPaster;
 
 import org.junit.Rule;
 import org.junit.Test;

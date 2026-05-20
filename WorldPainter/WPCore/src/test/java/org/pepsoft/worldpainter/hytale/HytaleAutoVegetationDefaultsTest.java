@@ -1,5 +1,7 @@
 package org.pepsoft.worldpainter.hytale;
 
+import org.pepsoft.worldpainter.hytale.vegetation.HytaleAutoVegetationDefaults;
+
 import org.junit.Test;
 
 import java.io.StringReader;
