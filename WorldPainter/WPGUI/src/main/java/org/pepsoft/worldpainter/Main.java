@@ -419,7 +419,21 @@ public class Main {
 
         final World2 world;
         final File autosaveFile = new File(configDir, "autosave.world");
-        if ((file == null) && (autosaveInhibited || (! config.isAutosaveEnabled()) || (! autosaveFile.isFile()))) {
+        final boolean willRecoverAutosave = (! autosaveInhibited) && config.isAutosaveEnabled() && autosaveFile.isFile();
+
+        // TP-48: on a clean startup with no CLI file and no autosave to recover,
+        // auto-open the most-recently-worked-on map from the recent-files list
+        // instead of creating a fresh blank default world.
+        final File recentMap;
+        if ((file == null) && (! willRecoverAutosave)) {
+            final List<File> recents = config.getRecentFiles();
+            final File candidate = ((recents != null) && (! recents.isEmpty())) ? recents.get(0) : null;
+            recentMap = ((candidate != null) && candidate.isFile()) ? candidate : null;
+        } else {
+            recentMap = null;
+        }
+
+        if ((file == null) && (! willRecoverAutosave) && (recentMap == null)) {
             if (! safeMode) {
                 world = WorldFactory.createDefaultWorld(config, new Random().nextLong());
 //                world = WorldFactory.createFancyWorld(config, new Random().nextLong());
@@ -533,8 +547,12 @@ public class Main {
                     logger.info("Recovering autosaved world");
                     app.open(autosaveFile);
                     StartupMessages.addWarning("TalePainter was not shut down correctly.\nYour world has been recovered from the most recent autosave.\nMake sure to Save it if you want to keep it!");
-                } else {
+                } else if (file != null) {
                     app.open(file);
+                } else if (recentMap != null) {
+                    // TP-48: reopen the most-recently-worked-on map on clean startup
+                    logger.info("Auto-opening most recently used map: {}", recentMap);
+                    app.open(recentMap);
                 }
                 for (String error: StartupMessages.getErrors()) {
                     beepAndShowError(app, error, "Startup Error");
