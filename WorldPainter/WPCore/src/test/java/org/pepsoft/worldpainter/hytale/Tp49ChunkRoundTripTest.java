@@ -1,6 +1,7 @@
 package org.pepsoft.worldpainter.hytale;
 
 import org.pepsoft.worldpainter.hytale.chunk.HytaleChunk;
+import org.pepsoft.worldpainter.hytale.chunk.HytaleSection;
 import org.pepsoft.worldpainter.hytale.chunk.HytaleRegionFile;
 
 import org.junit.Rule;
@@ -17,7 +18,7 @@ import static org.junit.Assert.assertNotNull;
  * Unit-level regression for TP-49: exporting and re-reading a single chunk preserves the
  * rotation byte on the {@link HytaleBlock} returned by {@link HytaleChunk#getHytaleBlock(int, int, int)}.
  *
- * <p>Before the fix in {@code HytaleChunk.HytaleSection.setRotation(...)}, the deserializer
+ * <p>Before the fix in {@code HytaleSection.setRotation(...)}, the deserializer
  * populated {@code hytaleBlocks[]} with default-rotation blocks first (via
  * {@link HytaleBlock#of(String)}), then read the rotation section into a parallel
  * {@code rotations[]} array. {@code getHytaleBlock} returned the original block, so the

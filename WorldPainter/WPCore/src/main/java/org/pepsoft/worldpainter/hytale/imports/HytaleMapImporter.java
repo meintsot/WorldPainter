@@ -3,6 +3,7 @@ package org.pepsoft.worldpainter.hytale.imports;
 import org.pepsoft.worldpainter.hytale.*;
 
 import org.pepsoft.worldpainter.hytale.chunk.HytaleChunk;
+import org.pepsoft.worldpainter.hytale.chunk.HytaleSection;
 import org.pepsoft.worldpainter.hytale.chunk.HytaleChunkStore;
 
 import org.pepsoft.minecraft.ChunkStore;
@@ -339,7 +340,7 @@ public class HytaleMapImporter extends MapImporter {
         // terrain surface (not the heightmap, which may include vegetation).
         int waterLevel = 0; // Hytale minZ = 0
         for (int y = surfaceY + 1; y < HytaleChunk.DEFAULT_MAX_HEIGHT && y <= surfaceY + 32; y++) {
-            HytaleChunk.HytaleSection section = chunk.getSections()[y >> 5];
+            HytaleSection section = chunk.getSections()[y >> 5];
             if (section != null) {
                 int fluidId = section.getFluidId(localX, y & 31, localZ);
                 if (fluidId > 0) {
@@ -347,7 +348,7 @@ public class HytaleMapImporter extends MapImporter {
                     waterLevel = y;
                     // Look for top of fluid column
                     for (int fy = y + 1; fy < HytaleChunk.DEFAULT_MAX_HEIGHT; fy++) {
-                        HytaleChunk.HytaleSection fSec = chunk.getSections()[fy >> 5];
+                        HytaleSection fSec = chunk.getSections()[fy >> 5];
                         if (fSec == null || fSec.getFluidId(localX, fy & 31, localZ) == 0) {
                             waterLevel = fy - 1;
                             break;
@@ -361,7 +362,7 @@ public class HytaleMapImporter extends MapImporter {
 
         // Fluid type layer (lava/special fluids; water stays default/no override)
         if (waterLevel > surfaceY) {
-            HytaleChunk.HytaleSection sec = chunk.getSections()[waterLevel >> 5];
+            HytaleSection sec = chunk.getSections()[waterLevel >> 5];
             if (sec != null) {
                 int fId = sec.getFluidId(localX, waterLevel & 31, localZ);
                 if (fId > 0) {

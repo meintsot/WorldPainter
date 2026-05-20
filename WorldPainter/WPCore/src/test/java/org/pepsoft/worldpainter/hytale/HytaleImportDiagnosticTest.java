@@ -1,6 +1,7 @@
 package org.pepsoft.worldpainter.hytale;
 
 import org.pepsoft.worldpainter.hytale.chunk.HytaleChunk;
+import org.pepsoft.worldpainter.hytale.chunk.HytaleSection;
 import org.pepsoft.worldpainter.hytale.chunk.HytaleRegionFile;
 
 import org.junit.Test;
@@ -60,7 +61,7 @@ public class HytaleImportDiagnosticTest {
                 }
 
                 for (int sy = 0; sy < chunk.getSectionCount(); sy++) {
-                    HytaleChunk.HytaleSection sec = chunk.getSections()[sy];
+                    HytaleSection sec = chunk.getSections()[sy];
                     for (HytaleBlock b : sec.getHytaleBlocks()) {
                         if (b != null && !b.isEmpty()) nonAir++;
                     }

@@ -462,7 +462,7 @@ public class HytaleBsonChunkSerializer {
         BsonDocument doc = new BsonDocument();
         BsonArray sections = new BsonArray();
         
-        HytaleChunk.HytaleSection[] chunkSections = chunk.getSections();
+        HytaleSection[] chunkSections = chunk.getSections();
         for (int i = 0; i < chunk.getSectionCount(); i++) {
             sections.add(createSectionHolderBson(chunkSections[i], i, chunk, chunkSections[i].getSupportData()));
         }
@@ -481,7 +481,7 @@ public class HytaleBsonChunkSerializer {
      * @param chunk The parent chunk, needed for heightmap-based lighting.
      * @param supportData Precomputed nibble-packed support values for this section (16384 bytes), or null if empty.
      */
-    private static BsonDocument createSectionHolderBson(HytaleChunk.HytaleSection section, int sectionY, HytaleChunk chunk, byte[] supportData) {
+    private static BsonDocument createSectionHolderBson(HytaleSection section, int sectionY, HytaleChunk chunk, byte[] supportData) {
         BsonDocument holder = new BsonDocument();
         BsonDocument components = new BsonDocument();
         
@@ -584,7 +584,7 @@ public class HytaleBsonChunkSerializer {
      * @param sectionY The section index (0-9).
      * @param chunk The parent chunk, needed for heightmap-based lighting.
      */
-    private static BsonDocument createBlockSectionBson(HytaleChunk.HytaleSection section, int sectionY, HytaleChunk chunk) {
+    private static BsonDocument createBlockSectionBson(HytaleSection section, int sectionY, HytaleChunk chunk) {
         BsonDocument doc = new BsonDocument();
         doc.put("Version", new BsonInt32(BLOCK_SECTION_VERSION));
         
@@ -824,7 +824,7 @@ public class HytaleBsonChunkSerializer {
      * Write the rotation section for a block section.
      * Rotation values are 0-63, representing rx*16 + ry*4 + rz where each axis is 0-3 (90° increments).
      */
-    private static void writeRotationSection(ByteBuf buf, HytaleChunk.HytaleSection section) {
+    private static void writeRotationSection(ByteBuf buf, HytaleSection section) {
         if (!section.hasRotations()) {
             // All rotations are 0, write empty palette
             buf.writeByte(PALETTE_TYPE_EMPTY);
@@ -1047,7 +1047,7 @@ public class HytaleBsonChunkSerializer {
      * Create FluidSection BSON.
      * Format: { "Data": [paletteType, paletteData..., hasLevelData, levelData?] }
      */
-    private static BsonDocument createFluidSectionBson(HytaleChunk.HytaleSection section) {
+    private static BsonDocument createFluidSectionBson(HytaleSection section) {
         BsonDocument doc = new BsonDocument();
         
         List<String> fluidPalette = section.getFluidPalette();

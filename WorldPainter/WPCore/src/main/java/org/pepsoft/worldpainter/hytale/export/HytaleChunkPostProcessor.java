@@ -4,6 +4,7 @@ import org.pepsoft.worldpainter.Dimension;
 import org.pepsoft.worldpainter.Tile;
 import org.pepsoft.worldpainter.hytale.*;
 import org.pepsoft.worldpainter.hytale.chunk.HytaleChunk;
+import org.pepsoft.worldpainter.hytale.chunk.HytaleSection;
 import org.pepsoft.worldpainter.layers.FloodWithLava;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -77,7 +78,7 @@ class HytaleChunkPostProcessor {
                         if (block != null && !block.isEmpty()) {
                             continue;
                         }
-                        HytaleChunk.HytaleSection section = chunk.getSections()[y >> 5];
+                        HytaleSection section = chunk.getSections()[y >> 5];
                         if (section.getFluidId(localX, y & 31, localZ) == 0) {
                             chunk.setHytaleBlock(localX, y, localZ, HytaleBlock.EMPTY);
                             section.setFluid(localX, y & 31, localZ, fluidId, 1);
@@ -208,7 +209,7 @@ class HytaleChunkPostProcessor {
                             chunk.setHytaleBlock(localX, y, localZ, HytaleBlock.EMPTY);
                             cleared++;
                         }
-                        HytaleChunk.HytaleSection section = chunk.getSections()[y >> 5];
+                        HytaleSection section = chunk.getSections()[y >> 5];
                         int localY = y & 31;
                         if (section.getFluidId(localX, localY, localZ) > 0) {
                             section.clearFluid(localX, localY, localZ);

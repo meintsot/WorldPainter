@@ -1,6 +1,7 @@
 package org.pepsoft.worldpainter.hytale;
 
 import org.pepsoft.worldpainter.hytale.chunk.HytaleChunk;
+import org.pepsoft.worldpainter.hytale.chunk.HytaleSection;
 import org.pepsoft.worldpainter.hytale.chunk.HytaleChunkStore;
 import org.pepsoft.worldpainter.hytale.chunk.HytaleRegionFile;
 import org.pepsoft.worldpainter.hytale.chunk.HytaleBsonChunkSerializer;
@@ -183,7 +184,7 @@ public class HytaleChunkTest {
     @Test
     public void testMissingWaterSourceLevelDefaultsToOne() {
         HytaleChunk chunk = new HytaleChunk(0, 0, 0, 320);
-        HytaleChunk.HytaleSection section = chunk.getSections()[0];
+        HytaleSection section = chunk.getSections()[0];
 
         section.setFluid(0, 0, 0, HytaleBlockMapping.HY_WATER, 1);
         section.getFluidLevels()[0] = 0;
@@ -196,7 +197,7 @@ public class HytaleChunkTest {
     @Test
     public void testMissingFlowingWaterLevelDefaultsToEight() {
         HytaleChunk chunk = new HytaleChunk(0, 0, 0, 320);
-        HytaleChunk.HytaleSection section = chunk.getSections()[0];
+        HytaleSection section = chunk.getSections()[0];
 
         section.setFluid(1, 0, 0, "Water", 8);
         section.getFluidLevels()[1] = 0;

@@ -3,6 +3,7 @@ package org.pepsoft.worldpainter.hytale.export;
 import org.pepsoft.worldpainter.hytale.*;
 
 import org.pepsoft.worldpainter.hytale.chunk.HytaleChunk;
+import org.pepsoft.worldpainter.hytale.chunk.HytaleSection;
 import org.pepsoft.worldpainter.hytale.chunk.HytaleChunkStore;
 import org.pepsoft.worldpainter.hytale.chunk.HytaleRegionFile;
 import org.pepsoft.worldpainter.hytale.prefab.HytalePrefabPaster;
@@ -1971,11 +1972,11 @@ public class HytaleWorldExporter implements WorldExporter {
     private void prepareLightingMaterialViews(Collection<HytaleChunk> chunks) {
         HytaleBlockRegistry registry = HytaleBlockRegistry.getInstance();
         for (HytaleChunk chunk : chunks) {
-            for (HytaleChunk.HytaleSection section : chunk.getSections()) {
+            for (HytaleSection section : chunk.getSections()) {
                 section.resetMaterialView();
             }
             for (int y = chunk.getMinHeight(); y < chunk.getMaxHeight(); y++) {
-                HytaleChunk.HytaleSection section = chunk.getSections()[y >> 5];
+                HytaleSection section = chunk.getSections()[y >> 5];
                 int localY = y & 31;
                 for (int z = 0; z < HytaleChunk.CHUNK_SIZE; z++) {
                     for (int x = 0; x < HytaleChunk.CHUNK_SIZE; x++) {
@@ -2132,7 +2133,7 @@ public class HytaleWorldExporter implements WorldExporter {
                 return material;
             }
 
-            HytaleChunk.HytaleSection section = location.chunk.getSections()[height >> 5];
+            HytaleSection section = location.chunk.getSections()[height >> 5];
             int localY = height & 31;
             int fluidId = section.getFluidId(location.localX, localY, location.localZ);
             if (fluidId > 0) {
@@ -2174,7 +2175,7 @@ public class HytaleWorldExporter implements WorldExporter {
             if (location == null) {
                 return;
             }
-            HytaleChunk.HytaleSection section = location.chunk.getSections()[height >> 5];
+            HytaleSection section = location.chunk.getSections()[height >> 5];
             int localY = height & 31;
 
             if ((material == null) || (material == Material.AIR)) {

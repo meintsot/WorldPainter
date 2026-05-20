@@ -561,7 +561,7 @@ public class HytaleRegionFile implements Closeable {
         if (!chunkColDoc.containsKey("Sections")) return;
         BsonArray sections = chunkColDoc.getArray("Sections");
         
-        HytaleChunk.HytaleSection[] chunkSections = chunk.getSections();
+        HytaleSection[] chunkSections = chunk.getSections();
         int sectionCount = Math.min(sections.size(), chunkSections.length);
         
         for (int i = 0; i < sectionCount; i++) {
@@ -593,7 +593,7 @@ public class HytaleRegionFile implements Closeable {
     /**
      * Read a Block section from BSON: palette + block indices + rotations.
      */
-    private void readBlockSection(BsonDocument blockDoc, HytaleChunk.HytaleSection section, int sectionBaseY) {
+    private void readBlockSection(BsonDocument blockDoc, HytaleSection section, int sectionBaseY) {
         if (!blockDoc.containsKey("Data")) return;
         
         // Check if there's a version field
@@ -741,7 +741,7 @@ public class HytaleRegionFile implements Closeable {
      * Read rotation section from the buffer.
      * Rotation palette uses byte keys (ByteBuf::writeByte/readUnsignedByte).
      */
-    private void readRotationSection(ByteBuf buf, HytaleChunk.HytaleSection section) {
+    private void readRotationSection(ByteBuf buf, HytaleSection section) {
         if (buf.readableBytes() < 1) return;
         int rotType = buf.readByte() & 0xFF;
         if (rotType == PALETTE_TYPE_EMPTY) return;
@@ -816,7 +816,7 @@ public class HytaleRegionFile implements Closeable {
         readSectionLightData(buf, null);
     }
 
-    private void readSectionLightData(ByteBuf buf, HytaleChunk.HytaleSection section) {
+    private void readSectionLightData(ByteBuf buf, HytaleSection section) {
         ByteBuf localLight = null;
         ByteBuf globalLight = null;
         try {
@@ -967,7 +967,7 @@ public class HytaleRegionFile implements Closeable {
     /**
      * Read Fluid section from BSON.
      */
-    private void readFluidSection(BsonDocument fluidDoc, HytaleChunk.HytaleSection section) {
+    private void readFluidSection(BsonDocument fluidDoc, HytaleSection section) {
         if (!fluidDoc.containsKey("Data")) return;
         byte[] rawData = fluidDoc.getBinary("Data").getData();
         ByteBuf buf = Unpooled.wrappedBuffer(rawData);

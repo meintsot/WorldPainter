@@ -1,6 +1,7 @@
 package org.pepsoft.worldpainter.hytale;
 
 import org.pepsoft.worldpainter.hytale.chunk.HytaleChunk;
+import org.pepsoft.worldpainter.hytale.chunk.HytaleSection;
 import org.pepsoft.worldpainter.hytale.chunk.HytaleChunkStore;
 import org.pepsoft.worldpainter.hytale.chunk.HytaleRegionFile;
 
@@ -130,7 +131,7 @@ public class HytaleImportPipelineTest {
                 // Check if any blocks exist
                 boolean hasBlocks = false;
                 for (int sy = 0; sy < hc.getSectionCount(); sy++) {
-                    HytaleChunk.HytaleSection sec = hc.getSections()[sy];
+                    HytaleSection sec = hc.getSections()[sy];
                     if (sec != null) {
                         for (HytaleBlock b : sec.getHytaleBlocks()) {
                             if (b != null && !b.isEmpty()) {
