@@ -47,6 +47,9 @@ public final class CombinedLayerPaint extends NibbleLayerPaint {
             if (dither) {
                 for (int y = y1InTile; y <= y2InTile; y++) {
                     for (int x = x1InTile; x <= x2InTile; x++) {
+                        if (! canPaint(dimension, tileXInWorld + x, tileYInWorld + y)) {
+                            continue;
+                        }
                         final float strength = dynamicLevel * getStrength(centreX, centreY, tileXInWorld + x, tileYInWorld + y);
                         if (strength != 0f) {
                             if (terrainConfigured && ((strength > 0.95f) || (Math.random() < strength))) {
@@ -61,6 +64,9 @@ public final class CombinedLayerPaint extends NibbleLayerPaint {
             } else {
                 for (int y = y1InTile; y <= y2InTile; y++) {
                     for (int x = x1InTile; x <= x2InTile; x++) {
+                        if (! canPaint(dimension, tileXInWorld + x, tileYInWorld + y)) {
+                            continue;
+                        }
                         if (dynamicLevel * getFullStrength(centreX, centreY, tileXInWorld + x, tileYInWorld + y) > 0.75f) {
                             if (terrainConfigured) {
                                 tile.setTerrain(x, y, terrain);
@@ -77,6 +83,9 @@ public final class CombinedLayerPaint extends NibbleLayerPaint {
             if (dither) {
                 for (int y = y1; y <= y2; y++) {
                     for (int x = x1; x <= x2; x++) {
+                        if (! canPaint(dimension, x, y)) {
+                            continue;
+                        }
                         final float strength = dynamicLevel * getStrength(centreX, centreY, x, y);
                         if (strength != 0f) {
                             if (terrainConfigured && ((strength > 0.95f) || (Math.random() < strength))) {
@@ -91,6 +100,9 @@ public final class CombinedLayerPaint extends NibbleLayerPaint {
             } else {
                 for (int y = y1; y <= y2; y++) {
                     for (int x = x1; x <= x2; x++) {
+                        if (! canPaint(dimension, x, y)) {
+                            continue;
+                        }
                         if (dynamicLevel * getFullStrength(centreX, centreY, x, y) > 0.75f) {
                             if (terrainConfigured) {
                                 dimension.setTerrainAt(x, y, terrain);
@@ -131,6 +143,9 @@ public final class CombinedLayerPaint extends NibbleLayerPaint {
             if (dither) {
                 for (int y = y1InTile; y <= y2InTile; y++) {
                     for (int x = x1InTile; x <= x2InTile; x++) {
+                        if (! canPaint(dimension, tileXInWorld + x, tileYInWorld + y)) {
+                            continue;
+                        }
                         final float strength = dynamicLevel * getFullStrength(centreX, centreY, tileXInWorld + x, tileYInWorld + y);
                         if ((strength != 0f) && ((strength > 0.95f) || (Math.random() < strength))) {
                             tile.setLayerValue(Biome.INSTANCE, x, y, 255);
@@ -140,6 +155,9 @@ public final class CombinedLayerPaint extends NibbleLayerPaint {
             } else {
                 for (int y = y1InTile; y <= y2InTile; y++) {
                     for (int x = x1InTile; x <= x2InTile; x++) {
+                        if (! canPaint(dimension, tileXInWorld + x, tileYInWorld + y)) {
+                            continue;
+                        }
                         if (dynamicLevel * getFullStrength(centreX, centreY, tileXInWorld + x, tileYInWorld + y) > 0.75f) {
                             tile.setLayerValue(Biome.INSTANCE, x, y, 255);
                         }
@@ -151,6 +169,9 @@ public final class CombinedLayerPaint extends NibbleLayerPaint {
             if (dither) {
                 for (int y = y1; y <= y2; y++) {
                     for (int x = x1; x <= x2; x++) {
+                        if (! canPaint(dimension, x, y)) {
+                            continue;
+                        }
                         final float strength = dynamicLevel * getFullStrength(centreX, centreY, x, y);
                         if (strength != 0f) {
                             if (terrainConfigured && ((strength > 0.95f) || (Math.random() < strength))) {
@@ -165,6 +186,9 @@ public final class CombinedLayerPaint extends NibbleLayerPaint {
             } else {
                 for (int y = y1; y <= y2; y++) {
                     for (int x = x1; x <= x2; x++) {
+                        if (! canPaint(dimension, x, y)) {
+                            continue;
+                        }
                         if (dynamicLevel * getFullStrength(centreX, centreY, x, y) > 0.75f) {
                             if (terrainConfigured) {
                                 dimension.applyTheme(x, y);
@@ -182,6 +206,9 @@ public final class CombinedLayerPaint extends NibbleLayerPaint {
     @Override
     public void applyPixel(Dimension dimension, int x, int y) {
         super.applyPixel(dimension, x, y);;
+        if (! canPaint(dimension, x, y)) {
+            return;
+        }
         final CombinedLayer combinedLayer = (CombinedLayer) layer;
         final Terrain terrain = combinedLayer.getTerrain();
         final int biome = combinedLayer.getBiome();
@@ -204,6 +231,9 @@ public final class CombinedLayerPaint extends NibbleLayerPaint {
     @Override
     public void removePixel(Dimension dimension, int x, int y) {
         super.removePixel(dimension, x, y);
+        if (! canPaint(dimension, x, y)) {
+            return;
+        }
         final CombinedLayer combinedLayer = (CombinedLayer) layer;
         final boolean terrainConfigured = combinedLayer.getTerrain() != null;
         final boolean biomeConfigured = combinedLayer.getBiome() != -1;

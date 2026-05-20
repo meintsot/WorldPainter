@@ -64,6 +64,9 @@ public class NibbleLayerPaint extends LayerPaint {
             final int tileXInWorld = tileX1 << TILE_SIZE_BITS, tileYInWorld = tileY1 << TILE_SIZE_BITS;
             for (int y = y1InTile; y <= y2InTile; y++) {
                 for (int x = x1InTile; x <= x2InTile; x++) {
+                    if (! canPaint(dimension, tileXInWorld + x, tileYInWorld + y)) {
+                        continue;
+                    }
                     final int currentValue = tile.getLayerValue(layer, x, y);
                     final float strength = dynamicLevel * getStrength(centreX, centreY, tileXInWorld + x, tileYInWorld + y);
                     if (strength != 0f) {
@@ -78,6 +81,9 @@ public class NibbleLayerPaint extends LayerPaint {
             // The bounding box of the brush straddles more than one tile; paint to the dimension
             for (int y = y1; y <= y2; y++) {
                 for (int x = x1; x <= x2; x++) {
+                    if (! canPaint(dimension, x, y)) {
+                        continue;
+                    }
                     final int currentValue = dimension.getLayerValueAt(layer, x, y);
                     final float strength = dynamicLevel * getStrength(centreX, centreY, x, y);
                     if (strength != 0f) {
@@ -112,6 +118,9 @@ public class NibbleLayerPaint extends LayerPaint {
             final int tileXInWorld = tileX1 << TILE_SIZE_BITS, tileYInWorld = tileY1 << TILE_SIZE_BITS;
             for (int y = y1InTile; y <= y2InTile; y++) {
                 for (int x = x1InTile; x <= x2InTile; x++) {
+                    if (! canPaint(dimension, tileXInWorld + x, tileYInWorld + y)) {
+                        continue;
+                    }
                     final int currentValue = tile.getLayerValue(layer, x, y);
                     final float strength = dynamicLevel * getFullStrength(centreX, centreY, tileXInWorld + x, tileYInWorld + y);
                     if (strength != 0f) {
@@ -126,6 +135,9 @@ public class NibbleLayerPaint extends LayerPaint {
             // The bounding box of the brush straddles more than one tile; paint to the dimension
             for (int y = y1; y <= y2; y++) {
                 for (int x = x1; x <= x2; x++) {
+                    if (! canPaint(dimension, x, y)) {
+                        continue;
+                    }
                     final int currentValue = dimension.getLayerValueAt(layer, x, y);
                     final float strength = dynamicLevel * getFullStrength(centreX, centreY, x, y);
                     if (strength != 0f) {
@@ -141,6 +153,9 @@ public class NibbleLayerPaint extends LayerPaint {
 
     @Override
     public void applyPixel(Dimension dimension, int x, int y) {
+        if (! canPaint(dimension, x, y)) {
+            return;
+        }
         final Tile tile = dimension.getTileForEditing(x >> TILE_SIZE_BITS, y >> TILE_SIZE_BITS);
         if (tile != null) {
             final int xInTile = x & TILE_SIZE_MASK, yInTile = y & TILE_SIZE_MASK;
@@ -153,6 +168,9 @@ public class NibbleLayerPaint extends LayerPaint {
 
     @Override
     public void removePixel(Dimension dimension, int x, int y) {
+        if (! canPaint(dimension, x, y)) {
+            return;
+        }
         dimension.setLayerValueAt(layer, x, y, 0);
     }
 

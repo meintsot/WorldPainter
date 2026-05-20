@@ -18,7 +18,9 @@
 
 package org.pepsoft.worldpainter.painting;
 
+import org.pepsoft.worldpainter.Dimension;
 import org.pepsoft.worldpainter.brushes.Brush;
+import org.pepsoft.worldpainter.layers.ReadOnly;
 import org.pepsoft.worldpainter.operations.Filter;
 
 /**
@@ -73,6 +75,24 @@ public abstract class AbstractPaint implements Paint {
         return filterEnabled
             ? filter.modifyStrength(x, y, brush.getFullStrength(x - centerX, y - centerY))
             : brush.getFullStrength(x - centerX, y - centerY);
+    }
+
+    /**
+     * @return {@code true} if this paint is allowed to mutate the pixel at (x, y). For most
+     * paints, this returns {@code false} when the pixel is marked with {@link ReadOnly}.
+     * Paints targeting the ReadOnly layer itself always return {@code true} so users can
+     * still toggle the marker on and off.
+     */
+    protected boolean canPaint(Dimension dimension, int x, int y) {
+        if (paintsReadOnlyLayer()) {
+            return true;
+        }
+        return ! dimension.getBitLayerValueAt(ReadOnly.INSTANCE, x, y);
+    }
+
+    /** Subclasses that paint the ReadOnly layer override to return {@code true}. */
+    protected boolean paintsReadOnlyLayer() {
+        return false;
     }
 
     protected Filter filter;

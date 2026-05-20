@@ -77,6 +77,9 @@ public final class TerrainPaint extends AbstractPaint {
             if (dither) {
                 for (int y = y1InTile; y <= y2InTile; y++) {
                     for (int x = x1InTile; x <= x2InTile; x++) {
+                        if (! canPaint(dimension, tileXInWorld + x, tileYInWorld + y)) {
+                            continue;
+                        }
                         final float strength = dynamicLevel * getStrength(centreX, centreY, tileXInWorld + x, tileYInWorld + y);
                         if ((strength > 0.95f) || (Math.random() < strength)) {
                             tile.setTerrain(x, y, terrain);
@@ -89,6 +92,9 @@ public final class TerrainPaint extends AbstractPaint {
             } else {
                 for (int y = y1InTile; y <= y2InTile; y++) {
                     for (int x = x1InTile; x <= x2InTile; x++) {
+                        if (! canPaint(dimension, tileXInWorld + x, tileYInWorld + y)) {
+                            continue;
+                        }
                         final float strength = dynamicLevel * getFullStrength(centreX, centreY, tileXInWorld + x, tileYInWorld + y);
                         if (strength > 0.75f) {
                             tile.setTerrain(x, y, terrain);
@@ -104,6 +110,9 @@ public final class TerrainPaint extends AbstractPaint {
             if (dither) {
                 for (int y = y1; y <= y2; y++) {
                     for (int x = x1; x <= x2; x++) {
+                        if (! canPaint(dimension, x, y)) {
+                            continue;
+                        }
                         final float strength = dynamicLevel * getStrength(centreX, centreY, x, y);
                         if ((strength > 0.95f) || (Math.random() < strength)) {
                             dimension.setTerrainAt(x, y, terrain);
@@ -117,6 +126,9 @@ public final class TerrainPaint extends AbstractPaint {
             } else {
                 for (int y = y1; y <= y2; y++) {
                     for (int x = x1; x <= x2; x++) {
+                        if (! canPaint(dimension, x, y)) {
+                            continue;
+                        }
                         final float strength = dynamicLevel * getFullStrength(centreX, centreY, x, y);
                         if (strength > 0.75f) {
                             dimension.setTerrainAt(x, y, terrain);
@@ -145,6 +157,9 @@ public final class TerrainPaint extends AbstractPaint {
         if (dither) {
             for (int y = y1; y <= y2; y++) {
                 for (int x = x1; x <= x2; x++) {
+                    if (! canPaint(dimension, x, y)) {
+                        continue;
+                    }
                     final float strength = dynamicLevel * getFullStrength(centreX, centreY, x, y);
                     if ((strength > 0.95f) || (Math.random() < strength)) {
                         dimension.applyTheme(x, y);
@@ -154,6 +169,9 @@ public final class TerrainPaint extends AbstractPaint {
         } else {
             for (int y = y1; y <= y2; y++) {
                 for (int x = x1; x <= x2; x++) {
+                    if (! canPaint(dimension, x, y)) {
+                        continue;
+                    }
                     final float strength = dynamicLevel * getFullStrength(centreX, centreY, x, y);
                     if (strength > 0.75f) {
                         dimension.applyTheme(x, y);
@@ -165,6 +183,9 @@ public final class TerrainPaint extends AbstractPaint {
 
     @Override
     public void applyPixel(Dimension dimension, int x, int y) {
+        if (! canPaint(dimension, x, y)) {
+            return;
+        }
         dimension.setTerrainAt(x, y, terrain);
         if (clearHytaleSubstrate) {
             dimension.setLayerValueAt(HytaleTerrainLayer.LO, x, y, 0);
@@ -174,6 +195,9 @@ public final class TerrainPaint extends AbstractPaint {
 
     @Override
     public void removePixel(Dimension dimension, int x, int y) {
+        if (! canPaint(dimension, x, y)) {
+            return;
+        }
         dimension.applyTheme(x, y);
     }
 

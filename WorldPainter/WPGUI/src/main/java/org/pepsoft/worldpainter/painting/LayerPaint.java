@@ -20,6 +20,7 @@ package org.pepsoft.worldpainter.painting;
 
 import org.pepsoft.worldpainter.ColourScheme;
 import org.pepsoft.worldpainter.layers.Layer;
+import org.pepsoft.worldpainter.layers.ReadOnly;
 
 import java.awt.image.BufferedImage;
 
@@ -45,6 +46,11 @@ public abstract class LayerPaint extends AbstractPaint {
     @Override
     public final BufferedImage getIcon(ColourScheme colourScheme) {
         return layer.getIcon();
+    }
+
+    @Override
+    protected final boolean paintsReadOnlyLayer() {
+        return layer == ReadOnly.INSTANCE;
     }
 
     protected final Layer layer;
