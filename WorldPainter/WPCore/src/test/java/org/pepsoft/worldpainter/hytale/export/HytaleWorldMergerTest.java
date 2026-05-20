@@ -10,6 +10,7 @@ import org.pepsoft.worldpainter.TileFactory;
 import org.pepsoft.worldpainter.TileFactoryFactory;
 import org.pepsoft.worldpainter.World2;
 import org.pepsoft.worldpainter.exporting.WorldExportSettings;
+import org.pepsoft.worldpainter.hytale.HytaleBlock;
 import org.pepsoft.worldpainter.hytale.HytaleTerrain;
 import org.pepsoft.worldpainter.hytale.HytaleTerrainLayer;
 import org.pepsoft.worldpainter.hytale.chunk.HytaleChunk;
@@ -161,6 +162,168 @@ public class HytaleWorldMergerTest {
         }
     }
 
+    // ── Phase 2 (per-block merge decisions) ──────────────────────────────────────────
+
+    @Test
+    public void mergeBlocksUndergroundFalseReplacesOriginalSubstrate() throws Exception {
+        File mapDir = createExportedHytaleMap("merge_under_false");
+        // Inject a uniquely identifiable block deep underground in the to-be-backup chunk.
+        injectIntoOriginal(mapDir, 0, 0, chunk -> {
+            chunk.setHytaleBlock(0, 20, 0, HytaleBlock.of("Cloth_Wool")); // man-made → distinct
+        });
+
+        HytaleWorldMerger merger = newMerger(mapDir);
+        merger.setMergeBlocksUnderground(false);
+        merger.setSurfaceMergeDepth(1);
+        merger.merge(new File(tempDir.getRoot(), "merge_under_false_bkp"), null);
+
+        try (HytaleChunkStore store = new HytaleChunkStore(innerWorld(mapDir), 0, 320)) {
+            HytaleChunk freshChunk = (HytaleChunk) store.getChunk(0, 0);
+            assertNotNull("Fresh chunk (0,0) must exist", freshChunk);
+            assertNotEquals("With mergeBlocksUnderground=false, original Cloth_Wool at y=20 must NOT survive",
+                    "Cloth_Wool", idOrEmpty(freshChunk.getHytaleBlock(0, 20, 0)));
+            // TalePainter's stone substrate should be present instead
+            assertEquals("Surface block at terrainHeight must remain TalePainter's stone",
+                    HytaleTerrain.STONE.getPrimaryBlock().id, freshChunk.getHytaleBlock(0, 64, 0).id);
+        }
+    }
+
+    @Test
+    public void mergeBlocksUndergroundTrueKeepsOriginalSubstrate() throws Exception {
+        File mapDir = createExportedHytaleMap("merge_under_true");
+        injectIntoOriginal(mapDir, 0, 0, chunk -> {
+            chunk.setHytaleBlock(0, 20, 0, HytaleBlock.of("Cloth_Wool"));
+        });
+
+        HytaleWorldMerger merger = newMerger(mapDir);
+        merger.setMergeBlocksUnderground(true);
+        merger.setMergeBlocksAboveGround(false); // isolate the underground decision
+        merger.setSurfaceMergeDepth(1);
+        merger.merge(new File(tempDir.getRoot(), "merge_under_true_bkp"), null);
+
+        try (HytaleChunkStore store = new HytaleChunkStore(innerWorld(mapDir), 0, 320)) {
+            HytaleChunk freshChunk = (HytaleChunk) store.getChunk(0, 0);
+            assertNotNull("Fresh chunk (0,0) must exist", freshChunk);
+            assertEquals("With mergeBlocksUnderground=true, original Cloth_Wool at y=20 must survive",
+                    "Cloth_Wool", idOrEmpty(freshChunk.getHytaleBlock(0, 20, 0)));
+            assertEquals("Surface band still owned by TalePainter",
+                    HytaleTerrain.STONE.getPrimaryBlock().id, freshChunk.getHytaleBlock(0, 64, 0).id);
+        }
+    }
+
+    @Test
+    public void surfaceMergeDepthControlsBlendDepth() throws Exception {
+        File mapDir = createExportedHytaleMap("merge_depth");
+        // Put a beacon block at y=63 (just under terrainHeight=64) and another at y=59
+        // (deeper than the surface band at depth=4). With surfaceMergeDepth=4:
+        //   surfaceBottom = 64 - 4 + 1 = 61
+        //   y in [61..64]  = surface band (TalePainter wins, original is NOT copied)
+        //   y < 61         = underground band (mergeBlocksUnderground=true → original wins)
+        injectIntoOriginal(mapDir, 0, 0, chunk -> {
+            chunk.setHytaleBlock(0, 63, 0, HytaleBlock.of("Cloth_Wool")); // in surface band
+            chunk.setHytaleBlock(0, 59, 0, HytaleBlock.of("Cloth_Wool")); // below surface band
+        });
+
+        HytaleWorldMerger merger = newMerger(mapDir);
+        merger.setMergeBlocksAboveGround(false);
+        merger.setMergeBlocksUnderground(true);
+        merger.setSurfaceMergeDepth(4);
+        merger.merge(new File(tempDir.getRoot(), "merge_depth_bkp"), null);
+
+        try (HytaleChunkStore store = new HytaleChunkStore(innerWorld(mapDir), 0, 320)) {
+            HytaleChunk freshChunk = (HytaleChunk) store.getChunk(0, 0);
+            assertNotNull(freshChunk);
+            assertNotEquals("Original block at y=63 sits inside the surface band → REPLACED by TalePainter",
+                    "Cloth_Wool", idOrEmpty(freshChunk.getHytaleBlock(0, 63, 0)));
+            assertEquals("Original block at y=59 sits below the surface band → PRESERVED",
+                    "Cloth_Wool", idOrEmpty(freshChunk.getHytaleBlock(0, 59, 0)));
+        }
+    }
+
+    @Test
+    public void mergeBlocksAboveGroundTrueKeepsOriginalSkyBlocks() throws Exception {
+        File mapDir = createExportedHytaleMap("merge_above_true");
+        // terrainHeight=64; place a block at y=70 (above-ground) in the original.
+        injectIntoOriginal(mapDir, 0, 0, chunk -> {
+            chunk.setHytaleBlock(0, 70, 0, HytaleBlock.of("Cloth_Wool"));
+        });
+
+        HytaleWorldMerger merger = newMerger(mapDir);
+        merger.setMergeBlocksAboveGround(true);
+        // No clear-man-made-above-ground (false by default) so Cloth_Wool survives.
+        merger.merge(new File(tempDir.getRoot(), "merge_above_true_bkp"), null);
+
+        try (HytaleChunkStore store = new HytaleChunkStore(innerWorld(mapDir), 0, 320)) {
+            HytaleChunk freshChunk = (HytaleChunk) store.getChunk(0, 0);
+            assertNotNull(freshChunk);
+            assertEquals("With mergeBlocksAboveGround=true, original above-ground block must survive",
+                    "Cloth_Wool", idOrEmpty(freshChunk.getHytaleBlock(0, 70, 0)));
+        }
+    }
+
+    @Test
+    public void replaceChunksTrueIgnoresAllMergeOptions() throws Exception {
+        File mapDir = createExportedHytaleMap("replace_chunks");
+        // Inject blocks in all bands. With replaceChunks=true, none should appear.
+        injectIntoOriginal(mapDir, 0, 0, chunk -> {
+            chunk.setHytaleBlock(0, 20, 0, HytaleBlock.of("Cloth_Wool")); // underground
+            chunk.setHytaleBlock(0, 70, 0, HytaleBlock.of("Cloth_Wool")); // above-ground
+            chunk.setBiomeName(0, 0, "TundraSnowy");
+        });
+
+        HytaleWorldMerger merger = newMerger(mapDir);
+        merger.setReplaceChunks(true);
+        // All flags ON would normally apply — replaceChunks must short-circuit them.
+        merger.setMergeBlocksAboveGround(true);
+        merger.setMergeBlocksUnderground(true);
+        merger.setMergeBiomes(true);
+        merger.merge(new File(tempDir.getRoot(), "replace_chunks_bkp"), null);
+
+        try (HytaleChunkStore store = new HytaleChunkStore(innerWorld(mapDir), 0, 320)) {
+            HytaleChunk freshChunk = (HytaleChunk) store.getChunk(0, 0);
+            assertNotNull(freshChunk);
+            assertNotEquals("replaceChunks=true must drop original underground block",
+                    "Cloth_Wool", idOrEmpty(freshChunk.getHytaleBlock(0, 20, 0)));
+            assertNotEquals("replaceChunks=true must drop original above-ground block",
+                    "Cloth_Wool", idOrEmpty(freshChunk.getHytaleBlock(0, 70, 0)));
+            assertNotEquals("replaceChunks=true must drop original biome",
+                    "TundraSnowy", freshChunk.getBiomeName(0, 0));
+        }
+    }
+
+    /**
+     * The Hytale BSON format does not currently round-trip per-column biomes (only environments
+     * are persisted; see HytaleBsonChunkSerializer/Deserializer). To exercise the biome-merge
+     * decision without depending on that round-trip we drive the {@code applyMergeOverrides}
+     * hook directly against an in-memory original-chunk store. Same-package access lets us
+     * set the protected {@code originalChunkStore} field and invoke the protected method.
+     */
+    @Test
+    public void mergeBiomesPreservesOriginalBiomeWhenSet() throws Exception {
+        File mapDir = createExportedHytaleMap("merge_biomes");
+        HytaleWorldMerger merger = newMerger(mapDir);
+        merger.setMergeBiomes(true);
+
+        // Build an in-memory "backup" chunk whose biome at (0,0) is TundraSnowy.
+        HytaleChunk originalChunk = new HytaleChunk(0, 0, 0, 320);
+        originalChunk.setBiomeName(0, 0, "TundraSnowy");
+
+        // Wire a stub chunk store that returns the prepared chunk for (0,0).
+        merger.originalChunkStore = new InMemoryHytaleChunkStore(innerWorld(mapDir), 0, 320, originalChunk);
+
+        // Build a fresh "new" chunk (TalePainter-generated; biome stays default "Grassland").
+        HytaleChunk newChunk = new HytaleChunk(0, 0, 0, 320);
+        Tile tile = freshFlatTile(64);
+
+        merger.applyMergeOverrides(newChunk, 0, 0, tile);
+
+        assertEquals("Original biome must be preserved when TalePainter left the column at default",
+                "TundraSnowy", newChunk.getBiomeName(0, 0));
+        // And a neighbouring column where the original is still default must remain default.
+        assertEquals("Untouched columns keep TalePainter's default biome",
+                "Grassland", newChunk.getBiomeName(1, 0));
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────────────
 
     /**
@@ -230,5 +393,77 @@ public class HytaleWorldMergerTest {
         dim.setEventsInhibited(false);
         world.addDimension(dim);
         return world;
+    }
+
+    /** Resolve {@code mapDir/universe/worlds/default} — the inner world dir HytaleChunkStore expects. */
+    private static File innerWorld(File mapDir) {
+        return new File(new File(new File(mapDir, "universe"), "worlds"), "default");
+    }
+
+    /** Build a merger over a freshly-exported map with the same importedFrom world setup. */
+    private HytaleWorldMerger newMerger(File mapDir) {
+        World2 world = buildImportedWorld(mapDir);
+        return new HytaleWorldMerger(world, new WorldExportSettings(), mapDir, HYTALE);
+    }
+
+    /**
+     * Edit a chunk in the freshly-exported save (which will become the backup once the
+     * merger renames it). Used to seed "original" state — extra blocks, biomes, etc.
+     */
+    private void injectIntoOriginal(File mapDir, int chunkX, int chunkZ, ChunkMutator mutator) throws Exception {
+        try (HytaleChunkStore store = new HytaleChunkStore(innerWorld(mapDir), 0, 320)) {
+            HytaleChunk chunk = (HytaleChunk) store.getChunk(chunkX, chunkZ);
+            assertNotNull("Pre-merge: original chunk (" + chunkX + "," + chunkZ + ") must exist", chunk);
+            mutator.mutate(chunk);
+            store.saveChunk(chunk);
+            store.flush();
+        }
+    }
+
+    @FunctionalInterface
+    private interface ChunkMutator {
+        void mutate(HytaleChunk chunk) throws Exception;
+    }
+
+    /** Null-safe block id lookup — sections may return null for unset positions. */
+    private static String idOrEmpty(HytaleBlock block) {
+        return (block == null) ? "Empty" : block.id;
+    }
+
+    /** Build a tile suitable for direct applyMergeOverrides() tests: every column at the given height. */
+    private Tile freshFlatTile(int terrainHeight) {
+        long seed = 1L;
+        TileFactory tileFactory = TileFactoryFactory.createFlatTileFactory(
+                seed, Terrain.STONE, 0, 320, terrainHeight, terrainHeight - 2, false, false);
+        Tile tile = tileFactory.createTile(0, 0);
+        for (int x = 0; x < 128; x++) {
+            for (int z = 0; z < 128; z++) {
+                tile.setHeight(x, z, terrainHeight);
+                tile.setTerrain(x, z, Terrain.STONE);
+            }
+        }
+        return tile;
+    }
+
+    /**
+     * Lightweight in-memory chunk store that returns a single prepared chunk from
+     * {@code getChunk(0, 0)} and ignores everything else. Used for biome-merge unit tests
+     * because the BSON serializer does not currently persist per-column biome names.
+     */
+    private static final class InMemoryHytaleChunkStore extends HytaleChunkStore {
+        private final HytaleChunk fixedChunk;
+
+        InMemoryHytaleChunkStore(File worldDir, int minHeight, int maxHeight, HytaleChunk fixedChunk) {
+            super(worldDir, minHeight, maxHeight);
+            this.fixedChunk = fixedChunk;
+        }
+
+        @Override
+        public org.pepsoft.minecraft.Chunk getChunk(int x, int z) {
+            if (x == fixedChunk.getxPos() && z == fixedChunk.getzPos()) {
+                return fixedChunk;
+            }
+            return null;
+        }
     }
 }

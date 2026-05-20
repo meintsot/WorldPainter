@@ -600,6 +600,14 @@ public class HytaleWorldExporter implements WorldExporter {
                     // imported world so that re-exporting preserves all original data
                     mergeOriginalChunkData(chunk, originalBlockX, originalBlockZ);
 
+                    // Subclass hook (HytaleWorldMerger): apply per-block merge overrides
+                    // (replaceChunks / mergeBlocksAboveGround / mergeBlocksUnderground /
+                    // surfaceMergeDepth / mergeBiomes / clearTrees / clearVegetation /
+                    // clearManMadeAboveGround / clearManMadeBelowGround) using
+                    // originalChunkStore. Default impl is a no-op so plain exports are
+                    // unaffected.
+                    applyMergeOverrides(chunk, originalBlockX, originalBlockZ, tile);
+
                     chunksByCoords.put(chunkKey(hyChunkX, hyChunkZ), chunk);
                     
                     chunksExported++;
@@ -822,6 +830,25 @@ public class HytaleWorldExporter implements WorldExporter {
         for (HytaleChunk.PrefabMarker pm : originalChunk.getPrefabMarkers()) {
             newChunk.addPrefabMarker(pm.x, pm.y, pm.z, pm.category, pm.prefabPath);
         }
+    }
+
+    /**
+     * Subclass extension point invoked once per regenerated chunk, AFTER
+     * {@link #populateChunkFromTile} and {@link #mergeOriginalChunkData} have run.
+     * Default implementation is a no-op so plain exports are unaffected.
+     *
+     * <p>{@link HytaleWorldMerger} overrides this to apply per-block merge decisions
+     * (above-ground / underground / surface depth / biome / clear-trees / clear-vegetation
+     * / clear-man-made-above-ground / clear-man-made-below-ground) using the
+     * {@link #originalChunkStore}.
+     *
+     * @param chunk          The freshly populated Hytale chunk (modifiable).
+     * @param worldBlockX    Original (pre-centering) world block X of the chunk's NW corner.
+     * @param worldBlockZ    Original (pre-centering) world block Z of the chunk's NW corner.
+     * @param tile           The TalePainter tile that covers this chunk.
+     */
+    protected void applyMergeOverrides(HytaleChunk chunk, int worldBlockX, int worldBlockZ, Tile tile) {
+        // Default: no-op. Plain exports never override TalePainter-generated blocks.
     }
 
     private boolean hasCustomObjectLayers(Dimension dimension) {

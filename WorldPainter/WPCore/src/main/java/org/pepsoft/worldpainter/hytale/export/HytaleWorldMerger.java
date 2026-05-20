@@ -6,8 +6,12 @@ import org.pepsoft.util.ProgressReceiver;
 import org.pepsoft.util.mdc.MDCCapturingRuntimeException;
 import org.pepsoft.worldpainter.Dimension;
 import org.pepsoft.worldpainter.Platform;
+import org.pepsoft.worldpainter.Tile;
 import org.pepsoft.worldpainter.World2;
 import org.pepsoft.worldpainter.exporting.WorldExportSettings;
+import org.pepsoft.worldpainter.hytale.HytaleBlock;
+import org.pepsoft.worldpainter.hytale.HytaleBlockRegistry;
+import org.pepsoft.worldpainter.hytale.chunk.HytaleChunk;
 import org.pepsoft.worldpainter.hytale.chunk.HytaleChunkStore;
 import org.pepsoft.worldpainter.merging.InvalidMapException;
 import org.pepsoft.worldpainter.util.FileInUseException;
@@ -351,5 +355,209 @@ public class HytaleWorldMerger extends HytaleWorldExporter {
 
     private static File getInnerWorldDir(File saveDir) {
         return new File(new File(new File(saveDir, UNIVERSE_DIR), WORLDS_DIR), DEFAULT_WORLD);
+    }
+
+    // ── Per-chunk merge engine ────────────────────────────────────────────────────────
+
+    /**
+     * The default biome assigned to every column by {@link HytaleChunk}'s constructor.
+     * Used to decide whether TalePainter actually painted a biome at a given column or
+     * left the column at its default — only the latter case allows the original biome
+     * to be preserved when {@link #isMergeBiomes() mergeBiomes} is true.
+     */
+    private static final String DEFAULT_BIOME = "Grassland";
+
+    /**
+     * Apply per-block merge overrides on top of the chunk TalePainter just generated.
+     * Reads the matching chunk from {@link #originalChunkStore} (set up by
+     * {@link #merge(File, ProgressReceiver)} to point at the backup) and replays the
+     * decisions described in TP-59 Phase 2 per column:
+     *
+     * <ul>
+     *   <li>If {@link #isReplaceChunks() replaceChunks}: ignore the original entirely.</li>
+     *   <li>Above-ground band (y &gt; terrainHeight): if
+     *       {@link #isMergeBlocksAboveGround() mergeBlocksAboveGround}, copy non-empty
+     *       original blocks back in (skipping tree-related / vegetation / man-made blocks
+     *       per the {@code clearTrees / clearVegetation / clearManMadeAboveGround}
+     *       flags).</li>
+     *   <li>Surface band (terrainHeight - surfaceMergeDepth + 1 .. terrainHeight): always
+     *       keep TalePainter's blocks (authoritative).</li>
+     *   <li>Below-ground band (y &lt; terrainHeight - surfaceMergeDepth + 1): if
+     *       {@link #isMergeBlocksUnderground() mergeBlocksUnderground}, copy non-empty
+     *       original blocks back in (skipping man-made blocks per
+     *       {@code clearManMadeBelowGround}).</li>
+     *   <li>Biome: if {@link #isMergeBiomes() mergeBiomes} and TalePainter left the
+     *       column at the default biome, copy the original biome.</li>
+     * </ul>
+     *
+     * <p>{@link HytaleBlockRegistry} does not currently expose an {@code isNatural(...)}
+     * predicate (unlike {@code Material.natural} on the Minecraft side). The closest
+     * existing classification is {@link HytaleBlockRegistry#isSurfaceOnlyBlock(String)},
+     * which flags vegetation / leaves / decorations / saplings / corals / rubble /
+     * crops as surface-only. We treat surface-only blocks as <em>natural</em> overlay
+     * material, and use the {@link HytaleBlockRegistry.Category} of each block to
+     * decide naturalness: SOIL / SAND / CLAY / SNOW_ICE / GRAVEL / ROCK / ORE /
+     * CRYSTAL_GEM / WOOD_NATURAL / LEAVES / MOSS_BLOCKS / MOSS_VINES / FLUID and the
+     * surface-only categories are natural; everything else (WOOD_PLANKS,
+     * ROCK_CONSTRUCTION, CLOTH, HIVE, RUNIC, SPECIAL) is treated as man-made.
+     */
+    @Override
+    protected void applyMergeOverrides(HytaleChunk chunk, int worldBlockX, int worldBlockZ, Tile tile) {
+        if (replaceChunks) {
+            // Wholesale replacement — TalePainter wins for every block & biome in the chunk.
+            return;
+        }
+        if (originalChunkStore == null) {
+            // Nothing to merge against (e.g. backup had no chunks dir). Treat as replace.
+            return;
+        }
+
+        // Bail out fast if nothing the hook can do would change the chunk.
+        if (!mergeBlocksAboveGround && !mergeBlocksUnderground && !mergeBiomes) {
+            return;
+        }
+
+        // Look up the original chunk at this (pre-centering) world position. Same math
+        // as mergeOriginalChunkData(): original Hytale chunks are 32 blocks wide and
+        // worldBlockX/Z are pre-offset WorldPainter coordinates.
+        final int origChunkX = worldBlockX >> 5;
+        final int origChunkZ = worldBlockZ >> 5;
+        final HytaleChunk originalChunk;
+        try {
+            originalChunk = (HytaleChunk) originalChunkStore.getChunk(origChunkX, origChunkZ);
+        } catch (Exception e) {
+            logger.debug("Could not read original chunk at {},{} for merge overrides: {}",
+                    origChunkX, origChunkZ, e.getMessage());
+            return;
+        }
+        if (originalChunk == null) {
+            return;
+        }
+
+        final int chunkMaxHeight = chunk.getMaxHeight();
+        final int chunkMinHeight = chunk.getMinHeight();
+        final int depth = Math.max(1, surfaceMergeDepth);
+
+        for (int localX = 0; localX < HytaleChunk.CHUNK_SIZE; localX++) {
+            for (int localZ = 0; localZ < HytaleChunk.CHUNK_SIZE; localZ++) {
+                final int worldX = worldBlockX + localX;
+                final int worldZ = worldBlockZ + localZ;
+                final int tileLocalX = worldX & 0x7F;
+                final int tileLocalZ = worldZ & 0x7F;
+
+                // Honor Void columns: TalePainter left the column empty on purpose;
+                // don't reintroduce original blocks.
+                if (tile.getBitLayerValue(org.pepsoft.worldpainter.layers.Void.INSTANCE, tileLocalX, tileLocalZ)) {
+                    continue;
+                }
+
+                final int terrainHeight = tile.getIntHeight(tileLocalX, tileLocalZ);
+                // Boundary between the surface band (kept as TalePainter wrote) and
+                // the underground band: blocks at y >= surfaceBottom are surface,
+                // blocks below are underground.
+                final int surfaceBottom = terrainHeight - depth + 1;
+
+                // ── Above-ground band: y > terrainHeight ──────────────────────
+                if (mergeBlocksAboveGround) {
+                    for (int y = terrainHeight + 1; y < chunkMaxHeight; y++) {
+                        HytaleBlock orig = originalChunk.getHytaleBlock(localX, y, localZ);
+                        if (orig == null || orig.isEmpty()) {
+                            continue;
+                        }
+                        if (shouldSkipForAboveGroundClear(orig)) {
+                            continue;
+                        }
+                        chunk.setHytaleBlock(localX, y, localZ, orig);
+                    }
+                }
+
+                // ── Below-ground band: y < surfaceBottom ──────────────────────
+                if (mergeBlocksUnderground) {
+                    final int undergroundTop = Math.min(surfaceBottom - 1, chunkMaxHeight - 1);
+                    for (int y = undergroundTop; y >= chunkMinHeight; y--) {
+                        HytaleBlock orig = originalChunk.getHytaleBlock(localX, y, localZ);
+                        if (orig == null || orig.isEmpty()) {
+                            continue;
+                        }
+                        if (clearManMadeBelowGround && !isNatural(orig)) {
+                            continue;
+                        }
+                        chunk.setHytaleBlock(localX, y, localZ, orig);
+                    }
+                }
+
+                // ── Surface band (terrainHeight - depth + 1 .. terrainHeight) ──
+                // Always authoritative — keep whatever TalePainter wrote. No-op.
+
+                // ── Biome ─────────────────────────────────────────────────────
+                if (mergeBiomes) {
+                    String origBiome = originalChunk.getBiomeName(localX, localZ);
+                    String newBiome = chunk.getBiomeName(localX, localZ);
+                    if (origBiome != null && !origBiome.isEmpty()
+                            && !DEFAULT_BIOME.equals(origBiome)
+                            && (newBiome == null || DEFAULT_BIOME.equals(newBiome))) {
+                        chunk.setBiomeName(localX, localZ, origBiome);
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Returns true when an original above-ground block should be filtered out instead
+     * of being copied back into the regenerated chunk. Mirrors the AND-of-flags
+     * structure in {@link org.pepsoft.worldpainter.merging.JavaWorldMerger#processExistingChunk}:
+     * {@code clearTrees} drops leaves/logs, {@code clearVegetation} drops surface-only
+     * plants/flowers/decorations, {@code clearManMadeAboveGround} drops anything not
+     * natural.
+     */
+    private boolean shouldSkipForAboveGroundClear(HytaleBlock block) {
+        if (clearTrees && isTreeRelated(block)) {
+            return true;
+        }
+        if (clearVegetation && HytaleBlockRegistry.isSurfaceOnlyBlock(block.id)) {
+            return true;
+        }
+        if (clearManMadeAboveGround && !isNatural(block)) {
+            return true;
+        }
+        return false;
+    }
+
+    /** Tree leaves and wood-natural (logs) form the "tree" group. */
+    private static boolean isTreeRelated(HytaleBlock block) {
+        HytaleBlockRegistry.Category cat = HytaleBlockRegistry.getCategoryForBlock(block.id);
+        return cat == HytaleBlockRegistry.Category.LEAVES
+                || cat == HytaleBlockRegistry.Category.WOOD_NATURAL;
+    }
+
+    /**
+     * Classification predicate used in lieu of {@code Material.natural}. See
+     * {@link #applyMergeOverrides} for the category mapping rationale. Unknown
+     * blocks (category == null) are treated as natural — a conservative choice
+     * that avoids accidentally clearing blocks the registry hasn't indexed.
+     */
+    private static boolean isNatural(HytaleBlock block) {
+        if (block == null || block.isEmpty()) {
+            return true;
+        }
+        HytaleBlockRegistry.Category cat = HytaleBlockRegistry.getCategoryForBlock(block.id);
+        if (cat == null) {
+            return true;
+        }
+        switch (cat) {
+            // Man-made construction / fabricated:
+            case ROCK_CONSTRUCTION:
+            case WOOD_PLANKS:
+            case CLOTH:
+            case HIVE:
+            case RUNIC:
+            case SPECIAL:
+                return false;
+            // Everything else (raw rock, soil, ores, gems, natural wood, leaves,
+            // vegetation, moss, fluids, etc.) is natural.
+            default:
+                return true;
+        }
     }
 }
