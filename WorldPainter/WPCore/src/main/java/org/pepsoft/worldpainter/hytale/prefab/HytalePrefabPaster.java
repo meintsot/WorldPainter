@@ -75,39 +75,15 @@ public final class HytalePrefabPaster {
         if (data == null || data.blocks.isEmpty()) {
             return false;
         }
-
-        for (PrefabBlock block : data.blocks) {
-            int wpBX = anchorWorldX + block.x - data.anchorX;
-            int wpBZ = anchorWorldZ + block.z - data.anchorZ;
-            int by = anchorY + block.y - data.anchorY;
-            HytaleChunk targetChunk = lookupChunk(chunksByCoords, wpBX, wpBZ,
-                    blockOffsetX, blockOffsetZ);
-            if (targetChunk == null) continue;
-            if (by < 0 || by >= targetChunk.getMaxHeight()) continue;
+        placeBlocksAndFluids(data, anchorY, (offsetX, offsetZ) -> {
+            int wpBX = anchorWorldX + offsetX;
+            int wpBZ = anchorWorldZ + offsetZ;
+            HytaleChunk chunk = lookupChunk(chunksByCoords, wpBX, wpBZ, blockOffsetX, blockOffsetZ);
+            if (chunk == null) return null;
             int localX = Math.floorMod(wpBX + blockOffsetX, HytaleChunk.CHUNK_SIZE);
             int localZ = Math.floorMod(wpBZ + blockOffsetZ, HytaleChunk.CHUNK_SIZE);
-            HytaleBlock hBlock = HytaleBlock.of(block.blockName, block.rotation);
-            targetChunk.setHytaleBlock(localX, by, localZ, hBlock);
-            targetChunk.setSealProtected(localX, by, localZ, true);
-        }
-
-        for (PrefabFluid fluid : data.fluids) {
-            int wpBX = anchorWorldX + fluid.x - data.anchorX;
-            int wpBZ = anchorWorldZ + fluid.z - data.anchorZ;
-            int fy = anchorY + fluid.y - data.anchorY;
-            HytaleChunk targetChunk = lookupChunk(chunksByCoords, wpBX, wpBZ,
-                    blockOffsetX, blockOffsetZ);
-            if (targetChunk == null) continue;
-            if (fy < 0 || fy >= targetChunk.getMaxHeight()) continue;
-            int localX = Math.floorMod(wpBX + blockOffsetX, HytaleChunk.CHUNK_SIZE);
-            int localZ = Math.floorMod(wpBZ + blockOffsetZ, HytaleChunk.CHUNK_SIZE);
-            int sectionIndex = fy >> 5;
-            if (sectionIndex >= 0 && sectionIndex < targetChunk.getSections().length) {
-                targetChunk.getSections()[sectionIndex].setFluid(localX, fy & 31, localZ,
-                        fluid.fluidName, fluid.level);
-            }
-        }
-
+            return new ChunkLocation(chunk, localX, localZ);
+        });
         return true;
     }
 
@@ -146,51 +122,74 @@ public final class HytalePrefabPaster {
         if (data == null || data.blocks.isEmpty()) {
             return false;
         }
-
-        for (PrefabBlock block : data.blocks) {
-            int bx = anchorX + block.x - data.anchorX;
-            // Honour the prefab's authored anchorY as the planting reference —
-            // matches what the Hytale game does when it places the prefab.
-            // Blocks at prefab y < anchorY are intentionally below the surface
-            // (buried roots / sunken trunk); Deeproot variants in particular
-            // have ~10 blocks of root mass authored below anchorY that must
-            // stay underground.
-            int by = anchorY + block.y - data.anchorY;
-            int bz = anchorZ + block.z - data.anchorZ;
-
-            // Only place blocks that fall within this chunk's column bounds
-            if (bx < 0 || bx >= HytaleChunk.CHUNK_SIZE || bz < 0 || bz >= HytaleChunk.CHUNK_SIZE) {
-                continue;
+        // anchorX/anchorZ are chunk-local; blocks whose footprint leaves this chunk are dropped.
+        // Honour the prefab's authored anchorY as the planting reference — matches what
+        // Hytale does when it places the prefab. Blocks at prefab y < anchorY are buried
+        // intentionally (roots / sunken trunk).
+        placeBlocksAndFluids(data, anchorY, (offsetX, offsetZ) -> {
+            int bx = anchorX + offsetX;
+            int bz = anchorZ + offsetZ;
+            if (bx < 0 || bx >= HytaleChunk.CHUNK_SIZE
+                    || bz < 0 || bz >= HytaleChunk.CHUNK_SIZE) {
+                return null;
             }
-            if (by < 0 || by >= chunk.getMaxHeight()) {
-                continue;
-            }
-
-            HytaleBlock hBlock = HytaleBlock.of(block.blockName, block.rotation);
-            chunk.setHytaleBlock(bx, by, bz, hBlock);
-            chunk.setSealProtected(bx, by, bz, true);
-        }
-
-        // Also paste fluids
-        for (PrefabFluid fluid : data.fluids) {
-            int fx = anchorX + fluid.x - data.anchorX;
-            int fy = anchorY + fluid.y - data.anchorY;
-            int fz = anchorZ + fluid.z - data.anchorZ;
-
-            if (fx < 0 || fx >= HytaleChunk.CHUNK_SIZE || fz < 0 || fz >= HytaleChunk.CHUNK_SIZE) {
-                continue;
-            }
-            if (fy < 0 || fy >= chunk.getMaxHeight()) {
-                continue;
-            }
-
-            int sectionIndex = fy >> 5;
-            if (sectionIndex >= 0 && sectionIndex < chunk.getSections().length) {
-                chunk.getSections()[sectionIndex].setFluid(fx, fy & 31, fz, fluid.fluidName, fluid.level);
-            }
-        }
-
+            return new ChunkLocation(chunk, bx, bz);
+        });
         return true;
+    }
+
+    /**
+     * Shared loop body for both {@link #paste(Map, int, int, int, int, int, String)} and
+     * {@link #paste(HytaleChunk, int, int, int, int, int, String)}. Walks the prefab's
+     * blocks and fluids, asks the {@code locator} to resolve each (prefab-relative offsetX,
+     * offsetZ) to a target chunk + chunk-local coords, and writes the placement.
+     *
+     * <p>Returning {@code null} from the locator means the cell falls outside the caller's
+     * scope (different chunk for the single-chunk variant, or no chunk loaded for the
+     * multi-chunk variant) and the cell is silently dropped.
+     */
+    private static void placeBlocksAndFluids(PrefabBlockData data, int anchorY, ChunkLocator locator) {
+        for (PrefabBlock block : data.blocks) {
+            int offsetX = block.x - data.anchorX;
+            int offsetZ = block.z - data.anchorZ;
+            int by = anchorY + block.y - data.anchorY;
+            ChunkLocation loc = locator.locate(offsetX, offsetZ);
+            if (loc == null) continue;
+            if (by < 0 || by >= loc.chunk.getMaxHeight()) continue;
+            HytaleBlock hBlock = HytaleBlock.of(block.blockName, block.rotation);
+            loc.chunk.setHytaleBlock(loc.localX, by, loc.localZ, hBlock);
+            loc.chunk.setSealProtected(loc.localX, by, loc.localZ, true);
+        }
+        for (PrefabFluid fluid : data.fluids) {
+            int offsetX = fluid.x - data.anchorX;
+            int offsetZ = fluid.z - data.anchorZ;
+            int fy = anchorY + fluid.y - data.anchorY;
+            ChunkLocation loc = locator.locate(offsetX, offsetZ);
+            if (loc == null) continue;
+            if (fy < 0 || fy >= loc.chunk.getMaxHeight()) continue;
+            int sectionIndex = fy >> 5;
+            if (sectionIndex < 0 || sectionIndex >= loc.chunk.getSections().length) continue;
+            loc.chunk.getSections()[sectionIndex].setFluid(loc.localX, fy & 31, loc.localZ,
+                    fluid.fluidName, fluid.level);
+        }
+    }
+
+    @FunctionalInterface
+    private interface ChunkLocator {
+        /** Resolve a (prefab-relative offsetX, offsetZ) to a target chunk + chunk-local coords, or null to skip. */
+        ChunkLocation locate(int offsetX, int offsetZ);
+    }
+
+    private static final class ChunkLocation {
+        final HytaleChunk chunk;
+        final int localX;
+        final int localZ;
+
+        ChunkLocation(HytaleChunk chunk, int localX, int localZ) {
+            this.chunk = chunk;
+            this.localX = localX;
+            this.localZ = localZ;
+        }
     }
 
     /**
