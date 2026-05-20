@@ -442,7 +442,20 @@ public class HytaleWorldExporter implements WorldExporter {
             final int configuredMaxConcurrentRegions = (configured != null)
                     ? Math.max(1, configured)
                     : adaptiveDefaultConcurrentRegions;
-            final int maxByMemory = Math.max(1, (int) (maxMem / (1536L * 1024 * 1024)));
+            // Per-region memory budget is sized for the default 320-block Hytale height with a
+            // plain export. Scale it up when either dimension increases the per-region cost:
+            //   - taller worlds have proportionally more block data per chunk;
+            //   - imported worlds also keep the original chunk in RAM via mergeOriginalChunkData
+            //     while the new chunk is being generated, roughly doubling peak memory per chunk.
+            // Without this scaling, modded-height imports compute too many concurrent regions
+            // and OOM at runtime even though the heap is technically large enough for one
+            // region at a time.
+            final double heightScale =
+                Math.max(1.0, (double) dimension.getMaxHeight() / HytaleChunk.DEFAULT_MAX_HEIGHT);
+            final double importScale = (originalChunkStore != null) ? 2.0 : 1.0;
+            final long perRegionBudgetBytes =
+                (long) (1536L * 1024 * 1024 * heightScale * importScale);
+            final int maxByMemory = Math.max(1, (int) (maxMem / perRegionBudgetBytes));
             final int maxByContent = needsFullRegionRetention ? 1 : configuredMaxConcurrentRegions;
             final int maxConcurrentRegions = Math.max(1,
                 Math.min(Math.min(maxByContent, maxByMemory), sortedRegions.size()));
