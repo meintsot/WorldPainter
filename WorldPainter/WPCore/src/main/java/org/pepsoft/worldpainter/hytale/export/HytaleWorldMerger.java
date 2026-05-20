@@ -10,6 +10,7 @@ import org.pepsoft.worldpainter.World2;
 import org.pepsoft.worldpainter.exporting.WorldExportSettings;
 import org.pepsoft.worldpainter.hytale.HytaleBlock;
 import org.pepsoft.worldpainter.hytale.HytaleBlockRegistry;
+import org.pepsoft.minecraft.MinecraftCoords;
 import org.pepsoft.worldpainter.hytale.chunk.HytaleChunk;
 import org.pepsoft.worldpainter.hytale.chunk.HytaleChunkStore;
 import org.pepsoft.worldpainter.merging.InvalidMapException;
@@ -338,7 +339,15 @@ public class HytaleWorldMerger extends HytaleWorldExporter implements WorldMerge
             //    - close the chunk store when it's done
             super.export(saveRoot.getParentFile(), saveRoot.getName(), null, progressReceiver);
 
-            // 4. Copy non-chunk files from the backup to the fresh save where the exporter
+            // 4. Copy any original chunks that lived outside TalePainter's tile coverage from
+            //    the backup into the fresh save. The exporter only writes regions/chunks that
+            //    overlap TalePainter tiles, so without this step any chunks the original save
+            //    had farther out would simply be lost. Centering is disabled for the merger
+            //    (see isCenteringTerrain()) so the original chunk coordinates line up exactly
+            //    with the fresh save.
+            preserveUntouchedOriginalChunks(saveRoot, backupDir);
+
+            // 5. Copy non-chunk files from the backup to the fresh save where the exporter
             //    didn't already write them. This preserves player data, custom universe
             //    contents, and any other user customisations that the exporter doesn't know
             //    how to regenerate. The chunks/ directories are deliberately skipped.
@@ -381,6 +390,70 @@ public class HytaleWorldMerger extends HytaleWorldExporter implements WorldMerge
             return null;
         }
         return universeDir.getParentFile();
+    }
+
+    /**
+     * Subclass hook override: merges must preserve the original Hytale chunk coordinates
+     * so untouched original chunks (copied via {@link #preserveUntouchedOriginalChunks})
+     * remain at their existing positions, and TalePainter edits land at the matching
+     * coordinates. The default {@link HytaleWorldExporter#isCenteringTerrain() centering}
+     * behaviour is appropriate only for fresh exports.
+     */
+    @Override
+    protected boolean isCenteringTerrain() {
+        return false;
+    }
+
+    /**
+     * Copy any chunks that existed in the original save (now living in the backup) but
+     * that the fresh export did NOT write into the new save. These are chunks outside
+     * TalePainter's tile coverage — the exporter only emits regions/chunks that overlap
+     * a painted tile, so without this step the merger would silently lose every chunk
+     * that lived beyond TalePainter's bounds (e.g. an imported 14×14 tile world that
+     * originally covered a much larger Hytale save).
+     *
+     * <p>Centering is disabled for the merger ({@link #isCenteringTerrain()}), so the
+     * original chunk's {@code (x, z)} maps 1:1 onto the new save — copying the chunk
+     * verbatim is correct.
+     */
+    private void preserveUntouchedOriginalChunks(File saveRoot, File backupDir) throws IOException {
+        File backupInnerWorldDir = getInnerWorldDir(backupDir);
+        if (!new File(backupInnerWorldDir, CHUNKS_DIR).isDirectory()) {
+            return; // No backup chunks to preserve (e.g. brand-new save).
+        }
+        Dimension surface = world.getDimension(NORMAL_DETAIL);
+        if (surface == null) {
+            return;
+        }
+        File freshInnerWorldDir = getInnerWorldDir(saveRoot);
+        int minHeight = surface.getMinHeight();
+        int maxHeight = surface.getMaxHeight();
+        try (HytaleChunkStore backupStore = new HytaleChunkStore(backupInnerWorldDir, minHeight, maxHeight);
+             HytaleChunkStore freshStore = new HytaleChunkStore(freshInnerWorldDir, minHeight, maxHeight)) {
+            int copied = 0;
+            for (MinecraftCoords coords : backupStore.getChunkCoords()) {
+                if (freshStore.isChunkPresent(coords.x, coords.z)) {
+                    continue; // TalePainter wrote a chunk here; don't clobber.
+                }
+                HytaleChunk originalChunk;
+                try {
+                    originalChunk = (HytaleChunk) backupStore.getChunk(coords.x, coords.z);
+                } catch (RuntimeException e) {
+                    logger.warn("Could not read backup chunk at ({},{}) during merge preservation: {}",
+                            coords.x, coords.z, e.getMessage());
+                    continue;
+                }
+                if (originalChunk == null) {
+                    continue;
+                }
+                freshStore.saveChunk(originalChunk);
+                copied++;
+            }
+            freshStore.flush();
+            if (copied > 0) {
+                logger.info("Preserved {} untouched original chunks from backup", copied);
+            }
+        }
     }
 
     /**

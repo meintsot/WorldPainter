@@ -324,6 +324,45 @@ public class HytaleWorldMergerTest {
                 "Grassland", newChunk.getBiomeName(1, 0));
     }
 
+    /**
+     * Regression test for TP-59 Fix B: chunks that lived in the original Hytale save outside
+     * TalePainter's tile coverage must be preserved through a merge. With Fix A also in
+     * place (merger disables centering), the original chunk coordinates line up 1:1 with
+     * the fresh save, so a marker block at (8,8) survives unmoved.
+     */
+    @Test
+    public void mergePreservesOriginalChunksOutsideTalePainterTileBounds() throws Exception {
+        File mapDir = createExportedHytaleMap("preserve_untouched");
+
+        // The exported save has chunks for tile (0,0): chunks (0,0)..(3,3) inclusive.
+        // Chunk (8,8) lies well outside that. Inject a marker into a chunk we'll create
+        // there. We do it directly via HytaleChunkStore.saveChunk so the chunk exists
+        // even though the original export didn't write one at (8,8).
+        try (HytaleChunkStore store = new HytaleChunkStore(innerWorld(mapDir), 0, 320)) {
+            HytaleChunk chunk88 = new HytaleChunk(8, 8, 0, 320);
+            chunk88.setHytaleBlock(0, 50, 0, HytaleBlock.of("Rock_Basalt"));
+            store.saveChunk(chunk88);
+            store.flush();
+        }
+
+        // Build an imported world that only adds tile (0,0) — so chunk (8,8) is outside
+        // TalePainter's tile coverage and must be carried over from the backup.
+        World2 world = buildImportedWorld(mapDir);
+
+        File backupDir = new File(tempDir.getRoot(), "preserve_untouched_backup");
+        HytaleWorldMerger merger = new HytaleWorldMerger(world, new WorldExportSettings(), mapDir, HYTALE);
+        merger.merge(backupDir, null);
+
+        // The original chunk at (8,8) should survive the merge — read it back from the fresh
+        // save and verify the marker block is still there.
+        try (HytaleChunkStore freshStore = new HytaleChunkStore(innerWorld(mapDir), 0, 320)) {
+            HytaleChunk chunk88 = (HytaleChunk) freshStore.getChunk(8, 8);
+            assertNotNull("Original chunk at (8,8) should be preserved after merge", chunk88);
+            assertEquals("Original marker block at (0,50,0) of chunk (8,8) should survive",
+                    "Rock_Basalt", idOrEmpty(chunk88.getHytaleBlock(0, 50, 0)));
+        }
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────────────
 
     /**

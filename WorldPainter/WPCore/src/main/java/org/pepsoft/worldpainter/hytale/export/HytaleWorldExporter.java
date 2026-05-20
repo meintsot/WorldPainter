@@ -358,10 +358,17 @@ public class HytaleWorldExporter implements WorldExporter {
             int centerTileX = (minTileX + maxTileX) / 2;
             int centerTileY = (minTileY + maxTileY) / 2;
             // Convert to block offset (we want to shift the entire world so center is at 0,0)
-            // Store in instance fields so exportRegion can use them
-            this.blockOffsetX = -centerTileX * 128;
-            this.blockOffsetZ = -centerTileY * 128;
-            
+            // Store in instance fields so exportRegion can use them.
+            // Subclasses (e.g. HytaleWorldMerger) may opt out via isCenteringTerrain() so that
+            // merged chunks line up with the original Hytale chunk coordinates.
+            if (isCenteringTerrain()) {
+                this.blockOffsetX = -centerTileX * 128;
+                this.blockOffsetZ = -centerTileY * 128;
+            } else {
+                this.blockOffsetX = 0;
+                this.blockOffsetZ = 0;
+            }
+
             logger.info("Centering terrain: tile center ({},{}), block offset ({},{})",
                 centerTileX, centerTileY, blockOffsetX, blockOffsetZ);
 
@@ -849,6 +856,17 @@ public class HytaleWorldExporter implements WorldExporter {
      */
     protected void applyMergeOverrides(HytaleChunk chunk, int worldBlockX, int worldBlockZ, Tile tile) {
         // Default: no-op. Plain exports never override TalePainter-generated blocks.
+    }
+
+    /**
+     * Subclass hook: should the exporter shift tile coordinates so the painted area
+     * is centered at world origin? Default {@code true} (current behavior) — appropriate
+     * for fresh exports so the player doesn't spawn in the void. {@link HytaleWorldMerger}
+     * overrides to {@code false} so merged chunks line up with the original Hytale
+     * chunk coordinates.
+     */
+    protected boolean isCenteringTerrain() {
+        return true;
     }
 
     private boolean hasCustomObjectLayers(Dimension dimension) {
