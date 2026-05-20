@@ -86,6 +86,20 @@ public class Tp53CustomTerrainPlantsSubstrateFromHytaleTerrainTest {
         assertEquals("No Soil_Dirt should be written at the surface when HytaleTerrainLayer "
                         + "supplies a solid substrate (found " + dirtCount + ")",
                 0, dirtCount);
+
+        // Subsurface check (TP-53 follow-up): subsurface layers must also preserve the substrate (Sand) rather than Dirt
+        int subsurfaceSandCount = countBlocksAtYWithId(exportBaseDir, "Tp53CustomSubstrate",
+                TERRAIN_HEIGHT - 1, "Soil_Sand");
+        int subsurfaceDirtCount = countBlocksAtYWithId(exportBaseDir, "Tp53CustomSubstrate",
+                TERRAIN_HEIGHT - 1, "Soil_Dirt");
+
+        assertTrue("Custom-terrain plant-mix subsurface must also preserve the Hytale substrate "
+                        + "(found " + subsurfaceSandCount + " Soil_Sand at y=" + (TERRAIN_HEIGHT - 1)
+                        + ", expected > 0)",
+                subsurfaceSandCount > 0);
+        assertEquals("No Soil_Dirt should be written in the subsurface when HytaleTerrainLayer "
+                        + "supplies a solid substrate (found " + subsurfaceDirtCount + " at y=" + (TERRAIN_HEIGHT - 1) + ")",
+                0, subsurfaceDirtCount);
     }
 
     private World2 buildWorldWithSandHytaleSubstrateAndCustomPlantMixTerrain() {
