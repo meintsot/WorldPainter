@@ -110,10 +110,11 @@ public class HytaleWorldMergerTest {
 
     @Test
     public void mergeBacksUpOriginalAndRegeneratesChunksWithTilesPainted() throws Exception {
-        // 1. Build & export an initial Hytale world (acts as the "existing map")
+        // 1. Build & export an initial Hytale world (acts as the "existing map"). mapDir is
+        //    the inner world dir (.../universe/worlds/default) per the test helper contract,
+        //    matching what HytalePlatformProvider.identifyMap() returns in production.
         File mapDir = createExportedHytaleMap("merge_smoke");
-        File mapInnerDir = new File(new File(new File(mapDir, "universe"), "worlds"), "default");
-        File originalChunksDir = new File(mapInnerDir, "chunks");
+        File originalChunksDir = new File(mapDir, "chunks");
         assertTrue("Setup precondition: original chunks dir exists", originalChunksDir.isDirectory());
         int originalRegionFileCount =
                 originalChunksDir.listFiles((d, n) -> n.endsWith(".region.bin")).length;
@@ -122,15 +123,16 @@ public class HytaleWorldMergerTest {
         // 2. Build a world that pretends it was imported from that map. We don't go through
         //    the full HytaleMapImporter pipeline here to keep the test fast and focused on
         //    the merger; we just create a small Dimension and set importedFrom to the map's
-        //    inner-world config.json (the same path HytaleMapImporter sets).
+        //    config.json (the same path HytaleMapImporter sets).
         World2 world = buildImportedWorld(mapDir);
 
-        // 3. Merge
+        // 3. Merge. The merger backs up the save root (three levels up from mapDir) and
+        //    rewrites the save at that level, so backupDir lives next to the save root.
         File backupDir = new File(tempDir.getRoot(), "merge_smoke_backup");
         HytaleWorldMerger merger = new HytaleWorldMerger(world, new WorldExportSettings(), mapDir, HYTALE);
         merger.merge(backupDir, null);
 
-        // 4. Verify backup was created via rename
+        // 4. Verify backup was created via rename at the save-root level
         assertTrue("Backup dir should exist after merge", backupDir.isDirectory());
         File backupInner = new File(new File(new File(backupDir, "universe"), "worlds"), "default");
         File backupChunks = new File(backupInner, "chunks");
@@ -139,17 +141,16 @@ public class HytaleWorldMergerTest {
                 originalRegionFileCount,
                 backupChunks.listFiles((d, n) -> n.endsWith(".region.bin")).length);
 
-        // 5. Verify mapDir was repopulated with a fresh save by the exporter
+        // 5. Verify the inner world dir was repopulated with a fresh save by the exporter
         assertTrue("mapDir should be recreated after merge", mapDir.isDirectory());
-        File newInner = new File(new File(new File(mapDir, "universe"), "worlds"), "default");
-        File newChunks = new File(newInner, "chunks");
+        File newChunks = new File(mapDir, "chunks");
         assertTrue("Fresh chunks dir should exist after merge", newChunks.isDirectory());
         File[] newRegionFiles = newChunks.listFiles((d, n) -> n.endsWith(".region.bin"));
         assertNotNull(newRegionFiles);
         assertTrue("Fresh chunks dir should contain at least one region file", newRegionFiles.length > 0);
 
         // 6. Verify the fresh chunks are readable and contain TalePainter terrain
-        try (HytaleChunkStore store = new HytaleChunkStore(newInner, 0, 320)) {
+        try (HytaleChunkStore store = new HytaleChunkStore(mapDir, 0, 320)) {
             assertTrue("Fresh save should contain at least one chunk", store.getChunkCount() > 0);
 
             // The painted tile is at (0,0); after centering, chunk (0,0) is at the
@@ -327,9 +328,11 @@ public class HytaleWorldMergerTest {
     // ── helpers ──────────────────────────────────────────────────────────────────────
 
     /**
-     * Build a small TalePainter world and export it as a Hytale save. Returns the save dir
-     * (the top-level directory containing {@code universe/}, {@code config.json}, etc.) — this
-     * is the same shape that {@link HytaleWorldMerger}'s {@code mapDir} parameter expects.
+     * Build a small TalePainter world and export it as a Hytale save. Returns the INNER
+     * WORLD DIR ({@code <saveRoot>/universe/worlds/default}) — the same directory
+     * {@link org.pepsoft.worldpainter.platforms.HytalePlatformProvider#identifyMap(File)}
+     * returns and the same {@code mapDir} shape {@link HytaleWorldMerger}'s constructor
+     * expects.
      */
     private File createExportedHytaleMap(String name) throws Exception {
         World2 world = new World2(HYTALE, 0, 320);
@@ -359,9 +362,11 @@ public class HytaleWorldMergerTest {
         new HytaleWorldExporter(world, new WorldExportSettings())
             .export(baseDir, name, null, null);
 
-        File mapDir = new File(baseDir, name);
-        assertTrue("Setup precondition: exported save exists", mapDir.isDirectory());
-        return mapDir;
+        File saveDir = new File(baseDir, name);
+        assertTrue("Setup precondition: exported save exists", saveDir.isDirectory());
+        File worldDir = new File(new File(new File(saveDir, "universe"), "worlds"), "default");
+        assertTrue("Setup precondition: inner world dir exists", worldDir.isDirectory());
+        return worldDir;
     }
 
     /**
@@ -369,11 +374,11 @@ public class HytaleWorldMergerTest {
      * dimensions/height as the exported save, importedFrom set to {@code mapDir/inner/config.json}.
      */
     private World2 buildImportedWorld(File mapDir) {
+        // mapDir is the inner world dir per createExportedHytaleMap().
         World2 world = new World2(HYTALE, 0, 320);
         world.setName("merger-test");
         world.setCreateGoodiesChest(false);
-        File innerWorldDir = new File(new File(new File(mapDir, "universe"), "worlds"), "default");
-        world.setImportedFrom(new File(innerWorldDir, "config.json"));
+        world.setImportedFrom(new File(mapDir, "config.json"));
 
         long seed = 99L;
         TileFactory tileFactory = TileFactoryFactory.createFlatTileFactory(
@@ -395,9 +400,9 @@ public class HytaleWorldMergerTest {
         return world;
     }
 
-    /** Resolve {@code mapDir/universe/worlds/default} — the inner world dir HytaleChunkStore expects. */
+    /** {@code mapDir} is already the inner world dir per the test helpers; this is a no-op alias kept for readability at call sites. */
     private static File innerWorld(File mapDir) {
-        return new File(new File(new File(mapDir, "universe"), "worlds"), "default");
+        return mapDir;
     }
 
     /** Build a merger over a freshly-exported map with the same importedFrom world setup. */

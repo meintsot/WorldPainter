@@ -88,11 +88,18 @@ public class HytaleWorldMerger extends HytaleWorldExporter implements WorldMerge
         if (!mapDir.isDirectory()) {
             throw new IllegalArgumentException(mapDir + " does not exist or is not a directory");
         }
-        // A valid Hytale save has the inner world dir at universe/worlds/default
-        File innerWorldDir = getInnerWorldDir(mapDir);
-        if (!innerWorldDir.isDirectory()) {
-            throw new IllegalArgumentException(mapDir + " does not contain a Hytale world at "
-                + UNIVERSE_DIR + "/" + WORLDS_DIR + "/" + DEFAULT_WORLD);
+        // mapDir is the WORLD directory (the "default" folder containing config.json + chunks/),
+        // matching what HytalePlatformProvider.identifyMap() returns. Verify the layout that
+        // the importer/identifyMap also requires.
+        if (!new File(mapDir, "config.json").isFile() || !new File(mapDir, CHUNKS_DIR).isDirectory()) {
+            throw new IllegalArgumentException(mapDir + " is not a Hytale world directory "
+                + "(must contain config.json and a chunks/ folder)");
+        }
+        // Also verify the parent chain is a Hytale save layout (.../universe/worlds/<name>);
+        // we walk up to find the save root in merge().
+        if (computeSaveRoot(mapDir) == null) {
+            throw new IllegalArgumentException(mapDir + " is not nested in the expected Hytale "
+                + "save layout (.../universe/worlds/<name>)");
         }
         this.mapDir = mapDir;
     }
@@ -103,14 +110,21 @@ public class HytaleWorldMerger extends HytaleWorldExporter implements WorldMerge
     }
 
     /**
-     * Plan (but do not create) a backup directory next to {@code mapDir}. Overrides the
-     * {@link HytaleWorldExporter#selectBackupDir(File)} default of {@code null}, which would
-     * otherwise mean "no backup needed" and is wrong for a merge — the merge engine renames
-     * {@code mapDir} onto this path before re-exporting.
+     * Plan (but do not create) a backup directory next to the SAVE ROOT. Hytale's save layout
+     * places the world directory (the one the user picks) three levels under the save root
+     * ({@code <saveRoot>/universe/worlds/default}); backing up the entire save root keeps the
+     * config files, players directory, and any custom contents together with the chunks.
+     *
+     * <p>Overrides the {@link HytaleWorldExporter#selectBackupDir(File)} default of {@code null},
+     * which would otherwise mean "no backup needed" and is wrong for a merge.
      */
     @Override
     public File selectBackupDir(File mapDir) throws IOException {
-        return new File(mapDir.getParentFile(), mapDir.getName() + ".backup-" + System.currentTimeMillis());
+        File saveRoot = computeSaveRoot(mapDir);
+        if (saveRoot == null) {
+            throw new IOException(mapDir + " is not nested in a Hytale save layout");
+        }
+        return new File(saveRoot.getParentFile(), saveRoot.getName() + ".backup-" + System.currentTimeMillis());
     }
 
     /** Request that an in-progress merge stop at the next safe checkpoint. */
@@ -278,18 +292,25 @@ public class HytaleWorldMerger extends HytaleWorldExporter implements WorldMerge
         if (backupDir.exists()) {
             throw new IllegalArgumentException("Backup directory already exists: " + backupDir);
         }
+        // The user picked the inner world dir (the "default" folder); the merger operates at
+        // the save-root level so config.json, players/, etc. are backed up alongside chunks.
+        File saveRoot = computeSaveRoot(mapDir);
+        if (saveRoot == null) {
+            throw new InvalidMapException(mapDir + " is not nested in a Hytale save layout");
+        }
 
-        // 1. Rename the existing map dir to backup. We do this BEFORE invoking the exporter so
-        //    that the exporter's own "delete existing save dir" guard doesn't wipe the original
-        //    chunks we still want to read from.
-        if (!mapDir.renameTo(backupDir)) {
-            throw new FileInUseException("Could not move " + mapDir + " to " + backupDir);
+        // 1. Rename the SAVE ROOT to backup. We do this BEFORE invoking the exporter so the
+        //    exporter's own "delete existing save dir" guard doesn't wipe the original chunks
+        //    we still want to read from.
+        if (!saveRoot.renameTo(backupDir)) {
+            throw new FileInUseException("Could not move " + saveRoot + " to " + backupDir);
         }
 
         try {
-            // 2. Wire the inherited original-chunk-store to the backup. mergeOriginalChunkData
-            //    will then read entities / health / tints / spawn metadata / prefab markers from
-            //    the backup chunks while writing new chunks into the fresh save.
+            // 2. Wire the inherited original-chunk-store to the backup's inner world dir.
+            //    mergeOriginalChunkData will then read entities / health / tints / spawn
+            //    metadata / prefab markers from the backup chunks while writing new chunks
+            //    into the fresh save.
             File backupInnerWorldDir = getInnerWorldDir(backupDir);
             if (new File(backupInnerWorldDir, CHUNKS_DIR).isDirectory()) {
                 Dimension surface = world.getDimension(NORMAL_DETAIL);
@@ -303,40 +324,56 @@ public class HytaleWorldMerger extends HytaleWorldExporter implements WorldMerge
                         backupInnerWorldDir);
             }
 
-            // 3. Run the inherited export against the freed mapDir slot. The exporter will:
-            //    - mkdirs the save structure at mapDir
+            // 3. Run the inherited export against the freed save-root slot. The exporter will:
+            //    - mkdirs the save structure at saveRoot
             //    - generate chunks from TalePainter tiles
             //    - call mergeOriginalChunkData per-chunk against our pre-set originalChunkStore
             //    - close the chunk store when it's done
-            super.export(mapDir.getParentFile(), mapDir.getName(), null, progressReceiver);
+            super.export(saveRoot.getParentFile(), saveRoot.getName(), null, progressReceiver);
 
             // 4. Copy non-chunk files from the backup to the fresh save where the exporter
             //    didn't already write them. This preserves player data, custom universe
             //    contents, and any other user customisations that the exporter doesn't know
             //    how to regenerate. The chunks/ directories are deliberately skipped.
-            copyPreservedFiles(backupDir, mapDir);
+            copyPreservedFiles(backupDir, saveRoot);
         } catch (RuntimeException | IOException | ProgressReceiver.OperationCancelled e) {
-            // If anything fails, attempt to restore the original map dir from the backup so the
-            // user isn't left with a half-written save. We swallow restore failures so the
+            // If anything fails, attempt to restore the original save root from the backup so
+            // the user isn't left with a half-written save. We swallow restore failures so the
             // original exception isn't masked.
-            if (mapDir.exists()) {
+            if (saveRoot.exists()) {
                 try {
                     // Move freshly-written (partial) save out of the way so the rename below succeeds.
-                    File aborted = new File(mapDir.getParentFile(), mapDir.getName() + ".aborted-" + System.currentTimeMillis());
-                    if (!mapDir.renameTo(aborted)) {
+                    File aborted = new File(saveRoot.getParentFile(), saveRoot.getName() + ".aborted-" + System.currentTimeMillis());
+                    if (!saveRoot.renameTo(aborted)) {
                         logger.warn("Could not move partial save aside to {}", aborted);
                     }
                 } catch (RuntimeException restoreEx) {
                     logger.warn("Could not move partial save aside: {}", restoreEx.getMessage());
                 }
             }
-            if (backupDir.exists() && !mapDir.exists()) {
-                if (!backupDir.renameTo(mapDir)) {
-                    logger.warn("Could not restore backup at {} to original location {}", backupDir, mapDir);
+            if (backupDir.exists() && !saveRoot.exists()) {
+                if (!backupDir.renameTo(saveRoot)) {
+                    logger.warn("Could not restore backup at {} to original location {}", backupDir, saveRoot);
                 }
             }
             throw e;
         }
+    }
+
+    /**
+     * Walk up from a world dir to find the save root. Returns {@code null} if the parent
+     * chain doesn't match the Hytale layout {@code <saveRoot>/universe/worlds/<world>}.
+     */
+    private static File computeSaveRoot(File worldDir) {
+        File worldsDir = worldDir.getParentFile();
+        if (worldsDir == null || !WORLDS_DIR.equals(worldsDir.getName())) {
+            return null;
+        }
+        File universeDir = worldsDir.getParentFile();
+        if (universeDir == null || !UNIVERSE_DIR.equals(universeDir.getName())) {
+            return null;
+        }
+        return universeDir.getParentFile();
     }
 
     /**
