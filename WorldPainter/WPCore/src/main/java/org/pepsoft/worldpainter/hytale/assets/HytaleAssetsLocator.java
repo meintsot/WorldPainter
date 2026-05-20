@@ -66,36 +66,51 @@ public final class HytaleAssetsLocator {
         return normaliseSource(dir) != null;
     }
 
+    /**
+     * Resolve the HytaleAssets directory by trying, in priority order:
+     * an already-configured directory, the user's saved source, a system property
+     * override, and finally a built-in list of well-known install paths.
+     */
     private static File resolveAssetsDir() {
+        File resolved;
+        if ((resolved = tryAlreadyConfiguredAssetsDir()) != null) return resolved;
+        if ((resolved = tryUserConfiguredSource()) != null) return resolved;
+        if ((resolved = trySystemPropertySource()) != null) return resolved;
+        return tryBuiltInCandidatePaths();
+    }
+
+    /** Returns the existing configured assets dir if it has the expected layout, else null. */
+    private static File tryAlreadyConfiguredAssetsDir() {
         final File current = HytaleTerrain.getHytaleAssetsDir();
-        if (HytaleTerrain.hasUsableAssetsDir(current)) {
-            return current;
-        }
+        return HytaleTerrain.hasUsableAssetsDir(current) ? current : null;
+    }
 
+    /** Returns the user-saved assets source from {@link Configuration}, resolved, else null. */
+    private static File tryUserConfiguredSource() {
         final Configuration configuration = Configuration.getInstance();
-        if (configuration != null) {
-            final File configuredSource = configuration.getHytaleAssetsSourceDirectory();
-            final File resolved = resolveSource(configuredSource);
-            if (resolved != null) {
-                return resolved;
-            }
+        if (configuration == null) {
+            return null;
         }
+        return resolveSource(configuration.getHytaleAssetsSourceDirectory());
+    }
 
+    /** Returns the assets source from the {@code SYSTEM_PROPERTY_ASSETS_DIR} system property, resolved, else null. */
+    private static File trySystemPropertySource() {
         final String sysProp = System.getProperty(SYSTEM_PROPERTY_ASSETS_DIR);
-        if ((sysProp != null) && (! sysProp.trim().isEmpty())) {
-            final File resolved = resolveSource(new File(sysProp.trim()));
-            if (resolved != null) {
-                return resolved;
-            }
+        if ((sysProp == null) || sysProp.trim().isEmpty()) {
+            return null;
         }
+        return resolveSource(new File(sysProp.trim()));
+    }
 
+    /** Walks the built-in well-known candidate paths and returns the first that resolves, else null. */
+    private static File tryBuiltInCandidatePaths() {
         for (File candidate : buildCandidateRoots()) {
             final File resolved = resolveSource(candidate);
             if (resolved != null) {
                 return resolved;
             }
         }
-
         return null;
     }
 
