@@ -412,10 +412,10 @@ public final class App extends JFrame implements BrushControl,
                 final boolean imported = world.getImportedFrom() != null;
                 final boolean hytalePlatform = isHytaleWorldLoaded();
                 ACTION_EXPORT_WORLD.setEnabled((! imported) || hytalePlatform);
-                ACTION_MERGE_WORLD.setEnabled(imported && (! hytalePlatform));
+                ACTION_MERGE_WORLD.setEnabled(imported);
             } else {
                 ACTION_EXPORT_WORLD.setEnabled(true);
-                ACTION_MERGE_WORLD.setEnabled(! isHytaleWorldLoaded());
+                ACTION_MERGE_WORLD.setEnabled(true);
             }
             updatePlatformActionLabels();
 
@@ -7323,7 +7323,7 @@ public final class App extends JFrame implements BrushControl,
                 : "Import the landscape of an existing Minecraft map. Use Merge to merge your changes.");
         ACTION_MERGE_WORLD.putValue(Action.NAME, hytalePlatform ? "Merge into Hytale world..." : strings.getString("merge.world") + "...");
         ACTION_MERGE_WORLD.putValue(Action.SHORT_DESCRIPTION, hytalePlatform
-            ? "Merging changes back into imported Hytale worlds is not supported yet."
+            ? "Merge the changes in a previously Imported world back to the original Hytale world."
             : "Merge the changes in a previously Imported world back to the original Minecraft map.");
         if (autoVegetationSettingsMenuItem != null) {
             autoVegetationSettingsMenuItem.setEnabled(hytalePlatform);

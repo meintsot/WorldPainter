@@ -47,7 +47,7 @@ import static org.pepsoft.worldpainter.platforms.PlatformUtils.determineNativePl
  * @author pepijn
  */
 @SuppressWarnings("StringConcatenationInsideStringBufferAppend") // Readability
-public class JavaWorldMerger extends JavaWorldExporter { // TODO can this be made a BlockBasedPlatformProviderWorldMerger?
+public class JavaWorldMerger extends JavaWorldExporter implements WorldMerger { // TODO can this be made a BlockBasedPlatformProviderWorldMerger?
     public JavaWorldMerger(World2 world, WorldExportSettings exportSettings, File mapDir, Platform platform) {
         super(world, exportSettings, platform);
         if (mapDir == null) {

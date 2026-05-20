@@ -1,6 +1,5 @@
 package org.pepsoft.worldpainter.hytale.export;
 
-import org.pepsoft.minecraft.ChunkFactory;
 import org.pepsoft.util.FileUtils;
 import org.pepsoft.util.ProgressReceiver;
 import org.pepsoft.util.mdc.MDCCapturingRuntimeException;
@@ -14,15 +13,16 @@ import org.pepsoft.worldpainter.hytale.HytaleBlockRegistry;
 import org.pepsoft.worldpainter.hytale.chunk.HytaleChunk;
 import org.pepsoft.worldpainter.hytale.chunk.HytaleChunkStore;
 import org.pepsoft.worldpainter.merging.InvalidMapException;
+import org.pepsoft.worldpainter.merging.WorldMerger;
 import org.pepsoft.worldpainter.util.FileInUseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 
 import static org.pepsoft.worldpainter.Constants.DIM_NORMAL;
 import static org.pepsoft.worldpainter.DefaultPlugin.HYTALE;
@@ -47,7 +47,7 @@ import static org.pepsoft.worldpainter.Dimension.Anchor.NORMAL_DETAIL;
  * same level that {@link HytaleWorldExporter#export} writes when called with
  * {@code baseDir = saveDir.getParentFile()} and {@code name = saveDir.getName()}.
  */
-public class HytaleWorldMerger extends HytaleWorldExporter {
+public class HytaleWorldMerger extends HytaleWorldExporter implements WorldMerger {
 
     private static final Logger logger = LoggerFactory.getLogger(HytaleWorldMerger.class);
 
@@ -73,6 +73,12 @@ public class HytaleWorldMerger extends HytaleWorldExporter {
     private boolean clearManMadeAboveGround = false;
     private boolean clearManMadeBelowGround = false;
 
+    /** Cooperatively-cancellable abort flag honoured by {@link #applyMergeOverrides}. */
+    private volatile boolean aborted = false;
+
+    /** Collected merge warnings, surfaced via {@link #getWarnings()}. */
+    private final List<String> warnings = new ArrayList<>();
+
     public HytaleWorldMerger(World2 world, WorldExportSettings exportSettings, File mapDir, Platform platform) {
         super(world, exportSettings);
         Objects.requireNonNull(mapDir, "mapDir");
@@ -91,8 +97,43 @@ public class HytaleWorldMerger extends HytaleWorldExporter {
         this.mapDir = mapDir;
     }
 
+    @Override
     public File getMapDir() {
         return mapDir;
+    }
+
+    /**
+     * Plan (but do not create) a backup directory next to {@code mapDir}. Overrides the
+     * {@link HytaleWorldExporter#selectBackupDir(File)} default of {@code null}, which would
+     * otherwise mean "no backup needed" and is wrong for a merge — the merge engine renames
+     * {@code mapDir} onto this path before re-exporting.
+     */
+    @Override
+    public File selectBackupDir(File mapDir) throws IOException {
+        return new File(mapDir.getParentFile(), mapDir.getName() + ".backup-" + System.currentTimeMillis());
+    }
+
+    /** Request that an in-progress merge stop at the next safe checkpoint. */
+    public void abort() {
+        this.aborted = true;
+    }
+
+    @Override
+    public boolean isAborted() {
+        return aborted;
+    }
+
+    /**
+     * Returns a newline-separated summary of any warnings recorded during the most recent
+     * {@link #merge}, or {@code null} when there are none. Matches the contract of
+     * {@link org.pepsoft.worldpainter.merging.JavaWorldMerger#getWarnings()}.
+     */
+    @Override
+    public String getWarnings() {
+        if (warnings.isEmpty()) {
+            return null;
+        }
+        return String.join("\n", warnings);
     }
 
     // ── Settings (Phase 1 surface; only wired through inherited mergeOriginalChunkData) ──
@@ -222,9 +263,14 @@ public class HytaleWorldMerger extends HytaleWorldExporter {
      *   (player data, custom universe entries, etc.) are copied back to {@code mapDir}.</li>
      * </ul>
      */
-    public Map<Integer, ChunkFactory.Stats> merge(File backupDir, ProgressReceiver progressReceiver)
+    @Override
+    public void merge(File backupDir, ProgressReceiver progressReceiver)
             throws IOException, ProgressReceiver.OperationCancelled {
         logger.info("Merging world {} with Hytale map at {}", world.getName(), mapDir);
+
+        // Reset transient run state in case the same merger instance is reused.
+        aborted = false;
+        warnings.clear();
 
         performSanityChecks();
 
@@ -262,16 +308,13 @@ public class HytaleWorldMerger extends HytaleWorldExporter {
             //    - generate chunks from TalePainter tiles
             //    - call mergeOriginalChunkData per-chunk against our pre-set originalChunkStore
             //    - close the chunk store when it's done
-            Map<Integer, ChunkFactory.Stats> stats = super.export(
-                    mapDir.getParentFile(), mapDir.getName(), null, progressReceiver);
+            super.export(mapDir.getParentFile(), mapDir.getName(), null, progressReceiver);
 
             // 4. Copy non-chunk files from the backup to the fresh save where the exporter
             //    didn't already write them. This preserves player data, custom universe
             //    contents, and any other user customisations that the exporter doesn't know
             //    how to regenerate. The chunks/ directories are deliberately skipped.
             copyPreservedFiles(backupDir, mapDir);
-
-            return stats;
         } catch (RuntimeException | IOException | ProgressReceiver.OperationCancelled e) {
             // If anything fails, attempt to restore the original map dir from the backup so the
             // user isn't left with a half-written save. We swallow restore failures so the
@@ -403,6 +446,12 @@ public class HytaleWorldMerger extends HytaleWorldExporter {
      */
     @Override
     protected void applyMergeOverrides(HytaleChunk chunk, int worldBlockX, int worldBlockZ, Tile tile) {
+        if (aborted) {
+            // Cooperative cancellation: bail without touching this chunk. The chunk
+            // TalePainter generated will still be written (which is fine; the user is
+            // tearing things down anyway and the backup is intact).
+            return;
+        }
         if (replaceChunks) {
             // Wholesale replacement — TalePainter wins for every block & biome in the chunk.
             return;

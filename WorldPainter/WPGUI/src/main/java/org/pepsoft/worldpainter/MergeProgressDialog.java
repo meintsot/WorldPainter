@@ -9,7 +9,7 @@ import org.pepsoft.util.DesktopUtils;
 import org.pepsoft.util.ProgressReceiver;
 import org.pepsoft.util.TaskbarProgressReceiver;
 import org.pepsoft.util.swing.ProgressTask;
-import org.pepsoft.worldpainter.merging.JavaWorldMerger;
+import org.pepsoft.worldpainter.merging.WorldMerger;
 
 import javax.swing.*;
 import java.awt.*;
@@ -23,7 +23,7 @@ import java.io.IOException;
  * @author Pepijn Schmitz
  */
 public class MergeProgressDialog extends MultiProgressDialog<Void> implements WindowListener {
-    public MergeProgressDialog(Window parent, JavaWorldMerger merger, File backupDir) {
+    public MergeProgressDialog(Window parent, WorldMerger merger, File backupDir) {
         super(parent, "Merging");
         this.merger = merger;
         this.backupDir = backupDir;
@@ -96,5 +96,5 @@ public class MergeProgressDialog extends MultiProgressDialog<Void> implements Wi
     }
 
     private final File backupDir;
-    private final JavaWorldMerger merger;
+    private final WorldMerger merger;
 }

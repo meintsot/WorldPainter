@@ -15,8 +15,11 @@ import org.pepsoft.util.AttributeKey;
 import org.pepsoft.util.DesktopUtils;
 import org.pepsoft.worldpainter.biomeschemes.CustomBiomeManager;
 import org.pepsoft.worldpainter.exporting.WorldExportSettings;
+import org.pepsoft.worldpainter.hytale.HytaleTerrainHelper;
+import org.pepsoft.worldpainter.hytale.export.HytaleWorldMerger;
 import org.pepsoft.worldpainter.layers.Layer;
 import org.pepsoft.worldpainter.merging.JavaWorldMerger;
+import org.pepsoft.worldpainter.merging.WorldMerger;
 import org.pepsoft.worldpainter.plugins.PlatformManager;
 import org.pepsoft.worldpainter.plugins.PlatformProvider;
 import org.pepsoft.worldpainter.util.MapUtils;
@@ -199,24 +202,47 @@ public class MergeWorldDialog extends WorldPainterDialog {
             exportSettings = new WorldExportSettings(singleton(selectedDimension), selectedTiles, savedSteps);
         }
         final boolean replaceChunks = radioButtonReplaceChunks.isSelected();
-        final JavaWorldMerger merger = new JavaWorldMerger(world, exportSettings, mapDir, platform);
+        final boolean isHytale = HytaleTerrainHelper.isHytale(platform);
+        final WorldMerger merger;
         try {
-            if (replaceChunks) {
-                merger.setReplaceChunks(true);
+            if (isHytale) {
+                HytaleWorldMerger hytaleMerger = new HytaleWorldMerger(world, exportSettings, mapDir, platform);
+                if (replaceChunks) {
+                    hytaleMerger.setReplaceChunks(true);
+                } else {
+                    hytaleMerger.setMergeBlocksAboveGround(checkBoxAboveMergeBlocks.isSelected());
+                    hytaleMerger.setMergeBlocksUnderground(checkBoxBelowMergeBlocks.isSelected());
+                    // Hytale collapses above/below biome to a single per-column flag.
+                    hytaleMerger.setMergeBiomes(checkBoxAboveMergeBiomes.isSelected());
+                    hytaleMerger.setClearManMadeAboveGround(checkBoxRemoveManMadeAboveGround.isSelected());
+                    hytaleMerger.setClearManMadeBelowGround(checkBoxRemoveManMadeBelowGround.isSelected());
+                    hytaleMerger.setClearTrees(checkBoxRemoveTrees.isSelected());
+                    hytaleMerger.setClearVegetation(checkBoxRemoveVegetation.isSelected());
+                    hytaleMerger.setSurfaceMergeDepth((Integer) spinnerSurfaceThickness.getValue());
+                    // clearResources / fillCaves: not applicable on Hytale, ignored.
+                }
+                hytaleMerger.performSanityChecks();
+                merger = hytaleMerger;
             } else {
-                merger.setMergeBlocksAboveGround(checkBoxAboveMergeBlocks.isSelected());
-                merger.setMergeBlocksUnderground(checkBoxBelowMergeBlocks.isSelected());
-                merger.setMergeBiomesAboveGround(platform.supportsBiomes() && checkBoxAboveMergeBiomes.isSelected());
-                merger.setMergeBiomesUnderground((platform.capabilities.contains(BIOMES_3D) || platform.capabilities.contains(NAMED_BIOMES)) && checkBoxBelowMergeBiomes.isSelected());
-                merger.setClearManMadeAboveGround(checkBoxRemoveManMadeAboveGround.isSelected());
-                merger.setClearManMadeBelowGround(checkBoxRemoveManMadeBelowGround.isSelected());
-                merger.setClearResources(checkBoxRemoveResources.isSelected());
-                merger.setClearTrees(checkBoxRemoveTrees.isSelected());
-                merger.setClearVegetation(checkBoxRemoveVegetation.isSelected());
-                merger.setFillCaves(checkBoxFillCaves.isSelected());
-                merger.setSurfaceMergeDepth((Integer) spinnerSurfaceThickness.getValue());
+                JavaWorldMerger javaMerger = new JavaWorldMerger(world, exportSettings, mapDir, platform);
+                if (replaceChunks) {
+                    javaMerger.setReplaceChunks(true);
+                } else {
+                    javaMerger.setMergeBlocksAboveGround(checkBoxAboveMergeBlocks.isSelected());
+                    javaMerger.setMergeBlocksUnderground(checkBoxBelowMergeBlocks.isSelected());
+                    javaMerger.setMergeBiomesAboveGround(platform.supportsBiomes() && checkBoxAboveMergeBiomes.isSelected());
+                    javaMerger.setMergeBiomesUnderground((platform.capabilities.contains(BIOMES_3D) || platform.capabilities.contains(NAMED_BIOMES)) && checkBoxBelowMergeBiomes.isSelected());
+                    javaMerger.setClearManMadeAboveGround(checkBoxRemoveManMadeAboveGround.isSelected());
+                    javaMerger.setClearManMadeBelowGround(checkBoxRemoveManMadeBelowGround.isSelected());
+                    javaMerger.setClearResources(checkBoxRemoveResources.isSelected());
+                    javaMerger.setClearTrees(checkBoxRemoveTrees.isSelected());
+                    javaMerger.setClearVegetation(checkBoxRemoveVegetation.isSelected());
+                    javaMerger.setFillCaves(checkBoxFillCaves.isSelected());
+                    javaMerger.setSurfaceMergeDepth((Integer) spinnerSurfaceThickness.getValue());
+                }
+                javaMerger.performSanityChecks();
+                merger = javaMerger;
             }
-            merger.performSanityChecks();
         } catch (IllegalArgumentException e) {
             logger.error(e.getClass().getSimpleName() + ": " + e.getMessage(), e);
             beepAndShowError(this, e.getLocalizedMessage(), "Error");
@@ -376,6 +402,16 @@ public class MergeWorldDialog extends WorldPainterDialog {
         checkBoxSurface.setEnabled(mergeEverything && surfacePresent && (! oneDimensionPresent));
         checkBoxNether.setEnabled(mergeEverything && netherPresent && (! oneDimensionPresent));
         checkBoxEnd.setEnabled(mergeEverything && endPresent && (! oneDimensionPresent));
+
+        // Platform-specific visibility: Hytale has only the Overworld, a single per-column
+        // biome, and no Resources / Caves clearing. Hide the controls that don't apply so
+        // the user isn't tempted to set them. Minecraft platforms get the full set.
+        final boolean isHytale = HytaleTerrainHelper.isHytale(platform);
+        checkBoxBelowMergeBiomes.setVisible(! isHytale);
+        checkBoxRemoveResources.setVisible(! isHytale);
+        checkBoxFillCaves.setVisible(! isHytale);
+        checkBoxNether.setVisible(! isHytale);
+        checkBoxEnd.setVisible(! isHytale);
         if (radioButtonExportSelection.isSelected()) {
             labelSelectTiles.setForeground(Color.BLUE);
             labelSelectTiles.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
