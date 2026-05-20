@@ -796,12 +796,62 @@ public class HytaleBlockRegistry {
             "Rock_Stone", "Rock_Stone_Mossy", "Rock_Basalt", "Rock_Calcite", "Rock_Marble",
             "Rock_Quartzite", "Rock_Sandstone", "Rock_Sandstone_Red", "Rock_Sandstone_White",
             "Rock_Shale", "Rock_Slate", "Rock_Aqua", "Rock_Volcanic", "Rock_Chalk",
-            "Rock_Gold", "Rock_Concrete", "Rock_Peach", "Rock_Ledge", "Rock_Lime"
+            "Rock_Gold", "Rock_Concrete", "Rock_Peach", "Rock_Ledge", "Rock_Lime",
+            "Rock_Magma_Cooled"
         }) {
             addRockVariants(rockConstruction, base);
         }
         rockConstruction.add("Rock_Volcanic_Cracked_Lava");
         rockConstruction.add("Rock_Volcanic_Cracked_Poisoned");
+        // TP-57: Update 4 added additional rock variants that don't follow the
+        // standard "_Brick"/"_Cobble" sub-tree pattern. Register them explicitly.
+        // Skip "_Half" for Rock_Magma_Cooled because it is already registered
+        // in the ROCK base list (line ~791); registering twice would make
+        // findCategoryForBlock return ROCK instead of ROCK_CONSTRUCTION.
+        for (String base : new String[]{"Rock_Slate", "Rock_Chalk", "Rock_Magma_Cooled"}) {
+            rockConstruction.add(base + "_Beam");
+            rockConstruction.add(base + "_Stairs");
+            rockConstruction.add(base + "_Brick_Roof_Hollow");
+            rockConstruction.add(base + "_Brick_Roof_Shallow");
+            rockConstruction.add(base + "_Brick_Roof_Steep");
+            rockConstruction.add(base + "_Cobble_Roof_Hollow");
+            rockConstruction.add(base + "_Cobble_Roof_Shallow");
+            rockConstruction.add(base + "_Cobble_Roof_Steep");
+        }
+        rockConstruction.add("Rock_Slate_Half");
+        rockConstruction.add("Rock_Chalk_Half");
+        rockConstruction.add("Rock_Slate_Cobble_Corner");
+        rockConstruction.add("Rock_Slate_Cracked");
+        // TP-57: Metal construction sets (Bronze, Copper, Iron, Zinc) — full
+        // structural variants used for buildings, decorative beams, pipes, etc.
+        for (String metal : new String[]{"Metal_Bronze", "Metal_Copper", "Metal_Iron", "Metal_Zinc"}) {
+            rockConstruction.add(metal);
+            rockConstruction.add(metal + "_Decorative");
+            rockConstruction.add(metal + "_Fence");
+            rockConstruction.add(metal + "_Half");
+            rockConstruction.add(metal + "_Ornate");
+            rockConstruction.add(metal + "_Pipe_Chimney");
+            rockConstruction.add(metal + "_Pipe_Corner");
+            rockConstruction.add(metal + "_Pipe_Large");
+            rockConstruction.add(metal + "_Pipe_Large_Corner");
+            rockConstruction.add(metal + "_Pipe_Large_Mouthpiece");
+            rockConstruction.add(metal + "_Pipe_Long");
+            rockConstruction.add(metal + "_Pipe_Short");
+            rockConstruction.add(metal + "_Roof");
+            rockConstruction.add(metal + "_Roof_Flat");
+            rockConstruction.add(metal + "_Roof_Shallow");
+            rockConstruction.add(metal + "_Roof_Steep");
+            rockConstruction.add(metal + "_Smooth");
+            rockConstruction.add(metal + "_Smooth_Half");
+            rockConstruction.add(metal + "_Stairs");
+        }
+        // Iron has an additional gutter variant the other metals don't share.
+        rockConstruction.add("Metal_Iron_Gutter");
+        // Gold pipe variants (Gold has pipes but no full block set yet).
+        rockConstruction.add("Metal_Gold_Pipe_Chimney");
+        rockConstruction.add("Metal_Gold_Pipe_Corner");
+        rockConstruction.add("Metal_Gold_Pipe_Large_Corner");
+        rockConstruction.add("Metal_Gold_Pipe_Short");
         Collections.sort(rockConstruction);
         BLOCKS_BY_CATEGORY.put(Category.ROCK_CONSTRUCTION, rockConstruction);
 
@@ -847,7 +897,7 @@ public class HytaleBlockRegistry {
         // --- WOOD (Natural / Trees) ---
         List<String> woodNatural = new ArrayList<>();
         for (String tree : new String[]{
-            "Amber", "Ash", "Aspen", "Azure", "Banyan", "Beech", "Birch", "Bottletree",
+            "Amber", "Apple", "Ash", "Aspen", "Azure", "Banyan", "Beech", "Birch", "Bottletree",
             "Burnt", "Camphor", "Cedar", "Crystal", "Dry", "Fig_Blue", "Fir",
             "Gumboab", "Jungle", "Maple", "Oak", "Palm", "Palo", "Petrified", "Poisoned",
             "Redwood", "Sallow", "Spiral", "Stormbark", "Windwillow", "Wisteria_Wild"
@@ -858,18 +908,50 @@ public class HytaleBlockRegistry {
             woodNatural.add("Wood_" + tree + "_Branch_Short");
             woodNatural.add("Wood_" + tree + "_Branch_Long");
             woodNatural.add("Wood_" + tree + "_Branch_Corner");
+            // TP-57: Update 4 added trunk Half/Stairs variants to every wood family.
+            woodNatural.add("Wood_" + tree + "_Trunk_Half");
+            woodNatural.add("Wood_" + tree + "_Trunk_Stairs");
         }
         // Special cases: trees that don't follow the full Trunk/Trunk_Full/Roots/Branch pattern
         woodNatural.add("Wood_Bamboo_Trunk");
+        woodNatural.add("Wood_Bamboo_Trunk_Full");
+        woodNatural.add("Wood_Bamboo_Trunk_Half");
+        woodNatural.add("Wood_Bamboo_Trunk_Stairs");
+        woodNatural.add("Wood_Bamboo_Roots");
+        woodNatural.add("Wood_Bamboo_Branch_Short");
         woodNatural.add("Wood_Bamboo_Branch_Long");
+        woodNatural.add("Wood_Bamboo_Branch_Corner");
+        // TP-57: Bamboo "_Deco" variants (decorative / textured bamboo blocks).
+        woodNatural.add("Wood_Bamboo_Trunk_Deco");
+        woodNatural.add("Wood_Bamboo_Trunk_Full_Deco");
+        woodNatural.add("Wood_Bamboo_Trunk_Half_Deco");
+        woodNatural.add("Wood_Bamboo_Trunk_Stairs_Deco");
+        woodNatural.add("Wood_Bamboo_Roots_Deco");
+        woodNatural.add("Wood_Bamboo_Branch_Short_Deco");
+        woodNatural.add("Wood_Bamboo_Branch_Long_Deco");
+        woodNatural.add("Wood_Bamboo_Branch_Corner_Deco");
         woodNatural.add("Wood_Fire_Trunk");
         woodNatural.add("Wood_Fire_Trunk_Full");
+        woodNatural.add("Wood_Fire_Trunk_Half");
+        woodNatural.add("Wood_Fire_Trunk_Stairs");
+        woodNatural.add("Wood_Fire_Roots");
         woodNatural.add("Wood_Fire_Branch_Short");
         woodNatural.add("Wood_Fire_Branch_Long");
         woodNatural.add("Wood_Fire_Branch_Corner");
         woodNatural.add("Wood_Gnarled_Roots");
+        // TP-57: Wood_Ice gained a full trunk + branches + roots set in Update 4.
         woodNatural.add("Wood_Ice_Trunk");
+        woodNatural.add("Wood_Ice_Trunk_Full");
+        woodNatural.add("Wood_Ice_Trunk_Half");
+        woodNatural.add("Wood_Ice_Trunk_Stairs");
+        woodNatural.add("Wood_Ice_Roots");
+        woodNatural.add("Wood_Ice_Branch_Short");
+        woodNatural.add("Wood_Ice_Branch_Long");
+        woodNatural.add("Wood_Ice_Branch_Corner");
         Collections.sort(woodNatural);
+        // Deduplicate before storing (Apple is in the loop; Bamboo/Fire/Ice
+        // have explicit entries to capture variants the loop doesn't cover).
+        woodNatural = new ArrayList<>(new LinkedHashSet<>(woodNatural));
         BLOCKS_BY_CATEGORY.put(Category.WOOD_NATURAL, woodNatural);
 
         // --- WOOD PLANKS & CONSTRUCTION ---
@@ -889,7 +971,7 @@ public class HytaleBlockRegistry {
 
         // --- TREE LEAVES ---
         addBlocks(Category.LEAVES,
-            "Plant_Leaves_Amber", "Plant_Leaves_Ash", "Plant_Leaves_Aspen",
+            "Plant_Leaves_Amber", "Plant_Leaves_Apple", "Plant_Leaves_Ash", "Plant_Leaves_Aspen",
             "Plant_Leaves_Autumn", "Plant_Leaves_Autumn_Floor",
             "Plant_Leaves_Azure", "Plant_Leaves_Bamboo",
             "Plant_Leaves_Banyan", "Plant_Leaves_Beech", "Plant_Leaves_Birch",
@@ -897,7 +979,8 @@ public class HytaleBlockRegistry {
             "Plant_Leaves_Camphor", "Plant_Leaves_Cedar", "Plant_Leaves_Crystal",
             "Plant_Leaves_Dead", "Plant_Leaves_Dry",
             "Plant_Leaves_Fig_Blue", "Plant_Leaves_Fir", "Plant_Leaves_Fir_Red",
-            "Plant_Leaves_Fir_Snow", "Plant_Leaves_Fire",
+            "Plant_Leaves_Fir_Snow", "Plant_Leaves_Fir_Tip", "Plant_Leaves_Fir_Tip_Snow",
+            "Plant_Leaves_Fire", "Plant_Leaves_Frostwood",
             "Plant_Leaves_Goldentree", "Plant_Leaves_Gumboab",
             "Plant_Leaves_Jungle", "Plant_Leaves_Jungle_Floor",
             "Plant_Leaves_Maple", "Plant_Leaves_Oak",
@@ -1100,11 +1183,19 @@ public class HytaleBlockRegistry {
 
         // --- SAPLINGS & FRUITS ---
         addBlocks(Category.SAPLINGS_FRUITS,
-            "Plant_Sapling_Ash", "Plant_Sapling_Beech", "Plant_Sapling_Birch",
+            "Plant_Sapling_Amber", "Plant_Sapling_Apple", "Plant_Sapling_Ash",
+            "Plant_Sapling_Aspen", "Plant_Sapling_Azure", "Plant_Sapling_Bamboo",
+            "Plant_Sapling_Banyan", "Plant_Sapling_Beech", "Plant_Sapling_Birch",
+            "Plant_Sapling_Bottletree", "Plant_Sapling_Camphor",
             "Plant_Sapling_Cedar", "Plant_Sapling_Crystal", "Plant_Sapling_Dry",
-            "Plant_Sapling_Oak", "Plant_Sapling_Palm", "Plant_Sapling_Poisoned",
-            "Plant_Sapling_Redwood", "Plant_Sapling_Spruce", "Plant_Sapling_Spruce_Frozen",
-            "Plant_Sapling_Windwillow", "Plant_Seeds_Pine",
+            "Plant_Sapling_Fig_Blue", "Plant_Sapling_Fire", "Plant_Sapling_Gumboab",
+            "Plant_Sapling_Ice", "Plant_Sapling_Jungle", "Plant_Sapling_Maple",
+            "Plant_Sapling_Oak", "Plant_Sapling_Palm", "Plant_Sapling_Palo",
+            "Plant_Sapling_Petrified", "Plant_Sapling_Poisoned",
+            "Plant_Sapling_Redwood", "Plant_Sapling_Sallow",
+            "Plant_Sapling_Spiral", "Plant_Sapling_Spruce", "Plant_Sapling_Spruce_Frozen",
+            "Plant_Sapling_Stormbark", "Plant_Sapling_Windwillow", "Plant_Sapling_Wisteria_Wild",
+            "Plant_Seeds_Pine",
             "Plant_Fruit_Apple", "Plant_Fruit_Azure", "Plant_Fruit_Coconut",
             "Plant_Fruit_Mango", "Plant_Fruit_Pinkberry", "Plant_Fruit_Spiral", "Plant_Fruit_Windwillow",
             "Plant_Reeds_Arid", "Plant_Reeds_Lava", "Plant_Reeds_Marsh", "Plant_Reeds_Poison",
