@@ -1129,38 +1129,7 @@ public class HytaleWorldExporter implements WorldExporter {
                     hytaleTerrain = isCustomTerrain ? null : HytaleTerrainHelper.fromMinecraftTerrain(localTerrain);
                 }
 
-                // Resolve biome: check if user painted a biome via the Biome layer
-                int paintedBiomeId = tile.getLayerValue(Biome.INSTANCE, tileLocalX, tileLocalZ);
-                String biome;
-                String environment;
-                int tint;
-                if (paintedBiomeId != HytaleBiome.BIOME_AUTO) {
-                    // User explicitly painted a Hytale biome
-                    HytaleBiome hb = HytaleBiome.getById(paintedBiomeId);
-                    if (hb != null) {
-                        biome = hb.getName();
-                        environment = hb.getEnvironment();
-                        tint = hb.getTint();
-                    } else {
-                        // Unknown biome ID, fall back to auto
-                        biome = mapTerrainToBiome(localTerrain);
-                        HytaleBiome fallback = HytaleBiome.fromTerrainBiomeName(biome);
-                        environment = fallback.getEnvironment();
-                        tint = fallback.getTint();
-                    }
-                } else {
-                    // Auto biome: derive from terrain
-                    String terrainBiomeName = mapTerrainToBiome(localTerrain);
-                    HytaleBiome autoBiome = HytaleBiome.fromTerrainBiomeName(terrainBiomeName);
-                    biome = autoBiome.getName();
-                    environment = autoBiome.getEnvironment();
-                    tint = autoBiome.getTint();
-                }
-                
-                // Set biome, environment and tint
-                chunk.setBiomeName(localX, localZ, biome);
-                chunk.setEnvironment(localX, localZ, environment);
-                chunk.setTint(localX, localZ, tint);
+                resolveAndSetBiome(chunk, tile, localTerrain, tileLocalX, tileLocalZ, localX, localZ);
                 
                 // Bottom layer - bedrock (unless the dimension is bottomless)
                 if (!dimension.isBottomless()) {
@@ -1382,88 +1351,11 @@ public class HytaleWorldExporter implements WorldExporter {
                     }
                 }
 
-                // ── Environment Layer ────────────────────────────────
-                // Water tinting is now solely environment-driven
-                int envLayerValue = tile.getLayerValue(HytaleEnvironmentLayer.INSTANCE, tileLocalX, tileLocalZ);
-                if (envLayerValue != HytaleEnvironmentLayer.ENV_AUTO) {
-                    HytaleEnvironmentData envData = HytaleEnvironmentData.getById(envLayerValue);
-                    if (envData != null) {
-                        environment = envData.getName();
-                        chunk.setEnvironment(localX, localZ, environment);
-                        if (envData.getWaterTint() != null) {
-                            chunk.setWaterTint(localX, localZ, envData.getWaterTint());
-                        }
-                    }
-                }
-
-                // ── Entity Layer ─────────────────────────────────────
-                int entityLayerValue = tile.getLayerValue(HytaleEntityLayer.INSTANCE, tileLocalX, tileLocalZ);
-                if (entityLayerValue > 0) {
-                    float spawnDensity = HytaleEntityLayer.getSpawnDensity(entityLayerValue);
-                    chunk.setSpawnDensity(localX, localZ, spawnDensity);
-                    if (entityLayerValue < HytaleEntityLayer.SPAWN_TAGS.length 
-                            && HytaleEntityLayer.SPAWN_TAGS[entityLayerValue] != null) {
-                        chunk.setSpawnTag(localX, localZ, HytaleEntityLayer.SPAWN_TAGS[entityLayerValue]);
-                    }
-                }
-
-                // ── Prefab Layer (deferred) ─────────────────────────────
-                int prefabLayerValue = tile.getLayerValue(HytalePrefabLayer.INSTANCE, tileLocalX, tileLocalZ);
-                if (prefabLayerValue > 0 && prefabLayerValue < HytalePrefabLayer.PREFAB_PATHS.length) {
-                    String prefabPath = HytalePrefabLayer.PREFAB_PATHS[prefabLayerValue];
-                    if (prefabPath != null) {
-                        pendingPrefabPastes.add(new PendingPrefabPaste(
-                                localX, height + 1, localZ, worldX, worldZ, prefabPath,
-                                HytalePrefabLayer.PREFAB_NAMES[prefabLayerValue]));
-                    }
-                }
-
-                // ── Specific Prefab Layers ───────────────────────────
-                for (HytaleSpecificPrefabLayer spLayer : specificPrefabLayers) {
-                    int gridX = spLayer.getGridX();
-                    int gridZ = spLayer.getGridZ();
-                    // Skip positions that don't fall on the grid
-                    if (((worldX % gridX) != 0) || ((worldZ % gridZ) != 0)) {
-                        continue;
-                    }
-                    int strength = tile.getLayerValue(spLayer, tileLocalX, tileLocalZ);
-                    if (strength <= 0) {
-                        continue;
-                    }
-                    // Probability-based placement matching Bo2LayerExporter approach
-                    int densityFactor = spLayer.getDensity() * 64;
-                    long placementSeed = seed + worldX * 65537L + worldZ * 4099L + (long) spLayer.getId().hashCode();
-                    java.util.Random rng = new java.util.Random(placementSeed);
-                    if (rng.nextInt(densityFactor) > strength * strength) {
-                        continue;
-                    }
-                    // Apply random displacement
-                    int placeX = worldX;
-                    int placeZ = worldZ;
-                    int placeLocalX = localX;
-                    int placeLocalZ = localZ;
-                    int displacement = spLayer.getRandomDisplacement();
-                    if (displacement > 0) {
-                        double angle = rng.nextDouble() * Math.PI * 2;
-                        double distance = rng.nextDouble() * displacement;
-                        placeX = worldX + (int) Math.round(Math.sin(angle) * distance);
-                        placeZ = worldZ + (int) Math.round(Math.cos(angle) * distance);
-                        // Recalculate local coordinates within this chunk
-                        placeLocalX = placeX - worldBlockX;
-                        placeLocalZ = placeZ - worldBlockZ;
-                        // Skip if displaced outside this chunk
-                        if (placeLocalX < 0 || placeLocalX >= HytaleChunk.CHUNK_SIZE
-                                || placeLocalZ < 0 || placeLocalZ >= HytaleChunk.CHUNK_SIZE) {
-                            continue;
-                        }
-                    }
-                    PrefabFileEntry selected = spLayer.selectPrefab(placeX, placeZ);
-                    int placeHeight = tile.getIntHeight(placeX & 0x7F, placeZ & 0x7F);
-                    pendingPrefabPastes.add(new PendingPrefabPaste(
-                            placeLocalX, placeHeight + 1, placeLocalZ,
-                            placeX, placeZ, selected.getRelativePath(),
-                            selected.getDisplayName()));
-                }
+                applyEnvironmentLayer(chunk, tile, tileLocalX, tileLocalZ, localX, localZ);
+                applyEntityLayer(chunk, tile, tileLocalX, tileLocalZ, localX, localZ);
+                enqueuePrefabLayerPaste(tile, tileLocalX, tileLocalZ, localX, localZ, worldX, worldZ, height, pendingPrefabPastes);
+                enqueueSpecificPrefabPastes(tile, specificPrefabLayers, localX, localZ, tileLocalX, tileLocalZ,
+                        worldX, worldZ, worldBlockX, worldBlockZ, seed, pendingPrefabPastes);
                 
                 // Update heightmap - WorldPainter height is the Y coordinate of the surface block
                 // Hytale heightmap also stores Y coordinate of topmost solid block
@@ -1482,6 +1374,161 @@ public class HytaleWorldExporter implements WorldExporter {
         }
     }
     
+    /**
+     * Resolve the Hytale biome for a column and write biome name, environment, and
+     * grass tint into the chunk. If the user painted a Hytale biome via the {@link
+     * Biome} layer, that wins; otherwise the biome is derived from the column's
+     * Minecraft terrain via {@link #mapTerrainToBiome}.
+     */
+    private void resolveAndSetBiome(HytaleChunk chunk, Tile tile, Terrain localTerrain,
+                                    int tileLocalX, int tileLocalZ, int localX, int localZ) {
+        int paintedBiomeId = tile.getLayerValue(Biome.INSTANCE, tileLocalX, tileLocalZ);
+        String biome;
+        String environment;
+        int tint;
+        if (paintedBiomeId != HytaleBiome.BIOME_AUTO) {
+            // User explicitly painted a Hytale biome
+            HytaleBiome hb = HytaleBiome.getById(paintedBiomeId);
+            if (hb != null) {
+                biome = hb.getName();
+                environment = hb.getEnvironment();
+                tint = hb.getTint();
+            } else {
+                // Unknown biome ID, fall back to auto
+                biome = mapTerrainToBiome(localTerrain);
+                HytaleBiome fallback = HytaleBiome.fromTerrainBiomeName(biome);
+                environment = fallback.getEnvironment();
+                tint = fallback.getTint();
+            }
+        } else {
+            // Auto biome: derive from terrain
+            String terrainBiomeName = mapTerrainToBiome(localTerrain);
+            HytaleBiome autoBiome = HytaleBiome.fromTerrainBiomeName(terrainBiomeName);
+            biome = autoBiome.getName();
+            environment = autoBiome.getEnvironment();
+            tint = autoBiome.getTint();
+        }
+        chunk.setBiomeName(localX, localZ, biome);
+        chunk.setEnvironment(localX, localZ, environment);
+        chunk.setTint(localX, localZ, tint);
+    }
+
+    /**
+     * Apply a user-painted environment override to a column (weather, sky, water tint).
+     * If the layer value is {@link HytaleEnvironmentLayer#ENV_AUTO}, the biome's
+     * default environment (already set by {@link #resolveAndSetBiome}) stays in place.
+     */
+    private void applyEnvironmentLayer(HytaleChunk chunk, Tile tile,
+                                       int tileLocalX, int tileLocalZ, int localX, int localZ) {
+        int envLayerValue = tile.getLayerValue(HytaleEnvironmentLayer.INSTANCE, tileLocalX, tileLocalZ);
+        if (envLayerValue == HytaleEnvironmentLayer.ENV_AUTO) {
+            return;
+        }
+        HytaleEnvironmentData envData = HytaleEnvironmentData.getById(envLayerValue);
+        if (envData == null) {
+            return;
+        }
+        chunk.setEnvironment(localX, localZ, envData.getName());
+        if (envData.getWaterTint() != null) {
+            chunk.setWaterTint(localX, localZ, envData.getWaterTint());
+        }
+    }
+
+    /**
+     * Apply a user-painted spawn-density preset to a column (NPC spawn frequency
+     * and optional filter tag).
+     */
+    private void applyEntityLayer(HytaleChunk chunk, Tile tile,
+                                  int tileLocalX, int tileLocalZ, int localX, int localZ) {
+        int entityLayerValue = tile.getLayerValue(HytaleEntityLayer.INSTANCE, tileLocalX, tileLocalZ);
+        if (entityLayerValue <= 0) {
+            return;
+        }
+        float spawnDensity = HytaleEntityLayer.getSpawnDensity(entityLayerValue);
+        chunk.setSpawnDensity(localX, localZ, spawnDensity);
+        if (entityLayerValue < HytaleEntityLayer.SPAWN_TAGS.length
+                && HytaleEntityLayer.SPAWN_TAGS[entityLayerValue] != null) {
+            chunk.setSpawnTag(localX, localZ, HytaleEntityLayer.SPAWN_TAGS[entityLayerValue]);
+        }
+    }
+
+    /**
+     * Queue a prefab paste for the {@link HytalePrefabLayer} value at this column.
+     * Pastes are executed at the region level after all chunks are populated, so
+     * multi-chunk prefabs can span chunk boundaries.
+     */
+    private void enqueuePrefabLayerPaste(Tile tile, int tileLocalX, int tileLocalZ,
+                                         int localX, int localZ, int worldX, int worldZ, int height,
+                                         List<PendingPrefabPaste> pendingPrefabPastes) {
+        int prefabLayerValue = tile.getLayerValue(HytalePrefabLayer.INSTANCE, tileLocalX, tileLocalZ);
+        if (prefabLayerValue <= 0 || prefabLayerValue >= HytalePrefabLayer.PREFAB_PATHS.length) {
+            return;
+        }
+        String prefabPath = HytalePrefabLayer.PREFAB_PATHS[prefabLayerValue];
+        if (prefabPath != null) {
+            pendingPrefabPastes.add(new PendingPrefabPaste(
+                    localX, height + 1, localZ, worldX, worldZ, prefabPath,
+                    HytalePrefabLayer.PREFAB_NAMES[prefabLayerValue]));
+        }
+    }
+
+    /**
+     * Queue prefab pastes for all {@link HytaleSpecificPrefabLayer}s at this column.
+     * Grid alignment, density-based probability roll, and random displacement match
+     * the {@link Bo2LayerExporter} approach.
+     */
+    private void enqueueSpecificPrefabPastes(Tile tile, List<HytaleSpecificPrefabLayer> specificPrefabLayers,
+                                             int localX, int localZ, int tileLocalX, int tileLocalZ,
+                                             int worldX, int worldZ, int worldBlockX, int worldBlockZ,
+                                             long seed,
+                                             List<PendingPrefabPaste> pendingPrefabPastes) {
+        for (HytaleSpecificPrefabLayer spLayer : specificPrefabLayers) {
+            int gridX = spLayer.getGridX();
+            int gridZ = spLayer.getGridZ();
+            // Skip positions that don't fall on the grid
+            if (((worldX % gridX) != 0) || ((worldZ % gridZ) != 0)) {
+                continue;
+            }
+            int strength = tile.getLayerValue(spLayer, tileLocalX, tileLocalZ);
+            if (strength <= 0) {
+                continue;
+            }
+            // Probability-based placement matching Bo2LayerExporter approach
+            int densityFactor = spLayer.getDensity() * 64;
+            long placementSeed = seed + worldX * 65537L + worldZ * 4099L + (long) spLayer.getId().hashCode();
+            java.util.Random rng = new java.util.Random(placementSeed);
+            if (rng.nextInt(densityFactor) > strength * strength) {
+                continue;
+            }
+            // Apply random displacement
+            int placeX = worldX;
+            int placeZ = worldZ;
+            int placeLocalX = localX;
+            int placeLocalZ = localZ;
+            int displacement = spLayer.getRandomDisplacement();
+            if (displacement > 0) {
+                double angle = rng.nextDouble() * Math.PI * 2;
+                double distance = rng.nextDouble() * displacement;
+                placeX = worldX + (int) Math.round(Math.sin(angle) * distance);
+                placeZ = worldZ + (int) Math.round(Math.cos(angle) * distance);
+                // Recalculate local coordinates within this chunk
+                placeLocalX = placeX - worldBlockX;
+                placeLocalZ = placeZ - worldBlockZ;
+                // Skip if displaced outside this chunk
+                if (placeLocalX < 0 || placeLocalX >= HytaleChunk.CHUNK_SIZE
+                        || placeLocalZ < 0 || placeLocalZ >= HytaleChunk.CHUNK_SIZE) {
+                    continue;
+                }
+            }
+            PrefabFileEntry selected = spLayer.selectPrefab(placeX, placeZ);
+            int placeHeight = tile.getIntHeight(placeX & 0x7F, placeZ & 0x7F);
+            pendingPrefabPastes.add(new PendingPrefabPaste(
+                    placeLocalX, placeHeight + 1, placeLocalZ,
+                    placeX, placeZ, selected.getRelativePath(),
+                    selected.getDisplayName()));
+        }
+    }
+
     /**
      * Populate a chunk with ceiling terrain, inverted from the ceiling dimension.
      * Blocks hang downward from {@code ceilingHeight - 1} (bedrock lid) based on
