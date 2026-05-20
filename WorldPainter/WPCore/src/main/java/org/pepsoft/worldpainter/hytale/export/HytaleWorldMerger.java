@@ -237,9 +237,10 @@ public class HytaleWorldMerger extends HytaleWorldExporter implements WorldMerge
      * {@link org.pepsoft.worldpainter.merging.JavaWorldMerger#performSanityChecks()}.
      */
     public void performSanityChecks() {
-        if (world.getImportedFrom() == null) {
-            throw new InvalidMapException("World was not imported from an existing Hytale map; nothing to merge with");
-        }
+        // Note: we do NOT require world.getImportedFrom() != null. App.merge() already
+        // surfaces a "world was not imported, are you sure?" confirmation before opening
+        // the merge dialog, mirroring how Minecraft's merge works — Talepainter users can
+        // merge an arbitrary painted world into any existing Hytale save.
         if (!mapDir.isDirectory()) {
             throw new InvalidMapException(mapDir + " does not exist or is not a directory");
         }

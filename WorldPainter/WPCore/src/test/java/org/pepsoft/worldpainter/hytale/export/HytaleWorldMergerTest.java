@@ -83,10 +83,13 @@ public class HytaleWorldMergerTest {
     }
 
     @Test
-    public void sanityChecksRejectWorldNotImportedFromMap() throws Exception {
+    public void sanityChecksAcceptWorldNotImportedFromMap() throws Exception {
+        // Matches JavaWorldMerger: merging a non-imported TalePainter world into an existing
+        // Hytale save is allowed. App.merge() already surfaces a confirmation dialog ("world
+        // was not imported, are you sure?") before opening MergeWorldDialog, so the merger
+        // itself does not need to enforce this.
         File mapDir = createExportedHytaleMap("not_imported");
 
-        // Build a world WITHOUT setting setImportedFrom — sanity check should fail
         World2 world = new World2(HYTALE, 0, 320);
         world.setName("NotImported");
         long seed = 1L;
@@ -100,12 +103,8 @@ public class HytaleWorldMergerTest {
         world.addDimension(dim);
 
         HytaleWorldMerger merger = new HytaleWorldMerger(world, new WorldExportSettings(), mapDir, HYTALE);
-        try {
-            merger.performSanityChecks();
-            fail("Expected InvalidMapException for world without importedFrom");
-        } catch (InvalidMapException expected) {
-            // ok
-        }
+        // Should not throw — world without importedFrom is allowed.
+        merger.performSanityChecks();
     }
 
     @Test
