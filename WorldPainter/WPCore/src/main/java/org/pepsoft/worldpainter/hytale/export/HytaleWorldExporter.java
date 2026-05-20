@@ -518,16 +518,9 @@ public class HytaleWorldExporter implements WorldExporter {
         Files.write(new File(saveDir, "bans.json").toPath(),
                 "[]".getBytes(StandardCharsets.UTF_8));
         
-        // permissions.json - Creative exports auto-OP the user via their discovered UUID; see TP-52
-        UUID playerUuid = HytaleWorldSettings.detectHytalePlayerUuid(HytaleWorldSettings.defaultHytaleSavesDir())
-                .orElse(null);
-        if (playerUuid == null) {
-            logger.info("No existing Hytale player UUID found; permissions.json will not auto-OP. " +
-                    "Player can /op self once after joining.");
-        } else {
-            logger.info("Detected Hytale player UUID {} for permissions.json auto-OP", playerUuid);
-        }
-        Map<String, Object> permissions = HytaleWorldSettings.buildPermissionsJson(world.getGameType(), playerUuid);
+        // permissions.json - Creative exports grant groups.Creative=["*"] so every joining
+        // player gets admin perms via the auto-injected gameplay-mode group; see TP-52.
+        Map<String, Object> permissions = HytaleWorldSettings.buildPermissionsJson(world.getGameType());
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         Files.write(new File(saveDir, "permissions.json").toPath(),
                 gson.toJson(permissions).getBytes(StandardCharsets.UTF_8));
@@ -1596,6 +1589,8 @@ public class HytaleWorldExporter implements WorldExporter {
                     // Custom terrain: resolve blocks through MixedMaterial → Material → HytaleBlock.
                     // Surface-only blocks (vegetation, decorations) must only appear on top;
                     // subsurface is filled with dirt/stone just like the non-custom path.
+                    HytaleBlock substrateBlock = getSurfaceOnlySubstrate(localTerrain, customMaterial, hytaleTerrain, seed, worldX, worldZ, height);
+                    HytaleBlock subsurfaceFallback = substrateBlock.isGrass() ? HytaleBlock.DIRT : substrateBlock;
                     HytaleBlock surfacePlant = null;
                     for (int y = 1; y <= height; y++) {
                         int depth = height - y;
@@ -1606,14 +1601,14 @@ public class HytaleWorldExporter implements WorldExporter {
                             if (depth == 0) {
                                 surfacePlant = block;
                             }
-                            // Subsurface gets dirt/stone; surface keeps the
+                            // Subsurface gets the resolved substrate; surface keeps the
                             // terrain substrate instead of synthesising grass.
                             block = (depth > 0)
-                                    ? ((depth <= 4) ? HytaleBlock.DIRT : HytaleBlock.STONE)
-                                    : getSurfaceOnlySubstrate(localTerrain, customMaterial, hytaleTerrain, seed, worldX, worldZ, y);
+                                    ? ((depth <= 4) ? subsurfaceFallback : HytaleBlock.STONE)
+                                    : substrateBlock;
                         } else if (block.isGrass() && depth > 0) {
                             // Grass only belongs on the surface
-                            block = (depth <= 4) ? HytaleBlock.DIRT : HytaleBlock.STONE;
+                            block = (depth <= 4) ? subsurfaceFallback : HytaleBlock.STONE;
                         }
                         if (block.isFluid()) {
                             chunk.setHytaleBlock(localX, y, localZ, HytaleBlock.EMPTY);
@@ -1630,26 +1625,27 @@ public class HytaleWorldExporter implements WorldExporter {
                     HytaleBlock terrainBlock = hytaleTerrain.getPrimaryBlock();
                     boolean surfaceOnly = HytaleBlockRegistry.isSurfaceOnlyBlock(terrainBlock.id);
                     boolean grassTerrain = terrainBlock.isGrass();
+                    HytaleBlock substrateBlock = surfaceOnly
+                            ? getSurfaceOnlySubstrate(localTerrain, customMaterial, null, seed, worldX, worldZ, height)
+                            : terrainBlock;
+                    HytaleBlock subsurfaceFallback = substrateBlock.isGrass() ? HytaleBlock.DIRT : substrateBlock;
                     for (int y = 1; y <= height; y++) {
                         int depth = height - y;
                         HytaleBlock block;
                         if (surfaceOnly) {
                             if (depth > 0) {
-                                // Fill subsurface with dirt (or stone below depth 4)
-                                block = (depth <= 4) ? HytaleBlock.DIRT : HytaleBlock.STONE;
+                                // Fill subsurface with substrate (or stone below depth 4)
+                                block = (depth <= 4) ? subsurfaceFallback : HytaleBlock.STONE;
                             } else {
                                 // Surface: preserve the underlying terrain
                                 // substrate; the plant goes on top at height+1.
-                                // Pass null for the Hytale-terrain substrate fallback because
-                                // this branch is entered when hytaleTerrain itself is the
-                                // surface-only block, so it can't double as substrate here.
-                                block = getSurfaceOnlySubstrate(localTerrain, customMaterial, null, seed, worldX, worldZ, y);
+                                block = substrateBlock;
                             }
                         } else if (grassTerrain && depth > 0) {
                             // Grass blocks only belong on the surface; Hytale converts
                             // subsurface grass to dirt at runtime which hurts performance,
-                            // so export dirt directly below the top grass block
-                            block = (depth <= 4) ? HytaleBlock.DIRT : HytaleBlock.STONE;
+                            // so export substrate directly below the top grass block
+                            block = (depth <= 4) ? subsurfaceFallback : HytaleBlock.STONE;
                         } else {
                             block = hytaleTerrain.getBlock(seed, worldX, worldZ, depth);
                         }

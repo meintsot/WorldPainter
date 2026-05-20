@@ -2,21 +2,13 @@ package org.pepsoft.worldpainter.hytale;
 
 import org.pepsoft.worldpainter.hytale.export.HytaleWorldExporter;
 
-import java.io.File;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Map;
-import java.util.Optional;
-import java.util.UUID;
 
-import org.junit.Rule;
 import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
 import org.pepsoft.worldpainter.GameType;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.pepsoft.worldpainter.GameType.ADVENTURE;
 import static org.pepsoft.worldpainter.GameType.CREATIVE;
@@ -34,26 +26,12 @@ import static org.pepsoft.worldpainter.GameType.SURVIVAL;
  * {@code DEFAULT_WORLD_GEN_TYPE} so {@code World.getAttribute(...)} returns
  * the right value when the attribute was never explicitly set.
  *
- * <p>TP-52: auto-OP for Creative exports. Hytale's {@code permissions.json}
- * keys the {@code users} map by player auth UUID; the original {@code "Player": "OP"}
- * string-value entry the exporter wrote made Hytale's PermissionsModule throw
- * {@code IllegalArgumentException: Invalid UUID string: Player} from
- * {@code UUID.fromString} during {@code syncLoad()}, which crashed the entire
- * module and left Creative worlds unjoinable. The corrected exporter discovers
- * the user's persistent client UUID by scanning their existing Hytale saves at
- * {@code %APPDATA%/Hytale/UserData/Saves/&#42;/universe/players/&#42;.json} and writes
- * that UUID into the {@code users} map with groups {@code ["OP"]} for Creative
- * exports. Hytale merges in the gameplay-mode group on first join. If no
- * existing UUID is discoverable (player has never launched Hytale), the
- * {@code users} map is empty — the file still parses and the player can
- * {@code /op self} once.
+ * <p>TP-52: admin perms in Creative exports ride on the auto-injected
+ * {@code Creative} gameplay-mode group via a wildcard. WorldPainter has no
+ * handle on the host's auth UUID at export time, so the {@code users} map
+ * is always empty and per-user OP entries are not written.
  */
 public class HytaleWorldSettingsTest {
-
-    @Rule
-    public TemporaryFolder temp = new TemporaryFolder();
-
-    private static final UUID TEST_UUID = UUID.fromString("1c3e2764-8430-4ee7-aafe-abe7a320b3bf");
 
     @Test
     public void worldGenTypesExposesVoidStandardElevatedInOrder() {
@@ -108,7 +86,7 @@ public class HytaleWorldSettingsTest {
 
     @Test
     public void normalizeGameTypeNullCollapsesToAdventure() {
-        assertEquals("A null game type must not auto-OP the player; collapse to Adventure",
+        assertEquals("A null game type must collapse to Adventure",
                 ADVENTURE, HytaleWorldSettings.normalizeGameType(null));
     }
 
@@ -120,64 +98,39 @@ public class HytaleWorldSettingsTest {
     }
 
     @Test
-    public void onlyCreativeQualifiesForAutoOpInPermissionsJson() {
-        // TP-52: this is the exact predicate HytaleWorldExporter uses to decide
-        // whether to add the player's UUID to the OP group in permissions.json.
+    public void permissionsJsonAlwaysHasEmptyUsersMap() {
+        // TP-52: WorldPainter has no auth handle on the host, so we never write per-user OP
+        // entries. Admin perms ride entirely on the Creative-group wildcard for Creative
+        // exports; Adventure exports require manual /op self.
         for (GameType gt : GameType.values()) {
-            boolean shouldAutoOp = HytaleWorldSettings.normalizeGameType(gt) == CREATIVE;
-            assertEquals("Only CREATIVE should auto-OP players; got " + gt,
-                    gt == CREATIVE, shouldAutoOp);
+            Map<String, Object> permissions = HytaleWorldSettings.buildPermissionsJson(gt);
+            @SuppressWarnings("unchecked")
+            Map<String, Object> users = (Map<String, Object>) permissions.get("users");
+            assertTrue("users map must be empty for " + gt + " — TP-52 grants admin via group, not per-user",
+                    users.isEmpty());
         }
     }
 
     @Test
-    public void permissionsJsonAddsUserUuidToOpGroupForCreative() {
-        Map<String, Object> permissions = HytaleWorldSettings.buildPermissionsJson(CREATIVE, TEST_UUID);
-        @SuppressWarnings("unchecked")
-        Map<String, Object> users = (Map<String, Object>) permissions.get("users");
-        assertTrue("Player's UUID must appear as a key in the users map",
-                users.containsKey(TEST_UUID.toString()));
-        @SuppressWarnings("unchecked")
-        Map<String, Object> userEntry = (Map<String, Object>) users.get(TEST_UUID.toString());
-        assertArrayEquals("Creative export must place the player in the OP group so they spawn already opped",
-                new String[]{"OP"}, (String[]) userEntry.get("groups"));
-    }
-
-    @Test
-    public void permissionsJsonOmitsUuidWhenUnknownInCreative() {
-        Map<String, Object> permissions = HytaleWorldSettings.buildPermissionsJson(CREATIVE, null);
-        @SuppressWarnings("unchecked")
-        Map<String, Object> users = (Map<String, Object>) permissions.get("users");
-        assertTrue("Without a discoverable UUID we cannot pre-OP; users must be empty so the file still parses",
-                users.isEmpty());
-    }
-
-    @Test
-    public void permissionsJsonOmitsUuidForAdventureEvenWhenKnown() {
-        Map<String, Object> permissions = HytaleWorldSettings.buildPermissionsJson(ADVENTURE, TEST_UUID);
-        @SuppressWarnings("unchecked")
-        Map<String, Object> users = (Map<String, Object>) permissions.get("users");
-        assertTrue("Adventure exports must not auto-OP the player", users.isEmpty());
-    }
-
-    @Test
     public void permissionsJsonAlwaysHasEmptyDefaultGroup() {
-        // Hytale's working permissions.json shape uses Default = []; ["*"] in Default
-        // does NOT actually grant any permissions at runtime (verified empirically —
-        // players still got "You do not have permission to use this command").
+        // Granting Default = ["*"] does NOT actually grant any permissions at runtime
+        // (Hytale's PermissionsModule special-cases the Default group — verified
+        // empirically when "You do not have permission" persisted with the wildcard).
         for (GameType gt : GameType.values()) {
-            Map<String, Object> permissions = HytaleWorldSettings.buildPermissionsJson(gt, null);
+            Map<String, Object> permissions = HytaleWorldSettings.buildPermissionsJson(gt);
             @SuppressWarnings("unchecked")
             Map<String, Object> groups = (Map<String, Object>) permissions.get("groups");
-            assertArrayEquals("Default group must be empty for " + gt + "; the OP group does the OPing",
+            assertArrayEquals("Default group must be empty for " + gt + "; the Creative/OP groups do the OPing",
                     new String[]{}, (String[]) groups.get("Default"));
         }
     }
 
     @Test
     public void permissionsJsonAlwaysDefinesOpGroupWithWildcard() {
+        // OP group is retained as the manual-/op-self target — a player who types /op self
+        // after joining lands in this group and gets admin perms.
         for (GameType gt : GameType.values()) {
-            Map<String, Object> permissions = HytaleWorldSettings.buildPermissionsJson(gt, TEST_UUID);
+            Map<String, Object> permissions = HytaleWorldSettings.buildPermissionsJson(gt);
             @SuppressWarnings("unchecked")
             Map<String, Object> groups = (Map<String, Object>) permissions.get("groups");
             assertArrayEquals("OP group must always exist with wildcard for " + gt,
@@ -186,28 +139,17 @@ public class HytaleWorldSettingsTest {
     }
 
     @Test
-    public void creativeExportDefinesCreativeGroupWithWildcardSoFerstbornHytaleKeepsAdmin() {
-        // TP-52 follow-up: Ferstborn's Hytale (likely release build) REPLACES
-        // the user's groups field on join with ["Adventure", "Creative"] —
-        // stripping our auto-OP assignment. On the dev's pre-release Hytale,
-        // join APPENDS those groups so ["OP"] is preserved. Comparing on-disk
-        // permissions.json across both:
-        //   dev Creative saves:       ["OP", "Adventure", "Creative"]
-        //   Ferstborn Creative save:  ["Adventure", "Creative"]   ← OP gone
-        // The chat log "You're now OP! / No longer OP. / You're now OP!" on
-        // Ferstborn's join confirms OP was briefly granted then revoked by
-        // Hytale's group sync, then manually re-granted via /op self.
-        //
-        // To survive both behaviours we also grant ["*"] to the runtime-injected
-        // Creative gameplay-mode group. The user is always in that group after
-        // Hytale's sync (regardless of append-vs-replace semantics), so admin
-        // permissions are retained via Creative-group membership even if OP is
-        // stripped.
-        Map<String, Object> permissions = HytaleWorldSettings.buildPermissionsJson(CREATIVE, TEST_UUID);
+    public void creativeExportDefinesCreativeGroupWithWildcard() {
+        // TP-52: Hytale auto-places every joining player in the gameplay-mode group named
+        // after config.json::GameMode. Granting Creative = ["*"] is therefore equivalent to
+        // Minecraft's allowCommands=true Creative singleplayer default — anyone joining gets
+        // admin perms via group membership without needing /op. Side effect: multiplayer
+        // Creative exports give every joining player admin perms; this matches the typical
+        // "creative build server" use case these exports are intended for.
+        Map<String, Object> permissions = HytaleWorldSettings.buildPermissionsJson(CREATIVE);
         @SuppressWarnings("unchecked")
         Map<String, Object> groups = (Map<String, Object>) permissions.get("groups");
-        assertArrayEquals("Creative group must grant [*] for Creative exports so admin survives Hytale's "
-                        + "group sync (TP-52: Ferstborn's Hytale replaces user.groups on join)",
+        assertArrayEquals("Creative group must grant [*] for Creative exports",
                 new String[]{"*"}, (String[]) groups.get("Creative"));
     }
 
@@ -216,7 +158,7 @@ public class HytaleWorldSettingsTest {
         // Symmetry: only Creative-mode exports should grant Creative=[*].
         // Adventure exports must not silently turn the world into an admin-for-all
         // server.
-        Map<String, Object> permissions = HytaleWorldSettings.buildPermissionsJson(ADVENTURE, TEST_UUID);
+        Map<String, Object> permissions = HytaleWorldSettings.buildPermissionsJson(ADVENTURE);
         @SuppressWarnings("unchecked")
         Map<String, Object> groups = (Map<String, Object>) permissions.get("groups");
         Object creativeGroup = groups.get("Creative");
@@ -224,70 +166,5 @@ public class HytaleWorldSettingsTest {
                         + "found " + creativeGroup,
                 (creativeGroup == null)
                         || (((String[]) creativeGroup).length == 0));
-    }
-
-    @Test
-    public void detectHytalePlayerUuidFindsUuidFromExistingSave() throws Exception {
-        // A save the user has played has universe/players/<uuid>.json
-        File savesDir = temp.newFolder("Saves");
-        File playersDir = new File(savesDir, "Some Played World/universe/players");
-        assertTrue("Failed to create test players dir", playersDir.mkdirs());
-        new File(playersDir, TEST_UUID + ".json").createNewFile();
-
-        Optional<UUID> uuid = HytaleWorldSettings.detectHytalePlayerUuid(savesDir);
-        assertTrue("Should discover the UUID from the existing save", uuid.isPresent());
-        assertEquals(TEST_UUID, uuid.get());
-    }
-
-    @Test
-    public void detectHytalePlayerUuidReturnsEmptyWhenNoSavesExist() throws Exception {
-        File emptySavesDir = temp.newFolder("EmptySaves");
-        Optional<UUID> uuid = HytaleWorldSettings.detectHytalePlayerUuid(emptySavesDir);
-        assertFalse("No saves means no discoverable UUID — must not throw", uuid.isPresent());
-    }
-
-    @Test
-    public void detectHytalePlayerUuidReturnsEmptyWhenSavesDirMissing() {
-        File missing = new File(temp.getRoot(), "DoesNotExist");
-        Optional<UUID> uuid = HytaleWorldSettings.detectHytalePlayerUuid(missing);
-        assertFalse("Missing saves dir means no UUID — must not throw", uuid.isPresent());
-    }
-
-    @Test
-    public void detectHytalePlayerUuidIgnoresNonUuidFilenames() throws Exception {
-        // memories.json sits alongside player files in some universe dirs; must be ignored.
-        File savesDir = temp.newFolder("Saves");
-        File playersDir = new File(savesDir, "World/universe/players");
-        assertTrue(playersDir.mkdirs());
-        new File(playersDir, "memories.json").createNewFile();
-        new File(playersDir, "not-a-uuid.json").createNewFile();
-
-        Optional<UUID> uuid = HytaleWorldSettings.detectHytalePlayerUuid(savesDir);
-        assertFalse("Filenames that don't parse as UUIDs must not be returned", uuid.isPresent());
-    }
-
-    @Test
-    public void detectHytalePlayerUuidPicksMostRecentlyModified() throws Exception {
-        // If multiple saves exist (e.g. a shared install), the UUID from the most
-        // recently played save is the user we should auto-OP.
-        File savesDir = temp.newFolder("Saves");
-        UUID older = UUID.fromString("11111111-1111-1111-1111-111111111111");
-        UUID newer = UUID.fromString("22222222-2222-2222-2222-222222222222");
-
-        File p1 = new File(savesDir, "OldWorld/universe/players");
-        assertTrue(p1.mkdirs());
-        Path olderFile = new File(p1, older + ".json").toPath();
-        Files.createFile(olderFile);
-        Files.setLastModifiedTime(olderFile, java.nio.file.attribute.FileTime.fromMillis(1_000L));
-
-        File p2 = new File(savesDir, "NewWorld/universe/players");
-        assertTrue(p2.mkdirs());
-        Path newerFile = new File(p2, newer + ".json").toPath();
-        Files.createFile(newerFile);
-        Files.setLastModifiedTime(newerFile, java.nio.file.attribute.FileTime.fromMillis(2_000_000L));
-
-        Optional<UUID> uuid = HytaleWorldSettings.detectHytalePlayerUuid(savesDir);
-        assertTrue(uuid.isPresent());
-        assertEquals("Most recently modified player file wins", newer, uuid.get());
     }
 }
