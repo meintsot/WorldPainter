@@ -2834,6 +2834,27 @@ public final class App extends JFrame implements BrushControl,
             }
         });
     }
+
+    private void importMapAndMerge() {
+        if (world == null) {
+            DesktopUtils.beep();
+            return;
+        }
+        org.pepsoft.worldpainter.merging.MergeMapDialog dialog =
+            new org.pepsoft.worldpainter.merging.MergeMapDialog(this, world);
+        dialog.setVisible(true);
+        if ((! dialog.isCancelled()) && (dialog.getResult() != null)) {
+            view.refreshTiles();
+            org.pepsoft.worldpainter.merging.TileMapMerger.Result r = dialog.getResult();
+            JOptionPane.showMessageDialog(this,
+                "Merge complete: " + r.tilesAdded + " added, "
+                    + r.tilesReplaced + " replaced, "
+                    + r.tilesMerged + " merged, "
+                    + r.tilesSkipped + " skipped.",
+                "Import Map and Merge",
+                JOptionPane.INFORMATION_MESSAGE);
+        }
+    }
     
     private void importWorld() {
         if (! saveIfNecessary()) {
@@ -5140,6 +5161,10 @@ public final class App extends JFrame implements BrushControl,
         
         menuItem = new JMenuItem(ACTION_EDIT_TILES);
         menuItem.setMnemonic('t');
+        menu.add(menuItem);
+
+        menuItem = new JMenuItem("Import Map and Merge...");
+        menuItem.addActionListener(e -> importMapAndMerge());
         menu.add(menuItem);
 
         menuItem = new JMenuItem("Delete unused layers...");
