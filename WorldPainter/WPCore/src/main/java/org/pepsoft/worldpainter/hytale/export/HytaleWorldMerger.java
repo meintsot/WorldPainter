@@ -252,21 +252,27 @@ public class HytaleWorldMerger extends HytaleWorldExporter implements WorldMerge
             throw new InvalidMapException("TalePainter world has no surface dimension to merge");
         }
 
-        // Hytale chunks are organised into 32-block-tall sections (HytaleChunk.SECTION_HEIGHT).
-        // The format supports modded heights — 320 (default), 512, 640, 1024 — as long as
-        // maxHeight is a positive multiple of 32. We do NOT compare against the platform's
-        // standardMaxHeight (which is just the default) because that would reject worlds
-        // imported from modded Hytale servers, e.g. the 1024-height save the user is editing
-        // right now. The exporter pipeline reads maxHeight directly from the dimension, so
-        // any multiple-of-32 value writes correctly.
+        // Vanilla Hytale's BlockChunk hard-codes `new BlockSection[10]`, so the dimension
+        // height must be exactly 320 (= 10 * SECTION_HEIGHT). An earlier version of this
+        // check accepted any positive multiple of 32 based on the optimistic "modded servers
+        // support taller worlds" comment in HytaleChunk.java, but vanilla Hytale rejects
+        // anything other than 10 sections at chunk-load time:
+        //
+        //   java.lang.ArrayIndexOutOfBoundsException: Index 10 out of bounds for length 10
+        //     at BlockChunk.loadFromHolder(BlockChunk.java:290)
+        //
+        // The crash happens silently per chunk during preload, so worlds with a 1024-height
+        // dimension look like they exported fine until a player tries to join. Fail loudly
+        // here instead of letting the export produce 32-section chunks that won't load.
         if (surface.getMinHeight() != 0) {
             throw new InvalidMapException("Dimension " + surface.getName() + " has min height "
                 + surface.getMinHeight() + " but Hytale requires 0");
         }
-        if (surface.getMaxHeight() <= 0 || (surface.getMaxHeight() % HytaleChunk.SECTION_HEIGHT) != 0) {
+        if (surface.getMaxHeight() != HytaleChunk.DEFAULT_MAX_HEIGHT) {
             throw new InvalidMapException("Dimension " + surface.getName() + " has max height "
-                + surface.getMaxHeight() + " but Hytale requires a positive multiple of "
-                + HytaleChunk.SECTION_HEIGHT + " (e.g. 320, 512, 640, 1024)");
+                + surface.getMaxHeight() + " but Hytale requires " + HytaleChunk.DEFAULT_MAX_HEIGHT
+                + ". Change it in Dimensions → Properties → " + surface.getName()
+                + " → Maximum height.");
         }
     }
 

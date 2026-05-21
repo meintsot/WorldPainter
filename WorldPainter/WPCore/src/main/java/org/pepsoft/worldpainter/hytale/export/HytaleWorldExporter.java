@@ -163,6 +163,18 @@ public class HytaleWorldExporter implements WorldExporter {
             if ((selectedTiles != null) && ((selectedDimensions == null) || (selectedDimensions.size() != 1))) {
                 throw new IllegalArgumentException("If a tile selection is active then exactly one dimension must be selected");
             }
+            // Vanilla Hytale's BlockChunk hard-codes BlockSection[10], so chunks must have
+            // exactly 10 sections (= 320 / SECTION_HEIGHT). A taller dimension produces
+            // chunks Hytale rejects silently per-chunk during preload with
+            // "ArrayIndexOutOfBoundsException: Index 10 out of bounds for length 10",
+            // making the world unjoinable even though the export looks successful.
+            final Dimension overworld = world.getDimension(NORMAL_DETAIL);
+            if (overworld != null && overworld.getMaxHeight() != HytaleChunk.DEFAULT_MAX_HEIGHT) {
+                throw new IllegalStateException("Dimension " + overworld.getName() + " has max height "
+                    + overworld.getMaxHeight() + " but Hytale requires " + HytaleChunk.DEFAULT_MAX_HEIGHT
+                    + ". Change it in Dimensions → Properties → " + overworld.getName()
+                    + " → Maximum height.");
+            }
             
             // Create save directory (full Hytale save structure)
             File saveDir = new File(baseDir, FileUtils.sanitiseName(name));

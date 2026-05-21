@@ -263,33 +263,45 @@ public class HytaleRegionFile implements Closeable {
      * @return The chunk, or null if not present
      */
     public HytaleChunk readChunk(int localX, int localZ, int minHeight, int maxHeight) throws IOException {
+        byte[] decompressed = readRawChunkBson(localX, localZ);
+        if (decompressed == null) {
+            return null;
+        }
+        return HytaleBsonChunkDeserializer.deserializeChunk(decompressed, localX, localZ, minHeight, maxHeight);
+    }
+
+    /**
+     * Reads and decompresses the raw BSON payload for a chunk without
+     * deserializing it. Useful for diagnostics that need to inspect the exact
+     * bytes the chunk would present to a downstream parser.
+     *
+     * @param localX Local X coordinate within the region (0-31)
+     * @param localZ Local Z coordinate within the region (0-31)
+     * @return The decompressed BSON bytes, or {@code null} if the chunk is absent.
+     */
+    public byte[] readRawChunkBson(int localX, int localZ) throws IOException {
         int blobIndex = getBlobIndex(localX, localZ);
         int firstSegment = blobIndexBuffer.getInt(blobIndex * 4);
 
         if (firstSegment == 0) {
-            return null; // Chunk not present
+            return null;
         }
 
-        // Read blob header
         ByteBuffer blobHeader = readBlobHeader(firstSegment);
         int srcLength = blobHeader.getInt(SRC_LENGTH_OFFSET);
         int compressedLength = blobHeader.getInt(COMPRESSED_LENGTH_OFFSET);
 
-        // Read compressed data
         ByteBuffer compressedData = ByteBuffer.allocate(compressedLength);
         fileChannel.read(compressedData, segmentPosition(firstSegment) + BLOB_HEADER_LENGTH);
         compressedData.flip();
 
-        // Decompress
         byte[] decompressed = new byte[srcLength];
         long decompressedLen = Zstd.decompress(decompressed, compressedData.array());
         if (decompressedLen != srcLength) {
             logger.warn("Zstd decompression size mismatch for chunk {},{}: expected {} but got {}",
                 localX, localZ, srcLength, decompressedLen);
         }
-
-        // Deserialize
-        return HytaleBsonChunkDeserializer.deserializeChunk(decompressed, localX, localZ, minHeight, maxHeight);
+        return decompressed;
     }
 
     /**
