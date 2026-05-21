@@ -139,7 +139,11 @@ final class HytaleBsonChunkDeserializer {
                 }
             }
             for (int sy = 0; sy < chunk.getSectionCount(); sy++) {
-                for (HytaleBlock b : chunk.getSections()[sy].getHytaleBlocks()) {
+                HytaleBlock[] blocks = chunk.getSections()[sy].getHytaleBlocks();
+                if (blocks == null) {
+                    continue;
+                }
+                for (HytaleBlock b : blocks) {
                     if (b != null && !b.isEmpty()) nonAirBlocks++;
                 }
             }

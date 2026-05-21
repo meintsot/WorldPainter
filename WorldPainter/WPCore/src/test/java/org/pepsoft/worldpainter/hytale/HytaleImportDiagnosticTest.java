@@ -62,7 +62,11 @@ public class HytaleImportDiagnosticTest {
 
                 for (int sy = 0; sy < chunk.getSectionCount(); sy++) {
                     HytaleSection sec = chunk.getSections()[sy];
-                    for (HytaleBlock b : sec.getHytaleBlocks()) {
+                    HytaleBlock[] blocks = sec.getHytaleBlocks();
+                    if (blocks == null) {
+                        continue;
+                    }
+                    for (HytaleBlock b : blocks) {
                         if (b != null && !b.isEmpty()) nonAir++;
                     }
                 }

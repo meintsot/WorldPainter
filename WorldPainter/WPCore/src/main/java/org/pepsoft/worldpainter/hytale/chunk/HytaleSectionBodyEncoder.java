@@ -178,7 +178,7 @@ final class HytaleSectionBodyEncoder {
                 Map<Material, Integer> paletteIndex = new HashMap<>();
                 List<Material> palette = new ArrayList<>();
                 List<Integer> counts = new ArrayList<>();
-                int sectionSize = (blocks != null) ? blocks.length : section.getHytaleBlocks().length;
+                int sectionSize = (blocks != null) ? blocks.length : HytaleSection.SECTION_SIZE;
                 int[] blockIndices = new int[sectionSize];
                 boolean allAir = true;
 
@@ -577,7 +577,7 @@ final class HytaleSectionBodyEncoder {
                 buf.writeByte(paletteType);
 
                 // Build indices array, combining explicit fluids and block-based water/lava
-                int sectionSize = (blocks != null) ? blocks.length : hytaleBlocks.length;
+                int sectionSize = (blocks != null) ? blocks.length : HytaleSection.SECTION_SIZE;
                 int[] indices = new int[sectionSize];
                 int[] counts = new int[palette.size()];
 
@@ -585,8 +585,9 @@ final class HytaleSectionBodyEncoder {
                     int idx = 0;
 
                     // First check explicit fluid storage
-                    if (fluidIds[i] != 0 && fluidIds[i] < fluidPalette.size()) {
-                        String fluidName = fluidPalette.get(fluidIds[i] & 0xFF);
+                    int fid = (fluidIds != null) ? (fluidIds[i] & 0xFF) : 0;
+                    if (fid != 0 && fid < fluidPalette.size()) {
+                        String fluidName = fluidPalette.get(fid);
                         idx = paletteIndex.getOrDefault(fluidName, 0);
                     }
                     // Then check block materials for water/lava
@@ -624,7 +625,7 @@ final class HytaleSectionBodyEncoder {
                 byte[] levelData = new byte[16384];
                 for (int i = 0; i < indices.length; i++) {
                     if (indices[i] != 0) {
-                        int level = fluidLevels[i] & 0xF;
+                        int level = (fluidLevels != null) ? (fluidLevels[i] & 0xF) : 0;
                         if (level == 0) {
                             String fluidName = (indices[i] < palette.size()) ? palette.get(indices[i]) : null;
                             level = defaultFluidLevel(fluidName);
