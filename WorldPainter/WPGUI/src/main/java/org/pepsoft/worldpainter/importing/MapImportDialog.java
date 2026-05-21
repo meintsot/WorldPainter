@@ -291,8 +291,13 @@ public class MapImportDialog extends WorldPainterDialog {
                             waterLevel = DEFAULT_WATER_LEVEL;
                         }
                     } else {
-                        minHeight = platform.minMinHeight;
-                        maxHeight = platform.maxMaxHeight;
+                        // No level.dat (e.g. Hytale saves). Use the platform's *standard*
+                        // max height as the default rather than its absolute maximum: for
+                        // Hytale this is 320 (vanilla server limit) instead of 1024 (the
+                        // largest declared modded option). Users who actually want a taller
+                        // world can change it via Edit → Change Map Format after import.
+                        minHeight = platform.minZ;
+                        maxHeight = platform.standardMaxHeight;
                         waterLevel = DEFAULT_WATER_LEVEL;
                     }
                     final int terrainLevel = waterLevel - 4;
