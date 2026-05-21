@@ -69,6 +69,56 @@ public abstract class CoordinateTransform {
         return 1.0f;
     }
 
+    /**
+     * A pure-translation transform that shifts every coordinate by
+     * {@code (dx, dy)} in block units, leaving z untouched. Reports neither
+     * rotating nor scaling, so {@link Tile#transform(CoordinateTransform)}
+     * takes the cheap copy-only path on it.
+     */
+    public static CoordinateTransform getTranslatingInstance(int dx, int dy) {
+        if ((dx == 0) && (dy == 0)) {
+            return NOOP;
+        }
+        return new CoordinateTransform() {
+            @Override
+            public void transformInPlace(Point coords) {
+                coords.x += dx;
+                coords.y += dy;
+            }
+
+            @Override
+            public void transformInPlace(Point3i coords) {
+                coords.x += dx;
+                coords.y += dy;
+            }
+
+            @Override
+            public Direction transform(Direction direction) {
+                return direction;
+            }
+
+            @Override
+            public Direction inverseTransform(Direction direction) {
+                return direction;
+            }
+
+            @Override
+            public float transformAngle(float angle) {
+                return angle;
+            }
+
+            @Override
+            public float transformScalar(float scalar) {
+                return scalar;
+            }
+
+            @Override
+            public HeightMap transform(HeightMap heightMap) {
+                return heightMap;
+            }
+        };
+    }
+
     public static CoordinateTransform getScalingInstance(float scale) {
         if (scale == 1.0f) {
             return NOOP;

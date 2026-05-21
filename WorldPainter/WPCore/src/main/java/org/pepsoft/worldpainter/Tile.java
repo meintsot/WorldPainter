@@ -1242,6 +1242,76 @@ public class Tile extends InstanceKeeper implements Serializable, UndoListener, 
         return transformedTile;
     }
 
+    /**
+     * Overwrite selected channels of this tile with the corresponding data from
+     * {@code source}. The two tiles must have matching height bounds. Used by the
+     * tile-level map merger (TP-46) when an imported tile overlaps an existing one
+     * and the user chose the MERGE policy: each flag controls whether that channel
+     * is taken from the source or kept as-is.
+     *
+     * <p>Biome data lives in {@code layerData} under the {@link Biome#INSTANCE}
+     * key; the {@code biomes} flag controls only that entry, while {@code layers}
+     * controls every other entry in {@code layerData} and all of {@code bitLayerData}.</p>
+     *
+     * @throws IllegalArgumentException if the height bounds differ.
+     */
+    public synchronized void absorbFrom(Tile source, boolean heights, boolean terrain,
+                                        boolean layers, boolean biomes) {
+        if ((source.minHeight != minHeight) || (source.maxHeight != maxHeight)) {
+            throw new IllegalArgumentException("Cannot absorb tile with different height bounds ["
+                + source.minHeight + ", " + source.maxHeight + ") into tile with bounds ["
+                + minHeight + ", " + maxHeight + ")");
+        }
+        inhibitEvents();
+        try {
+            if (heights) {
+                this.heightMap = (source.heightMap != null) ? copyObject(source.heightMap) : null;
+                this.tallHeightMap = (source.tallHeightMap != null) ? copyObject(source.tallHeightMap) : null;
+                this.waterLevel = (source.waterLevel != null) ? copyObject(source.waterLevel) : null;
+                this.tallWaterLevel = (source.tallWaterLevel != null) ? copyObject(source.tallWaterLevel) : null;
+            }
+            if (terrain) {
+                this.terrain = source.terrain.clone();
+            }
+            if (layers || biomes) {
+                if (layerData == null) {
+                    layerData = new HashMap<>();
+                }
+                if (bitLayerData == null) {
+                    bitLayerData = new HashMap<>();
+                }
+                if (layers) {
+                    // Replace every non-Biome layer entry, then re-attach the existing
+                    // Biome entry if we're NOT also absorbing biomes.
+                    byte[] keptBiome = biomes ? null : layerData.get(Biome.INSTANCE);
+                    layerData.clear();
+                    if (source.layerData != null) {
+                        layerData.putAll(copyObject(source.layerData));
+                    }
+                    if (!biomes) {
+                        if (keptBiome != null) {
+                            layerData.put(Biome.INSTANCE, keptBiome);
+                        } else {
+                            layerData.remove(Biome.INSTANCE);
+                        }
+                    }
+                    bitLayerData = (source.bitLayerData != null) ? copyObject(source.bitLayerData) : new HashMap<>();
+                } else if (biomes) {
+                    // Only the Biome entry changes.
+                    byte[] sourceBiome = (source.layerData != null) ? source.layerData.get(Biome.INSTANCE) : null;
+                    if (sourceBiome != null) {
+                        layerData.put(Biome.INSTANCE, copyObject(sourceBiome));
+                    } else {
+                        layerData.remove(Biome.INSTANCE);
+                    }
+                }
+            }
+            init();
+        } finally {
+            releaseEvents();
+        }
+    }
+
     public synchronized boolean repair(int minHeight, int maxHeight, PrintStream out) {
         // Repair as much as possible if the tile was not read in completely
         this.minHeight = minHeight;
