@@ -69,4 +69,79 @@ public class CloudTile extends Tile {
             sink.onLayer(getX(), getY(), layer, x, y, value);
         }
     }
+
+    /**
+     * Apply an inbound CRDT op (from the cloud backend) to this tile. Sets the
+     * {@link RemoteOpContext} flag so the resulting setter calls do NOT emit new outbound ops.
+     *
+     * <p>HLC ordering / LWW resolution is handled by the caller (the
+     * {@code MultiTileCloudProvider}'s op-applicator pipeline) before this method is invoked.
+     */
+    public void applyRemoteOp(com.talepainter.protocol.ops.Ops.Op op) {
+        RemoteOpContext.runApplyingRemote(() -> dispatch(op));
+    }
+
+    private void dispatch(com.talepainter.protocol.ops.Ops.Op op) {
+        switch (op.getBodyCase()) {
+            case CELL  -> applyCell(op);
+            case RECT  -> applyRect(op);
+            case LAYER -> applyLayerOp(op);
+            default    -> throw new IllegalArgumentException("Op has no supported body for CloudTile: " + op.getBodyCase());
+        }
+    }
+
+    private void applyCell(com.talepainter.protocol.ops.Ops.Op op) {
+        com.talepainter.protocol.ops.Ops.CellOp c = op.getCell();
+        int x = c.getX(), y = c.getY();
+        switch (op.getType()) {
+            case OP_TYPE_TERRAIN -> setTerrain(x, y, TerrainRegistry.fromByte((byte) c.getValue()));
+            case OP_TYPE_HEIGHT  -> setRawHeight(x, y, c.getValue());
+            case OP_TYPE_WATER   -> setWaterLevel(x, y, c.getValue());
+            case OP_TYPE_LAYER   -> {
+                Layer layer = LayerRegistry.layerFor(c.getLayerId());
+                if (layer != null) {
+                    setLayerValue(layer, x, y, c.getValue());
+                }
+            }
+            case OP_TYPE_BIT_LAYER -> {
+                Layer layer = LayerRegistry.layerFor(c.getLayerId());
+                if (layer != null) {
+                    setBitLayerValue(layer, x, y, c.getValue() != 0);
+                }
+            }
+            default -> { /* ignore unsupported op types in Phase 0c-3 */ }
+        }
+    }
+
+    private void applyRect(com.talepainter.protocol.ops.Ops.Op op) {
+        com.talepainter.protocol.ops.Ops.RectOp r = op.getRect();
+        for (int x = r.getX1(); x <= r.getX2(); x++) {
+            for (int y = r.getY1(); y <= r.getY2(); y++) {
+                switch (op.getType()) {
+                    case OP_TYPE_TERRAIN -> setTerrain(x, y, TerrainRegistry.fromByte((byte) r.getValue()));
+                    case OP_TYPE_HEIGHT  -> setRawHeight(x, y, r.getValue());
+                    case OP_TYPE_WATER   -> setWaterLevel(x, y, r.getValue());
+                    case OP_TYPE_LAYER   -> {
+                        Layer layer = LayerRegistry.layerFor(r.getLayerId());
+                        if (layer != null) {
+                            setLayerValue(layer, x, y, r.getValue());
+                        }
+                    }
+                    case OP_TYPE_BIT_LAYER -> {
+                        Layer layer = LayerRegistry.layerFor(r.getLayerId());
+                        if (layer != null) {
+                            setBitLayerValue(layer, x, y, r.getValue() != 0);
+                        }
+                    }
+                    default -> { }
+                }
+            }
+        }
+    }
+
+    private void applyLayerOp(com.talepainter.protocol.ops.Ops.Op op) {
+        // OR-Set layer presence ops (LAYER_ADD / LAYER_REMOVE) — Phase 0c-3 does not yet track
+        // tile-level layer presence in the editor (existing WorldPainter doesn't expose this
+        // concept); ignore for now. TD-036 logs this.
+    }
 }
