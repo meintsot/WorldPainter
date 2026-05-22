@@ -25,6 +25,7 @@ public final class CloudMenuActions {
     public final Action signOut = new SignOutAction();
     public final Action openCloudWorld = new OpenCloudWorldAction();
     public final Action exportOnCloud = new ExportOnCloudAction();
+    public final Action importHytaleWorld = new ImportHytaleWorldAction();
 
     public CloudMenuActions(Frame owner) {
         this.owner = owner;
@@ -45,6 +46,7 @@ public final class CloudMenuActions {
         signOut.setEnabled(signedIn);
         openCloudWorld.setEnabled(signedIn);
         exportOnCloud.setEnabled(cloudWorldOpen);
+        importHytaleWorld.setEnabled(cloudWorldOpen);
     }
 
     private final class SignInAction extends AbstractAction {
@@ -98,6 +100,14 @@ public final class CloudMenuActions {
         @Override public void actionPerformed(ActionEvent e) {
             CloudWorld2 cloud = (CloudWorld2) org.pepsoft.worldpainter.App.getInstance().getWorld();
             new CloudExportAction(owner, cloud).actionPerformed(e);
+        }
+    }
+
+    private final class ImportHytaleWorldAction extends AbstractAction {
+        ImportHytaleWorldAction() { super("Import existing Hytale world…"); }
+        @Override public void actionPerformed(ActionEvent e) {
+            CloudWorld2 cloud = (CloudWorld2) org.pepsoft.worldpainter.App.getInstance().getWorld();
+            new CloudHytaleImportAction(owner, cloud).actionPerformed(e);
         }
     }
 }
