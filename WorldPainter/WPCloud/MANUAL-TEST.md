@@ -152,3 +152,65 @@ demo (backend stack must be running).
 - The full architecture works through the regular WorldPainter entry point.
 - A user can go from launching the bat to collaborative editing without a separate jar.
 - Existing local-file editing is unaffected by the cloud integration.
+
+---
+
+## Phase 0c-3 — Verification in the main WorldPainter editor
+
+This procedure exercises the deep cloud integration: cloud worlds open in WorldPainter's main
+editor view, with the real brushes / layers / biomes panels operating on cloud tiles.
+
+### Prerequisites
+
+1. Backend up: `docker compose --env-file .env up -d --build` (from
+   `talepainter-backend/infra/compose`).
+2. WorldPainter rebuilt: `mvn -DskipTests -pl WPGUI -am install` (from `WorldPainter/`).
+
+### Procedure
+
+**Window A (Alice):**
+
+1. Launch via `build-and-run-worldpainter.bat`.
+2. **Cloud → Sign in…** → "Alice" → Sign in.
+3. **Cloud → Open cloud world…** → pick an existing world OR click "New World…" and name it
+   "Phase0c3" → Open.
+4. **The world opens in the MAIN editor view** (not in a separate window). Brushes panel,
+   Terrain panel, Layers panel, the map view — all active.
+5. Pick the **Pencil** tool (top-left). Pick **Sand** in the Terrain panel.
+6. Click on the map → a single cell turns yellow (Sand). It persists.
+
+**Window B (Bob):**
+
+1. Launch via `build-and-run-worldpainter.bat` in a second terminal.
+2. Sign in as "Bob", open the same "Phase0c3" world.
+3. Bob sees the cell Alice painted (yellow Sand).
+
+**Convergence:**
+
+1. Alice paints a stripe of Sand cells.
+2. Within ~500 ms Bob's editor shows the same stripe.
+3. Bob picks a different terrain (e.g., Stone) and paints a crossing stripe.
+4. Alice sees Bob's stripe.
+5. Both users click the same cell. After ~500 ms both editors agree on the winning terrain
+   (HLC tie-break).
+6. Pick the Frost layer (or any bit layer). Paint with it. Verify it propagates between
+   instances.
+7. Close Alice's WorldPainter entirely. Reopen, re-sign-in (or auto-restore), reopen
+   "Phase0c3". The painted state is preserved.
+
+### Pass criteria
+
+- Cloud worlds open in the main editor (not a separate window).
+- Brushes (Pencil, Spray Paint, etc.) work against cloud worlds.
+- Terrain changes propagate between instances within ~500 ms.
+- Bit layer changes (e.g., Frost) propagate between instances.
+- File → Save is gracefully blocked for cloud worlds (info dialog).
+- Local file editing (File → Open → some.world) still works (no regression).
+
+### What this proves (Phase 0c-3 acceptance)
+
+- `Tile.MutationListener` integration via `CloudTile` subclass works: brushes paint, ops emit.
+- `RemoteOpContext` thread-local correctly suppresses op-emission loops on inbound ops.
+- `CloudDimension` lazy-loading works: tiles are fetched as the user pans / brushes touch them.
+- The full editor experience is identical for local and cloud worlds (with documented
+  exceptions: no local save, single-platform Hytale-or-Java-Anvil mapping in Phase 0).
