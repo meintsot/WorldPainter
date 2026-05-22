@@ -66,49 +66,23 @@ public final class CloudStorageBackend implements StorageBackend {
         int maxHeight = 256;  // Phase 0c-3 assumes standard-height worlds (TD-038)
         MultiTileCloudProvider multi = new MultiTileCloudProvider(provider, minHeight, maxHeight);
 
-        // 2b. Preload all tiles known to have content. With server-side baselines (Plan 0c-4),
-        // each tile SUBSCRIBE is O(baseline + small delta) regardless of op history, so we can
-        // blast in parallel without server-side meltdown.
+        // 2b. List tiles known to have content (used to gate CloudDimension.getTile so we
+        // don't fetch the hundreds of empty tiles a viewport repaint would otherwise ask for).
+        java.util.List<org.pepsoft.worldpainter.cloud.api.CloudWorldsClient.TileCoord> occupied;
         try {
-            if (progress != null) progress.setMessage("Loading tiles…");
+            if (progress != null) progress.setMessage("Listing tiles…");
             org.pepsoft.worldpainter.cloud.api.CloudWorldsClient worldsClient =
                     new org.pepsoft.worldpainter.cloud.api.CloudWorldsClient(
                             DEFAULT_BACKEND_HTTP, session.token());
-            java.util.List<org.pepsoft.worldpainter.cloud.api.CloudWorldsClient.TileCoord> occupied =
-                    worldsClient.listTiles(ref.cloudWorldId());
-
-            int total = occupied.size();
-            if (total > 0) {
-                int parallelism = Math.min(32, total);
-                java.util.concurrent.ExecutorService pool =
-                        java.util.concurrent.Executors.newFixedThreadPool(parallelism, r -> {
-                            Thread t = new Thread(r, "cloud-preload");
-                            t.setDaemon(true);
-                            return t;
-                        });
-                java.util.concurrent.atomic.AtomicInteger done =
-                        new java.util.concurrent.atomic.AtomicInteger();
-                java.util.List<java.util.concurrent.Future<?>> futures = new java.util.ArrayList<>(total);
-                for (var coord : occupied) {
-                    futures.add(pool.submit(() -> {
-                        try { multi.load(coord.x(), coord.y()); }
-                        catch (Exception ignored) {}
-                        int d = done.incrementAndGet();
-                        if (progress != null) {
-                            try { progress.setProgress((float) d / total); }
-                            catch (org.pepsoft.util.ProgressReceiver.OperationCancelled ignored2) {}
-                        }
-                    }));
-                }
-                pool.shutdown();
-                pool.awaitTermination(60, java.util.concurrent.TimeUnit.SECONDS);
-                LOG.info("Preloaded {} cloud tile(s) for world {}", total, ref.cloudWorldId());
-            }
+            occupied = worldsClient.listTiles(ref.cloudWorldId());
         } catch (Exception e) {
-            LOG.warn("Preload failed (tiles will load on demand): {}", e.getMessage());
+            LOG.warn("listTiles failed (tiles will load on demand): {}", e.getMessage());
+            occupied = java.util.List.of();
         }
 
-        // 3. Build CloudWorld2 + CloudDimension.
+        // 3. Build CloudWorld2 + CloudDimension BEFORE the preload, so we can mark known-occupied
+        // coords on the dimension as each tile loads. CloudDimension.getTile is gated by that set;
+        // gating off until preload completes would cause the renderer to see an empty world.
         Platform platform = DefaultPlugin.JAVA_ANVIL;
         CloudWorld2 world = new CloudWorld2(platform, minHeight, maxHeight,
                 ref.cloudWorldId(), multi);
@@ -127,6 +101,47 @@ public final class CloudStorageBackend implements StorageBackend {
                 DIM_NORMAL, Dimension.Role.DETAIL, false, 0);
         CloudDimension surface = new CloudDimension(world, "Surface", seed, tileFactory,
                 anchor, multi);
+
+        // Mark every occupied coord on the dimension so getTile is allowed to fetch them.
+        // (Coords NOT in this set return null instantly without a network round-trip —
+        // the unbounded-world fix.)
+        for (var coord : occupied) {
+            surface.markOccupied(coord.x(), coord.y());
+        }
+
+        // 4. Preload occupied tiles in parallel via the multi adapter. The cache lives in
+        // MultiTileCloudProvider; subsequent surface.getTile() async-loads hit the cache.
+        int total = occupied.size();
+        if (total > 0) {
+            if (progress != null) {
+                try { progress.setMessage("Loading " + total + " tile(s)…"); }
+                catch (Exception ignored) {}
+            }
+            int parallelism = Math.min(32, total);
+            java.util.concurrent.ExecutorService pool =
+                    java.util.concurrent.Executors.newFixedThreadPool(parallelism, r -> {
+                        Thread t = new Thread(r, "cloud-preload");
+                        t.setDaemon(true);
+                        return t;
+                    });
+            java.util.concurrent.atomic.AtomicInteger done = new java.util.concurrent.atomic.AtomicInteger();
+            for (var coord : occupied) {
+                pool.submit(() -> {
+                    try { multi.load(coord.x(), coord.y()); }
+                    catch (Exception ignored) {}
+                    int d = done.incrementAndGet();
+                    if (progress != null) {
+                        try { progress.setProgress((float) d / total); }
+                        catch (org.pepsoft.util.ProgressReceiver.OperationCancelled ignored2) {}
+                    }
+                });
+            }
+            pool.shutdown();
+            try { pool.awaitTermination(60, java.util.concurrent.TimeUnit.SECONDS); }
+            catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+            LOG.info("Preloaded {} cloud tile(s) for world {}", total, ref.cloudWorldId());
+        }
+
         world.addDimension(surface);
 
         synchronized (openProviders) { openProviders.put(world, provider); }

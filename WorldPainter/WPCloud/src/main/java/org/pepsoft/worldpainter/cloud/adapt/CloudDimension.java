@@ -17,17 +17,22 @@ import java.util.concurrent.Executors;
 /**
  * Cloud-backed {@link Dimension}. Overrides {@link #getTile(int, int)} and
  * {@link #getTileForEditing(int, int)} to load cloud tiles via the injected
- * {@link CloudTileLoader}.
+ * {@link CloudTileLoader}, gated by a {@link #knownOccupied} set that lists the tile
+ * coordinates known to have backend content.
  *
- * <p><strong>{@link #getTile(int, int)} is asynchronous</strong> — it returns {@code null}
- * immediately if the tile isn't yet cached, and kicks off a background fetch. When the fetch
- * completes the tile is installed on the EDT via {@code addTile}, which fires the existing
- * {@code Dimension} tilesAdded listener event so the view repaints. This keeps the view
- * panel responsive while panning across uncached tiles.
+ * <p><strong>{@link #getTile(int, int)} is asynchronous AND gated</strong> — for a tile
+ * coordinate NOT in {@code knownOccupied}, returns {@code null} immediately with NO network
+ * activity. The view sees "no tile here" and shows the background color. This avoids the
+ * unbounded-world problem where the renderer asks for hundreds of empty-tile coordinates per
+ * viewport repaint.
  *
- * <p><strong>{@link #getTileForEditing(int, int)} is synchronous</strong> — brushes need the
- * tile right now to mutate it, so we block until the fetch completes. UI callers wrap brush
- * operations on background threads already, so this doesn't freeze the EDT in normal use.
+ * <p>For coordinates that ARE in {@code knownOccupied} but not yet cached, schedules a
+ * background fetch; when it completes the tile is installed on the EDT via {@code addTile},
+ * firing {@code tilesAdded} which triggers a view repaint.
+ *
+ * <p><strong>{@link #getTileForEditing(int, int)} is synchronous and NOT gated</strong> —
+ * brushes can create new tiles in previously-empty coordinates. The new coordinate is added
+ * to {@code knownOccupied} so subsequent {@code getTile} calls find it.
  */
 public final class CloudDimension extends Dimension {
 
@@ -40,11 +45,21 @@ public final class CloudDimension extends Dimension {
         return t;
     });
     private final transient Set<Long> pendingLoads = ConcurrentHashMap.newKeySet();
+    private final transient Set<Long> knownOccupied = ConcurrentHashMap.newKeySet();
 
     public CloudDimension(World2 world, String name, long minecraftSeed, TileFactory tileFactory,
                           Anchor anchor, CloudTileLoader loader) {
         super(world, name, minecraftSeed, tileFactory, anchor);
         this.loader = loader;
+    }
+
+    /**
+     * Mark a tile coordinate as known to have content. Called by {@link CloudStorageBackend}
+     * after the initial {@code listTiles} preload, and again whenever a remote op arrives for
+     * a previously-unknown coord.
+     */
+    public void markOccupied(int tileX, int tileY) {
+        knownOccupied.add(packKey(tileX, tileY));
     }
 
     @Override
@@ -53,9 +68,12 @@ public final class CloudDimension extends Dimension {
         if (cached != null) {
             return cached;
         }
-        // Non-blocking: kick off async load if not already in flight. View will refresh
-        // automatically when addTile fires tilesAdded.
         long key = packKey(x, y);
+        // Gate: only fetch tiles known to have content. Empty coords return null
+        // immediately so the view shows background without any network round-trip.
+        if (!knownOccupied.contains(key)) {
+            return null;
+        }
         if (pendingLoads.add(key)) {
             loadExecutor.execute(() -> {
                 try {
@@ -93,10 +111,11 @@ public final class CloudDimension extends Dimension {
         if (cached != null) {
             return cached;
         }
-        // Synchronous load for brushes: they need the tile to mutate.
+        // Synchronous load for brushes: they need the tile to mutate. Not gated by
+        // knownOccupied — brushes can create new tiles in previously-empty coords.
         Tile loaded = loader.load(x, y);
         if (loaded != null) {
-            // Install on EDT if we're not already there; brushes typically run off-EDT.
+            knownOccupied.add(packKey(x, y));  // future getTile will return this tile
             if (SwingUtilities.isEventDispatchThread()) {
                 if (super.getTile(x, y) == null) {
                     addTile(loaded);
