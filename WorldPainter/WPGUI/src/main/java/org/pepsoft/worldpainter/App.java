@@ -31,6 +31,7 @@ import org.pepsoft.worldpainter.brushes.BitmapBrush;
 import org.pepsoft.worldpainter.brushes.Brush;
 import org.pepsoft.worldpainter.brushes.RotatedBrush;
 import org.pepsoft.worldpainter.brushes.SymmetricBrush;
+import org.pepsoft.worldpainter.cloud.CloudMenuActions;
 import org.pepsoft.worldpainter.dnd.WPTransferHandler;
 import org.pepsoft.worldpainter.dynmap.DynmapColourScheme;
 import org.pepsoft.worldpainter.exporting.HeightMapExporter;
@@ -4930,6 +4931,7 @@ public final class App extends JFrame implements BrushControl,
         if (! config.isEasyMode()) {
             menuBar.add(createToolsMenu());
         }
+        menuBar.add(createCloudMenu());
         menuBar.add(createHelpMenu());
         addStatisticsTo(menuBar, "menu", config);
         return menuBar;
@@ -5560,6 +5562,19 @@ public final class App extends JFrame implements BrushControl,
         menuItem.setMnemonic('s');
         menu.add(menuItem);
         menu.putClientProperty(KEY_HELP_KEY, "Menu/Tools");
+        return menu;
+    }
+
+    private JMenu createCloudMenu() {
+        if (cloudMenuActions == null) {
+            cloudMenuActions = new CloudMenuActions(this);
+        }
+        JMenu menu = new JMenu("Cloud");
+        menu.setMnemonic('c');
+        menu.add(new JMenuItem(cloudMenuActions.signIn));
+        menu.add(new JMenuItem(cloudMenuActions.signOut));
+        menu.addSeparator();
+        menu.add(new JMenuItem(cloudMenuActions.openCloudWorld));
         return menu;
     }
 
@@ -8015,6 +8030,7 @@ public final class App extends JFrame implements BrushControl,
         // Do nothing
     };
     private JMenu recentMenu;
+    private CloudMenuActions cloudMenuActions;
     private JPanel toolSettingsPanel, customTerrainPanel, terrainButtonPanel;
     private JTextField terrainSearchField;
     private Timer autosaveTimer;
