@@ -65,9 +65,28 @@ public final class CloudWorldsClient {
         }
     }
 
+    public List<TileCoord> listTiles(UUID worldId) {
+        try (CloseableHttpClient http = HttpClients.createDefault()) {
+            HttpGet get = new HttpGet(baseUri.resolve("/v1/worlds/" + worldId + "/tiles"));
+            get.setHeader("Authorization", "Bearer " + token);
+            return http.execute(get, response -> {
+                JsonNode body = mapper.readTree(EntityUtils.toString(response.getEntity()));
+                List<TileCoord> out = new ArrayList<>();
+                for (JsonNode t : body.get("tiles")) {
+                    out.add(new TileCoord(t.get("x").asInt(), t.get("y").asInt()));
+                }
+                return out;
+            });
+        } catch (Exception e) {
+            throw new RuntimeException("listTiles failed", e);
+        }
+    }
+
     private static String escape(String s) {
         return s.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
     public record WorldSummary(UUID id, String name, String platform, String storageMode) {}
+
+    public record TileCoord(int x, int y) {}
 }
