@@ -66,6 +66,48 @@ public final class CloudStorageBackend implements StorageBackend {
         int maxHeight = 256;  // Phase 0c-3 assumes standard-height worlds (TD-038)
         MultiTileCloudProvider multi = new MultiTileCloudProvider(provider, minHeight, maxHeight);
 
+        // 2b. Preload all tiles known to have content. With server-side baselines (Plan 0c-4),
+        // each tile SUBSCRIBE is O(baseline + small delta) regardless of op history, so we can
+        // blast in parallel without server-side meltdown.
+        try {
+            if (progress != null) progress.setMessage("Loading tiles…");
+            org.pepsoft.worldpainter.cloud.api.CloudWorldsClient worldsClient =
+                    new org.pepsoft.worldpainter.cloud.api.CloudWorldsClient(
+                            DEFAULT_BACKEND_HTTP, session.token());
+            java.util.List<org.pepsoft.worldpainter.cloud.api.CloudWorldsClient.TileCoord> occupied =
+                    worldsClient.listTiles(ref.cloudWorldId());
+
+            int total = occupied.size();
+            if (total > 0) {
+                int parallelism = Math.min(32, total);
+                java.util.concurrent.ExecutorService pool =
+                        java.util.concurrent.Executors.newFixedThreadPool(parallelism, r -> {
+                            Thread t = new Thread(r, "cloud-preload");
+                            t.setDaemon(true);
+                            return t;
+                        });
+                java.util.concurrent.atomic.AtomicInteger done =
+                        new java.util.concurrent.atomic.AtomicInteger();
+                java.util.List<java.util.concurrent.Future<?>> futures = new java.util.ArrayList<>(total);
+                for (var coord : occupied) {
+                    futures.add(pool.submit(() -> {
+                        try { multi.load(coord.x(), coord.y()); }
+                        catch (Exception ignored) {}
+                        int d = done.incrementAndGet();
+                        if (progress != null) {
+                            try { progress.setProgress((float) d / total); }
+                            catch (org.pepsoft.util.ProgressReceiver.OperationCancelled ignored2) {}
+                        }
+                    }));
+                }
+                pool.shutdown();
+                pool.awaitTermination(60, java.util.concurrent.TimeUnit.SECONDS);
+                LOG.info("Preloaded {} cloud tile(s) for world {}", total, ref.cloudWorldId());
+            }
+        } catch (Exception e) {
+            LOG.warn("Preload failed (tiles will load on demand): {}", e.getMessage());
+        }
+
         // 3. Build CloudWorld2 + CloudDimension.
         Platform platform = DefaultPlugin.JAVA_ANVIL;
         CloudWorld2 world = new CloudWorld2(platform, minHeight, maxHeight,
