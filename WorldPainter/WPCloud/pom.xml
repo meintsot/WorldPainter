@@ -24,6 +24,13 @@
     </properties>
 
     <dependencies>
+        <!-- WorldPainter core model (Terrain, Layer, Tile, etc.) -->
+        <dependency>
+            <groupId>org.pepsoft.worldpainter</groupId>
+            <artifactId>WPCore</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
         <!-- Shared protocol definitions (from the talepainter-backend repo, consumed via ~/.m2 cache) -->
         <dependency>
             <groupId>com.talepainter</groupId>
