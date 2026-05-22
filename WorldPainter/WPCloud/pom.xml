@@ -99,6 +99,11 @@
                         <configuration>
                             <shadedArtifactAttached>true</shadedArtifactAttached>
                             <shadedClassifierName>with-deps</shadedClassifierName>
+                            <!-- Do NOT generate dependency-reduced-pom: it strips compile-scope deps
+                                 from the main artifact's installed POM, which breaks transitive
+                                 resolution for downstream modules (WPGUI) that consume the regular
+                                 jar. The fat jar still exists as the with-deps classifier. -->
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
                             <transformers>
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                                     <mainClass>org.pepsoft.worldpainter.cloud.examples.WPCloudDemo</mainClass>
