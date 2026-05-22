@@ -32,25 +32,39 @@ class CloudDimensionTest {
     }
 
     @Test
-    void getTile_fetches_lazily_and_caches() {
+    void getTile_returns_null_first_then_loads_async() throws Exception {
         StubLoader loader = new StubLoader();
         CloudDimension dim = newCloudDimension(loader);
 
+        // First access kicks off an async load; returns null immediately to keep the EDT
+        // responsive while the view paints uncached tiles.
         org.pepsoft.worldpainter.Tile t1 = dim.getTile(5, 7);
-        assertThat(t1).isInstanceOf(CloudTile.class);
+        assertThat(t1).isNull();
+
+        // Wait for the async load to complete and the EDT-marshalled addTile to land.
+        long deadline = System.currentTimeMillis() + 2000;
+        org.pepsoft.worldpainter.Tile t2;
+        while ((t2 = dim.getTile(5, 7)) == null && System.currentTimeMillis() < deadline) {
+            javax.swing.SwingUtilities.invokeAndWait(() -> {});  // drain EDT queue
+            Thread.sleep(20);
+        }
+        assertThat(t2).isInstanceOf(CloudTile.class);
         assertThat(loader.loadCount).isEqualTo(1);
 
-        org.pepsoft.worldpainter.Tile t2 = dim.getTile(5, 7);
-        assertThat(t2).isSameAs(t1);
-        assertThat(loader.loadCount).isEqualTo(1);  // not loaded again
+        // Subsequent access returns the cached tile without re-loading.
+        org.pepsoft.worldpainter.Tile t3 = dim.getTile(5, 7);
+        assertThat(t3).isSameAs(t2);
+        assertThat(loader.loadCount).isEqualTo(1);
     }
 
     @Test
-    void getTileForEditing_returns_writable_cloud_tile() {
+    void getTileForEditing_returns_writable_cloud_tile_synchronously() {
         StubLoader loader = new StubLoader();
         CloudDimension dim = newCloudDimension(loader);
+        // getTileForEditing is synchronous — brushes need the tile NOW.
         org.pepsoft.worldpainter.Tile t = dim.getTileForEditing(0, 0);
         assertThat(t).isInstanceOf(CloudTile.class);
+        assertThat(loader.loadCount).isEqualTo(1);
     }
 
     private static CloudDimension newCloudDimension(CloudTileLoader loader) {
