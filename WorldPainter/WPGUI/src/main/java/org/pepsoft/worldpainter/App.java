@@ -5642,6 +5642,7 @@ public final class App extends JFrame implements BrushControl,
         menu.addSeparator();
         menu.add(new JMenuItem(cloudMenuActions.exportOnCloud));
         menu.add(new JMenuItem(cloudMenuActions.importHytaleWorld));
+        menu.add(new JMenuItem(cloudMenuActions.mergeWithHytaleWorld));
         return menu;
     }
 

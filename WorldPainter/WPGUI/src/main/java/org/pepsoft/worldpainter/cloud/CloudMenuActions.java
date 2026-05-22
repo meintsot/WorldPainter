@@ -26,6 +26,7 @@ public final class CloudMenuActions {
     public final Action openCloudWorld = new OpenCloudWorldAction();
     public final Action exportOnCloud = new ExportOnCloudAction();
     public final Action importHytaleWorld = new ImportHytaleWorldAction();
+    public final Action mergeWithHytaleWorld = new MergeWithHytaleWorldAction();
 
     public CloudMenuActions(Frame owner) {
         this.owner = owner;
@@ -47,6 +48,7 @@ public final class CloudMenuActions {
         openCloudWorld.setEnabled(signedIn);
         exportOnCloud.setEnabled(cloudWorldOpen);
         importHytaleWorld.setEnabled(cloudWorldOpen);
+        mergeWithHytaleWorld.setEnabled(cloudWorldOpen);
     }
 
     private final class SignInAction extends AbstractAction {
@@ -108,6 +110,14 @@ public final class CloudMenuActions {
         @Override public void actionPerformed(ActionEvent e) {
             CloudWorld2 cloud = (CloudWorld2) org.pepsoft.worldpainter.App.getInstance().getWorld();
             new CloudHytaleImportAction(owner, cloud).actionPerformed(e);
+        }
+    }
+
+    private final class MergeWithHytaleWorldAction extends AbstractAction {
+        MergeWithHytaleWorldAction() { super("Merge with Hytale world…"); }
+        @Override public void actionPerformed(ActionEvent e) {
+            CloudWorld2 cloud = (CloudWorld2) org.pepsoft.worldpainter.App.getInstance().getWorld();
+            new CloudMergeAction(owner, cloud).actionPerformed(e);
         }
     }
 }
