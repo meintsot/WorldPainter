@@ -352,6 +352,22 @@ public final class App extends JFrame implements BrushControl,
     }
 
     /**
+     * Open a world identified by a {@link org.pepsoft.worldpainter.storage.WorldRef}. Dispatches
+     * through {@link org.pepsoft.worldpainter.storage.StorageBackendRegistry} so cloud and local
+     * worlds share the same entry point.
+     *
+     * <p>Blocking: this method may take seconds (network handshake for cloud, disk I/O for local).
+     * Callers should invoke from a SwingWorker; the existing local open path already does this.
+     */
+    public void openWorld(org.pepsoft.worldpainter.storage.WorldRef ref,
+                          ProgressReceiver progress) throws Exception {
+        org.pepsoft.worldpainter.storage.StorageBackend backend =
+                org.pepsoft.worldpainter.storage.StorageBackendRegistry.getInstance().forRef(ref);
+        World2 world = backend.open(ref, progress);
+        setWorld(world, true);
+    }
+
+    /**
      * This setter may only be used to re-load the same World (by passing in the
      * current World instance), or after the current World has been unloaded by
      * invoking {@link #clearWorld()}. Otherwise it will throw an {@link
