@@ -39,6 +39,12 @@ public final class MultiTileCloudProvider implements CloudTileLoader, MutationSi
     private final int defaultMaxHeight;
     private final Map<Long, CloudTile> tilesByKey = new ConcurrentHashMap<>();
     private final CloudTileProvider.RemoteOpsListener listener = this::onRemoteOpsHandler;
+    private final java.util.concurrent.ExecutorService backgroundSubscribeExecutor =
+            java.util.concurrent.Executors.newFixedThreadPool(16, r -> {
+                Thread t = new Thread(r, "cloud-bg-subscribe");
+                t.setDaemon(true);
+                return t;
+            });
 
     public MultiTileCloudProvider(CloudTileProvider provider, int minHeight, int maxHeight) {
         this.provider = provider;
@@ -97,6 +103,47 @@ public final class MultiTileCloudProvider implements CloudTileLoader, MutationSi
             LOG.warn("Bulk terrain copy via reflection failed; falling back to per-cell: {}", e.getMessage());
             return false;
         }
+    }
+
+    /**
+     * Fast-path tile load for brushes: returns the cached {@link CloudTile} if present,
+     * otherwise creates an empty one instantly and dispatches a background SUBSCRIBE. The
+     * brush paints on the empty tile immediately; when the snapshot eventually arrives, its
+     * non-default cells are applied via {@link CloudTile#applyRemoteOp} which honors HLC LWW
+     * (so the brush's fresh writes win over an older baseline).
+     *
+     * <p>This avoids freezing the EDT on the synchronous SUBSCRIBE+TILE_SNAPSHOT round-trip
+     * for every new tile a large brush stroke touches.
+     */
+    public CloudTile loadFast(int tileX, int tileY) {
+        long k = key(tileX, tileY);
+        CloudTile existing = tilesByKey.get(k);
+        if (existing != null) return existing;
+        CloudTile fresh = new CloudTile(tileX, tileY, defaultMinHeight, defaultMaxHeight, this);
+        CloudTile prior = tilesByKey.putIfAbsent(k, fresh);
+        if (prior != null) return prior;   // another thread won the race; use theirs
+        // Background subscribe so we (a) get a snapshot if the server has content for this
+        // tile and (b) start receiving live TILE_OPS broadcasts from collaborators.
+        backgroundSubscribeExecutor.execute(() -> {
+            try {
+                var localTile = provider.getTile(tileX, tileY);
+                byte[] srcTerrain = localTile.terrainArrayUnsafe();
+                // Apply only non-default cells, via setTerrain so the LWW path runs (preserves
+                // any cells the user already painted with newer HLCs).
+                RemoteOpContext.runApplyingRemote(() -> {
+                    for (int i = 0; i < srcTerrain.length; i++) {
+                        byte b = srcTerrain[i];
+                        if (b != 0) {
+                            int x = i % 128, y = i / 128;
+                            fresh.setTerrain(x, y, TerrainRegistry.fromByte(b));
+                        }
+                    }
+                });
+            } catch (Exception e) {
+                LOG.warn("Background subscribe failed for ({},{}): {}", tileX, tileY, e.getMessage());
+            }
+        });
+        return fresh;
     }
 
     public CloudTile getCachedCloudTile(int tileX, int tileY) {

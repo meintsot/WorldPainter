@@ -111,9 +111,11 @@ public final class CloudDimension extends Dimension {
         if (cached != null) {
             return cached;
         }
-        // Synchronous load for brushes: they need the tile to mutate. Not gated by
-        // knownOccupied — brushes can create new tiles in previously-empty coords.
-        Tile loaded = loader.load(x, y);
+        // Fast path: never blocks on the network. Returns an empty CloudTile instantly and
+        // subscribes to the backend in the background. Brushes can paint on it immediately;
+        // any pre-existing backend content arrives later via the listener pipeline (HLC LWW
+        // preserves the brush's fresh writes).
+        Tile loaded = loader.loadFast(x, y);
         if (loaded != null) {
             knownOccupied.add(packKey(x, y));  // future getTile will return this tile
             if (SwingUtilities.isEventDispatchThread()) {

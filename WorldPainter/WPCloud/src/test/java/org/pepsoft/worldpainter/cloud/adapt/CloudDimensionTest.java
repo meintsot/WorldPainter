@@ -24,9 +24,15 @@ class CloudDimensionTest {
             @Override public void onLayer(int tx, int ty, Layer l, int x, int y, int v) {}
         };
         int loadCount = 0;
+        int loadFastCount = 0;
         @Override
         public CloudTile load(int tileX, int tileY) {
             loadCount++;
+            return new CloudTile(tileX, tileY, 0, 256, noopSink);
+        }
+        @Override
+        public CloudTile loadFast(int tileX, int tileY) {
+            loadFastCount++;
             return new CloudTile(tileX, tileY, 0, 256, noopSink);
         }
     }
@@ -62,13 +68,15 @@ class CloudDimensionTest {
     }
 
     @Test
-    void getTileForEditing_returns_writable_cloud_tile_synchronously() {
+    void getTileForEditing_returns_writable_cloud_tile_instantly() {
         StubLoader loader = new StubLoader();
         CloudDimension dim = newCloudDimension(loader);
-        // getTileForEditing is synchronous — brushes need the tile NOW.
+        // getTileForEditing uses the fast path: never blocks on network. Returns an empty
+        // CloudTile immediately so brushes don't freeze the EDT on large strokes.
         org.pepsoft.worldpainter.Tile t = dim.getTileForEditing(0, 0);
         assertThat(t).isInstanceOf(CloudTile.class);
-        assertThat(loader.loadCount).isEqualTo(1);
+        assertThat(loader.loadFastCount).isEqualTo(1);
+        assertThat(loader.loadCount).isZero();  // no blocking load
     }
 
     @Test
@@ -91,10 +99,10 @@ class CloudDimensionTest {
         StubLoader loader = new StubLoader();
         CloudDimension dim = newCloudDimension(loader);
 
-        // Brush touches (3, 4) for the first time: synchronous load creates the tile and
-        // marks the coord occupied. After that, getTile is allowed to fetch it.
+        // Brush touches (3, 4) for the first time: fast-path creates an empty tile and marks
+        // the coord occupied. After that, getTile is allowed to find it via super's cache.
         dim.getTileForEditing(3, 4);
-        assertThat(loader.loadCount).isEqualTo(1);
+        assertThat(loader.loadFastCount).isEqualTo(1);
 
         // Now getTile sees the tile is already cached and returns it directly.
         org.pepsoft.worldpainter.Tile t = dim.getTile(3, 4);
