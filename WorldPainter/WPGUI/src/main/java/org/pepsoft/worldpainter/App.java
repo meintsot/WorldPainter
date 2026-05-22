@@ -364,7 +364,19 @@ public final class App extends JFrame implements BrushControl,
         org.pepsoft.worldpainter.storage.StorageBackend backend =
                 org.pepsoft.worldpainter.storage.StorageBackendRegistry.getInstance().forRef(ref);
         World2 world = backend.open(ref, progress);
-        setWorld(world, true);
+        // setWorld requires no world currently loaded, or the same instance being reloaded.
+        // WorldPainter starts with a default placeholder world, so we must clearWorld() first
+        // (matches the existing local-file open(File) flow at line 977).
+        if (javax.swing.SwingUtilities.isEventDispatchThread()) {
+            clearWorld();
+            setWorld(world, true);
+        } else {
+            final World2 loaded = world;
+            javax.swing.SwingUtilities.invokeAndWait(() -> {
+                clearWorld();
+                setWorld(loaded, true);
+            });
+        }
     }
 
     /**
