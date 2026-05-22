@@ -82,3 +82,73 @@ End-to-end Phase 0c-1 architecture:
 - HLC LWW resolution converges concurrent writes
 - Snapshots + post-snapshot ops correctly reconstruct state on reopen
 - Two clients in different JVMs against a real backend behave as designed
+
+---
+
+## Phase 0c-2 — Verification via WorldPainter's batch file
+
+This procedure exercises the cloud menu integration. Same prerequisites as the standalone
+demo (backend stack must be running).
+
+### Prerequisites
+
+1. Backend up:
+   ```
+   cd talepainter-backend/infra/compose
+   docker compose --env-file .env up -d --build
+   ```
+2. WorldPainter built:
+   ```
+   cd WorldPainter
+   mvn -DskipTests -pl WPGUI -am install
+   ```
+
+### Procedure
+
+**Window A (Alice):**
+
+1. Run `build-and-run-worldpainter.bat` (from the WorldPainter repo root, or the
+   appropriate location per BUILDING.md).
+2. WorldPainter opens normally. Verify a **Cloud** menu appears between **Tools** and
+   **Help**.
+3. Click **Cloud → Sign in…**.
+4. Enter display name `Alice`, click **Sign in**. The dialog closes; the menu's
+   "Sign in…" item is now disabled and "Sign out" + "Open cloud world…" are enabled.
+5. Click **Cloud → Open cloud world…**. A dialog lists existing worlds (likely empty
+   on first run).
+6. Click **New World…**, name it `PhaseZero`, click OK. The dialog closes; a new
+   `WorldPainter Cloud — PhaseZero` window opens. After a brief "Connecting…" splash,
+   the 128×128 painting canvas appears, fully white.
+
+**Window B (Bob):**
+
+1. Run `build-and-run-worldpainter.bat` again in a second terminal.
+2. Click **Cloud → Sign in…**, enter `Bob`, click Sign in.
+3. Click **Cloud → Open cloud world…**. The `PhaseZero` world should appear in the list.
+4. Select it and click **Open**. A second cloud editor window appears, also fully white.
+
+**Convergence:**
+
+1. In Window A's cloud editor, left-click around cells (5,5)–(10,10). They turn red.
+2. Within ~500 ms, the same cells turn red in Window B's cloud editor.
+3. In Window B, right-click once on the canvas (cycles brush color), then left-click around
+   cells (20,20)–(25,25). Those cells appear in Alice's editor with Bob's color.
+4. Both users left-click the same cell at the same time. After ~500 ms, both editors show
+   the same converged color (HLC tie-break by node id).
+5. Close Alice's editor window via the X button. Reopen via **Cloud → Open cloud world…
+   → PhaseZero → Open**. The cells you painted are still there.
+
+### Pass criteria
+
+- Cloud menu appears in the WorldPainter menu bar.
+- Sign-in dialog works; saved session survives WorldPainter restart (close WorldPainter
+  entirely, relaunch, **Cloud** menu shows Sign Out enabled — no need to sign in again).
+- Two cloud editor windows can paint the same world concurrently and converge.
+- No regressions: open a local `.world` file via **File → Open**; existing functionality
+  (brushes, layers, save) still works.
+
+### What this proves (Phase 0 acceptance)
+
+- The full architecture works through the regular WorldPainter entry point.
+- A user can go from launching the bat to collaborative editing without a separate jar.
+- Existing local-file editing is unaffected by the cloud integration.
