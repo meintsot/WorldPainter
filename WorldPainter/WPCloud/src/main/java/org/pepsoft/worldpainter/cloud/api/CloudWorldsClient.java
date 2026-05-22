@@ -2,6 +2,7 @@ package org.pepsoft.worldpainter.cloud.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.hc.client5.http.classic.methods.HttpDelete;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
@@ -62,6 +63,22 @@ public final class CloudWorldsClient {
             });
         } catch (Exception e) {
             throw new RuntimeException("createWorld failed", e);
+        }
+    }
+
+    public void deleteWorld(UUID worldId) {
+        try (CloseableHttpClient http = HttpClients.createDefault()) {
+            HttpDelete delete = new HttpDelete(baseUri.resolve("/v1/worlds/" + worldId));
+            delete.setHeader("Authorization", "Bearer " + token);
+            http.execute(delete, response -> {
+                int code = response.getCode();
+                if (code != 200 && code != 204 && code != 404) {
+                    throw new RuntimeException("deleteWorld returned HTTP " + code);
+                }
+                return null;
+            });
+        } catch (Exception e) {
+            throw new RuntimeException("deleteWorld failed", e);
         }
     }
 

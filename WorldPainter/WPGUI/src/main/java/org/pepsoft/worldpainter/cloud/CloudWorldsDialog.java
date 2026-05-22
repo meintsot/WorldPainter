@@ -26,6 +26,7 @@ public final class CloudWorldsDialog extends JDialog {
     private final JTable table = new JTable(model);
     private final JButton openButton = new JButton("Open");
     private final JButton newWorldButton = new JButton("New World…");
+    private final JButton deleteButton = new JButton("Delete");
     private final JButton cancelButton = new JButton("Cancel");
     private final JLabel statusLabel = new JLabel(" ");
 
@@ -43,6 +44,7 @@ public final class CloudWorldsDialog extends JDialog {
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         buttons.add(newWorldButton);
+        buttons.add(deleteButton);
         buttons.add(cancelButton);
         buttons.add(openButton);
 
@@ -58,11 +60,16 @@ public final class CloudWorldsDialog extends JDialog {
 
         openButton.addActionListener(e -> onOpen());
         newWorldButton.addActionListener(e -> onNewWorld());
+        deleteButton.addActionListener(e -> onDelete());
         cancelButton.addActionListener(e -> setVisible(false));
 
         openButton.setEnabled(false);
-        table.getSelectionModel().addListSelectionListener(e ->
-                openButton.setEnabled(table.getSelectedRow() >= 0));
+        deleteButton.setEnabled(false);
+        table.getSelectionModel().addListSelectionListener(e -> {
+            boolean rowSelected = table.getSelectedRow() >= 0;
+            openButton.setEnabled(rowSelected);
+            deleteButton.setEnabled(rowSelected);
+        });
 
         pack();
         setLocationRelativeTo(owner);
@@ -104,6 +111,44 @@ public final class CloudWorldsDialog extends JDialog {
         CloudWorldsClient.WorldSummary chosen = model.row(row);
         selection = new Selection(chosen.id(), chosen.name());
         setVisible(false);
+    }
+
+    private void onDelete() {
+        int row = table.getSelectedRow();
+        if (row < 0) return;
+        CloudWorldsClient.WorldSummary chosen = model.row(row);
+        int choice = JOptionPane.showConfirmDialog(this,
+                "Permanently delete cloud world \"" + chosen.name() + "\"?\n" +
+                "All painted tiles and ops will be lost. This cannot be undone.",
+                "Delete cloud world",
+                JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+        if (choice != JOptionPane.OK_OPTION) return;
+
+        Session session = CloudSession.getInstance().current().orElseThrow();
+        CloudWorldsClient client = new CloudWorldsClient(DEFAULT_BACKEND, session.token());
+        statusLabel.setForeground(new Color(120, 120, 120));
+        statusLabel.setText("Deleting…");
+
+        SwingWorker<Void, Void> worker = new SwingWorker<>() {
+            @Override
+            protected Void doInBackground() {
+                client.deleteWorld(chosen.id());
+                return null;
+            }
+            @Override
+            protected void done() {
+                try {
+                    get();
+                    statusLabel.setText("Deleted \"" + chosen.name() + "\"");
+                    loadWorldsAsync();   // refresh the table
+                } catch (Exception ex) {
+                    statusLabel.setForeground(new Color(180, 0, 0));
+                    statusLabel.setText("Delete failed: " + ex.getMessage());
+                }
+            }
+        };
+        worker.execute();
     }
 
     private void onNewWorld() {

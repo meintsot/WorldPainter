@@ -83,7 +83,8 @@ public final class CloudStorageBackend implements StorageBackend {
         // 3. Build CloudWorld2 + CloudDimension BEFORE the preload, so we can mark known-occupied
         // coords on the dimension as each tile loads. CloudDimension.getTile is gated by that set;
         // gating off until preload completes would cause the renderer to see an empty world.
-        Platform platform = DefaultPlugin.JAVA_ANVIL;
+        // Hytale is the canonical cloud platform per ADR-0003.
+        Platform platform = DefaultPlugin.HYTALE;
         CloudWorld2 world = new CloudWorld2(platform, minHeight, maxHeight,
                 ref.cloudWorldId(), multi);
 
@@ -145,6 +146,27 @@ public final class CloudStorageBackend implements StorageBackend {
             try { pool.awaitTermination(60, java.util.concurrent.TimeUnit.SECONDS); }
             catch (InterruptedException e) { Thread.currentThread().interrupt(); }
             LOG.info("Preloaded {} cloud tile(s) for world {}", total, ref.cloudWorldId());
+        }
+
+        // 5. If the world is empty (no occupied tiles on the backend), populate a default
+        //    5x5 bounded region via the TileFactory so the user has something to paint on —
+        //    matches the experience of a freshly-created local world via NewWorldDialog.
+        //    Subsequent edits go through the brush → CloudTile.setTerrain → outbound op
+        //    pipeline, so the populated tiles will be persisted on first edit.
+        //    Users can extend the bounds later via WorldPainter's Tile Editor (Add Tiles).
+        if (occupied.isEmpty()) {
+            LOG.info("Cloud world {} is empty; pre-populating 5x5 default bounded area",
+                    ref.cloudWorldId());
+            int defaultBound = 2;   // 5x5 tiles: -2..2 in both axes = 25 tiles
+            for (int ty = -defaultBound; ty <= defaultBound; ty++) {
+                for (int tx = -defaultBound; tx <= defaultBound; tx++) {
+                    CloudTile cloudTile = multi.createWithFactory(tx, ty);
+                    if (cloudTile != null) {
+                        surface.markOccupied(tx, ty);
+                        surface.addTile(cloudTile);
+                    }
+                }
+            }
         }
 
         world.addDimension(surface);

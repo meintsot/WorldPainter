@@ -127,22 +127,35 @@ public final class MultiTileCloudProvider implements CloudTileLoader, MutationSi
      * needs a "subscribe on first write" hook before multi-user collab works on new tiles.
      */
     public CloudTile loadFast(int tileX, int tileY) {
+        // Returns the cached CloudTile if present, otherwise null.
+        // Intentionally does NOT auto-create new tiles — that would make cloud worlds
+        // unboundedly expand on every brush stroke and diverge from local-world bounds
+        // semantics. New tiles must be explicitly added via {@link #createWithFactory}
+        // (used by CloudStorageBackend for initial population) or via WorldPainter's
+        // existing Tile Editor / Add Tiles dialog.
+        return tilesByKey.get(key(tileX, tileY));
+    }
+
+    /**
+     * Explicitly create a new factory-seeded {@link CloudTile} for {@code (tileX, tileY)}
+     * and register it in the local cache. Used by {@link CloudStorageBackend#open} during
+     * initial population of an empty cloud world, and by WorldPainter's Tile Editor when
+     * the user adds tiles to extend the world's bounds.
+     *
+     * <p>Idempotent: returns the cached tile if one already exists for this coord.
+     */
+    public CloudTile createWithFactory(int tileX, int tileY) {
         long k = key(tileX, tileY);
         CloudTile existing = tilesByKey.get(k);
         if (existing != null) return existing;
         CloudTile fresh = new CloudTile(tileX, tileY, defaultMinHeight, defaultMaxHeight, this);
-        // Seed from the tile factory so this fresh tile has the same baseline (terrain,
-        // height, water) as if it had been created by NewWorldDialog locally. Without
-        // this, brushes that extend into never-touched tile coords would raise from
-        // height 0 (instead of the world's default ~62) and the visual effect would
-        // diverge from inside-the-bounds tiles.
         org.pepsoft.worldpainter.TileFactory factory = this.tileFactory;
         if (factory != null) {
             try {
                 org.pepsoft.worldpainter.Tile sample = factory.createTile(tileX, tileY);
                 copyBaselineFields(sample, fresh);
             } catch (Exception e) {
-                LOG.warn("Failed to seed fresh tile ({},{}) from factory: {}",
+                LOG.warn("Failed to seed tile ({},{}) from factory: {}",
                         tileX, tileY, e.getMessage());
             }
         }
