@@ -107,34 +107,41 @@ public final class CloudDimension extends Dimension {
 
     @Override
     public Tile getTileForEditing(int x, int y) {
-        Tile cached = super.getTile(x, y);
-        if (cached != null) {
-            return cached;
+        // Try super first — for tiles already in the dimension's map, super handles the
+        // eventsInhibited / dirtyTiles bookkeeping that the brush flow depends on
+        // (setEventsInhibited(false) at end-of-stroke iterates dirtyTiles to release queued
+        // change events; without that path the view never repaints the painted cells).
+        Tile existing = super.getTileForEditing(x, y);
+        if (existing != null) {
+            return existing;
         }
-        // Fast path: never blocks on the network. Returns an empty CloudTile instantly and
-        // subscribes to the backend in the background. Brushes can paint on it immediately;
-        // any pre-existing backend content arrives later via the listener pipeline (HLC LWW
-        // preserves the brush's fresh writes).
+        // Brand-new coord: create an empty CloudTile (fast path — no network), addTile it,
+        // then re-enter super.getTileForEditing so the new tile picks up the same
+        // eventsInhibited + dirtyTiles handling as if it had been there from the start.
         Tile loaded = loader.loadFast(x, y);
-        if (loaded != null) {
-            knownOccupied.add(packKey(x, y));  // future getTile will return this tile
-            if (SwingUtilities.isEventDispatchThread()) {
-                if (super.getTile(x, y) == null) {
-                    addTile(loaded);
-                }
-            } else {
-                try {
-                    SwingUtilities.invokeAndWait(() -> {
-                        if (super.getTile(x, y) == null) {
-                            addTile(loaded);
-                        }
-                    });
-                } catch (Exception e) {
-                    LOG.warn("getTileForEditing EDT marshal failed: {}", e.getMessage());
-                }
+        if (loaded == null) {
+            return null;
+        }
+        knownOccupied.add(packKey(x, y));
+        if (SwingUtilities.isEventDispatchThread()) {
+            if (super.getTile(x, y) == null) {
+                addTile(loaded);
+            }
+        } else {
+            try {
+                SwingUtilities.invokeAndWait(() -> {
+                    if (super.getTile(x, y) == null) {
+                        addTile(loaded);
+                    }
+                });
+            } catch (Exception e) {
+                LOG.warn("getTileForEditing EDT marshal failed: {}", e.getMessage());
+                return loaded;  // best-effort fallback
             }
         }
-        return loaded;
+        // Now route through super so the brush's eventsInhibited+dirtyTiles bookkeeping
+        // covers the newly-added tile too.
+        return super.getTileForEditing(x, y);
     }
 
     @Override
