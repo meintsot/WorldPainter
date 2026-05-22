@@ -37,6 +37,7 @@
         <module>WPCore</module>
         <module>WPDynmapPreviewer</module>
         <module>WPGUI</module>
+        <module>WPCloud</module>
     </modules>
 
     <repositories>
