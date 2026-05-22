@@ -13,17 +13,14 @@ import java.net.URI;
 import java.util.UUID;
 
 /**
- * Dedicated editor window for a single cloud world. Phase 0c-2 is single-tile (0,0) only;
- * pan/zoom and multi-tile editing arrive in Phase 0c-3.
+ * <p><strong>Deprecated since Phase 0c-3.</strong> The Cloud menu now loads cloud worlds into
+ * the main WorldPainter editor view via {@code App.openWorld(WorldRef)}. This standalone
+ * editor frame is retained as a dev-only fallback, reachable only when the system property
+ * {@code worldpainter.cloud.useStandaloneEditor=true} is set.
  *
- * <p>Lifecycle:
- * <ol>
- *   <li>Constructed with the world id + display name.</li>
- *   <li>{@link #connectAndShow} performs the WebSocket handshake (showing a "connecting…"
- *       splash), then displays the canvas.</li>
- *   <li>On window close, the {@link CloudTileProvider} is closed and resources released.</li>
- * </ol>
+ * <p>Scheduled for removal in Phase 0c-4 / Phase 1.
  */
+@Deprecated
 public final class CloudEditorFrame extends JFrame {
 
     private static final URI DEFAULT_BACKEND_HTTP = URI.create(
