@@ -464,6 +464,11 @@ public final class App extends JFrame implements BrushControl,
                         "It cannot be Exported without first changing the format.\n" +
                         "It is most likely supported by a plugin that is not installed or could not be loaded.", "Unknown Map Format");
             }
+
+            // Update cloud-menu items that depend on whether a CloudWorld2 is loaded.
+            if (cloudMenuActions != null) {
+                cloudMenuActions.updateEnablement();
+            }
         }
     }
 
@@ -5634,6 +5639,8 @@ public final class App extends JFrame implements BrushControl,
         menu.add(new JMenuItem(cloudMenuActions.signOut));
         menu.addSeparator();
         menu.add(new JMenuItem(cloudMenuActions.openCloudWorld));
+        menu.addSeparator();
+        menu.add(new JMenuItem(cloudMenuActions.exportOnCloud));
         return menu;
     }
 

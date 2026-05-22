@@ -1,5 +1,6 @@
 package org.pepsoft.worldpainter.cloud;
 
+import org.pepsoft.worldpainter.cloud.adapt.CloudWorld2;
 import org.pepsoft.worldpainter.cloud.auth.CloudSession;
 import org.pepsoft.worldpainter.cloud.auth.Session;
 
@@ -13,7 +14,8 @@ import java.awt.event.ActionEvent;
  *
  * <p>One instance per {@code App}. Actions enable/disable themselves based on the current
  * {@link CloudSession} state — Sign In is enabled when signed out, Sign Out and Open Cloud
- * World are enabled when signed in.
+ * World are enabled when signed in. Export/Import/Merge are additionally gated on the current
+ * world being a {@link CloudWorld2}.
  */
 public final class CloudMenuActions {
 
@@ -22,6 +24,7 @@ public final class CloudMenuActions {
     public final Action signIn = new SignInAction();
     public final Action signOut = new SignOutAction();
     public final Action openCloudWorld = new OpenCloudWorldAction();
+    public final Action exportOnCloud = new ExportOnCloudAction();
 
     public CloudMenuActions(Frame owner) {
         this.owner = owner;
@@ -32,11 +35,16 @@ public final class CloudMenuActions {
         });
     }
 
-    private void updateEnablement() {
+    /** Called by {@link org.pepsoft.worldpainter.App} whenever the open world changes. */
+    public void updateEnablement() {
         boolean signedIn = CloudSession.getInstance().isSignedIn();
+        boolean cloudWorldOpen = signedIn
+                && (org.pepsoft.worldpainter.App.getInstance().getWorld()
+                        instanceof CloudWorld2);
         signIn.setEnabled(!signedIn);
         signOut.setEnabled(signedIn);
         openCloudWorld.setEnabled(signedIn);
+        exportOnCloud.setEnabled(cloudWorldOpen);
     }
 
     private final class SignInAction extends AbstractAction {
@@ -82,6 +90,14 @@ public final class CloudMenuActions {
                 };
                 worker.execute();
             });
+        }
+    }
+
+    private final class ExportOnCloudAction extends AbstractAction {
+        ExportOnCloudAction() { super("Export world on cloud…"); }
+        @Override public void actionPerformed(ActionEvent e) {
+            CloudWorld2 cloud = (CloudWorld2) org.pepsoft.worldpainter.App.getInstance().getWorld();
+            new CloudExportAction(owner, cloud).actionPerformed(e);
         }
     }
 }
