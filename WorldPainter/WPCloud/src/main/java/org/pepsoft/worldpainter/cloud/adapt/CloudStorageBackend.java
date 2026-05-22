@@ -1,0 +1,113 @@
+package org.pepsoft.worldpainter.cloud.adapt;
+
+import org.pepsoft.util.ProgressReceiver;
+import org.pepsoft.worldpainter.DefaultPlugin;
+import org.pepsoft.worldpainter.Dimension;
+import org.pepsoft.worldpainter.Platform;
+import org.pepsoft.worldpainter.Terrain;
+import org.pepsoft.worldpainter.TileFactory;
+import org.pepsoft.worldpainter.TileFactoryFactory;
+import org.pepsoft.worldpainter.World2;
+import org.pepsoft.worldpainter.cloud.auth.CloudSession;
+import org.pepsoft.worldpainter.cloud.auth.Session;
+import org.pepsoft.worldpainter.cloud.tile.CloudTileProvider;
+import org.pepsoft.worldpainter.storage.StorageBackend;
+import org.pepsoft.worldpainter.storage.WorldRef;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.net.URI;
+import java.util.IdentityHashMap;
+import java.util.Map;
+
+import static org.pepsoft.worldpainter.Constants.DIM_NORMAL;
+
+/**
+ * {@link StorageBackend} that opens cloud worlds. Builds the full client-side machinery on
+ * {@link #open}: a {@link CloudTileProvider} connection, a {@link MultiTileCloudProvider}
+ * adapter, a {@link CloudDimension}, and a {@link CloudWorld2}.
+ */
+public final class CloudStorageBackend implements StorageBackend {
+
+    private static final Logger LOG = LoggerFactory.getLogger(CloudStorageBackend.class);
+
+    private static final URI DEFAULT_BACKEND_HTTP = URI.create(
+            System.getProperty("worldpainter.cloud.backend", "http://localhost:8080"));
+
+    /** Track open providers per world so {@link #close} can release them. */
+    private final Map<World2, CloudTileProvider> openProviders = new IdentityHashMap<>();
+
+    @Override
+    public WorldRef.Kind kind() { return WorldRef.Kind.CLOUD; }
+
+    @Override
+    public World2 open(WorldRef ref, ProgressReceiver progress) throws Exception {
+        Session session = CloudSession.getInstance().current()
+                .orElseThrow(() -> new IllegalStateException("Not signed in to TalePainter Cloud"));
+
+        URI wsUri = URI.create(
+                DEFAULT_BACKEND_HTTP.toString().replaceFirst("^http", "ws") + "/ws");
+
+        // 1. Open the WebSocket and complete the handshake.
+        if (progress != null) progress.setMessage("Connecting to cloud…");
+        CloudTileProvider provider = new CloudTileProvider(wsUri, session, ref.cloudWorldId());
+        provider.connect();
+        long deadline = System.currentTimeMillis() + 10_000;
+        while (!provider.isOpen()) {
+            if (System.currentTimeMillis() > deadline) {
+                provider.close();
+                throw new RuntimeException("Cloud handshake timed out after 10 s");
+            }
+            Thread.sleep(50);
+        }
+
+        // 2. Build the multi-tile adapter.
+        int minHeight = 0;
+        int maxHeight = 256;  // Phase 0c-3 assumes standard-height worlds (TD-038)
+        MultiTileCloudProvider multi = new MultiTileCloudProvider(provider, minHeight, maxHeight);
+
+        // 3. Build CloudWorld2 + CloudDimension.
+        Platform platform = DefaultPlugin.JAVA_ANVIL;
+        CloudWorld2 world = new CloudWorld2(platform, minHeight, maxHeight,
+                ref.cloudWorldId(), multi);
+
+        long seed = 0L;
+        Terrain defaultTerrain = Terrain.GRASS;
+        int defaultHeight = 62;
+        int defaultWaterLevel = 62;
+        boolean floodWithLava = false;
+        boolean beaches = false;
+        TileFactory tileFactory = TileFactoryFactory.createFlatTileFactory(
+                seed, defaultTerrain, minHeight, maxHeight,
+                defaultHeight, defaultWaterLevel, floodWithLava, beaches);
+
+        Dimension.Anchor anchor = new Dimension.Anchor(
+                DIM_NORMAL, Dimension.Role.DETAIL, false, 0);
+        CloudDimension surface = new CloudDimension(world, "Surface", seed, tileFactory,
+                anchor, multi);
+        world.addDimension(surface);
+
+        synchronized (openProviders) { openProviders.put(world, provider); }
+
+        if (progress != null) progress.setProgress(1f);
+        LOG.info("Opened cloud world {}", ref.cloudWorldId());
+        return world;
+    }
+
+    @Override
+    public void save(World2 world, WorldRef ref, ProgressReceiver progress) {
+        // Cloud worlds are auto-persisted by the op stream; no explicit save is needed.
+        // Future: could force a snapshot via a backend API (TD-039).
+        LOG.debug("save() called on cloud world; no-op (auto-persisted by op stream)");
+    }
+
+    @Override
+    public void close(World2 world) {
+        CloudTileProvider provider;
+        synchronized (openProviders) { provider = openProviders.remove(world); }
+        if (provider != null) {
+            try { provider.close(); }
+            catch (Exception e) { LOG.warn("Failed to close CloudTileProvider", e); }
+        }
+    }
+}
