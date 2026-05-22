@@ -61,9 +61,11 @@ public final class CloudStorageBackend implements StorageBackend {
             Thread.sleep(50);
         }
 
-        // 2. Build the multi-tile adapter.
+        // 2. Build the multi-tile adapter. Use Hytale's default heights (0..320) — Hytale's
+        // platform constants enforce maxHeight in [320, 1024], so 256 (Java Anvil's default)
+        // would fail World2 validation. Per-world height override is TD-038.
         int minHeight = 0;
-        int maxHeight = 256;  // Phase 0c-3 assumes standard-height worlds (TD-038)
+        int maxHeight = 320;
         MultiTileCloudProvider multi = new MultiTileCloudProvider(provider, minHeight, maxHeight);
 
         // 2b. List tiles known to have content (used to gate CloudDimension.getTile so we
