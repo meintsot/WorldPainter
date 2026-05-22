@@ -38,28 +38,49 @@ where WPCloud picks it up.
 > **Note:** Phase 0c-1 uses this local-Maven approach. Phase 1+ will publish the protocol
 > artifact to a real repository (tracked as TD-029).
 
-## Running the demo
+## Running the cloud client
 
 Prerequisite: backend stack up.
 
 ```
-# Terminal A:
 cd talepainter-backend/infra/compose
 docker compose --env-file .env up -d --build
-
-# Terminal B:
-cd WorldPainter/WorldPainter
-java -jar WPCloud/target/WPCloud-1.2.0-SNAPSHOT-with-deps.jar
 ```
 
-Optional CLI args:
+### Option A — Via the WorldPainter batch file (recommended for users)
+
+Plan 0c-2 added a **Cloud** menu to WorldPainter's main window. From the WorldPainter repo
+root:
 
 ```
+build-and-run-worldpainter.bat        # Windows
+# or:
+mvn -pl WPGUI exec:exec                # cross-platform
+```
+
+WorldPainter opens normally. Use **Cloud → Sign in…** to authenticate (Phase 0 NoOp auth
+just claims a display name), then **Cloud → Open cloud world…** to pick or create a world.
+The chosen world opens in a dedicated cloud editor window where you can paint cells.
+
+Run a second WorldPainter instance with a different display name and pick the same world
+to see two-client convergence.
+
+See [MANUAL-TEST.md](./MANUAL-TEST.md) §"Phase 0c-2 — Verification via WorldPainter's batch
+file" for the full step-by-step verification procedure.
+
+### Option B — Standalone demo jar (useful for developer testing)
+
+The `WPCloudDemo` standalone jar from Plan 0c-1 is still available and useful when you want
+to test the cloud client without launching the full WorldPainter app:
+
+```
+cd WorldPainter
 java -jar WPCloud/target/WPCloud-1.2.0-SNAPSHOT-with-deps.jar [backend-http-url]
-# Default: http://localhost:8080
+# Default backend: http://localhost:8080
 ```
 
-See [MANUAL-TEST.md](./MANUAL-TEST.md) for the two-window verification procedure.
+See [MANUAL-TEST.md](./MANUAL-TEST.md) §"Manual two-client convergence verification" for the
+standalone-jar procedure.
 
 ## Running tests
 
