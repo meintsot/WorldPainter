@@ -34,7 +34,7 @@ public final class CloudDimension extends Dimension {
     private static final Logger LOG = LoggerFactory.getLogger(CloudDimension.class);
 
     private final transient CloudTileLoader loader;
-    private final transient ExecutorService loadExecutor = Executors.newFixedThreadPool(4, r -> {
+    private final transient ExecutorService loadExecutor = Executors.newFixedThreadPool(32, r -> {
         Thread t = new Thread(r, "wpcloud-tile-loader");
         t.setDaemon(true);
         return t;
