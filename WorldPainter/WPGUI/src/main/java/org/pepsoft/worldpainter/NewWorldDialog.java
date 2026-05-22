@@ -252,6 +252,33 @@ public class NewWorldDialog extends WorldPainterDialog {
 
         scaleToUI();
         pack();
+
+        // Phase 0c-3 Task 16: inject a storage-mode banner above the existing form.
+        // GroupLayout fills the whole content pane, so we wrap it in a BorderLayout shell.
+        {
+            javax.swing.ButtonGroup storageGroup = new javax.swing.ButtonGroup();
+            storageGroup.add(storageLocalRadio);
+            storageGroup.add(storageCloudRadio);
+            boolean signedIn = org.pepsoft.worldpainter.cloud.auth.CloudSession.getInstance().isSignedIn();
+            storageCloudRadio.setEnabled(signedIn);
+            storageCloudRadio.setToolTipText(signedIn
+                    ? "Create a world hosted on TalePainter Cloud"
+                    : "Sign in via the Cloud menu first to enable");
+
+            javax.swing.JPanel storagePanel = new javax.swing.JPanel(new java.awt.FlowLayout(java.awt.FlowLayout.LEFT, 4, 2));
+            storagePanel.setBorder(javax.swing.BorderFactory.createEmptyBorder(4, 4, 0, 4));
+            storagePanel.add(new javax.swing.JLabel("Storage:"));
+            storagePanel.add(storageLocalRadio);
+            storagePanel.add(storageCloudRadio);
+
+            java.awt.Container existingContent = getContentPane();
+            javax.swing.JPanel wrapper = new javax.swing.JPanel(new java.awt.BorderLayout());
+            wrapper.add(storagePanel, java.awt.BorderLayout.NORTH);
+            wrapper.add(existingContent, java.awt.BorderLayout.CENTER);
+            setContentPane(wrapper);
+        }
+        pack();
+
         setLocationRelativeTo(app);
         fieldSeed.setText(Long.toString(seed));
         if (seed == World2.DEFAULT_OCEAN_SEED) {
@@ -1854,6 +1881,34 @@ public class NewWorldDialog extends WorldPainterDialog {
     }// </editor-fold>//GEN-END:initComponents
 
     private void buttonCreateActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_buttonCreateActionPerformed
+        // Phase 0c-3 Task 16: cloud creation path
+        if (storageCloudRadio.isSelected()) {
+            String worldName = fieldName.getText().trim();
+            if (worldName.isEmpty()) {
+                javax.swing.JOptionPane.showMessageDialog(this, "Please enter a world name.");
+                return;
+            }
+            try {
+                org.pepsoft.worldpainter.cloud.auth.Session session =
+                        org.pepsoft.worldpainter.cloud.auth.CloudSession.getInstance().current().orElseThrow(
+                                () -> new IllegalStateException("Not signed in"));
+                java.net.URI base = java.net.URI.create(
+                        System.getProperty("worldpainter.cloud.backend", "http://localhost:8080"));
+                org.pepsoft.worldpainter.cloud.api.CloudWorldsClient client =
+                        new org.pepsoft.worldpainter.cloud.api.CloudWorldsClient(base, session.token());
+                java.util.UUID id = client.createWorld(worldName, "hytale");
+                App.getInstance().openWorld(
+                        org.pepsoft.worldpainter.storage.WorldRef.cloud(id), null);
+                dispose();
+                return;
+            } catch (Exception ex) {
+                javax.swing.JOptionPane.showMessageDialog(this,
+                        "Failed to create cloud world: " + ex.getMessage(),
+                        "Cloud creation failed",
+                        javax.swing.JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+        }
         if (checkBoxMasterDimension.isSelected()) {
             final Configuration config = Configuration.getInstance();
             if (! config.isMessageDisplayedCountAtLeast(MESSAGE_KEY_MASTER_WARNING, 3)) {
@@ -2133,6 +2188,10 @@ public class NewWorldDialog extends WorldPainterDialog {
     private SimpleTheme theme;
     private boolean programmaticChange = true;
     private float scale;
+
+    // Phase 0c-3 Task 16: storage-mode radios (not managed by NetBeans/GEN blocks)
+    private final javax.swing.JRadioButton storageLocalRadio = new javax.swing.JRadioButton("Local file", true);
+    private final javax.swing.JRadioButton storageCloudRadio = new javax.swing.JRadioButton("Cloud");
 
     private static final int DEFAULT_HYTALE_TERRAIN_LEVEL = 100;
     private static final int DEFAULT_HYTALE_WATER_LEVEL = 100;
