@@ -148,3 +148,22 @@ These items remain unresolved and are deferred to a future phase:
   (TD-038).
 - **Platform mapping is single-fixed** — cloud worlds open with a hard-coded platform
   (`JAVA_ANVIL`). Per-world platform selection at create time is TD-041.
+
+## Heavy cloud operations (Phase 0c-5)
+
+Three operations run on a dedicated worker subprocess (Phase 0 = `LocalProcessJobRunner`
+in the same container; Phase 1 = `HetznerJobRunner` on a separate VM with no code change):
+
+- **Cloud → Export world on cloud…** — server-side Hytale export, downloads result zip.
+- **Cloud → Import existing Hytale world…** — server-side Hytale import generates CRDT ops.
+- **Cloud → Merge with Hytale world…** — server-side merge of cloud edits onto an uploaded
+  Hytale world, downloads merged result zip.
+
+All three are disabled until a cloud world is open. They communicate via:
+
+- `POST /v1/worlds/{id}/jobs` to submit
+- `GET /v1/jobs/{id}` to poll
+- `GET /v1/jobs/{id}/result-url` for presigned download
+- `POST /v1/uploads` for presigned upload (Import, Merge)
+
+See `MANUAL-TEST.md` § Phase 0c-5 for the end-to-end verification procedure.

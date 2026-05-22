@@ -214,3 +214,81 @@ editor view, with the real brushes / layers / biomes panels operating on cloud t
 - `CloudDimension` lazy-loading works: tiles are fetched as the user pans / brushes touch them.
 - The full editor experience is identical for local and cloud worlds (with documented
   exceptions: no local save, single-platform Hytale-or-Java-Anvil mapping in Phase 0).
+
+---
+
+## Phase 0c-5 — Cloud heavy operations (Export, Hytale Import, Merge)
+
+Verifies the job framework + worker subprocess + the three operations.
+
+### Prerequisites
+
+```
+# 1. Build the WP fork's WPCore (worker depends on it via local Maven)
+cd C:/Users/Sotirios/Desktop/WorldPainter/WorldPainter
+mvn -DskipTests -pl WPCore -am install
+
+# 2. Build the backend (including the worker fat jar)
+cd C:/Users/Sotirios/Desktop/talepainter-backend
+mvn -DskipTests install
+
+# 3. Bring up Compose (mounts the worker jar into tp-services)
+cd infra/compose
+docker compose --env-file .env up -d --build
+sleep 30
+```
+
+Verify the worker jar is mounted:
+
+```
+docker exec tp-services ls -la /opt/talepainter/export-worker.jar
+```
+
+### Test: Export
+
+1. Launch WorldPainter via `build-and-run-worldpainter.bat`.
+2. **Cloud → Sign in…** with any display name.
+3. **Cloud → Open cloud world…** → create or pick a cloud world.
+4. Paint a few cells so the export has content.
+5. **Cloud → Export world on cloud…** → choose a destination folder → OK.
+6. The progress dialog appears; progress bar advances from 0 → 100% over ~5-30s for a small world.
+7. On DONE, an "Export saved to…" dialog appears.
+8. Open the destination folder; confirm `ExportedWorld-<jobId>.zip` exists.
+9. Open the zip; verify it contains a `universe/worlds/default/chunks/` directory with `.bson` files.
+
+### Test: Import
+
+1. Have a known-good Hytale world zip available (e.g., the Export result from above).
+2. With a DIFFERENT cloud world open (so we can see imported content distinct from existing edits), **Cloud → Import existing Hytale world…** → choose the zip.
+3. Progress dialog runs; on DONE, "Hytale import complete" message appears.
+4. Verify ops landed in the OpLog:
+   ```
+   docker exec tp-postgres psql -U talepainter -d talepainter \
+     -c "SELECT count(*) FROM op_log WHERE world_id = '<your-cloud-world-uuid>';"
+   ```
+   Expect a large op count (one per non-default terrain cell in the source).
+5. Pan around the cloud editor; previously-empty tiles now show imported terrain.
+
+### Test: Merge
+
+1. With a cloud world that has its OWN edits, **Cloud → Merge with Hytale world…**
+   → pick a source Hytale zip → pick destination folder.
+2. Progress dialog; on DONE, "Merged Hytale world saved to…" dialog.
+3. Open the result zip; verify it contains chunks reflecting BOTH the cloud world's edits AND the source Hytale world's content (the WP merger applies its precedence rules).
+
+### Pass criteria
+
+- All three operations complete via the cloud job pipeline (no client-side export).
+- Progress bar updates smoothly (server-side ProgressReporter writes every 1s).
+- Cancel button transitions the job to CANCELLED within 2s.
+- After a job completes, the row in `jobs` has `status='DONE'`, `progress_pct=100`,
+  and `result_blob_key` populated (Export, Merge) — null for Import.
+- The downloaded zip has correct Hytale structure.
+
+### What this proves
+
+- The full `LocalProcessJobRunner` → worker-subprocess pipeline works end-to-end.
+- Operations use the same WPCore + Hytale code paths as local export, just running
+  server-side on cloud-sourced world data via `WorldMaterializer`.
+- Phase 1 deployment story: swap `LocalProcessJobRunner` for `HetznerJobRunner`
+  (spins up a fresh VM, runs the same worker jar there); zero worker-side changes.
