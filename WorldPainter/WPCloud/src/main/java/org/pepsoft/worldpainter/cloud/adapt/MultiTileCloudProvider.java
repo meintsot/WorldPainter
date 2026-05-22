@@ -56,21 +56,47 @@ public final class MultiTileCloudProvider implements CloudTileLoader, MutationSi
             // Fetch via provider (blocking SUBSCRIBE + TILE_SNAPSHOT)
             var localTile = provider.getTile(tileX, tileY);
             CloudTile cloudTile = new CloudTile(tileX, tileY, defaultMinHeight, defaultMaxHeight, this);
-            // Materialize the snapshot terrain field into cloudTile,
-            // suppressing op emission via RemoteOpContext.
-            RemoteOpContext.runApplyingRemote(() -> {
-                for (int y = 0; y < 128; y++) {
-                    for (int x = 0; x < 128; x++) {
-                        byte terrainByte = localTile.getTerrain(x, y);
-                        if (terrainByte != 0) {
-                            cloudTile.setTerrain(x, y, TerrainRegistry.fromByte(terrainByte));
+            // Bulk-copy the snapshot terrain bytes directly into the Tile's internal terrain[]
+            // via reflection — avoids the 16K per-cell setTerrain() calls (each of which would
+            // synchronize, run undo bookkeeping, and fire a Tile.Listener event).
+            // Falls back to per-cell loop if reflection fails (e.g., JVM module restrictions).
+            byte[] sourceTerrain = localTile.terrainArrayUnsafe();
+            if (!bulkCopyTerrain(cloudTile, sourceTerrain)) {
+                RemoteOpContext.runApplyingRemote(() -> {
+                    for (int y = 0; y < 128; y++) {
+                        for (int x = 0; x < 128; x++) {
+                            byte terrainByte = sourceTerrain[y * 128 + x];
+                            if (terrainByte != 0) {
+                                cloudTile.setTerrain(x, y, TerrainRegistry.fromByte(terrainByte));
+                            }
                         }
                     }
-                }
-                // (Heights/water/layers not yet materialized — TD-037.)
-            });
+                });
+            }
+            // (Heights/water/layers not yet materialized — TD-037.)
             return cloudTile;
         });
+    }
+
+    /**
+     * Bulk-copy {@code source} into the Tile.terrain field of {@code dest} via reflection.
+     * Returns true on success, false on failure (caller falls back to per-cell setTerrain).
+     */
+    private static boolean bulkCopyTerrain(CloudTile dest, byte[] source) {
+        try {
+            java.lang.reflect.Field terrainField =
+                    org.pepsoft.worldpainter.Tile.class.getDeclaredField("terrain");
+            terrainField.setAccessible(true);
+            byte[] destArray = (byte[]) terrainField.get(dest);
+            if (destArray == null || destArray.length != source.length) {
+                return false;
+            }
+            System.arraycopy(source, 0, destArray, 0, source.length);
+            return true;
+        } catch (Exception e) {
+            LOG.warn("Bulk terrain copy via reflection failed; falling back to per-cell: {}", e.getMessage());
+            return false;
+        }
     }
 
     public CloudTile getCachedCloudTile(int tileX, int tileY) {

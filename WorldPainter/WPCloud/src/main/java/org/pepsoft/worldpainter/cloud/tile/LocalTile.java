@@ -53,6 +53,15 @@ public final class LocalTile {
     }
 
     public byte getTerrain(int x, int y) { return terrain[idx(x, y)]; }
+
+    /**
+     * Returns a read-only view of the raw 128*128 terrain byte array (row-major, index = y*128+x).
+     * Used by {@code MultiTileCloudProvider} to bulk-copy snapshot bytes into a {@code CloudTile}
+     * via reflection on {@code Tile.terrain}, bypassing the 16K-cell setTerrain loop.
+     *
+     * <p>Caller MUST NOT mutate the returned array.
+     */
+    public byte[] terrainArrayUnsafe() { return terrain; }
     public void setTerrain(int x, int y, byte value, Common.Hlc hlc) {
         int i = idx(x, y); terrain[i] = value; terrainHlc[i] = hlc;
     }
