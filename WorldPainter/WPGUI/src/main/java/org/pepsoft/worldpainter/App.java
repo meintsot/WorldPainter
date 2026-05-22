@@ -162,6 +162,17 @@ public final class App extends JFrame implements BrushControl,
             throw new IllegalArgumentException("Already instantiated");
         }
 
+        // Register storage backends. Both must be available before any world is opened.
+        // Idempotent: registering twice replaces the prior entry, which is harmless.
+        org.pepsoft.worldpainter.storage.StorageBackendRegistry registry =
+                org.pepsoft.worldpainter.storage.StorageBackendRegistry.getInstance();
+        if (!registry.isRegistered(org.pepsoft.worldpainter.storage.WorldRef.Kind.LOCAL)) {
+            registry.register(new org.pepsoft.worldpainter.storage.LocalFileStorageBackend());
+        }
+        if (!registry.isRegistered(org.pepsoft.worldpainter.storage.WorldRef.Kind.CLOUD)) {
+            registry.register(new org.pepsoft.worldpainter.cloud.adapt.CloudStorageBackend());
+        }
+
         setIconImage(ICON);
 
         colourSchemes = new ColourScheme[] {
