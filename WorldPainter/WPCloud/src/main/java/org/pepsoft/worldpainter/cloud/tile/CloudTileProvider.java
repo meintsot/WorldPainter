@@ -56,6 +56,17 @@ public final class CloudTileProvider implements AutoCloseable {
         void onTileChanged(LocalTile tile, int cellX, int cellY);
     }
 
+    public interface RemoteOpsListener {
+        /** Called when an inbound TILE_OPS arrives for the given tile coordinates. */
+        void onRemoteOps(int tileX, int tileY, java.util.List<com.talepainter.protocol.ops.Ops.Op> ops);
+    }
+
+    private final java.util.concurrent.CopyOnWriteArrayList<RemoteOpsListener> remoteOpsListeners
+            = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+    public void addRemoteOpsListener(RemoteOpsListener l) { remoteOpsListeners.add(l); }
+    public void removeRemoteOpsListener(RemoteOpsListener l) { remoteOpsListeners.remove(l); }
+
     public CloudTileProvider(URI backendUri, Session session, UUID worldId) {
         this(backendUri, session, worldId, new TyrusWebSocketClient());
     }
@@ -124,6 +135,14 @@ public final class CloudTileProvider implements AutoCloseable {
         cache.put(worldId, tile);
     }
 
+    /** Enqueue an outbound op (used by external mutation pipelines). */
+    public void submitOp(Ops.Op op) {
+        queue.enqueue(op);
+    }
+
+    /** Expose the HLC clock for callers that generate their own ops. */
+    public ClientHlcClock clock() { return clock; }
+
     @Override
     public void close() {
         queue.flushNow();
@@ -180,6 +199,11 @@ public final class CloudTileProvider implements AutoCloseable {
             applicator.apply(tile, op);
             clock.observe(op.getHlc());
             if (op.hasCell()) notifyChanged(tile, op.getCell().getX(), op.getCell().getY());
+        }
+        // Fan out to external listeners (used by MultiTileCloudProvider to route to CloudTile)
+        for (RemoteOpsListener l : remoteOpsListeners) {
+            try { l.onRemoteOps(tileX, tileY, tileOps.getOpsList()); }
+            catch (Exception e) { LOG.warn("RemoteOpsListener threw", e); }
         }
     }
 
