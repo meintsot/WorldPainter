@@ -43,7 +43,6 @@ public final class WPCloudDemo {
     public static void main(String[] args) throws Exception {
         URI httpBase = URI.create(args.length > 0 ? args[0] : "http://localhost:8080");
         URI wsBase   = URI.create(httpBase.toString().replaceFirst("^http", "ws") + "/ws");
-        String worldName = args.length > 1 ? args[1] : "Demo World";
 
         String displayName = JOptionPane.showInputDialog(
                 null, "Display name:", "WPCloud Demo Login", JOptionPane.PLAIN_MESSAGE);
@@ -52,7 +51,35 @@ public final class WPCloudDemo {
         AuthClient auth = new AuthClient(httpBase);
         Session session = auth.login(displayName);
 
-        UUID worldId = findOrCreateWorld(httpBase, session.token(), worldName);
+        // List existing worlds; let user pick or create new.
+        java.util.List<String[]> existing = listWorlds(httpBase, session.token());
+        String[] choices = new String[existing.size() + 1];
+        for (int i = 0; i < existing.size(); i++) {
+            choices[i] = existing.get(i)[1];  // name
+        }
+        choices[existing.size()] = "+ New World...";
+
+        String picked = (String) JOptionPane.showInputDialog(
+                null, "Pick a world:", "WPCloud Demo",
+                JOptionPane.PLAIN_MESSAGE, null, choices, choices[0]);
+        if (picked == null) System.exit(0);
+
+        UUID worldId;
+        String worldName;
+        if (picked.equals("+ New World...")) {
+            worldName = JOptionPane.showInputDialog(
+                    null, "New world name:", "Demo World " + System.currentTimeMillis());
+            if (worldName == null || worldName.isBlank()) System.exit(0);
+            worldId = findOrCreateWorld(httpBase, session.token(), worldName);
+        } else {
+            worldName = picked;
+            UUID resolved = null;
+            for (String[] w : existing) {
+                if (w[1].equals(picked)) { resolved = UUID.fromString(w[0]); break; }
+            }
+            if (resolved == null) throw new IllegalStateException("World " + picked + " disappeared");
+            worldId = resolved;
+        }
 
         CloudTileProvider provider = new CloudTileProvider(wsBase, session, worldId);
         provider.connect();
@@ -156,6 +183,21 @@ public final class WPCloudDemo {
                 throw new RuntimeException("WS handshake timed out after " + timeoutMs + "ms");
             }
             Thread.sleep(50);
+        }
+    }
+
+    private static java.util.List<String[]> listWorlds(URI baseUri, String token) throws Exception {
+        try (CloseableHttpClient http = HttpClients.createDefault()) {
+            HttpGet get = new HttpGet(baseUri.resolve("/v1/worlds"));
+            get.setHeader("Authorization", "Bearer " + token);
+            return http.execute(get, response -> {
+                JsonNode body = new ObjectMapper().readTree(EntityUtils.toString(response.getEntity()));
+                java.util.List<String[]> out = new java.util.ArrayList<>();
+                for (JsonNode w : body.get("worlds")) {
+                    out.add(new String[]{ w.get("id").asText(), w.get("name").asText() });
+                }
+                return out;
+            });
         }
     }
 }
