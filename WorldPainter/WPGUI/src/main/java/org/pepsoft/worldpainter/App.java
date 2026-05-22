@@ -5567,6 +5567,9 @@ public final class App extends JFrame implements BrushControl,
 
     private JMenu createCloudMenu() {
         if (cloudMenuActions == null) {
+            // Auto-restore any saved session before building the actions, so initial
+            // enablement reflects the restored state.
+            org.pepsoft.worldpainter.cloud.auth.CloudSession.getInstance().tryRestore();
             cloudMenuActions = new CloudMenuActions(this);
         }
         JMenu menu = new JMenu("Cloud");
