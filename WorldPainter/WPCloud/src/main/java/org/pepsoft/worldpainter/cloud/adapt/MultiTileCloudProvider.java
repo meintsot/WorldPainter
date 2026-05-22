@@ -39,12 +39,24 @@ public final class MultiTileCloudProvider implements CloudTileLoader, MutationSi
     private final int defaultMaxHeight;
     private final Map<Long, CloudTile> tilesByKey = new ConcurrentHashMap<>();
     private final CloudTileProvider.RemoteOpsListener listener = this::onRemoteOpsHandler;
+    private volatile org.pepsoft.worldpainter.TileFactory tileFactory;
 
     public MultiTileCloudProvider(CloudTileProvider provider, int minHeight, int maxHeight) {
         this.provider = provider;
         this.defaultMinHeight = minHeight;
         this.defaultMaxHeight = maxHeight;
         provider.addRemoteOpsListener(listener);
+    }
+
+    /**
+     * Set the {@link org.pepsoft.worldpainter.TileFactory} used to seed fresh tiles in
+     * {@link #loadFast}. Without this, brand-new tile coords would start with all-zero
+     * arrays (terrain byte 0, height 0, water 0), which produces visibly different
+     * behavior from local NewWorldDialog tiles (which are factory-seeded with the
+     * world's defaults — e.g., GRASS at height 62).
+     */
+    public void setTileFactory(org.pepsoft.worldpainter.TileFactory tileFactory) {
+        this.tileFactory = tileFactory;
     }
 
     // ─── CloudTileLoader ────────────────────────────────────────────
@@ -119,8 +131,53 @@ public final class MultiTileCloudProvider implements CloudTileLoader, MutationSi
         CloudTile existing = tilesByKey.get(k);
         if (existing != null) return existing;
         CloudTile fresh = new CloudTile(tileX, tileY, defaultMinHeight, defaultMaxHeight, this);
+        // Seed from the tile factory so this fresh tile has the same baseline (terrain,
+        // height, water) as if it had been created by NewWorldDialog locally. Without
+        // this, brushes that extend into never-touched tile coords would raise from
+        // height 0 (instead of the world's default ~62) and the visual effect would
+        // diverge from inside-the-bounds tiles.
+        org.pepsoft.worldpainter.TileFactory factory = this.tileFactory;
+        if (factory != null) {
+            try {
+                org.pepsoft.worldpainter.Tile sample = factory.createTile(tileX, tileY);
+                copyBaselineFields(sample, fresh);
+            } catch (Exception e) {
+                LOG.warn("Failed to seed fresh tile ({},{}) from factory: {}",
+                        tileX, tileY, e.getMessage());
+            }
+        }
         CloudTile prior = tilesByKey.putIfAbsent(k, fresh);
         return prior != null ? prior : fresh;
+    }
+
+    /**
+     * Copy {@code terrain}, {@code heightMap}, {@code waterLevel} (and their {@code tall*}
+     * counterparts) from {@code source} into {@code dest} via reflection. Skips fields that
+     * differ in null-ness between source and dest (the {@code tall} variant is only present
+     * for worlds with maxHeight > 256).
+     */
+    private static void copyBaselineFields(org.pepsoft.worldpainter.Tile source,
+                                            org.pepsoft.worldpainter.Tile dest) throws Exception {
+        String[] fields = {"terrain", "heightMap", "waterLevel", "tallHeightMap", "tallWaterLevel"};
+        for (String name : fields) {
+            try {
+                java.lang.reflect.Field f =
+                        org.pepsoft.worldpainter.Tile.class.getDeclaredField(name);
+                f.setAccessible(true);
+                Object src = f.get(source);
+                Object dst = f.get(dest);
+                if (src == null || dst == null) continue;
+                if (src instanceof byte[] sb && dst instanceof byte[] db && sb.length == db.length) {
+                    System.arraycopy(sb, 0, db, 0, sb.length);
+                } else if (src instanceof short[] ss && dst instanceof short[] ds && ss.length == ds.length) {
+                    System.arraycopy(ss, 0, ds, 0, ss.length);
+                } else if (src instanceof int[] si && dst instanceof int[] di && si.length == di.length) {
+                    System.arraycopy(si, 0, di, 0, si.length);
+                }
+            } catch (NoSuchFieldException ignored) {
+                // Field doesn't exist in this WP version; skip silently.
+            }
+        }
     }
 
     public CloudTile getCachedCloudTile(int tileX, int tileY) {

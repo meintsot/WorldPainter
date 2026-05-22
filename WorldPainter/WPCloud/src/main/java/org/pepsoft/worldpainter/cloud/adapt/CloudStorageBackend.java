@@ -97,6 +97,11 @@ public final class CloudStorageBackend implements StorageBackend {
                 seed, defaultTerrain, minHeight, maxHeight,
                 defaultHeight, defaultWaterLevel, floodWithLava, beaches);
 
+        // Hand the factory to multi so loadFast can seed fresh tiles with the dimension's
+        // standard defaults (otherwise newly-touched tile coords start at terrain[0] + height 0
+        // and diverge visually from inside-the-bounds tiles).
+        multi.setTileFactory(tileFactory);
+
         Dimension.Anchor anchor = new Dimension.Anchor(
                 DIM_NORMAL, Dimension.Role.DETAIL, false, 0);
         CloudDimension surface = new CloudDimension(world, "Surface", seed, tileFactory,
