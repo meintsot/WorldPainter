@@ -57,8 +57,30 @@ public final class CloudMenuActions {
         OpenCloudWorldAction() { super("Open cloud world…"); }
         @Override public void actionPerformed(ActionEvent e) {
             CloudWorldsDialog.showAndPick(owner).ifPresent(sel -> {
-                CloudEditorFrame frame = new CloudEditorFrame(sel.id(), sel.name());
-                frame.connectAndShow();
+                org.pepsoft.worldpainter.App app = org.pepsoft.worldpainter.App.getInstance();
+                org.pepsoft.worldpainter.storage.WorldRef ref =
+                        org.pepsoft.worldpainter.storage.WorldRef.cloud(sel.id());
+
+                // Run the open in a SwingWorker so the network handshake doesn't block the EDT.
+                javax.swing.SwingWorker<Void, Void> worker = new javax.swing.SwingWorker<>() {
+                    @Override
+                    protected Void doInBackground() throws Exception {
+                        app.openWorld(ref, null);
+                        return null;
+                    }
+                    @Override
+                    protected void done() {
+                        try { get(); }
+                        catch (Exception ex) {
+                            Throwable cause = ex.getCause() != null ? ex.getCause() : ex;
+                            javax.swing.JOptionPane.showMessageDialog(owner,
+                                    "Failed to open cloud world: " + cause.getMessage(),
+                                    "Cloud open failed",
+                                    javax.swing.JOptionPane.ERROR_MESSAGE);
+                        }
+                    }
+                };
+                worker.execute();
             });
         }
     }
