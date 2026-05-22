@@ -2475,21 +2475,38 @@ public final class App extends JFrame implements BrushControl,
      * @return {@code true} if the file was saved.
      */
     private boolean save() {
+        // Phase 0c-3 Task 17: cloud worlds auto-persist via the op stream; no local file save is meaningful.
+        if (world instanceof org.pepsoft.worldpainter.cloud.adapt.CloudWorld2) {
+            showMessageDialog(this,
+                    "Cloud worlds are auto-saved as you paint. No local save required.",
+                    "Cloud world",
+                    INFORMATION_MESSAGE);
+            return true;
+        }
         if (lastSelectedFile == null) {
             return saveAs();
         } else {
             return save(lastSelectedFile);
         }
     }
-    
+
     /**
      * Ask for a filename and save the world with that name. If a file exists
      * with the name, ask for confirmation to overwrite it. Shows a progress
      * indicator while saving, and a confirmation when it is saved.
-     * 
+     *
      * @return {@code true} if the file was saved.
      */
     private boolean saveAs() {
+        // Phase 0c-3 Task 17: cloud worlds can't be saved as a local file in this release.
+        if (world instanceof org.pepsoft.worldpainter.cloud.adapt.CloudWorld2) {
+            showMessageDialog(this,
+                    "Cloud worlds can't be saved as a local file in this release. " +
+                    "Use 'Export → World file' to download a copy (TD-040).",
+                    "Cloud world",
+                    INFORMATION_MESSAGE);
+            return false;
+        }
         if (world == null) {
             DesktopUtils.beep();
             return false;
