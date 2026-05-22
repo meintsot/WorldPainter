@@ -22,6 +22,28 @@ public class CloudTile extends Tile {
         this.sink = sink;
     }
 
+    /**
+     * Defensive override: WorldPainter's {@link Tile#ensureReadable} reassigns the protected
+     * {@code bitLayerData} / {@code layerData} fields from the UndoManager when their buffer
+     * key isn't in {@code readableBuffers} (e.g., after an undo step fires
+     * {@code bufferChanged}). If the UndoManager has no prior buffer for those fields, the
+     * assignment yields {@code null} and the next read NPEs.
+     *
+     * <p>Cloud tiles often hit this path because brush usage on a fresh tile may write only
+     * terrain and never touch bit-layer data — yet a mouse-hover that reads bit-layer state
+     * still happens. We restore empty-map defaults after delegating to super.
+     */
+    @Override
+    protected synchronized void ensureReadable(TileBuffer buffer) {
+        super.ensureReadable(buffer);
+        if (bitLayerData == null) {
+            bitLayerData = new java.util.HashMap<>();
+        }
+        if (layerData == null) {
+            layerData = new java.util.HashMap<>();
+        }
+    }
+
     @Override
     public void setTerrain(int x, int y, Terrain terrain) {
         super.setTerrain(x, y, terrain);
