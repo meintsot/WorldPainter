@@ -36,6 +36,10 @@ class CloudDimensionTest {
         StubLoader loader = new StubLoader();
         CloudDimension dim = newCloudDimension(loader);
 
+        // getTile is gated: tiles not in the knownOccupied set return null instantly with
+        // no async load. Mark (5,7) as occupied so the gate lets the fetch through.
+        dim.markOccupied(5, 7);
+
         // First access kicks off an async load; returns null immediately to keep the EDT
         // responsive while the view paints uncached tiles.
         org.pepsoft.worldpainter.Tile t1 = dim.getTile(5, 7);
@@ -65,6 +69,36 @@ class CloudDimensionTest {
         org.pepsoft.worldpainter.Tile t = dim.getTileForEditing(0, 0);
         assertThat(t).isInstanceOf(CloudTile.class);
         assertThat(loader.loadCount).isEqualTo(1);
+    }
+
+    @Test
+    void getTile_skips_load_for_coords_not_in_known_occupied_set() throws Exception {
+        StubLoader loader = new StubLoader();
+        CloudDimension dim = newCloudDimension(loader);
+
+        // No markOccupied call — (99, 99) is unknown. getTile must return null instantly
+        // and trigger NO background load (avoids the unbounded-world fetch storm).
+        org.pepsoft.worldpainter.Tile t = dim.getTile(99, 99);
+        assertThat(t).isNull();
+
+        // Give any background work a chance to (incorrectly) fire.
+        Thread.sleep(150);
+        assertThat(loader.loadCount).isZero();
+    }
+
+    @Test
+    void getTileForEditing_marks_coord_occupied_for_future_getTile() throws Exception {
+        StubLoader loader = new StubLoader();
+        CloudDimension dim = newCloudDimension(loader);
+
+        // Brush touches (3, 4) for the first time: synchronous load creates the tile and
+        // marks the coord occupied. After that, getTile is allowed to fetch it.
+        dim.getTileForEditing(3, 4);
+        assertThat(loader.loadCount).isEqualTo(1);
+
+        // Now getTile sees the tile is already cached and returns it directly.
+        org.pepsoft.worldpainter.Tile t = dim.getTile(3, 4);
+        assertThat(t).isInstanceOf(CloudTile.class);
     }
 
     private static CloudDimension newCloudDimension(CloudTileLoader loader) {
