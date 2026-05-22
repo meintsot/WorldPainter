@@ -49,8 +49,8 @@ docker compose --env-file .env up -d --build
 
 ### Option A — Via the WorldPainter batch file (recommended for users)
 
-Plan 0c-2 added a **Cloud** menu to WorldPainter's main window. From the WorldPainter repo
-root:
+Plan 0c-3 integrated cloud worlds into WorldPainter's main editor view. From the WorldPainter
+repo root:
 
 ```
 build-and-run-worldpainter.bat        # Windows
@@ -58,15 +58,21 @@ build-and-run-worldpainter.bat        # Windows
 mvn -pl WPGUI exec:exec                # cross-platform
 ```
 
-WorldPainter opens normally. Use **Cloud → Sign in…** to authenticate (Phase 0 NoOp auth
-just claims a display name), then **Cloud → Open cloud world…** to pick or create a world.
-The chosen world opens in a dedicated cloud editor window where you can paint cells.
+WorldPainter opens normally. Use **Cloud → Sign in…** to authenticate, then either:
+
+- **Cloud → Open cloud world…** — pick an existing cloud world (or click "New World…")
+- **File → New World** — pick **Cloud** as the Storage mode
+
+Either path opens the cloud world **in WorldPainter's main editor view** with all the
+existing brushes, layers, biomes, terrain, and tools panels working against it. Edits
+stream to the backend as CRDT ops; remote ops from other connected clients apply silently
+in the background.
 
 Run a second WorldPainter instance with a different display name and pick the same world
-to see two-client convergence.
+to see two-client convergence in the full editor experience.
 
-See [MANUAL-TEST.md](./MANUAL-TEST.md) §"Phase 0c-2 — Verification via WorldPainter's batch
-file" for the full step-by-step verification procedure.
+See [MANUAL-TEST.md](./MANUAL-TEST.md) §"Phase 0c-3 — Verification in the main WorldPainter
+editor" for the full step-by-step verification procedure.
 
 ### Option B — Standalone demo jar (useful for developer testing)
 
@@ -124,16 +130,21 @@ src/main/java/org/pepsoft/worldpainter/cloud/
 └── examples/     WPCloudDemo (the Swing demo)
 ```
 
-## Known limitations (Phase 0c-1)
+## Known limitations (Phase 0c-3)
 
-These are deferred to Plan 0c-2 or later:
+These items remain unresolved and are deferred to a future phase:
 
-- **No reconnection** — if the WebSocket drops, the provider is dead (TD-030). Restart the app.
-- **No integration with WorldPainter's existing UI** — this module is self-contained. The
-  Swing demo is the only consumer in Phase 0c-1. The full WorldPainter integration (Cloud Mode
-  in NewWorldDialog, cloud world picker, sign-in dialog, sync status indicator, Dimension's
-  `TileProvider` injection, Tile mutation listener) lands in Plan 0c-2.
-- **Single tile per window** — the demo paints only tile (0, 0). Pan/zoom isn't supported.
-- **LOD pyramid not used** — only LOD 0 (full detail) tiles are fetched (TD-008).
-- **Tokens stored in plain text** via Java `Preferences`. Acceptable for NoOp auth; will need
-  OS-secure storage when real OAuth lands in Phase 1 (TD-031).
+- **`File → Save` is disabled for cloud worlds** — cloud worlds auto-persist via the op
+  stream; a "Download as local file" export is TD-040.
+- **Hard-coded layer ids for built-in layers, runtime ids for custom plugin layers** — plugin
+  layers' ids aren't stable across sessions (TD-035). Built-in layer ops are fully
+  interoperable between clients.
+- **Snapshot materialization is terrain-only** — when a tile first loads, only the terrain
+  byte field is materialized into the `CloudTile`. Heights, water levels, and layer data
+  exist on the backend but aren't yet bridged into the `Tile` representation on load
+  (TD-037). New paints work correctly for all field types.
+- **Standard-height worlds only** — `CloudStorageBackend.open` builds dimensions with min=0,
+  max=256. Tall worlds (max > 256, `tallHeightMap` / `tallWaterLevel`) need wider op fields
+  (TD-038).
+- **Platform mapping is single-fixed** — cloud worlds open with a hard-coded platform
+  (`JAVA_ANVIL`). Per-world platform selection at create time is TD-041.
