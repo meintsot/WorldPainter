@@ -169,7 +169,8 @@ public final class App extends JFrame implements BrushControl,
         if (!registry.isRegistered(org.pepsoft.worldpainter.storage.WorldRef.Kind.LOCAL)) {
             registry.register(new org.pepsoft.worldpainter.storage.LocalFileStorageBackend());
         }
-        if (!registry.isRegistered(org.pepsoft.worldpainter.storage.WorldRef.Kind.CLOUD)) {
+        if (Boolean.getBoolean("worldpainter.cloud.enabled")
+                && !registry.isRegistered(org.pepsoft.worldpainter.storage.WorldRef.Kind.CLOUD)) {
             registry.register(new org.pepsoft.worldpainter.cloud.adapt.CloudStorageBackend());
         }
 
@@ -4992,7 +4993,9 @@ public final class App extends JFrame implements BrushControl,
         if (! config.isEasyMode()) {
             menuBar.add(createToolsMenu());
         }
-        menuBar.add(createCloudMenu());
+        if (Boolean.getBoolean("worldpainter.cloud.enabled")) {
+            menuBar.add(createCloudMenu());
+        }
         menuBar.add(createHelpMenu());
         addStatisticsTo(menuBar, "menu", config);
         return menuBar;

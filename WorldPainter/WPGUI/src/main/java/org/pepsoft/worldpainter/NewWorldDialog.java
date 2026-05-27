@@ -255,7 +255,7 @@ public class NewWorldDialog extends WorldPainterDialog {
 
         // Phase 0c-3 Task 16: inject a storage-mode banner above the existing form.
         // GroupLayout fills the whole content pane, so we wrap it in a BorderLayout shell.
-        {
+        if (Boolean.getBoolean("worldpainter.cloud.enabled")) {
             javax.swing.ButtonGroup storageGroup = new javax.swing.ButtonGroup();
             storageGroup.add(storageLocalRadio);
             storageGroup.add(storageCloudRadio);
@@ -276,8 +276,8 @@ public class NewWorldDialog extends WorldPainterDialog {
             wrapper.add(storagePanel, java.awt.BorderLayout.NORTH);
             wrapper.add(existingContent, java.awt.BorderLayout.CENTER);
             setContentPane(wrapper);
+            pack();
         }
-        pack();
 
         setLocationRelativeTo(app);
         fieldSeed.setText(Long.toString(seed));
