@@ -488,6 +488,11 @@ public class WorldPainter extends WorldPainterView implements MouseMotionListene
         return new Point(getViewX(), getViewY());
     }
 
+    public void setPlacementOverlay(Overlay placementOverlay) {
+        this.placementOverlay = placementOverlay;
+        repaint();
+    }
+
     public int getBrushRotation() {
         return brushRotation;
     }
@@ -727,6 +732,7 @@ public class WorldPainter extends WorldPainterView implements MouseMotionListene
                 if (drawOverlays) {
                     drawOverlays(g2);
                 }
+                drawPlacementHandles(g2);
                 if (drawBrush || drawViewDistance || drawWalkingDistance) {
                     g2.setColor(Color.BLACK);
                     g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
@@ -1132,6 +1138,41 @@ public class WorldPainter extends WorldPainterView implements MouseMotionListene
         repaint(area.x - 2, area.y - 2, area.width + 4, area.height + 4);
     }
 
+    private void drawPlacementHandles(Graphics2D g2) {
+        if ((placementOverlay == null) || (placementOverlay.getImage() == null)) {
+            return;
+        }
+        final int imgW = placementOverlay.getImage().getWidth(), imgH = placementOverlay.getImage().getHeight();
+        final double ox = placementOverlay.getOffsetX(), oz = placementOverlay.getOffsetY();
+        final double scale = placementOverlay.getScale(), theta = placementOverlay.getRotation();
+        final java.awt.geom.Point2D.Double[] corners = {
+                org.pepsoft.worldpainter.townplan.TownPlanPlacement.pixelToWorld(0, 0, ox, oz, scale, theta),
+                org.pepsoft.worldpainter.townplan.TownPlanPlacement.pixelToWorld(imgW, 0, ox, oz, scale, theta),
+                org.pepsoft.worldpainter.townplan.TownPlanPlacement.pixelToWorld(imgW, imgH, ox, oz, scale, theta),
+                org.pepsoft.worldpainter.townplan.TownPlanPlacement.pixelToWorld(0, imgH, ox, oz, scale, theta)
+        };
+        final java.awt.geom.Point2D.Double rotate =
+                org.pepsoft.worldpainter.townplan.TownPlanPlacement.rotateHandleWorld(ox, oz, scale, theta, imgW, imgH);
+        final Stroke savedStroke = g2.getStroke();
+        final Color savedColor = g2.getColor();
+        try {
+            g2.setColor(Color.YELLOW);
+            for (int i = 0; i < 4; i++) {
+                final java.awt.geom.Point2D.Double a = corners[i], b = corners[(i + 1) % 4];
+                g2.drawLine((int) Math.round(a.x), (int) Math.round(a.y), (int) Math.round(b.x), (int) Math.round(b.y));
+            }
+            final int hs = Math.max(2, (int) Math.round(4 / Math.pow(2.0, getZoom())));
+            for (java.awt.geom.Point2D.Double c : corners) {
+                g2.fillRect((int) Math.round(c.x) - hs, (int) Math.round(c.y) - hs, hs * 2, hs * 2);
+            }
+            g2.setColor(Color.CYAN);
+            g2.fillOval((int) Math.round(rotate.x) - hs, (int) Math.round(rotate.y) - hs, hs * 2, hs * 2);
+        } finally {
+            g2.setStroke(savedStroke);
+            g2.setColor(savedColor);
+        }
+    }
+
     private void drawOverlays(Graphics2D g2) {
         if (dimension.getOverlays().isEmpty()) {
             return;
@@ -1239,6 +1280,7 @@ public class WorldPainter extends WorldPainterView implements MouseMotionListene
     private WPTileProvider tileProvider, backgroundTileProvider;
     private Shape customBrushShape;
     private OverlayType overlayType;
+    private Overlay placementOverlay;
     private ColourRamp colourRamp;
     private Timer repaintTimer;
 

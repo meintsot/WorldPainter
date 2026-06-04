@@ -3523,6 +3523,7 @@ public final class App extends JFrame implements BrushControl,
 
 //        toolPanel.add(createButtonForOperation(new Erode(view, this, mapDragControl), 'm'));
         toolPanel.add(createButtonForOperation(new SetSpawnPoint(view)));
+        toolPanel.add(createButtonForOperation(new org.pepsoft.worldpainter.operations.TownPlanOperation(view), 't'));
         final JButton button = new JButton(loadScaledIcon("globals"));
         button.setMargin(App.BUTTON_INSETS);
         button.addActionListener(e -> showGlobalOperations());
