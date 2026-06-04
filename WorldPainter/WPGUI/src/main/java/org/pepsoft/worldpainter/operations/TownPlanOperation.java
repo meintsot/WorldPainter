@@ -46,7 +46,10 @@ public class TownPlanOperation extends AbstractOperation {
         view.addMouseListener(mouseHandler);
         view.addMouseMotionListener(mouseHandler);
         if (overlay != null) {
+            // Re-show the placement image (it is hidden while another tool is active).
+            overlay.setEnabled(true);
             view.setPlacementOverlay(overlay);
+            view.repaint();
         }
     }
 
@@ -55,7 +58,13 @@ public class TownPlanOperation extends AbstractOperation {
         final WorldPainter view = (WorldPainter) getView();
         view.removeMouseListener(mouseHandler);
         view.removeMouseMotionListener(mouseHandler);
+        // Hide the placement image and its handles while another tool is active. The stamped Town Layout
+        // footprint stays visible, since it is a layer rather than the overlay.
+        if (overlay != null) {
+            overlay.setEnabled(false);
+        }
         view.setPlacementOverlay(null);
+        view.repaint();
     }
 
     private JPanel buildOptionsPanel() {
