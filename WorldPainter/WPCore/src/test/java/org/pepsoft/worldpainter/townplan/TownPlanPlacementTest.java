@@ -58,8 +58,8 @@ public class TownPlanPlacementTest {
         Point2D.Double centerBefore = TownPlanPlacement.centerWorld(originX, originZ, scale, theta, W, H);
         // Mouse straight to the right of the center => up-vector points right => theta = +90 (deg).
         double[] s = TownPlanPlacement.applyRotate(centerBefore.x + 50, centerBefore.y, originX, originZ, scale, theta, W, H);
-        assertEquals(90.0, normalize(s[2]), 1e-6);
-        Point2D.Double centerAfter = TownPlanPlacement.centerWorld(s[0], s[1], scale, s[2], W, H);
+        assertEquals(90.0, normalize(s[3]), 1e-6);
+        Point2D.Double centerAfter = TownPlanPlacement.centerWorld(s[0], s[1], s[2], s[3], W, H);
         assertEquals(centerBefore.x, centerAfter.x, 1e-6);
         assertEquals(centerBefore.y, centerAfter.y, 1e-6);
     }

@@ -96,7 +96,7 @@ public final class TownPlanPlacement {
 
     /**
      * Rotate gesture: set rotation so the image's 'up' (center -> top-edge) points at the mouse, keeping
-     * the center fixed. Returns {@code [originX, originZ, rotationDeg]}.
+     * the center fixed. Returns {@code [originX, originZ, scale, rotationDeg]}.
      */
     public static double[] applyRotate(double mouseWx, double mouseWz, double originX, double originZ,
                                        double scale, double thetaDeg, int imgW, int imgH) {
@@ -104,7 +104,7 @@ public final class TownPlanPlacement {
         final double phiDeg = Math.toDegrees(Math.atan2(mouseWz - center.y, mouseWx - center.x));
         final double newTheta = phiDeg + 90.0; // 'up' direction angle equals theta - 90
         final double[] s = originForFixedCenter(center.x, center.y, scale, newTheta, imgW, imgH);
-        return new double[] { s[0], s[1], newTheta };
+        return new double[] { s[0], s[1], scale, newTheta };
     }
 
     /**
