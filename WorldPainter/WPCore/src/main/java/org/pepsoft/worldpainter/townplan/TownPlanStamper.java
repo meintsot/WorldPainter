@@ -30,7 +30,7 @@ public final class TownPlanStamper {
      * @param blocksPerPixel world blocks per image pixel (image scale). Must be &gt; 0.
      * @param rotationDeg    clockwise rotation of the image on the map, in degrees.
      * @param cropPx         optional crop rectangle in image-pixel space; only pixels inside it count. May be null.
-     * @param threshold      brightness threshold 0..255.
+     * @param threshold      brightness threshold 0..255, compared against per-pixel brightness {@code (r + g + b) / 3}.
      * @param invert         if false, pixels darker than the threshold are selected; if true, lighter.
      * @param worldArea      the world block area to scan.
      * @return the set of selected world columns (Point.x = world X, Point.y = world Z).
@@ -77,7 +77,7 @@ public final class TownPlanStamper {
 
     /**
      * Compute the footprint for the given parameters and write it into the dimension's
-     * {@link TownLayout} layer (value 1). Existing layer values are left untouched (additive).
+     * {@link TownLayout} layer (value 1). Columns outside the footprint are left untouched; footprint columns are set to 1.
      *
      * @return the number of columns set.
      */

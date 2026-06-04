@@ -69,12 +69,21 @@ public class TownPlanStamperTest {
     }
 
     @Test
-    public void rotation90MapsCorrectly() {
-        // Image origin at world (0,0), 90 deg rotation. The black pixel at image (0,0) stays at
-        // the origin (rotation pivot), so world column (0,0) is still selected.
+    public void rotation90IsClockwise() {
+        // Black pixel at image (1,0), OFF the rotation pivot. At 90 deg clockwise about the origin,
+        // image (1,0) maps to world column (0,1); counter-clockwise would instead give (0,-1).
+        BufferedImage img = new BufferedImage(2, 2, BufferedImage.TYPE_INT_ARGB);
+        img.setRGB(0, 0, 0xFFFFFFFF);
+        img.setRGB(1, 0, 0xFF000000); // opaque black, off the pivot
+        img.setRGB(0, 1, 0xFFFFFFFF);
+        img.setRGB(1, 1, 0xFFFFFFFF);
+
         Set<Point> cols = TownPlanStamper.computeFootprint(
-                topLeftBlack(), 0, 0, 1.0, 90.0, null, 128, false,
-                new Rectangle(-2, -2, 4, 4));
-        assertTrue(cols.contains(new Point(0, 0)));
+                img, 0, 0, 1.0, 90.0, null, 128, false,
+                new Rectangle(-3, -3, 6, 6));
+
+        assertEquals(1, cols.size());
+        assertTrue(cols.contains(new Point(0, 1)));    // clockwise result
+        assertFalse(cols.contains(new Point(0, -1)));  // would be counter-clockwise
     }
 }
