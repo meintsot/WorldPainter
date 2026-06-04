@@ -155,7 +155,9 @@ public class TownPlanOperation extends AbstractOperation {
             return;
         }
         final Material block = currentExportBlock(getDimension());
-        blockButton.setText("Export block: " + String.valueOf(block));
+        final String name = (block == null) ? "(none)"
+                : ((block.simpleName != null) ? block.simpleName : String.valueOf(block));
+        blockButton.setText("Export block: " + name);
     }
 
     /**
