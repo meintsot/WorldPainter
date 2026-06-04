@@ -36,7 +36,7 @@ public class TownLayoutExporter extends AbstractLayerExporter<TownLayout> implem
         final int markerHeight = Math.max(1, settings.getMarkerHeight());
         for (int x = area.x; x < area.x + area.width; x++) {
             for (int y = area.y; y < area.y + area.height; y++) {
-                if (dimension.getLayerValueAt(TownLayout.INSTANCE, x, y) > 0) {
+                if (dimension.getBitLayerValueAt(TownLayout.INSTANCE, x, y)) {
                     placeMarkerColumn(minecraftWorld, x, y, dimension.getIntHeightAt(x, y), markerHeight, block);
                 }
             }

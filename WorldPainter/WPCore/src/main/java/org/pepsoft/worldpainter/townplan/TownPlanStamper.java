@@ -87,7 +87,7 @@ public final class TownPlanStamper {
         final Set<Point> columns = computeFootprint(image, originX, originZ, blocksPerPixel, rotationDeg,
                 cropPx, threshold, invert, worldArea);
         for (Point p : columns) {
-            dimension.setLayerValueAt(TownLayout.INSTANCE, p.x, p.y, 1);
+            dimension.setBitLayerValueAt(TownLayout.INSTANCE, p.x, p.y, true);
         }
         return columns.size();
     }
