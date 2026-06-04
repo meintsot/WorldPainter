@@ -200,8 +200,8 @@ public class TownPlanPlacementTest {
         Point2D.Double centerBefore = TownPlanPlacement.centerWorld(originX, originZ, scale, theta, W, H);
         // Mouse straight to the right of the center => up-vector points right => theta = +90 (deg).
         double[] s = TownPlanPlacement.applyRotate(centerBefore.x + 50, centerBefore.y, originX, originZ, scale, theta, W, H);
-        assertEquals(90.0, normalize(s[2]), 1e-6);
-        Point2D.Double centerAfter = TownPlanPlacement.centerWorld(s[0], s[1], scale, s[2], W, H);
+        assertEquals(90.0, normalize(s[3]), 1e-6);
+        Point2D.Double centerAfter = TownPlanPlacement.centerWorld(s[0], s[1], s[2], s[3], W, H);
         assertEquals(centerBefore.x, centerAfter.x, 1e-6);
         assertEquals(centerBefore.y, centerAfter.y, 1e-6);
     }
@@ -391,7 +391,7 @@ public final class TownPlanPlacement {
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `mvn -pl WPCore -am test -Dtest=TownPlanPlacementTest`
-Expected: PASS (8 tests). If `pixelToWorld90Clockwise` or `rotateKeepsCenterFixed` fail, do NOT weaken them — the rotation sign must match `TownPlanStamper`; re-derive against `TownPlanStamper.computeFootprint` (its inverse uses `R(−θ)=[cos sin; −sin cos]`).
+Expected: PASS (7 tests). If `pixelToWorld90Clockwise` or `rotateKeepsCenterFixed` fail, do NOT weaken them — the rotation sign must match `TownPlanStamper`; re-derive against `TownPlanStamper.computeFootprint` (its inverse uses `R(−θ)=[cos sin; −sin cos]`).
 
 - [ ] **Step 5: Commit**
 
@@ -662,6 +662,13 @@ public class TownPlanOperation extends AbstractOperation {
         if (image == null) {
             JOptionPane.showMessageDialog(view, "Not a supported image file.", "Town Plan", JOptionPane.ERROR_MESSAGE);
             return;
+        }
+        // Replace any previously-placed town-plan overlay rather than stacking them.
+        if (overlay != null) {
+            final int oldIndex = dimension.getOverlays().indexOf(overlay);
+            if (oldIndex >= 0) {
+                dimension.removeOverlay(oldIndex);
+            }
         }
         // Add as an overlay centered on the current view, semi-transparent, scale 1 block/pixel.
         overlay = new Overlay(file);
