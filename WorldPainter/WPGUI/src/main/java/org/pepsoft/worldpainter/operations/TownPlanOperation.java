@@ -1,9 +1,13 @@
 package org.pepsoft.worldpainter.operations;
 
+import org.pepsoft.minecraft.Material;
 import org.pepsoft.worldpainter.Dimension;
+import org.pepsoft.worldpainter.MaterialSelector;
 import org.pepsoft.worldpainter.Overlay;
+import org.pepsoft.worldpainter.Platform;
 import org.pepsoft.worldpainter.WorldPainter;
 import org.pepsoft.worldpainter.layers.TownLayout;
+import org.pepsoft.worldpainter.layers.exporters.TownLayoutSettings;
 import org.pepsoft.worldpainter.townplan.TownPlanPlacement;
 import org.pepsoft.worldpainter.townplan.TownPlanStamper;
 
@@ -51,6 +55,7 @@ public class TownPlanOperation extends AbstractOperation {
             view.setPlacementOverlay(overlay);
             view.repaint();
         }
+        refreshBlockButtonLabel();
     }
 
     @Override
@@ -97,8 +102,60 @@ public class TownPlanOperation extends AbstractOperation {
         panel.add(invertCheckBox);
         panel.add(new JLabel("Rotation (free-drag the knob; buttons snap to 90°)"));
         panel.add(rotatePanel);
+        blockButton = new JButton();
+        blockButton.setToolTipText("Choose the block the footprint exports as");
+        blockButton.addActionListener(e -> chooseBlock());
+        refreshBlockButtonLabel();
+        panel.add(blockButton);
         panel.add(stampButton);
         return panel;
+    }
+
+    private void chooseBlock() {
+        final WorldPainter view = (WorldPainter) getView();
+        final Dimension dimension = getDimension();
+        if (dimension == null) {
+            Toolkit.getDefaultToolkit().beep();
+            return;
+        }
+        final MaterialSelector selector = new MaterialSelector();
+        final Platform platform = dimension.getWorld().getPlatform();
+        if (platform != null) {
+            selector.setPlatform(platform);
+        }
+        selector.setMaterial(currentExportBlock(dimension));
+        final int result = JOptionPane.showConfirmDialog(view, selector, "Select export block",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (result == JOptionPane.OK_OPTION) {
+            final Material chosen = selector.getMaterial();
+            if (chosen != null) {
+                final TownLayoutSettings settings = currentOrNewSettings(dimension);
+                settings.setBlock(chosen);
+                dimension.setLayerSettings(TownLayout.INSTANCE, settings);
+                refreshBlockButtonLabel();
+            }
+        }
+    }
+
+    /** The export block currently configured for the dimension, or the (stone) default if none is stored. */
+    private Material currentExportBlock(Dimension dimension) {
+        final TownLayoutSettings settings = (dimension != null)
+                ? (TownLayoutSettings) dimension.getLayerSettings(TownLayout.INSTANCE) : null;
+        return (settings != null) ? settings.getBlock() : new TownLayoutSettings().getBlock();
+    }
+
+    /** The dimension's existing TownLayout settings, or a fresh default instance if none is stored. */
+    private TownLayoutSettings currentOrNewSettings(Dimension dimension) {
+        final TownLayoutSettings settings = (TownLayoutSettings) dimension.getLayerSettings(TownLayout.INSTANCE);
+        return (settings != null) ? settings : new TownLayoutSettings();
+    }
+
+    private void refreshBlockButtonLabel() {
+        if (blockButton == null) {
+            return;
+        }
+        final Material block = currentExportBlock(getDimension());
+        blockButton.setText("Export block: " + String.valueOf(block));
     }
 
     /**
@@ -273,6 +330,7 @@ public class TownPlanOperation extends AbstractOperation {
     private JPanel optionsPanel;
     private JSlider thresholdSlider;
     private JCheckBox invertCheckBox;
+    private JButton blockButton;
     private Overlay overlay;
     private Point lastWorld;
     private TownPlanPlacement.Handle activeHandle = TownPlanPlacement.Handle.NONE;
