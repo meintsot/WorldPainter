@@ -23,7 +23,7 @@ public class TownLayoutSettingsTest {
         assertNotEquals(a, b);
         b.setExport(a.isExport());
 
-        b.setBlock(Material.get(BLK_WOOL, 0)); // white wool, differs from default black
+        b.setBlock(Material.get(BLK_WOOL, 0)); // white wool, differs from the stone default
         assertNotEquals(a, b);
     }
 

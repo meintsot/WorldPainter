@@ -4,7 +4,6 @@ import org.pepsoft.minecraft.Material;
 import org.pepsoft.worldpainter.layers.Layer;
 import org.pepsoft.worldpainter.layers.TownLayout;
 
-
 public class TownLayoutSettings implements ExporterSettings {
     @Override
     public boolean isApplyEverywhere() {
