@@ -107,12 +107,24 @@ public class TownPlanOperation extends AbstractOperation {
         overlay = new Overlay(file);
         overlay.setImage(image);
         overlay.setTransparency(0.5f);
-        overlay.setScale(1.0f);
+        // Scale the image to fit comfortably within the current view (~60% of the more constraining view
+        // dimension) so the whole plan and its handles are visible immediately, instead of filling the screen
+        // at 1 block per pixel.
+        final double pixelsPerBlock = Math.pow(2.0, view.getZoom());
+        final double viewBlocksWide = view.getWidth() / pixelsPerBlock;
+        final double viewBlocksHigh = view.getHeight() / pixelsPerBlock;
+        final double fitScale = 0.6 * Math.min(viewBlocksWide / image.getWidth(), viewBlocksHigh / image.getHeight());
+        final float scale = (float) Math.max(fitScale, 0.01);
+        overlay.setScale(scale);
+        // Centre the image (in its scaled, world-block size) on the current view centre.
         final Point center = view.getViewCentreInWorldCoords();
-        overlay.setOffsetX(center.x - image.getWidth() / 2);
-        overlay.setOffsetY(center.y - image.getHeight() / 2);
+        overlay.setOffsetX(center.x - Math.round(image.getWidth() * scale / 2.0f));
+        overlay.setOffsetY(center.y - Math.round(image.getHeight() * scale / 2.0f));
         overlay.setEnabled(true);
         dimension.addOverlay(overlay);
+        // Turn on overlay drawing for this dimension, otherwise the placed image (and its placement handles)
+        // would be invisible, since overlays are off by default.
+        dimension.setOverlaysEnabled(true);
         view.setPlacementOverlay(overlay);
         view.repaint();
     }
