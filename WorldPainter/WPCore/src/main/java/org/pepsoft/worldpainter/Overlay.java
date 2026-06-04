@@ -1,5 +1,6 @@
 package org.pepsoft.worldpainter;
 
+import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
@@ -71,6 +72,53 @@ public class Overlay implements Serializable {
         }
     }
 
+    public float getRotation() {
+        return rotation;
+    }
+
+    public void setRotation(float rotation) {
+        if (rotation != this.rotation) {
+            final float oldRotation = this.rotation;
+            this.rotation = rotation;
+            propertyChangeSupport.firePropertyChange("rotation", oldRotation, rotation);
+        }
+    }
+
+    public int getThreshold() {
+        return threshold;
+    }
+
+    public void setThreshold(int threshold) {
+        if (threshold != this.threshold) {
+            final int oldThreshold = this.threshold;
+            this.threshold = threshold;
+            propertyChangeSupport.firePropertyChange("threshold", oldThreshold, threshold);
+        }
+    }
+
+    public boolean isInvert() {
+        return invert;
+    }
+
+    public void setInvert(boolean invert) {
+        if (invert != this.invert) {
+            this.invert = invert;
+            propertyChangeSupport.firePropertyChange("invert", ! invert, invert);
+        }
+    }
+
+    public Rectangle getCropRect() {
+        return cropRect;
+    }
+
+    public void setCropRect(Rectangle cropRect) {
+        if (! Objects.equals(cropRect, this.cropRect)) {
+            final Rectangle oldCropRect = this.cropRect;
+            this.cropRect = cropRect;
+            propertyChangeSupport.firePropertyChange("cropRect", oldCropRect, cropRect);
+        }
+    }
+
     public boolean isEnabled() {
         return enabled;
     }
@@ -118,6 +166,10 @@ public class Overlay implements Serializable {
     private final File file;
     private float scale = 1.0f, transparency = 0.5f;
     private int offsetX = 0, offsetY = 0;
+    private float rotation = 0.0f;
+    private int threshold = 128;
+    private boolean invert = false;
+    private Rectangle cropRect = null;
     private boolean enabled = true;
     private transient PropertyChangeSupport propertyChangeSupport = new PropertyChangeSupport(this);
     private transient BufferedImage image;
