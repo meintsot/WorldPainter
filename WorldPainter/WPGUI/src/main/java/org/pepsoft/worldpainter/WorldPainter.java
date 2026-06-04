@@ -1160,21 +1160,31 @@ public class WorldPainter extends WorldPainterView implements MouseMotionListene
                     }
                     final float overlayScale = overlay.getScale();
                     final int overlayOffsetX = overlay.getOffsetX(), overlayOffsetY = overlay.getOffsetY();
-                    if ((overlayType == SCALE_ON_LOAD) || (overlayScale == 1.0f)) {
-                        // 1:1 scale, or the image has already been scaled on loading
-                        g2.drawImage(overlayImage, overlayOffsetX, overlayOffsetY, null);
-                    } else {
-                        final int width = Math.round(overlayImage.getWidth() * overlayScale);
-                        final int height = Math.round(overlayImage.getHeight() * overlayScale);
-                        final Object savedInterpolation = g2.getRenderingHint(RenderingHints.KEY_INTERPOLATION);
-                        try {
-                            g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
-                            g2.drawImage(overlayImage, overlayOffsetX, overlayOffsetY, width, height, null);
-                        } finally {
-                            if (savedInterpolation != null) {
-                                g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, savedInterpolation);
+                    final float overlayRotation = overlay.getRotation();
+                    final AffineTransform savedOverlayTransform = g2.getTransform();
+                    if (overlayRotation != 0.0f) {
+                        // Rotate clockwise about the image origin (top-left), matching TownPlanPlacement/TownPlanStamper
+                        g2.rotate(Math.toRadians(overlayRotation), overlayOffsetX, overlayOffsetY);
+                    }
+                    try {
+                        if ((overlayType == SCALE_ON_LOAD) || (overlayScale == 1.0f)) {
+                            // 1:1 scale, or the image has already been scaled on loading
+                            g2.drawImage(overlayImage, overlayOffsetX, overlayOffsetY, null);
+                        } else {
+                            final int width = Math.round(overlayImage.getWidth() * overlayScale);
+                            final int height = Math.round(overlayImage.getHeight() * overlayScale);
+                            final Object savedInterpolation = g2.getRenderingHint(RenderingHints.KEY_INTERPOLATION);
+                            try {
+                                g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+                                g2.drawImage(overlayImage, overlayOffsetX, overlayOffsetY, width, height, null);
+                            } finally {
+                                if (savedInterpolation != null) {
+                                    g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, savedInterpolation);
+                                }
                             }
                         }
+                    } finally {
+                        g2.setTransform(savedOverlayTransform);
                     }
                 }
             }
