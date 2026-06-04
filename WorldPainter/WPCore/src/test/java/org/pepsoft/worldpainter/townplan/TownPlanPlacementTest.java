@@ -79,6 +79,41 @@ public class TownPlanPlacementTest {
         assertEquals(center.y, centerAfter.y, 1e-6);
     }
 
+    @Test
+    public void snapTo90RoundsToNearestCardinal() {
+        assertEquals(0.0, TownPlanPlacement.snapTo90(37.0), EPS);
+        assertEquals(90.0, TownPlanPlacement.snapTo90(46.0), EPS);
+        assertEquals(90.0, TownPlanPlacement.snapTo90(134.0), EPS);
+        assertEquals(180.0, TownPlanPlacement.snapTo90(135.0), EPS);
+        assertEquals(0.0, TownPlanPlacement.snapTo90(-10.0), EPS);
+    }
+
+    @Test
+    public void rotateToSetsAngleAndKeepsCenterFixed() {
+        int W = 100, H = 80;
+        double originX = 5, originZ = -3, scale = 1.5, theta = 20.0;
+        Point2D.Double before = TownPlanPlacement.centerWorld(originX, originZ, scale, theta, W, H);
+        double[] s = TownPlanPlacement.rotateTo(originX, originZ, scale, theta, 90.0, W, H);
+        assertEquals(90.0, s[3], EPS);  // exact target angle
+        assertEquals(scale, s[2], EPS); // scale unchanged
+        Point2D.Double after = TownPlanPlacement.centerWorld(s[0], s[1], s[2], s[3], W, H);
+        assertEquals(before.x, after.x, 1e-6);
+        assertEquals(before.y, after.y, 1e-6);
+    }
+
+    @Test
+    public void applyRotateWithSnapLandsOnCardinalAndKeepsCenter() {
+        int W = 100, H = 80;
+        double originX = 0, originZ = 0, scale = 1.0, theta = 0.0;
+        Point2D.Double center = TownPlanPlacement.centerWorld(originX, originZ, scale, theta, W, H);
+        // Mouse slightly off the +90 direction => free angle near 90 but not exact; snap should land it on 90.
+        double[] s = TownPlanPlacement.applyRotate(center.x + 50, center.y + 4, originX, originZ, scale, theta, W, H, true);
+        assertEquals(0.0, normalize(s[3]) % 90.0, 1e-6); // snapped to a multiple of 90
+        Point2D.Double after = TownPlanPlacement.centerWorld(s[0], s[1], s[2], s[3], W, H);
+        assertEquals(center.x, after.x, 1e-6);
+        assertEquals(center.y, after.y, 1e-6);
+    }
+
     private static double normalize(double deg) {
         double d = deg % 360.0;
         if (d < 0) {

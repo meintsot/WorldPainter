@@ -107,6 +107,36 @@ public final class TownPlanPlacement {
         return new double[] { s[0], s[1], scale, newTheta };
     }
 
+    /** Snap an angle in degrees to the nearest multiple of 90 (i.e. N/E/S/W). */
+    public static double snapTo90(double thetaDeg) {
+        return Math.round(thetaDeg / 90.0) * 90.0;
+    }
+
+    /**
+     * Rotate to an absolute angle (degrees), keeping the image center fixed.
+     * Returns {@code [originX, originZ, scale, newThetaDeg]}.
+     */
+    public static double[] rotateTo(double originX, double originZ, double scale, double thetaDeg,
+                                    double newThetaDeg, int imgW, int imgH) {
+        final Point2D.Double center = centerWorld(originX, originZ, scale, thetaDeg, imgW, imgH);
+        final double[] s = originForFixedCenter(center.x, center.y, scale, newThetaDeg, imgW, imgH);
+        return new double[] { s[0], s[1], scale, newThetaDeg };
+    }
+
+    /**
+     * Rotate gesture with optional 90-degree snapping. When {@code snap90} is true the resulting rotation is
+     * snapped to the nearest multiple of 90 (N/E/S/W), keeping the center fixed.
+     * Returns {@code [originX, originZ, scale, rotationDeg]}.
+     */
+    public static double[] applyRotate(double mouseWx, double mouseWz, double originX, double originZ,
+                                       double scale, double thetaDeg, int imgW, int imgH, boolean snap90) {
+        final double[] free = applyRotate(mouseWx, mouseWz, originX, originZ, scale, thetaDeg, imgW, imgH);
+        if (! snap90) {
+            return free;
+        }
+        return rotateTo(originX, originZ, scale, thetaDeg, snapTo90(free[3]), imgW, imgH);
+    }
+
     /**
      * Scale gesture: set scale so the dragged corner sits at the mouse distance from the center, keeping
      * the center fixed. Returns {@code [originX, originZ, scale, rotationDeg]}.

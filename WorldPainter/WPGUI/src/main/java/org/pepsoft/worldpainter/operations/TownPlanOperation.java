@@ -65,14 +65,51 @@ public class TownPlanOperation extends AbstractOperation {
         selectButton.addActionListener(e -> selectImage());
         thresholdSlider = new JSlider(0, 255, 128);
         invertCheckBox = new JCheckBox("Invert (light = footprint)");
+        // Exact 90-degree (N/E/S/W) rotation. Free rotation is still available via the cyan knob (hold Shift
+        // while dragging the knob to snap to 90 degrees).
+        final JButton rotateCcwButton = new JButton("CCW 90°");
+        rotateCcwButton.setToolTipText("Rotate 90° counter-clockwise (snaps to N/E/S/W)");
+        rotateCcwButton.addActionListener(e -> rotateBy90(-1));
+        final JButton rotateCwButton = new JButton("CW 90°");
+        rotateCwButton.setToolTipText("Rotate 90° clockwise (snaps to N/E/S/W)");
+        rotateCwButton.addActionListener(e -> rotateBy90(1));
+        final JButton snapButton = new JButton("Snap 90°");
+        snapButton.setToolTipText("Snap the current rotation to the nearest N/E/S/W");
+        snapButton.addActionListener(e -> rotateBy90(0));
+        final JPanel rotatePanel = new JPanel();
+        rotatePanel.add(rotateCcwButton);
+        rotatePanel.add(rotateCwButton);
+        rotatePanel.add(snapButton);
         final JButton stampButton = new JButton("Stamp");
         stampButton.addActionListener(e -> stamp());
         panel.add(selectButton);
         panel.add(new JLabel("Brightness threshold"));
         panel.add(thresholdSlider);
         panel.add(invertCheckBox);
+        panel.add(new JLabel("Rotation (free-drag the knob; buttons snap to 90°)"));
+        panel.add(rotatePanel);
         panel.add(stampButton);
         return panel;
+    }
+
+    /**
+     * Rotate the placed image by an exact 90-degree step, snapping to the nearest cardinal first so the result
+     * is always a clean N/E/S/W angle. {@code direction}: -1 = counter-clockwise, +1 = clockwise, 0 = snap only.
+     */
+    private void rotateBy90(int direction) {
+        final WorldPainter view = (WorldPainter) getView();
+        if ((overlay == null) || (overlay.getImage() == null)) {
+            Toolkit.getDefaultToolkit().beep();
+            return;
+        }
+        final int imgW = overlay.getImage().getWidth(), imgH = overlay.getImage().getHeight();
+        final double target = TownPlanPlacement.snapTo90(overlay.getRotation()) + direction * 90.0;
+        final double[] s = TownPlanPlacement.rotateTo(overlay.getOffsetX(), overlay.getOffsetY(),
+                overlay.getScale(), overlay.getRotation(), target, imgW, imgH);
+        overlay.setOffsetX((int) Math.round(s[0]));
+        overlay.setOffsetY((int) Math.round(s[1]));
+        overlay.setRotation((float) s[3]);
+        view.repaint();
     }
 
     private void selectImage() {
@@ -195,8 +232,9 @@ public class TownPlanOperation extends AbstractOperation {
                     break;
                 }
                 case ROTATE: {
+                    // Hold Shift while dragging to snap the rotation to the nearest 90 degrees (N/E/S/W).
                     final double[] s = TownPlanPlacement.applyRotate(w.x, w.y, overlay.getOffsetX(),
-                            overlay.getOffsetY(), overlay.getScale(), overlay.getRotation(), imgW, imgH);
+                            overlay.getOffsetY(), overlay.getScale(), overlay.getRotation(), imgW, imgH, e.isShiftDown());
                     overlay.setOffsetX((int) Math.round(s[0]));
                     overlay.setOffsetY((int) Math.round(s[1]));
                     overlay.setRotation((float) s[3]);
