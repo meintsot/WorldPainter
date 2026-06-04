@@ -31,4 +31,9 @@ public class TownLayoutSettingsTest {
     public void setBlockRejectsNull() {
         new TownLayoutSettings().setBlock(null);
     }
+
+    @Test
+    public void defaultBlockIsStone() {
+        assertEquals(Material.STONE, new TownLayoutSettings().getBlock());
+    }
 }

@@ -4,7 +4,6 @@ import org.pepsoft.minecraft.Material;
 import org.pepsoft.worldpainter.layers.Layer;
 import org.pepsoft.worldpainter.layers.TownLayout;
 
-import static org.pepsoft.minecraft.Constants.BLK_WOOL;
 
 public class TownLayoutSettings implements ExporterSettings {
     @Override
@@ -81,7 +80,7 @@ public class TownLayoutSettings implements ExporterSettings {
     }
 
     private boolean export = true;
-    private Material block = Material.get(BLK_WOOL, 15); // black wool
+    private Material block = Material.STONE;
     private int markerHeight = 3;
 
     private static final long serialVersionUID = 1L;
