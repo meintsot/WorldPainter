@@ -97,6 +97,13 @@ public class TownPlanOperation extends AbstractOperation {
             JOptionPane.showMessageDialog(view, "Not a supported image file.", "Town Plan", JOptionPane.ERROR_MESSAGE);
             return;
         }
+        // Replace any previously-placed town-plan overlay rather than stacking them.
+        if (overlay != null) {
+            final int oldIndex = dimension.getOverlays().indexOf(overlay);
+            if (oldIndex >= 0) {
+                dimension.removeOverlay(oldIndex);
+            }
+        }
         overlay = new Overlay(file);
         overlay.setImage(image);
         overlay.setTransparency(0.5f);
