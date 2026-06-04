@@ -17,11 +17,13 @@ import org.pepsoft.worldpainter.hytale.chunk.HytaleChunk;
 import org.pepsoft.worldpainter.hytale.chunk.HytaleChunkStore;
 import org.pepsoft.worldpainter.merging.InvalidMapException;
 
+import java.awt.Point;
 import java.io.File;
 
 import static org.junit.Assert.*;
 import static org.pepsoft.worldpainter.Constants.DIM_NORMAL;
 import static org.pepsoft.worldpainter.DefaultPlugin.HYTALE;
+import static org.pepsoft.worldpainter.Dimension.Anchor.NORMAL_DETAIL;
 
 /**
  * Phase 1 smoke tests for {@link HytaleWorldMerger}. Verifies:
@@ -363,6 +365,141 @@ public class HytaleWorldMergerTest {
         }
     }
 
+    // ── Partial-selection chunk preservation (the "merged world is split" bug) ────────
+
+    /**
+     * Reproduction for the reported "merged world comes out split / fragmented" bug. The world
+     * spans a 2x2 block of tiles (0,0),(1,0),(0,1),(1,1) — all inside Hytale region (0,0), and
+     * symmetric about the origin so the centering offset is (0,0) (matching the user's world per
+     * the logs). A merge that selects ONLY tile (0,0) must regenerate that tile's chunks AND
+     * preserve every other tile's chunks. If the non-selected tiles in the same region are lost,
+     * the world is split (the repainted tile floats alone, the rest disappears).
+     */
+    @Test
+    public void mergeWithPartialSelectionPreservesNonSelectedTilesInSameRegion() throws Exception {
+        java.util.Set<Point> worldTiles = new java.util.HashSet<>(java.util.Arrays.asList(
+                new Point(0, 0), new Point(1, 0), new Point(0, 1), new Point(1, 1)));
+        File mapDir = createExportedHytaleMap("partial_sel", worldTiles);
+
+        // Precondition: the full export wrote chunks for all four tiles. tile->chunk = tile*4
+        // (offset 0). Tile (1,1) -> chunks (4..7, 4..7); verify chunk (4,4) and (7,7) exist.
+        try (HytaleChunkStore store = new HytaleChunkStore(innerWorld(mapDir), 0, 320)) {
+            assertNotNull("Setup: tile (0,0) chunk (0,0) exported", store.getChunk(0, 0));
+            assertNotNull("Setup: tile (1,1) chunk (4,4) exported", store.getChunk(4, 4));
+            assertNotNull("Setup: tile (1,1) chunk (7,7) exported", store.getChunk(7, 7));
+        }
+
+        // Imported world with the same four tiles; select ONLY tile (0,0) for the merge.
+        World2 world = buildImportedWorld(mapDir, worldTiles);
+        WorldExportSettings settings = new WorldExportSettings(
+                java.util.Collections.singleton(DIM_NORMAL),
+                java.util.Collections.singleton(new Point(0, 0)),
+                null);
+
+        HytaleWorldMerger merger = new HytaleWorldMerger(world, settings, mapDir, HYTALE);
+        merger.merge(new File(tempDir.getRoot(), "partial_sel_bkp"), null);
+
+        try (HytaleChunkStore store = new HytaleChunkStore(innerWorld(mapDir), 0, 320)) {
+            // Selected tile regenerated:
+            assertNotNull("Selected tile (0,0) chunk (0,0) must exist after merge", store.getChunk(0, 0));
+            // Non-selected tiles in the SAME region must be preserved:
+            assertNotNull("Non-selected tile (1,1) chunk (4,4) must survive merge", store.getChunk(4, 4));
+            assertNotNull("Non-selected tile (1,1) chunk (7,7) must survive merge", store.getChunk(7, 7));
+            assertNotNull("Non-selected tile (1,0) chunk (4,0) must survive merge", store.getChunk(4, 0));
+            assertNotNull("Non-selected tile (0,1) chunk (0,4) must survive merge", store.getChunk(0, 4));
+        }
+    }
+
+    /**
+     * Closer reproduction of the user's 4-region world: tiles at (-4,-4),(-4,4),(4,-4),(4,4),
+     * one per Hytale region {(-1,-1),(-1,0),(0,-1),(0,0)}, symmetric about the origin so the
+     * export offset is (0,0). A merge that selects ONLY tile (4,4) regenerates region (0,0) and
+     * must preserve the three OTHER whole regions by copying them from the backup. If those
+     * regions are lost, the world is split into disconnected islands — the reported symptom.
+     */
+    @Test
+    public void mergeWithSelectionInOneRegionPreservesOtherWholeRegions() throws Exception {
+        java.util.Set<Point> worldTiles = new java.util.HashSet<>(java.util.Arrays.asList(
+                new Point(-4, -4), new Point(-4, 4), new Point(4, -4), new Point(4, 4)));
+        File mapDir = createExportedHytaleMap("multi_region", worldTiles);
+
+        // tile t -> first chunk t*4 (offset 0). Verify all four corners exported.
+        try (HytaleChunkStore store = new HytaleChunkStore(innerWorld(mapDir), 0, 320)) {
+            assertNotNull("Setup: tile (4,4) chunk (16,16)", store.getChunk(16, 16));
+            assertNotNull("Setup: tile (-4,-4) chunk (-16,-16)", store.getChunk(-16, -16));
+            assertNotNull("Setup: tile (-4,4) chunk (-16,16)", store.getChunk(-16, 16));
+            assertNotNull("Setup: tile (4,-4) chunk (16,-16)", store.getChunk(16, -16));
+        }
+
+        World2 world = buildImportedWorld(mapDir, worldTiles);
+        WorldExportSettings settings = new WorldExportSettings(
+                java.util.Collections.singleton(DIM_NORMAL),
+                java.util.Collections.singleton(new Point(4, 4)),   // select region (0,0) only
+                null);
+
+        HytaleWorldMerger merger = new HytaleWorldMerger(world, settings, mapDir, HYTALE);
+        merger.merge(new File(tempDir.getRoot(), "multi_region_bkp"), null);
+
+        try (HytaleChunkStore store = new HytaleChunkStore(innerWorld(mapDir), 0, 320)) {
+            assertNotNull("Selected tile (4,4) regenerated", store.getChunk(16, 16));
+            assertNotNull("Other-region tile (-4,-4) must survive merge", store.getChunk(-16, -16));
+            assertNotNull("Other-region tile (-4,4) must survive merge", store.getChunk(-16, 16));
+            assertNotNull("Other-region tile (4,-4) must survive merge", store.getChunk(16, -16));
+        }
+    }
+
+    // ── Centering-offset regression (the "merged result is split / corrupted" bug) ────
+
+    /**
+     * Regression test for the Hytale merge centering bug. When the existing map was produced by
+     * a normal (centered) full export of a painted-from-scratch world, the merger must reproduce
+     * that same centering offset, so regenerated tiles land on top of the chunks preserved from
+     * the backup instead of in a separate, shifted copy of the world.
+     *
+     * <p>Every other test in this class uses a single tile at the origin, where the centering
+     * offset is (0,0) and the bug is invisible — which is exactly why it shipped. This test uses
+     * an off-origin multi-tile world so the offset is non-zero.
+     */
+    @Test
+    public void mergeReproducesExportCenteringOffsetForPaintedFromScratchWorld() throws Exception {
+        File mapDir = createExportedHytaleMap("offset_repro");
+
+        // A painted-from-scratch world (NOT imported) whose tiles are far from the origin, so the
+        // export's centering offset is clearly non-zero.
+        World2 world = buildFromScratchWorld("FromScratch", 4, 5, 4, 5);
+        Dimension dim = world.getDimension(NORMAL_DETAIL);
+
+        // tiles span x,y in [4,5] -> center tile (4,4) -> block offset (-512,-512)
+        Point exportOffset = HytaleWorldExporter.centeringOffset(dim.getTileCoords());
+        assertEquals("Precondition: this world must have a non-zero centering offset",
+                new Point(-512, -512), exportOffset);
+
+        HytaleWorldMerger merger = new HytaleWorldMerger(world, new WorldExportSettings(), mapDir, HYTALE);
+        Point mergeOffset = merger.determineBlockOffset(dim, dim.getTileCoords());
+
+        assertEquals("Merger must reproduce the offset a full export applies, so regenerated tiles "
+                + "align with the preserved chunks instead of being shifted into a disjoint copy",
+                exportOffset, mergeOffset);
+    }
+
+    /**
+     * Companion to the regression test above: an <em>imported</em> map's chunks already sit at
+     * WorldPainter-aligned (un-centered) coordinates, so the merger must keep offset (0,0). This
+     * is the original, working round-trip behaviour that the fix must not regress.
+     */
+    @Test
+    public void mergeKeepsZeroOffsetForImportedMap() throws Exception {
+        File mapDir = createExportedHytaleMap("offset_imported");
+        World2 world = buildImportedWorld(mapDir);   // sets importedFrom
+        Dimension dim = world.getDimension(NORMAL_DETAIL);
+
+        HytaleWorldMerger merger = new HytaleWorldMerger(world, new WorldExportSettings(), mapDir, HYTALE);
+        Point mergeOffset = merger.determineBlockOffset(dim, dim.getTileCoords());
+
+        assertEquals("Imported maps must merge with no offset (native coordinates are 1:1)",
+                new Point(0, 0), mergeOffset);
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────────────
 
     /**
@@ -433,6 +570,107 @@ public class HytaleWorldMergerTest {
             }
         }
         dim.addTile(tile);
+        dim.setEventsInhibited(false);
+        world.addDimension(dim);
+        return world;
+    }
+
+    /**
+     * Multi-tile variant of {@link #createExportedHytaleMap(String)}: builds and exports a world
+     * with the given set of tiles (each filled with STONE at height 64). Returns the inner world
+     * dir. Choose a tile set symmetric about the origin to keep the export's centering offset at
+     * (0,0) when you want to isolate non-centering behaviour.
+     */
+    private File createExportedHytaleMap(String name, java.util.Set<Point> tiles) throws Exception {
+        World2 world = new World2(HYTALE, 0, 320);
+        world.setName(name);
+        world.setCreateGoodiesChest(false);
+
+        long seed = 42L;
+        TileFactory tileFactory = TileFactoryFactory.createFlatTileFactory(
+                seed, Terrain.GRASS, 0, 320, 64, 62, false, false);
+        Dimension.Anchor anchor = new Dimension.Anchor(DIM_NORMAL, Dimension.Role.DETAIL, false, 0);
+        Dimension dim = new Dimension(world, "Surface", seed, tileFactory, anchor);
+        dim.setEventsInhibited(true);
+        for (Point t : tiles) {
+            Tile tile = tileFactory.createTile(t.x, t.y);
+            for (int x = 0; x < 128; x++) {
+                for (int z = 0; z < 128; z++) {
+                    tile.setHeight(x, z, 64);
+                    tile.setTerrain(x, z, Terrain.STONE);
+                    HytaleTerrainLayer.setTerrainIndex(tile, x, z, HytaleTerrain.STONE.getLayerIndex());
+                }
+            }
+            dim.addTile(tile);
+        }
+        dim.setEventsInhibited(false);
+        world.addDimension(dim);
+
+        File baseDir = tempDir.newFolder("base_" + name);
+        new HytaleWorldExporter(world, new WorldExportSettings())
+                .export(baseDir, name, null, null);
+
+        File saveDir = new File(baseDir, name);
+        assertTrue("Setup precondition: exported save exists", saveDir.isDirectory());
+        File worldDir = new File(new File(new File(saveDir, "universe"), "worlds"), "default");
+        assertTrue("Setup precondition: inner world dir exists", worldDir.isDirectory());
+        return worldDir;
+    }
+
+    /**
+     * Multi-tile variant of {@link #buildImportedWorld(File)}: an imported world (importedFrom set)
+     * containing the given tiles, each filled with STONE at height 64.
+     */
+    private World2 buildImportedWorld(File mapDir, java.util.Set<Point> tiles) {
+        World2 world = new World2(HYTALE, 0, 320);
+        world.setName("merger-test");
+        world.setCreateGoodiesChest(false);
+        world.setImportedFrom(new File(mapDir, "config.json"));
+
+        long seed = 99L;
+        TileFactory tileFactory = TileFactoryFactory.createFlatTileFactory(
+                seed, Terrain.STONE, 0, 320, 64, 62, false, false);
+        Dimension.Anchor anchor = new Dimension.Anchor(DIM_NORMAL, Dimension.Role.DETAIL, false, 0);
+        Dimension dim = new Dimension(world, "Surface", seed, tileFactory, anchor);
+        dim.setEventsInhibited(true);
+        for (Point t : tiles) {
+            Tile tile = tileFactory.createTile(t.x, t.y);
+            for (int x = 0; x < 128; x++) {
+                for (int z = 0; z < 128; z++) {
+                    tile.setHeight(x, z, 64);
+                    tile.setTerrain(x, z, Terrain.STONE);
+                    HytaleTerrainLayer.setTerrainIndex(tile, x, z, HytaleTerrain.STONE.getLayerIndex());
+                }
+            }
+            dim.addTile(tile);
+        }
+        dim.setEventsInhibited(false);
+        world.addDimension(dim);
+        return world;
+    }
+
+    /**
+     * Build a painted-from-scratch (NOT imported) Hytale world whose surface dimension has a
+     * solid block of tiles spanning {@code [minTileX..maxTileX] x [minTileY..maxTileY]}.
+     * Deliberately does not call {@code setImportedFrom}, so the merger treats it as a
+     * from-scratch (centered) world.
+     */
+    private World2 buildFromScratchWorld(String name, int minTileX, int maxTileX, int minTileY, int maxTileY) {
+        World2 world = new World2(HYTALE, 0, 320);
+        world.setName(name);
+        world.setCreateGoodiesChest(false);
+
+        long seed = 7L;
+        TileFactory tileFactory = TileFactoryFactory.createFlatTileFactory(
+                seed, Terrain.GRASS, 0, 320, 64, 62, false, false);
+        Dimension.Anchor anchor = new Dimension.Anchor(DIM_NORMAL, Dimension.Role.DETAIL, false, 0);
+        Dimension dim = new Dimension(world, "Surface", seed, tileFactory, anchor);
+        dim.setEventsInhibited(true);
+        for (int tx = minTileX; tx <= maxTileX; tx++) {
+            for (int ty = minTileY; ty <= maxTileY; ty++) {
+                dim.addTile(tileFactory.createTile(tx, ty));
+            }
+        }
         dim.setEventsInhibited(false);
         world.addDimension(dim);
         return world;

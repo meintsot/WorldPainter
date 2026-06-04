@@ -127,7 +127,11 @@ public class HytaleChunkStore implements ChunkStore {
             if (region == null) {
                 return null;
             }
-            return region.readChunk(x & 31, z & 31, minHeight, maxHeight);
+            // Pass GLOBAL chunk coords so the returned chunk reports its true position; readChunk
+            // masks the low 5 bits internally for the in-region blob lookup. Returning a chunk
+            // positioned at local coords would make saveChunk()/visitChunksForEditing() re-file it
+            // into the wrong region (see HytaleRegionFile.readChunk).
+            return region.readChunk(x, z, minHeight, maxHeight);
         } catch (IOException e) {
             throw new RuntimeException("Error reading chunk at " + x + "," + z, e);
         }

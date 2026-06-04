@@ -356,33 +356,17 @@ public class HytaleWorldExporter implements WorldExporter {
                 ? allTileCoords.stream().filter(selectedTiles::contains).collect(java.util.stream.Collectors.toSet())
                 : allTileCoords;
             
-            // Calculate the center offset to ensure terrain is centered at world origin (0,0)
-            // This way players spawn on the WorldPainter terrain instead of Hytale-generated void
-            int minTileX = Integer.MAX_VALUE, maxTileX = Integer.MIN_VALUE;
-            int minTileY = Integer.MAX_VALUE, maxTileY = Integer.MIN_VALUE;
-            for (Point tile : tileCoords) {
-                minTileX = Math.min(minTileX, tile.x);
-                maxTileX = Math.max(maxTileX, tile.x);
-                minTileY = Math.min(minTileY, tile.y);
-                maxTileY = Math.max(maxTileY, tile.y);
-            }
-            // Center offset in tiles (WorldPainter tiles are 128x128 blocks)
-            int centerTileX = (minTileX + maxTileX) / 2;
-            int centerTileY = (minTileY + maxTileY) / 2;
-            // Convert to block offset (we want to shift the entire world so center is at 0,0)
-            // Store in instance fields so exportRegion can use them.
-            // Subclasses (e.g. HytaleWorldMerger) may opt out via isCenteringTerrain() so that
-            // merged chunks line up with the original Hytale chunk coordinates.
-            if (isCenteringTerrain()) {
-                this.blockOffsetX = -centerTileX * 128;
-                this.blockOffsetZ = -centerTileY * 128;
-            } else {
-                this.blockOffsetX = 0;
-                this.blockOffsetZ = 0;
-            }
+            // Determine the block offset applied to every chunk. A fresh export centers the
+            // painted terrain around the world origin (0,0) so players spawn on the
+            // WorldPainter terrain instead of Hytale-generated void (see determineBlockOffset()
+            // / centeringOffset()). Subclasses (e.g. HytaleWorldMerger) override
+            // determineBlockOffset() to reproduce the offset the existing map was written with,
+            // so regenerated chunks line up with the original Hytale chunk coordinates.
+            Point blockOffset = determineBlockOffset(dimension, tileCoords);
+            this.blockOffsetX = blockOffset.x;
+            this.blockOffsetZ = blockOffset.y;
 
-            logger.info("Centering terrain: tile center ({},{}), block offset ({},{})",
-                centerTileX, centerTileY, blockOffsetX, blockOffsetZ);
+            logger.info("Block offset for export: ({},{})", blockOffsetX, blockOffsetZ);
 
             // Open the original imported world (if any) for merging entities, block health,
             // and metadata back into the exported chunks for round-trip fidelity
@@ -892,6 +876,53 @@ public class HytaleWorldExporter implements WorldExporter {
      */
     protected boolean isCenteringTerrain() {
         return true;
+    }
+
+    /**
+     * Determine the block offset applied to every exported chunk. The offset shifts
+     * WorldPainter tile/block coordinates into the coordinate frame the map is written in.
+     *
+     * <p>Default behaviour: when {@link #isCenteringTerrain()} is {@code true} (fresh exports),
+     * center {@code exportedTileCoords} around the world origin so the player doesn't spawn in
+     * the void; otherwise no offset.
+     *
+     * <p>{@link HytaleWorldMerger} overrides this to reproduce the offset the <em>existing</em>
+     * map was written with, so regenerated chunks align with the chunks preserved from the
+     * original map instead of landing in a separate, shifted copy of the world.
+     *
+     * @param dimension          the dimension being exported (lets overrides consult all tiles).
+     * @param exportedTileCoords the tiles actually being written in this export.
+     * @return the {@code (blockOffsetX, blockOffsetZ)} to apply, as a {@link Point}.
+     */
+    protected Point determineBlockOffset(Dimension dimension, Set<Point> exportedTileCoords) {
+        if (isCenteringTerrain()) {
+            return centeringOffset(exportedTileCoords);
+        }
+        return new Point(0, 0);
+    }
+
+    /**
+     * Compute the centering block offset for a set of WorldPainter tiles: the offset that
+     * shifts the tiles' bounding-box center to the world origin. WorldPainter tiles are
+     * 128x128 blocks. Returns {@code (0,0)} for a {@code null} or empty set.
+     */
+    static Point centeringOffset(Collection<Point> tileCoords) {
+        if ((tileCoords == null) || tileCoords.isEmpty()) {
+            return new Point(0, 0);
+        }
+        int minTileX = Integer.MAX_VALUE, maxTileX = Integer.MIN_VALUE;
+        int minTileY = Integer.MAX_VALUE, maxTileY = Integer.MIN_VALUE;
+        for (Point tile : tileCoords) {
+            minTileX = Math.min(minTileX, tile.x);
+            maxTileX = Math.max(maxTileX, tile.x);
+            minTileY = Math.min(minTileY, tile.y);
+            maxTileY = Math.max(maxTileY, tile.y);
+        }
+        // Center offset in tiles (WorldPainter tiles are 128x128 blocks), converted to a
+        // block offset that shifts the bounding-box center to (0,0).
+        int centerTileX = (minTileX + maxTileX) / 2;
+        int centerTileY = (minTileY + maxTileY) / 2;
+        return new Point(-centerTileX * 128, -centerTileY * 128);
     }
 
     private boolean hasCustomObjectLayers(Dimension dimension) {

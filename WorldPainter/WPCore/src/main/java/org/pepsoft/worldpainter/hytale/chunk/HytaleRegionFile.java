@@ -258,16 +258,26 @@ public class HytaleRegionFile implements Closeable {
     /**
      * Read a chunk from the region file.
      *
-     * @param localX Local X coordinate within the region (0-31)
-     * @param localZ Local Z coordinate within the region (0-31)
+     * <p>The coordinates are the chunk's <em>global</em> chunk coordinates. The low 5 bits select
+     * the blob within this region (0-31), while the full value is used as the returned chunk's
+     * position. This matters because {@link HytaleChunkStore#saveChunk} derives the target region
+     * from {@link HytaleChunk#getxPos()}/{@link HytaleChunk#getzPos()}: if {@code readChunk}
+     * returned a chunk positioned at its local (0-31) coordinates, any read-then-save round-trip
+     * (merge chunk preservation, {@code visitChunksForEditing}) would write chunks from other
+     * regions back into region (0,0), splitting/corrupting multi-region worlds.
+     *
+     * @param chunkX Global chunk X coordinate (low 5 bits = local X within the region)
+     * @param chunkZ Global chunk Z coordinate (low 5 bits = local Z within the region)
      * @return The chunk, or null if not present
      */
-    public HytaleChunk readChunk(int localX, int localZ, int minHeight, int maxHeight) throws IOException {
+    public HytaleChunk readChunk(int chunkX, int chunkZ, int minHeight, int maxHeight) throws IOException {
+        int localX = chunkX & 31;
+        int localZ = chunkZ & 31;
         byte[] decompressed = readRawChunkBson(localX, localZ);
         if (decompressed == null) {
             return null;
         }
-        return HytaleBsonChunkDeserializer.deserializeChunk(decompressed, localX, localZ, minHeight, maxHeight);
+        return HytaleBsonChunkDeserializer.deserializeChunk(decompressed, chunkX, chunkZ, minHeight, maxHeight);
     }
 
     /**

@@ -19,11 +19,13 @@ import org.pepsoft.worldpainter.util.FileInUseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.awt.Point;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 import static org.pepsoft.worldpainter.Constants.DIM_NORMAL;
 import static org.pepsoft.worldpainter.DefaultPlugin.HYTALE;
@@ -348,9 +350,9 @@ public class HytaleWorldMerger extends HytaleWorldExporter implements WorldMerge
             // 4. Copy any original chunks that lived outside TalePainter's tile coverage from
             //    the backup into the fresh save. The exporter only writes regions/chunks that
             //    overlap TalePainter tiles, so without this step any chunks the original save
-            //    had farther out would simply be lost. Centering is disabled for the merger
-            //    (see isCenteringTerrain()) so the original chunk coordinates line up exactly
-            //    with the fresh save.
+            //    had farther out would simply be lost. The merger reproduces the original map's
+            //    block offset (see determineBlockOffset()) so the original chunk coordinates
+            //    line up exactly with the fresh save.
             preserveUntouchedOriginalChunks(saveRoot, backupDir);
 
             // 5. Copy non-chunk files from the backup to the fresh save where the exporter
@@ -399,15 +401,34 @@ public class HytaleWorldMerger extends HytaleWorldExporter implements WorldMerge
     }
 
     /**
-     * Subclass hook override: merges must preserve the original Hytale chunk coordinates
-     * so untouched original chunks (copied via {@link #preserveUntouchedOriginalChunks})
-     * remain at their existing positions, and TalePainter edits land at the matching
-     * coordinates. The default {@link HytaleWorldExporter#isCenteringTerrain() centering}
-     * behaviour is appropriate only for fresh exports.
+     * Reproduce the block offset the <em>existing</em> map was written with, so regenerated
+     * chunks land on top of the chunks preserved from the backup (via
+     * {@link #preserveUntouchedOriginalChunks}) instead of in a separate, shifted copy of the
+     * world.
+     *
+     * <ul>
+     *   <li><b>Imported map</b> ({@code world.getImportedFrom() != null}):
+     *       {@link org.pepsoft.worldpainter.hytale.imports.HytaleMapImporter} maps native Hytale
+     *       chunk coordinates onto WorldPainter tiles 1:1 with no offset, so the round-trip merge
+     *       must not shift anything — return {@code (0,0)}, exactly the original behaviour.</li>
+     *   <li><b>Painted-from-scratch map</b>: the original full export centered the terrain around
+     *       the origin ({@link HytaleWorldExporter#isCenteringTerrain()} {@code == true}),
+     *       computing the offset over <em>all</em> tiles. Reproduce that same offset here so the
+     *       regenerated tiles align with the preserved chunks. (Assumes the world's tile bounds
+     *       are unchanged since the export, which holds when only existing tiles were repainted.)</li>
+     * </ul>
+     *
+     * <p>This replaces the earlier {@code isCenteringTerrain() == false} override, which
+     * incorrectly assumed the existing map was always written without centering — true for
+     * imported maps but not for maps produced by a fresh (centered) export, where it left the
+     * regenerated tiles offset from the rest of the world.
      */
     @Override
-    protected boolean isCenteringTerrain() {
-        return false;
+    protected Point determineBlockOffset(Dimension dimension, Set<Point> exportedTileCoords) {
+        if (world.getImportedFrom() != null) {
+            return new Point(0, 0);
+        }
+        return HytaleWorldExporter.centeringOffset(dimension.getTileCoords());
     }
 
     /**
@@ -418,9 +439,9 @@ public class HytaleWorldMerger extends HytaleWorldExporter implements WorldMerge
      * that lived beyond TalePainter's bounds (e.g. an imported 14×14 tile world that
      * originally covered a much larger Hytale save).
      *
-     * <p>Centering is disabled for the merger ({@link #isCenteringTerrain()}), so the
-     * original chunk's {@code (x, z)} maps 1:1 onto the new save — copying the chunk
-     * verbatim is correct.
+     * <p>The merger reproduces the original map's block offset (see
+     * {@link #determineBlockOffset(Dimension, Set)}), so the original chunk's {@code (x, z)}
+     * maps 1:1 onto the new save — copying the chunk verbatim is correct.
      */
     private void preserveUntouchedOriginalChunks(File saveRoot, File backupDir) throws IOException {
         File backupInnerWorldDir = getInnerWorldDir(backupDir);
