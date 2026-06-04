@@ -30,6 +30,9 @@ public class TownLayoutSettings implements ExporterSettings {
     }
 
     public void setBlock(Material block) {
+        if (block == null) {
+            throw new IllegalArgumentException("block");
+        }
         this.block = block;
     }
 
@@ -39,6 +42,33 @@ public class TownLayoutSettings implements ExporterSettings {
 
     public void setMarkerHeight(int markerHeight) {
         this.markerHeight = markerHeight;
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 7;
+        hash = 41 * hash + (this.export ? 1 : 0);
+        hash = 41 * hash + ((this.block != null) ? this.block.hashCode() : 0);
+        hash = 41 * hash + this.markerHeight;
+        return hash;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == null) {
+            return false;
+        }
+        if (getClass() != obj.getClass()) {
+            return false;
+        }
+        final TownLayoutSettings other = (TownLayoutSettings) obj;
+        if (this.export != other.export) {
+            return false;
+        }
+        if ((this.block == null) ? (other.block != null) : (! this.block.equals(other.block))) {
+            return false;
+        }
+        return this.markerHeight == other.markerHeight;
     }
 
     @Override
