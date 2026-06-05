@@ -101,7 +101,7 @@ public class Main {
         }
 
         // Check if we need to re-launch with a different heap size (configured in Preferences UI)
-        if (! "true".equals(System.getProperty("org.pepsoft.worldpainter.heapConfigured"))) {
+        if (! "true".equals(System.getProperty(HEAP_CONFIGURED_PROPERTY))) {
             final boolean snapshotForHeap = Version.isSnapshot();
             Preferences heapPrefs = Preferences.userNodeForPackage(Main.class);
             int configuredHeapMB = heapPrefs.getInt((snapshotForHeap ? "snapshot." : "") + "maxHeapSizeMB", 0);
@@ -608,54 +608,111 @@ public class Main {
             "<p>Type \"I understand\" below to proceed with testing the next release of TalePainter:</p></html>";
     private static final String SNAPSHOT_MESSAGE_KEY = "org.pepsoft.worldpainter.snapshotWarning";
 
+    /**
+     * System property used as a guard so a JVM that was re-launched with the configured heap size does not itself try
+     * to re-launch again.
+     */
+    private static final String HEAP_CONFIGURED_PROPERTY = "org.pepsoft.worldpainter.heapConfigured";
+
+    /** System properties propagated to a freshly launched JVM when re-launching with a configured heap size. */
+    private static final String[] PROPAGATED_PROPERTIES = {
+            "org.pepsoft.worldpainter.devMode",
+            "org.pepsoft.worldpainter.safeMode",
+            "org.pepsoft.worldpainter.configDir",
+            "org.pepsoft.worldpainter.classifier",
+            "org.pepsoft.worldpainter.threads"
+    };
+
     private static void relaunchWithHeap(int heapSizeMB, String[] args) throws Exception {
-        String javaHome = System.getProperty("java.home");
-        String javaBin = javaHome + File.separator + "bin" + File.separator + "java";
-        String classpath = System.getProperty("java.class.path");
+        final RelaunchSpec spec = buildRelaunchSpec(
+                heapSizeMB, args,
+                System.getProperty("jpackage.app-path"),
+                System.getProperty("java.home"),
+                System.getProperty("java.class.path"),
+                ManagementFactory.getRuntimeMXBean().getInputArguments());
 
-        List<String> command = new ArrayList<>();
-        command.add(javaBin);
-        command.add("-Xmx" + heapSizeMB + "m");
-        command.add("-Dorg.pepsoft.worldpainter.heapConfigured=true");
-
-        // Propagate existing system properties that matter
-        for (String prop : new String[]{
-                "org.pepsoft.worldpainter.devMode",
-                "org.pepsoft.worldpainter.safeMode",
-                "org.pepsoft.worldpainter.configDir",
-                "org.pepsoft.worldpainter.classifier",
-                "org.pepsoft.worldpainter.threads"
-        }) {
-            String val = System.getProperty(prop);
-            if (val != null) {
-                command.add("-D" + prop + "=" + val);
-            }
-        }
-
-        // Propagate --add-opens JVM arguments
-        for (String inputArg : ManagementFactory.getRuntimeMXBean().getInputArguments()) {
-            if (inputArg.startsWith("--add-opens")) {
-                command.add(inputArg);
-            }
-        }
-
-        // Detect if running from a JAR (-jar) or classpath
-        if (classpath.endsWith(".jar") && ! classpath.contains(File.pathSeparator)) {
-            command.add("-jar");
-            command.add(classpath);
-        } else {
-            command.add("-cp");
-            command.add(classpath);
-            command.add(Main.class.getName());
-        }
-        command.addAll(Arrays.asList(args));
-
-        ProcessBuilder pb = new ProcessBuilder(command);
+        final ProcessBuilder pb = new ProcessBuilder(spec.command);
+        pb.environment().putAll(spec.environment);
         pb.inheritIO();
         pb.start();
+    }
+
+    /**
+     * Work out how to re-launch TalePainter with a different maximum heap size. Pure (no process is started and no
+     * filesystem is touched) so it can be unit tested; {@link #relaunchWithHeap} supplies the live arguments and runs
+     * the result.
+     *
+     * <p>When running from a jpackage app-image ({@code appPath} is the path to the native launcher, taken from the
+     * {@code jpackage.app-path} system property) the bundled runtime contains no {@code java}/{@code javaw} executable,
+     * so we cannot start a fresh JVM directly. Instead we re-launch the native launcher, which rebuilds its JVM options
+     * from {@code TalePainter.cfg} (including the hardcoded {@code -Xmx}), and override the heap through the
+     * {@code _JAVA_OPTIONS} environment variable. The JVM applies {@code _JAVA_OPTIONS} last, so it wins over the
+     * {@code .cfg}'s {@code -Xmx}.
+     *
+     * <p>Otherwise (running from a JAR or the IDE) we start a fresh JVM from {@code <java.home>/bin/java} with the
+     * configured heap as a {@code -Xmx} argument.
+     *
+     * @param appPath path to the jpackage native launcher, or {@code null} when not running from a jpackage app-image.
+     */
+    static RelaunchSpec buildRelaunchSpec(int heapSizeMB, String[] args, String appPath, String javaHome, String classpath, List<String> jvmInputArgs) {
+        final List<String> command = new ArrayList<>();
+        final Map<String, String> environment = new HashMap<>();
+        if (appPath != null) {
+            // jpackage app-image: re-launch the native launcher and override the .cfg's -Xmx via _JAVA_OPTIONS.
+            command.add(appPath);
+            command.addAll(Arrays.asList(args));
+            environment.put("_JAVA_OPTIONS", "-Xmx" + heapSizeMB + "m -D" + HEAP_CONFIGURED_PROPERTY + "=true");
+        } else {
+            final String javaBin = javaHome + File.separator + "bin" + File.separator + "java";
+            command.add(javaBin);
+            command.add("-Xmx" + heapSizeMB + "m");
+            command.add("-D" + HEAP_CONFIGURED_PROPERTY + "=true");
+
+            // Propagate existing system properties that matter
+            for (String prop : PROPAGATED_PROPERTIES) {
+                final String value = System.getProperty(prop);
+                if (value != null) {
+                    command.add("-D" + prop + "=" + value);
+                }
+            }
+
+            // Propagate --add-opens JVM arguments
+            for (String inputArg : jvmInputArgs) {
+                if (inputArg.startsWith("--add-opens")) {
+                    command.add(inputArg);
+                }
+            }
+
+            // Detect if running from a JAR (-jar) or classpath
+            if (classpath.endsWith(".jar") && (! classpath.contains(File.pathSeparator))) {
+                command.add("-jar");
+                command.add(classpath);
+            } else {
+                command.add("-cp");
+                command.add(classpath);
+                command.add(Main.class.getName());
+            }
+            command.addAll(Arrays.asList(args));
+        }
+        return new RelaunchSpec(command, environment);
     }
 
     private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(Main.class);
 
     static PrivateContext privateContext;
+
+    /**
+     * The result of {@link #buildRelaunchSpec}: the process {@link #command} to run to re-launch TalePainter with a
+     * different maximum heap size, plus any environment variable {@link #environment} overrides to apply on top of the
+     * inherited environment.
+     */
+    static final class RelaunchSpec {
+        final List<String> command;
+        final Map<String, String> environment;
+
+        RelaunchSpec(List<String> command, Map<String, String> environment) {
+            this.command = command;
+            this.environment = environment;
+        }
+    }
 }
