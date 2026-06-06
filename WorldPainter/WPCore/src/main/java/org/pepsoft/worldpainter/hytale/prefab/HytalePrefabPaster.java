@@ -71,15 +71,31 @@ public final class HytalePrefabPaster {
                          int anchorWorldX, int anchorY, int anchorWorldZ,
                          int blockOffsetX, int blockOffsetZ,
                          String prefabPath) {
+        return paste(chunksByCoords, anchorWorldX, anchorY, anchorWorldZ,
+                blockOffsetX, blockOffsetZ, prefabPath, 0.0);
+    }
+
+    /**
+     * As {@link #paste(Map, int, int, int, int, int, String)} but rotates the prefab
+     * by {@code rotationDegrees} (yaw) about its anchor before placing. Cardinal angles
+     * are exact; off-cardinal angles are resampled (see {@link PrefabRotator}).
+     */
+    public boolean paste(Map<Long, HytaleChunk> chunksByCoords,
+                         int anchorWorldX, int anchorY, int anchorWorldZ,
+                         int blockOffsetX, int blockOffsetZ,
+                         String prefabPath, double rotationDegrees) {
         PrefabBlockData data = loadPrefab(prefabPath);
         if (data == null || data.blocks.isEmpty()) {
             return false;
         }
-        placeBlocksAndFluids(data, anchorY, (offsetX, offsetZ) -> {
+        PrefabBlockData rotated = PrefabRotator.rotate(data, rotationDegrees);
+        placeBlocksAndFluids(rotated, anchorY, (offsetX, offsetZ) -> {
             int wpBX = anchorWorldX + offsetX;
             int wpBZ = anchorWorldZ + offsetZ;
             HytaleChunk chunk = lookupChunk(chunksByCoords, wpBX, wpBZ, blockOffsetX, blockOffsetZ);
-            if (chunk == null) return null;
+            if (chunk == null) {
+                return null;
+            }
             int localX = Math.floorMod(wpBX + blockOffsetX, HytaleChunk.CHUNK_SIZE);
             int localZ = Math.floorMod(wpBZ + blockOffsetZ, HytaleChunk.CHUNK_SIZE);
             return new ChunkLocation(chunk, localX, localZ);
