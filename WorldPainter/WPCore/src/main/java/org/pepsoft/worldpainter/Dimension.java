@@ -2747,7 +2747,10 @@ public class Dimension extends InstanceKeeper implements TileProvider, Serializa
                 if (managedAttributes == null) {
                     managedAttributes = new HashMap<>();
                 }
-                managedAttributes.put("hytaleTerrainVersion", 2);
+                // V0/V1 already mapped curated indices to the current ordering by
+                // terrain identity, so mark these worlds as fully current (3). This
+                // stops the pre-TP-57 legacy remap below from double-migrating them.
+                managedAttributes.put("hytaleTerrainVersion", 3);
             }
         }
         if (wpVersion < 12) {
@@ -2767,6 +2770,11 @@ public class Dimension extends InstanceKeeper implements TileProvider, Serializa
                 managedAttributes.put("hytalePlantsLayerMigrated", Boolean.TRUE);
             }
         }
+        // Deliberately NOT gated on wpVersion: a stored self-describing terrain
+        // palette must be honoured on every load so a future registry/terrain-list
+        // change is corrected even when CURRENT_WP_VERSION is not bumped. The method
+        // no-ops cheaply when the stored ordering already matches the current one.
+        migrateHytaleTerrainPaletteOnLoad();
         wpVersion = CURRENT_WP_VERSION;
 
         // Make sure customLayers isn't some weird read-only list
@@ -2808,7 +2816,92 @@ public class Dimension extends InstanceKeeper implements TileProvider, Serializa
     @Serial
     private void writeObject(ObjectOutputStream out) throws IOException {
         prepareForSaving();
+        snapshotHytaleTerrainPalette();
         out.defaultWriteObject();
+    }
+
+    /**
+     * Snapshot a self-describing Hytale terrain palette (stored layer index -&gt;
+     * block id) into managed attributes, so that when this world is reopened in a
+     * build whose terrain list has changed (e.g. the block registry grew) the
+     * stored per-pixel terrain ordinals can be remapped by block id instead of
+     * silently resolving to a different block. Only written when this dimension
+     * actually has Hytale terrain data. See {@code HytaleTerrainPalette}.
+     */
+    void snapshotHytaleTerrainPalette() {
+        if (! hasHytaleTerrainData()) {
+            return;
+        }
+        if (managedAttributes == null) {
+            managedAttributes = new HashMap<>();
+        }
+        managedAttributes.put("hytaleTerrainPalette",
+                new HashMap<>(org.pepsoft.worldpainter.hytale.HytaleTerrainPalette.currentPalette()));
+        managedAttributes.put("hytaleTerrainVersion", 3);
+    }
+
+    private boolean hasHytaleTerrainData() {
+        for (Tile tile : tiles.values()) {
+            if (org.pepsoft.worldpainter.hytale.HytaleTerrainLayer.hasTerrainData(tile)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Test-only accessor for a managed attribute. */
+    Object getManagedAttributeForTests(String key) {
+        return (managedAttributes != null) ? managedAttributes.get(key) : null;
+    }
+
+    /** Test-only: set a managed attribute. */
+    void putManagedAttributeForTests(String key, Object value) {
+        if (managedAttributes == null) {
+            managedAttributes = new HashMap<>();
+        }
+        managedAttributes.put(key, value);
+    }
+
+    /** Test-only: remove a managed attribute. */
+    void removeManagedAttributeForTests(String key) {
+        if (managedAttributes != null) {
+            managedAttributes.remove(key);
+        }
+    }
+
+    /**
+     * Remap stored Hytale terrain ordinals to the current ordering on load.
+     * Worlds saved with {@code hytaleTerrainVersion >= 3} carry a self-describing
+     * {@code stored-index -> block-id} palette; we remap each stored ordinal to
+     * the current layer index of the same block id, so registry/terrain-list
+     * changes (e.g. TP-57's +249 blocks) can no longer silently substitute
+     * blocks. Legacy worlds saved before the palette existed (version &lt; 3) are
+     * remapped against the reconstructed pre-TP-57 ordering instead.
+     */
+    void migrateHytaleTerrainPaletteOnLoad() {
+        Object versionObj = (managedAttributes != null)
+                ? managedAttributes.get("hytaleTerrainVersion") : null;
+        int htv = (versionObj instanceof Integer) ? (Integer) versionObj : 0;
+        @SuppressWarnings("unchecked")
+        Map<Integer, String> storedPalette = (managedAttributes != null)
+                ? (Map<Integer, String>) managedAttributes.get("hytaleTerrainPalette") : null;
+        if ((htv >= 3) && (storedPalette != null)) {
+            // Fast-path: if the stored ordering already equals the current one
+            // (the common case — same build, or registry unchanged), skip the
+            // per-pixel scan entirely. Otherwise remap by block id.
+            if (! storedPalette.equals(org.pepsoft.worldpainter.hytale.HytaleTerrainPalette.currentPalette())) {
+                org.pepsoft.worldpainter.hytale.HytaleTerrainPalette.remapTiles(tiles.values(), storedPalette);
+            }
+        } else if ((htv < 3) && hasHytaleTerrainData()) {
+            // Legacy world saved before the self-describing palette existed (no
+            // stored palette). Interpret stored ordinals against the reconstructed
+            // pre-TP-57 ordering and remap by block id. Best-effort: worlds whose
+            // curated indices were already brought current by the wpVersion < 11
+            // V0/V1 migration are marked hytaleTerrainVersion 3 there, so they do
+            // not reach this branch and are never double-migrated.
+            org.pepsoft.worldpainter.hytale.HytaleTerrainPalette.remapTiles(tiles.values(),
+                    org.pepsoft.worldpainter.hytale.HytaleTerrainPalette.legacyPreTp57Palette());
+        }
     }
 
     private World2 world;
@@ -2884,7 +2977,7 @@ public class Dimension extends InstanceKeeper implements TileProvider, Serializa
 
     private static final long TOP_LAYER_DEPTH_SEED_OFFSET = 180728193;
     private static final float ROOT_EIGHT = (float) Math.sqrt(8.0);
-    private static final int CURRENT_WP_VERSION = 12;
+    private static final int CURRENT_WP_VERSION = 13;
     private static final BufferKey<Map<String, Object>> BUFFER_KEY_MANAGED_ATTRIBUTES = new BufferKey<>() {};
     private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(Dimension.class);
     @Serial

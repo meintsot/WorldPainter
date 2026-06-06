@@ -2935,6 +2935,21 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         return TERRAIN_BY_INDEX[index - 1];
     }
 
+    /**
+     * The block ids of every terrain in {@link #ALL_TERRAINS}, in layer-index
+     * order (element {@code i} corresponds to 1-based layer index {@code i + 1}).
+     * Used to write a self-describing terrain palette into saved worlds so that
+     * stored per-pixel indices can be remapped by block id when the terrain list
+     * changes (e.g. when the block registry grows). Entries may be null defensively.
+     */
+    public static List<String> currentTerrainPaletteBlockIds() {
+        List<String> ids = new ArrayList<>(ALL_TERRAINS.length);
+        for (HytaleTerrain t : ALL_TERRAINS) {
+            ids.add((t.block != null) ? t.block.id : null);
+        }
+        return ids;
+    }
+
     /** Map from block ID to terrain for quick lookup (includes ALL terrains). */
     private static final Map<String, HytaleTerrain> BLOCK_ID_MAP;
     /** Map from terrain UUID to terrain for quick lookup (includes ALL terrains). */
