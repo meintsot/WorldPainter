@@ -16,6 +16,10 @@ import org.pepsoft.worldpainter.selection.SelectionChunk;
  */
 public final class DefaultFilter implements Filter {
     public DefaultFilter(Dimension dimension, boolean inSelection, boolean outsideSelection, int aboveLevel, int belowLevel, boolean feather, boolean onlyOn, Object onlyOnItem, boolean exceptOn, Object exceptOnItem, int aboveDegrees, boolean slopeIsAbove) {
+        this(dimension, inSelection, outsideSelection, aboveLevel, belowLevel, feather, onlyOn, onlyOnItem, false, exceptOn, exceptOnItem, aboveDegrees, slopeIsAbove);
+    }
+
+    public DefaultFilter(Dimension dimension, boolean inSelection, boolean outsideSelection, int aboveLevel, int belowLevel, boolean feather, boolean onlyOn, Object onlyOnItem, boolean onlyOnIntersection, boolean exceptOn, Object exceptOnItem, int aboveDegrees, boolean slopeIsAbove) {
         this.dimension = dimension;
         this.inSelection = inSelection;
         this.outsideSelection = outsideSelection;
@@ -48,7 +52,8 @@ public final class DefaultFilter implements Filter {
         }
         this.feather = feather;
         this.onlyOn = onlyOn;
-        onlyOnFilter = (onlyOnItem != null) ? OnlyOnTerrainOrLayerFilter.create(dimension, onlyOnItem) : null;
+        this.onlyOnIntersection = onlyOnIntersection;
+        onlyOnFilter = (onlyOnItem != null) ? OnlyOnTerrainOrLayerFilter.create(dimension, onlyOnItem, onlyOnIntersection) : null;
         this.exceptOn = exceptOn;
         exceptOnFilter = (exceptOnItem != null) ? ExceptOnTerrainOrLayerFilter.create(dimension, exceptOnItem) : null;
         this.degrees = aboveDegrees;
@@ -100,6 +105,10 @@ public final class DefaultFilter implements Filter {
      */
     public Layer getExceptOnLayer() {
         return (exceptOnFilter instanceof ExceptOnTerrainOrLayerFilter) ? ((ExceptOnTerrainOrLayerFilter) exceptOnFilter).getLayer() : null;
+    }
+
+    public boolean isOnlyOnIntersection() {
+        return onlyOnIntersection;
     }
 
     public static Builder buildForDimension(Dimension dimension) {
@@ -216,7 +225,7 @@ public final class DefaultFilter implements Filter {
 
 
     final boolean checkLevel, onlyOn, exceptOn, feather, checkSlope,
-            slopeIsAbove, inSelection, outsideSelection;
+            slopeIsAbove, inSelection, outsideSelection, onlyOnIntersection;
     final LevelType levelType;
     final int aboveLevel, belowLevel, degrees;
     final float slope;
@@ -315,6 +324,11 @@ public final class DefaultFilter implements Filter {
             return this;
         }
 
+        public Builder onlyOnIntersection(boolean intersection) {
+            onlyOnIntersection = intersection;
+            return this;
+        }
+
         public Builder exceptOn(Object item) {
             exceptOn = item;
             return this;
@@ -333,11 +347,12 @@ public final class DefaultFilter implements Filter {
         }
 
         public DefaultFilter build() {
-            return new DefaultFilter(dimension, inSelection, outsideSelection, aboveLevel, belowLevel, feather, onlyOn != null, onlyOn, exceptOn != null, exceptOn, aboveDegrees, slopeIsAbove);
+            return new DefaultFilter(dimension, inSelection, outsideSelection, aboveLevel, belowLevel, feather, onlyOn != null, onlyOn, onlyOnIntersection, exceptOn != null, exceptOn, aboveDegrees, slopeIsAbove);
         }
 
         private final Dimension dimension;
         private boolean inSelection, outsideSelection, feather, slopeIsAbove;
+        private boolean onlyOnIntersection;
         private int aboveLevel, belowLevel, aboveDegrees;
         private Object onlyOn, exceptOn;
     }
