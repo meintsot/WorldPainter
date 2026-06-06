@@ -91,4 +91,39 @@ public final class TownPlanStamper {
         }
         return columns.size();
     }
+
+    /**
+     * Compute the world columns whose centre lies within {@code radius} (Euclidean, inclusive) of
+     * {@code (centerX, centerZ)}. Radius 0 returns just the centre column.
+     */
+    public static Set<Point> computeDisc(int centerX, int centerZ, double radius) {
+        final Set<Point> result = new HashSet<>();
+        final int r = (int) Math.floor(radius);
+        final double r2 = radius * radius;
+        for (int dx = -r; dx <= r; dx++) {
+            for (int dz = -r; dz <= r; dz++) {
+                if (((dx * dx) + (dz * dz)) <= r2) {
+                    result.add(new Point(centerX + dx, centerZ + dz));
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
+     * Clear the {@link TownLayout} footprint from every column in the disc around
+     * {@code (centerX, centerZ)} of the given {@code radius}. Columns already clear are left as-is.
+     *
+     * @return the number of columns actually cleared (were set, now unset).
+     */
+    public static int erase(Dimension dimension, int centerX, int centerZ, double radius) {
+        int cleared = 0;
+        for (Point p : computeDisc(centerX, centerZ, radius)) {
+            if (dimension.getBitLayerValueAt(TownLayout.INSTANCE, p.x, p.y)) {
+                dimension.setBitLayerValueAt(TownLayout.INSTANCE, p.x, p.y, false);
+                cleared++;
+            }
+        }
+        return cleared;
+    }
 }
