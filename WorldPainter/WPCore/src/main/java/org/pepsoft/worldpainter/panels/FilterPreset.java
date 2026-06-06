@@ -30,6 +30,7 @@ public final class FilterPreset implements Serializable {
     private List<PaintRef> exceptOnRefs;
     private int slopeDegrees = -1;
     private boolean slopeIsAbove;
+    private boolean onlyOnIntersection;
 
     public FilterPreset() {}
 
@@ -69,6 +70,9 @@ public final class FilterPreset implements Serializable {
     public boolean isSlopeIsAbove() { return slopeIsAbove; }
     public void setSlopeIsAbove(boolean slopeIsAbove) { this.slopeIsAbove = slopeIsAbove; }
 
+    public boolean isOnlyOnIntersection() { return onlyOnIntersection; }
+    public void setOnlyOnIntersection(boolean onlyOnIntersection) { this.onlyOnIntersection = onlyOnIntersection; }
+
     // ---- Snapshot from live paint objects ----
 
     /**
@@ -78,7 +82,9 @@ public final class FilterPreset implements Serializable {
     public void captureFrom(boolean inSelection, boolean outsideSelection,
                             int aboveLevel, int belowLevel, boolean feather,
                             Object onlyOn, Object exceptOn,
-                            int slopeDegrees, boolean slopeIsAbove) {
+                            int slopeDegrees, boolean slopeIsAbove,
+                            boolean onlyOnIntersection) {
+        this.onlyOnIntersection = onlyOnIntersection;
         this.inSelection = inSelection;
         this.outsideSelection = outsideSelection;
         this.aboveLevel = aboveLevel;
