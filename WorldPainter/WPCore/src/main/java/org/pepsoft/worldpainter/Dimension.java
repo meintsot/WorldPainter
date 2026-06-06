@@ -2767,6 +2767,9 @@ public class Dimension extends InstanceKeeper implements TileProvider, Serializa
                 managedAttributes.put("hytalePlantsLayerMigrated", Boolean.TRUE);
             }
         }
+        if (wpVersion < 13) {
+            migrateHytaleTerrainPaletteOnLoad();
+        }
         wpVersion = CURRENT_WP_VERSION;
 
         // Make sure customLayers isn't some weird read-only list
@@ -2846,6 +2849,41 @@ public class Dimension extends InstanceKeeper implements TileProvider, Serializa
         return (managedAttributes != null) ? managedAttributes.get(key) : null;
     }
 
+    /** Test-only: set a managed attribute. */
+    void putManagedAttributeForTests(String key, Object value) {
+        if (managedAttributes == null) {
+            managedAttributes = new HashMap<>();
+        }
+        managedAttributes.put(key, value);
+    }
+
+    /** Test-only: remove a managed attribute. */
+    void removeManagedAttributeForTests(String key) {
+        if (managedAttributes != null) {
+            managedAttributes.remove(key);
+        }
+    }
+
+    /**
+     * Remap stored Hytale terrain ordinals to the current ordering on load.
+     * Worlds saved with {@code hytaleTerrainVersion >= 3} carry a self-describing
+     * {@code stored-index -> block-id} palette; we remap each stored ordinal to
+     * the current layer index of the same block id, so registry/terrain-list
+     * changes (e.g. TP-57's +304 blocks) can no longer silently substitute
+     * blocks. (Legacy worlds without a palette are handled separately.)
+     */
+    void migrateHytaleTerrainPaletteOnLoad() {
+        Object versionObj = (managedAttributes != null)
+                ? managedAttributes.get("hytaleTerrainVersion") : null;
+        int htv = (versionObj instanceof Integer) ? (Integer) versionObj : 0;
+        @SuppressWarnings("unchecked")
+        Map<Integer, String> storedPalette = (managedAttributes != null)
+                ? (Map<Integer, String>) managedAttributes.get("hytaleTerrainPalette") : null;
+        if ((htv >= 3) && (storedPalette != null)) {
+            org.pepsoft.worldpainter.hytale.HytaleTerrainPalette.remapTiles(tiles.values(), storedPalette);
+        }
+    }
+
     private World2 world;
     private final long seed;
     @Deprecated
@@ -2919,7 +2957,7 @@ public class Dimension extends InstanceKeeper implements TileProvider, Serializa
 
     private static final long TOP_LAYER_DEPTH_SEED_OFFSET = 180728193;
     private static final float ROOT_EIGHT = (float) Math.sqrt(8.0);
-    private static final int CURRENT_WP_VERSION = 12;
+    private static final int CURRENT_WP_VERSION = 13;
     private static final BufferKey<Map<String, Object>> BUFFER_KEY_MANAGED_ATTRIBUTES = new BufferKey<>() {};
     private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(Dimension.class);
     @Serial
