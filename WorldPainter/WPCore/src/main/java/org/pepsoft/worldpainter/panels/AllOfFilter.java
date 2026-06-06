@@ -12,7 +12,8 @@ import static java.util.Collections.unmodifiableList;
  * A filter that combines a number of subordinate filters, returning the lowest strength among them.
  * This implements AND semantics: the filter passes only if ALL sub-filters pass.
  * Used for "except on" multi-selection where painting should be blocked if the pixel
- * matches ANY of the exception items.
+ * matches ANY of the exception items, and for "only on" multi-selection in intersection mode,
+ * where the operation applies only where ALL selected items overlap (see TP-119).
  */
 public final class AllOfFilter implements Filter {
     public AllOfFilter(Collection<Filter> filters) {
