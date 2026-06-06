@@ -52,6 +52,7 @@ public final class PrefabPlacementOperation extends MouseOrTabletOperation {
             dropTarget = null;
         }
         selectedId = -1;
+        view.setPrefabPlacementSelectionId(null);
         super.deactivate();
     }
 

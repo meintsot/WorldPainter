@@ -1148,6 +1148,8 @@ public class WorldPainter extends WorldPainterView implements MouseMotionListene
         if ((dimension == null) || dimension.getHytalePrefabPlacements().isEmpty()) {
             return;
         }
+        final Object savedAA = g2.getRenderingHint(RenderingHints.KEY_ANTIALIASING);
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         final Color savedColor = g2.getColor();
         try {
             final long selectedId = (prefabPlacementSelectionId != null) ? prefabPlacementSelectionId : -1L;
@@ -1170,6 +1172,9 @@ public class WorldPainter extends WorldPainterView implements MouseMotionListene
             }
         } finally {
             g2.setColor(savedColor);
+            if (savedAA != null) {
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, savedAA);
+            }
         }
     }
 
