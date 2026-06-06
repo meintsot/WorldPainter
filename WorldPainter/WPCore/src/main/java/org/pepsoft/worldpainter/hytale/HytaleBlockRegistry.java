@@ -230,6 +230,47 @@ public class HytaleBlockRegistry {
     }
 
     /**
+     * Block-id prefix shared by the floating water flowers
+     * ({@code Plant_Flower_Water_Blue}, {@code _Duckweed}, {@code _Green},
+     * {@code _Purple}, {@code _Red}, {@code _White}).
+     */
+    private static final String FLOATING_WATER_PLANT_PREFIX = "Plant_Flower_Water_";
+
+    /**
+     * Whether the given block is a floating water plant — a lily pad or
+     * duckweed that rests on the water surface rather than on the ground.
+     * Unlike ordinary surface-only vegetation, these must be placed at the
+     * water level when their column is flooded; see {@link #surfacePlantY}.
+     */
+    public static boolean isFloatingWaterPlant(String blockId) {
+        return (blockId != null) && blockId.startsWith(FLOATING_WATER_PLANT_PREFIX);
+    }
+
+    /**
+     * Compute the Y at which a surface plant block should be placed, given the
+     * terrain surface height and the water level of the column.
+     *
+     * <p>Ordinary plants sit directly on the terrain surface
+     * ({@code terrainHeight + 1}). Floating water plants (lily pads, duckweed)
+     * rest on the water surface instead, so when the column is flooded
+     * ({@code waterLevel > terrainHeight}) they are placed in the air cell
+     * directly above the topmost fluid block ({@code waterLevel + 1}). On a dry
+     * column they fall back to the terrain surface like any other plant.
+     *
+     * @param blockId      the plant block id
+     * @param terrainHeight the terrain surface height (topmost solid block)
+     * @param waterLevel    the column's water level (topmost fluid block, inclusive);
+     *                      {@code <= terrainHeight} when the column is not flooded
+     * @return the Y coordinate at which to place the plant
+     */
+    public static int surfacePlantY(String blockId, int terrainHeight, int waterLevel) {
+        if (isFloatingWaterPlant(blockId) && (waterLevel > terrainHeight)) {
+            return waterLevel + 1;
+        }
+        return terrainHeight + 1;
+    }
+
+    /**
      * Check whether a block placed above a grass block should preserve the
      * grass (return {@code true}) or cause it to convert to dirt
      * ({@code false}). Non-solid blocks — vegetation, decorations, rubble,

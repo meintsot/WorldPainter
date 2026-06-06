@@ -1226,7 +1226,18 @@ public class HytaleWorldExporter implements WorldExporter {
                     // Place the vegetation/decoration block on top of the grass surface
                     if (surfaceOnly) {
                         HytaleBlock plantBlock = hytaleTerrain.getBlock(seed, worldX, worldZ, 0);
-                        chunk.setHytaleBlock(localX, height + 1, localZ, plantBlock);
+                        int plantY = HytaleBlockRegistry.surfacePlantY(plantBlock.id, height, localWaterLevel);
+                        if (plantY > height + 1) {
+                            // Floating water plant (lily pad, duckweed) painted as a terrain
+                            // over water: lift it onto the water surface and seal-protect so
+                            // the fluid fill below and the post-export seal pass leave it alone.
+                            if (plantY < dimension.getMaxHeight()) {
+                                chunk.setHytaleBlock(localX, plantY, localZ, plantBlock);
+                                chunk.setSealProtected(localX, plantY, localZ, true);
+                            }
+                        } else {
+                            chunk.setHytaleBlock(localX, height + 1, localZ, plantBlock);
+                        }
                     }
                 }
 
@@ -1268,12 +1279,17 @@ public class HytaleWorldExporter implements WorldExporter {
                 // runs before the overlay block.
                 if ((pendingCustomTerrainSurfacePlant != null)
                         && (! pendingCustomTerrainSurfacePlant.isEmpty())
-                        && (! pendingCustomTerrainSurfacePlant.isFluid())
-                        && ((height + 1) < dimension.getMaxHeight())) {
-                    chunk.setHytaleBlock(localX, height + 1, localZ, pendingCustomTerrainSurfacePlant);
-                    chunk.setSealProtected(localX, height + 1, localZ, true);
-                    if (plantsPhysicsExempt) {
-                        chunk.setDecorative(localX, height + 1, localZ, true);
+                        && (! pendingCustomTerrainSurfacePlant.isFluid())) {
+                    // Floating water plants rest on the water surface; everything
+                    // else sits on the terrain surface.
+                    int plantY = HytaleBlockRegistry.surfacePlantY(
+                            pendingCustomTerrainSurfacePlant.id, height, localWaterLevel);
+                    if (plantY < dimension.getMaxHeight()) {
+                        chunk.setHytaleBlock(localX, plantY, localZ, pendingCustomTerrainSurfacePlant);
+                        chunk.setSealProtected(localX, plantY, localZ, true);
+                        if (plantsPhysicsExempt) {
+                            chunk.setDecorative(localX, plantY, localZ, true);
+                        }
                     }
                 }
 
@@ -1296,14 +1312,18 @@ public class HytaleWorldExporter implements WorldExporter {
                     HytaleTerrain plantTerrain = HytaleTerrain.getByLayerIndex(plantIndex);
                     if (plantTerrain != null) {
                         HytaleBlock plantBlock = plantTerrain.getBlock(seed, worldX, worldZ, 0);
-                        if ((plantBlock != null) && (! plantBlock.isEmpty()) && (! plantBlock.isFluid())
-                                && ((height + 1) < dimension.getMaxHeight())) {
-                            chunk.setHytaleBlock(localX, height + 1, localZ, plantBlock);
-                            // Seal-protect so the post-export sealAboveTerrainColumn pass
-                            // does not clear this plant on flooded columns.
-                            chunk.setSealProtected(localX, height + 1, localZ, true);
-                            if (plantsPhysicsExempt) {
-                                chunk.setDecorative(localX, height + 1, localZ, true);
+                        if ((plantBlock != null) && (! plantBlock.isEmpty()) && (! plantBlock.isFluid())) {
+                            // Floating water plants (lily pads, duckweed) rest on the water
+                            // surface; everything else sits on the terrain surface.
+                            int plantY = HytaleBlockRegistry.surfacePlantY(plantBlock.id, height, localWaterLevel);
+                            if (plantY < dimension.getMaxHeight()) {
+                                chunk.setHytaleBlock(localX, plantY, localZ, plantBlock);
+                                // Seal-protect so the post-export sealAboveTerrainColumn pass
+                                // does not clear this plant on flooded columns.
+                                chunk.setSealProtected(localX, plantY, localZ, true);
+                                if (plantsPhysicsExempt) {
+                                    chunk.setDecorative(localX, plantY, localZ, true);
+                                }
                             }
                         }
                     }
@@ -1346,12 +1366,16 @@ public class HytaleWorldExporter implements WorldExporter {
                                     HytaleBlock plantBlock = pickedTerrain.getBlock(seed, worldX, worldZ, 0);
                                     HytaleBlock substrate = chunk.getHytaleBlock(localX, height, localZ);
                                     if ((plantBlock != null) && (! plantBlock.isEmpty()) && (! plantBlock.isFluid())
-                                            && ((height + 1) < dimension.getMaxHeight())
                                             && HytaleAutoVegetationAlgorithm.isValidSubstrateFor(plantBlock, substrate)) {
-                                        chunk.setHytaleBlock(localX, height + 1, localZ, plantBlock);
-                                        chunk.setSealProtected(localX, height + 1, localZ, true);
-                                        if (plantsPhysicsExempt) {
-                                            chunk.setDecorative(localX, height + 1, localZ, true);
+                                        // Floating water plants rest on the water surface;
+                                        // everything else sits on the terrain surface.
+                                        int plantY = HytaleBlockRegistry.surfacePlantY(plantBlock.id, height, localWaterLevel);
+                                        if (plantY < dimension.getMaxHeight()) {
+                                            chunk.setHytaleBlock(localX, plantY, localZ, plantBlock);
+                                            chunk.setSealProtected(localX, plantY, localZ, true);
+                                            if (plantsPhysicsExempt) {
+                                                chunk.setDecorative(localX, plantY, localZ, true);
+                                            }
                                         }
                                     }
                                 }

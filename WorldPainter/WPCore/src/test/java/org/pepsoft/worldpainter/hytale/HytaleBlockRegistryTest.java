@@ -50,4 +50,34 @@ public class HytaleBlockRegistryTest {
             HytaleBlockRegistry.getCategoryForBlock("Plant_Moss_Green"));
         assertTrue(HytaleBlockRegistry.isSurfaceOnlyBlock("Plant_Moss_Green"));
     }
+
+    @Test
+    public void testWaterFlowersAreFloatingWaterPlants() {
+        assertTrue(HytaleBlockRegistry.isFloatingWaterPlant("Plant_Flower_Water_Green"));
+        assertTrue(HytaleBlockRegistry.isFloatingWaterPlant("Plant_Flower_Water_Duckweed"));
+        assertTrue(HytaleBlockRegistry.isFloatingWaterPlant("Plant_Flower_Water_Blue"));
+
+        assertFalse(HytaleBlockRegistry.isFloatingWaterPlant("Plant_Bush"));
+        assertFalse(HytaleBlockRegistry.isFloatingWaterPlant("Plant_Flower_Common_Blue"));
+        assertFalse(HytaleBlockRegistry.isFloatingWaterPlant(null));
+    }
+
+    @Test
+    public void testFloatingWaterPlantOnFloodedColumnGoesToSurface() {
+        // Flooded: waterLevel (64) above terrain (50) -> rest on the air cell above the
+        // topmost fluid block (65), not the floor (51).
+        assertEquals(65, HytaleBlockRegistry.surfacePlantY("Plant_Flower_Water_Green", 50, 64));
+    }
+
+    @Test
+    public void testFloatingWaterPlantOnDryColumnStaysOnSurface() {
+        // No water above terrain -> fall back to terrain+1, like any other plant.
+        assertEquals(51, HytaleBlockRegistry.surfacePlantY("Plant_Flower_Water_Green", 50, 40));
+    }
+
+    @Test
+    public void testNonFloatingPlantIgnoresWaterLevel() {
+        // Ordinary plants always sit on the terrain surface even when flooded.
+        assertEquals(51, HytaleBlockRegistry.surfacePlantY("Plant_Bush", 50, 64));
+    }
 }
