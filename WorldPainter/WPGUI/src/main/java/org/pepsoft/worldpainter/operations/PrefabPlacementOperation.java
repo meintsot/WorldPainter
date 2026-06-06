@@ -48,9 +48,10 @@ public final class PrefabPlacementOperation extends MouseOrTabletOperation {
     @Override
     protected void deactivate() {
         if (dropTarget != null) {
-            dropTarget.setActive(false);
+            view.setDropTarget(null);
             dropTarget = null;
         }
+        selectedId = -1;
         super.deactivate();
     }
 
@@ -102,10 +103,10 @@ public final class PrefabPlacementOperation extends MouseOrTabletOperation {
         }
     }
 
-    private void addPlacementAt(int worldX, int worldY, PrefabTransferable.Payload payload) {
+    private boolean addPlacementAt(int worldX, int worldY, PrefabTransferable.Payload payload) {
         Dimension dim = view.getDimension();
         if (dim == null) {
-            return;
+            return false;
         }
         HytalePrefabPlacement placement = new HytalePrefabPlacement(
                 idSeq.incrementAndGet(), payload.path, payload.name,
@@ -114,6 +115,7 @@ public final class PrefabPlacementOperation extends MouseOrTabletOperation {
         selectedId = placement.getId();
         notifySelection();
         view.repaint();
+        return true;
     }
 
     private final class DropHandler extends DropTargetAdapter {
@@ -128,10 +130,8 @@ public final class PrefabPlacementOperation extends MouseOrTabletOperation {
                 PrefabTransferable.Payload payload = (PrefabTransferable.Payload)
                         dtde.getTransferable().getTransferData(PrefabTransferable.PREFAB_FLAVOR);
                 Point world = view.viewToWorld(dtde.getLocation());
-                if (world != null) {
-                    addPlacementAt(world.x, world.y, payload);
-                }
-                dtde.dropComplete(true);
+                boolean placed = (world != null) && addPlacementAt(world.x, world.y, payload);
+                dtde.dropComplete(placed);
             } catch (Exception e) {
                 dtde.dropComplete(false);
             }
