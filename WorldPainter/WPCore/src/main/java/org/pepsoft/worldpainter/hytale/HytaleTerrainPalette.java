@@ -42,6 +42,15 @@ public final class HytaleTerrainPalette {
     }
 
     /**
+     * The reconstructed pre-TP-57 {@code stored-index -> block-id} palette, used to
+     * migrate legacy worlds saved before the self-describing palette existed (no
+     * stored palette). See {@link HytaleTerrainV2Snapshot}.
+     */
+    public static Map<Integer, String> legacyPreTp57Palette() {
+        return HytaleTerrainV2Snapshot.asPalette();
+    }
+
+    /**
      * Remap a single stored 1-based index using {@code oldPalette}
      * ({@code stored-index -> block-id} as it was when the world was saved).
      * Returns the current layer index for that block id, {@code 0} if the block

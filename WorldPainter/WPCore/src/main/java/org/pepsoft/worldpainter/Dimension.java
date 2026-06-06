@@ -2747,7 +2747,10 @@ public class Dimension extends InstanceKeeper implements TileProvider, Serializa
                 if (managedAttributes == null) {
                     managedAttributes = new HashMap<>();
                 }
-                managedAttributes.put("hytaleTerrainVersion", 2);
+                // V0/V1 already mapped curated indices to the current ordering by
+                // terrain identity, so mark these worlds as fully current (3). This
+                // stops the pre-TP-57 legacy remap below from double-migrating them.
+                managedAttributes.put("hytaleTerrainVersion", 3);
             }
         }
         if (wpVersion < 12) {
@@ -2870,7 +2873,8 @@ public class Dimension extends InstanceKeeper implements TileProvider, Serializa
      * {@code stored-index -> block-id} palette; we remap each stored ordinal to
      * the current layer index of the same block id, so registry/terrain-list
      * changes (e.g. TP-57's +304 blocks) can no longer silently substitute
-     * blocks. (Legacy worlds without a palette are handled separately.)
+     * blocks. Legacy worlds saved before the palette existed (version &lt; 3) are
+     * remapped against the reconstructed pre-TP-57 ordering instead.
      */
     void migrateHytaleTerrainPaletteOnLoad() {
         Object versionObj = (managedAttributes != null)
@@ -2881,6 +2885,15 @@ public class Dimension extends InstanceKeeper implements TileProvider, Serializa
                 ? (Map<Integer, String>) managedAttributes.get("hytaleTerrainPalette") : null;
         if ((htv >= 3) && (storedPalette != null)) {
             org.pepsoft.worldpainter.hytale.HytaleTerrainPalette.remapTiles(tiles.values(), storedPalette);
+        } else if ((htv < 3) && hasHytaleTerrainData()) {
+            // Legacy world saved before the self-describing palette existed (no
+            // stored palette). Interpret stored ordinals against the reconstructed
+            // pre-TP-57 ordering and remap by block id. Best-effort: worlds whose
+            // curated indices were already brought current by the wpVersion < 11
+            // V0/V1 migration are marked hytaleTerrainVersion 3 there, so they do
+            // not reach this branch and are never double-migrated.
+            org.pepsoft.worldpainter.hytale.HytaleTerrainPalette.remapTiles(tiles.values(),
+                    org.pepsoft.worldpainter.hytale.HytaleTerrainPalette.legacyPreTp57Palette());
         }
     }
 
