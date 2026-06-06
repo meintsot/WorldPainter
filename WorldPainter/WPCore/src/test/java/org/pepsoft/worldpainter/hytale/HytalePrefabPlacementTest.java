@@ -46,4 +46,46 @@ public class HytalePrefabPlacementTest {
         assertFalse(back.isSnapToSurface());
         assertEquals(137.5, back.getRotationDegrees(), 1.0e-9);
     }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void rejectsNaNRotation() {
+        new HytalePrefabPlacement(1L, "p.prefab.json", "P", 0, 0, 0, false, Double.NaN);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void rejectsInfiniteRotation() {
+        new HytalePrefabPlacement(1L, "p.prefab.json", "P", 0, 0, 0, false, Double.POSITIVE_INFINITY);
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void rejectsNullHeightWithoutSnap() {
+        new HytalePrefabPlacement(1L, "p.prefab.json", "P", 0, 0, null, false, 0.0);
+    }
+
+    @Test(expected = NullPointerException.class)
+    public void rejectsNullPath() {
+        new HytalePrefabPlacement(1L, null, "P", 0, 0, 0, false, 0.0);
+    }
+
+    @Test
+    public void normalizesFullTurnAndLargeAngles() {
+        assertEquals(0.0, new HytalePrefabPlacement(1L, "p", "P", 0, 0, 0, false, 360.0).getRotationDegrees(), 1.0e-9);
+        assertEquals(5.0, new HytalePrefabPlacement(1L, "p", "P", 0, 0, 0, false, 725.0).getRotationDegrees(), 1.0e-9);
+        // -360.0 normalizes to +0.0 (not -0.0)
+        double zero = new HytalePrefabPlacement(1L, "p", "P", 0, 0, 0, false, -360.0).getRotationDegrees();
+        assertEquals(0L, Double.doubleToRawLongBits(zero));
+    }
+
+    @Test
+    public void withPositionAndWithHeightPreserveIdentity() {
+        HytalePrefabPlacement p = new HytalePrefabPlacement(3L, "p", "P", 1, 2, 64, false, 0.0);
+        HytalePrefabPlacement moved = p.withPosition(7, 8);
+        assertEquals(7, moved.getX());
+        assertEquals(8, moved.getY());
+        assertEquals(3L, moved.getId());
+        HytalePrefabPlacement snapped = p.withHeight(null, true);
+        assertTrue(snapped.isSnapToSurface());
+        assertNull(snapped.getHeight());
+        assertEquals(3L, snapped.getId());
+    }
 }

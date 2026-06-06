@@ -1,6 +1,7 @@
 package org.pepsoft.worldpainter.hytale;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 /**
  * An exact, user-authored placement of a single Hytale prefab at a specific
@@ -28,10 +29,13 @@ public final class HytalePrefabPlacement implements Serializable {
                                  int x, int y, Integer height, boolean snapToSurface,
                                  double rotationDegrees) {
         this.id = id;
-        this.prefabPath = prefabPath;
-        this.prefabName = prefabName;
+        this.prefabPath = Objects.requireNonNull(prefabPath, "prefabPath");
+        this.prefabName = Objects.requireNonNull(prefabName, "prefabName");
         this.x = x;
         this.y = y;
+        if ((height == null) && (! snapToSurface)) {
+            throw new IllegalArgumentException("height may only be null when snapToSurface is true");
+        }
         this.height = height;
         this.snapToSurface = snapToSurface;
         this.rotationDegrees = normalizeDegrees(rotationDegrees);
@@ -59,11 +63,14 @@ public final class HytalePrefabPlacement implements Serializable {
     }
 
     private static double normalizeDegrees(double d) {
+        if (! Double.isFinite(d)) {
+            throw new IllegalArgumentException("rotationDegrees must be finite, got: " + d);
+        }
         double r = d % 360.0;
         if (r < 0.0) {
             r += 360.0;
         }
-        return r;
+        return r + 0.0; // normalize -0.0 to +0.0
     }
 
     @Override
