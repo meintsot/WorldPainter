@@ -715,6 +715,7 @@ public class WorldPainter extends WorldPainterView implements MouseMotionListene
             // The upstream grid is suppressed (see setPaintGrid); paint our own
             // version which honors the configured grid size at every zoom level.
             paintWpGrid(g2);
+            drawPrefabPlacements(g2);
 
             final Color savedColour = g2.getColor();
             final Object savedAAValue = g2.getRenderingHint(RenderingHints.KEY_ANTIALIASING);
@@ -1138,6 +1139,40 @@ public class WorldPainter extends WorldPainterView implements MouseMotionListene
         repaint(area.x - 2, area.y - 2, area.width + 4, area.height + 4);
     }
 
+    public void setPrefabPlacementSelectionId(Long id) {
+        this.prefabPlacementSelectionId = id;
+        repaint();
+    }
+
+    private void drawPrefabPlacements(Graphics2D g2) {
+        if ((dimension == null) || dimension.getHytalePrefabPlacements().isEmpty()) {
+            return;
+        }
+        final Color savedColor = g2.getColor();
+        try {
+            final long selectedId = (prefabPlacementSelectionId != null) ? prefabPlacementSelectionId : -1L;
+            for (org.pepsoft.worldpainter.hytale.HytalePrefabPlacement p : dimension.getHytalePrefabPlacements()) {
+                final Point viewPt = worldToView(p.getX(), p.getY());
+                if (viewPt == null) {
+                    continue;
+                }
+                final boolean isSel = (p.getId() == selectedId);
+                g2.setColor(isSel ? new Color(255, 80, 80) : new Color(255, 220, 0));
+                final int s = 6;
+                g2.fillOval(viewPt.x - s, viewPt.y - s, s * 2, s * 2);
+                g2.setColor(Color.BLACK);
+                g2.drawOval(viewPt.x - s, viewPt.y - s, s * 2, s * 2);
+                g2.drawString(p.getPrefabName(), viewPt.x + 8, viewPt.y);
+                if (isSel) {
+                    g2.setColor(new Color(255, 80, 80));
+                    g2.drawOval(viewPt.x - 12, viewPt.y - 12, 24, 24);
+                }
+            }
+        } finally {
+            g2.setColor(savedColor);
+        }
+    }
+
     private void drawPlacementHandles(Graphics2D g2) {
         if ((placementOverlay == null) || (placementOverlay.getImage() == null)) {
             return;
@@ -1274,6 +1309,7 @@ public class WorldPainter extends WorldPainterView implements MouseMotionListene
     private boolean drawBrush, drawOverlays, drawContours, drawViewDistance, drawWalkingDistance,
             drawGameBorder = true, drawBorders = true, drawBiomes = true;
     private boolean wpPaintGrid;
+    private Long prefabPlacementSelectionId; // id of the selected placement to highlight, or null
     private BrushShape brushShape;
     private ColourScheme colourScheme;
     private LightOrigin lightOrigin = LightOrigin.NORTHWEST;

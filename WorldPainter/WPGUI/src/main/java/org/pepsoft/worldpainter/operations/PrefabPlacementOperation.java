@@ -63,7 +63,7 @@ public final class PrefabPlacementOperation extends MouseOrTabletOperation {
         HytalePrefabPlacement hit = hitTest(centreX, centreY);
         selectedId = (hit != null) ? hit.getId() : -1;
         notifySelection();
-        view.repaint();
+        view.setPrefabPlacementSelectionId(selectedId);
     }
 
     private HytalePrefabPlacement hitTest(int worldX, int worldY) {
@@ -90,7 +90,7 @@ public final class PrefabPlacementOperation extends MouseOrTabletOperation {
 
     public void setSelectedId(long id) {
         this.selectedId = id;
-        view.repaint();
+        view.setPrefabPlacementSelectionId(selectedId);
     }
 
     public void setSelectionListener(Runnable listener) {
@@ -114,7 +114,7 @@ public final class PrefabPlacementOperation extends MouseOrTabletOperation {
         dim.addHytalePrefabPlacement(placement);
         selectedId = placement.getId();
         notifySelection();
-        view.repaint();
+        view.setPrefabPlacementSelectionId(selectedId);
         return true;
     }
 
