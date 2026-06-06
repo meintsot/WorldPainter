@@ -1,8 +1,9 @@
 package org.pepsoft.worldpainter.layers;
 
 /**
- * Marks the X-Z footprint of an imported town plan. Exported as marker blocks at the terrain
- * surface by {@code TownLayoutExporter}. A single on/off (BIT) layer.
+ * Marks the X-Z footprint of an imported town plan. On export, {@code TownLayoutExporter} replaces
+ * the terrain surface block at each footprint column (flush with the ground, not a pillar above it).
+ * A single on/off (BIT) layer.
  */
 public class TownLayout extends Layer {
     private TownLayout() {

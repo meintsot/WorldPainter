@@ -33,11 +33,11 @@ public class TownLayoutExporter extends AbstractLayerExporter<TownLayout> implem
             return null;
         }
         final Material block = settings.getBlock();
-        final int markerHeight = Math.max(1, settings.getMarkerHeight());
+        final int depth = Math.max(1, settings.getSurfaceDepth());
         for (int x = area.x; x < area.x + area.width; x++) {
             for (int y = area.y; y < area.y + area.height; y++) {
                 if (dimension.getBitLayerValueAt(TownLayout.INSTANCE, x, y)) {
-                    placeMarkerColumn(minecraftWorld, x, y, dimension.getIntHeightAt(x, y), markerHeight, block);
+                    placeSurfaceColumn(minecraftWorld, x, y, dimension.getIntHeightAt(x, y), depth, block);
                 }
             }
         }
@@ -45,23 +45,18 @@ public class TownLayoutExporter extends AbstractLayerExporter<TownLayout> implem
     }
 
     /**
-     * Place a marker pillar of {@code block} starting one block above {@code terrainHeight}, up to
-     * {@code markerHeight} blocks tall. Only fills insubstantial space; stops at the first solid block
-     * and never exceeds the world's maximum height.
+     * Replace the terrain surface block at {@code (x, y)} with {@code block}, flush with the ground,
+     * continuing downward for {@code depth} blocks total (clamped at the world floor). Unlike a marker
+     * pillar, this overwrites solid terrain — the footprint sits in the surface, not above it.
      */
-    static void placeMarkerColumn(MinecraftWorld world, int x, int y, int terrainHeight, int markerHeight, Material block) {
-        final int maxZ = world.getMaxHeight() - 1;
-        for (int dz = 1; dz <= markerHeight; dz++) {
-            final int z = terrainHeight + dz;
-            if (z > maxZ) {
+    static void placeSurfaceColumn(MinecraftWorld world, int x, int y, int terrainHeight, int depth, Material block) {
+        final int minZ = world.getMinHeight();
+        for (int d = 0; d < depth; d++) {
+            final int z = terrainHeight - d;
+            if (z < minZ) {
                 break;
             }
-            final Material existing = world.getMaterialAt(x, y, z);
-            if (existing.veryInsubstantial || (existing == Material.ICE)) {
-                world.setMaterialAt(x, y, z, block);
-            } else {
-                break;
-            }
+            world.setMaterialAt(x, y, z, block);
         }
     }
 }

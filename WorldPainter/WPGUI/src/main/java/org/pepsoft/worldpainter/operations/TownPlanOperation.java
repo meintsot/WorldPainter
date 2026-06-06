@@ -108,6 +108,13 @@ public class TownPlanOperation extends AbstractOperation {
         refreshBlockButtonLabel();
         panel.add(blockButton);
         panel.add(stampButton);
+        eraseToggle = new JToggleButton("Erase footprint");
+        eraseToggle.setToolTipText("When on, drag on the map to erase the stamped footprint under the brush");
+        eraseRadiusSlider = new JSlider(1, 64, 8);
+        eraseRadiusSlider.setToolTipText("Erase brush radius, in blocks");
+        panel.add(new JLabel("Erase brush radius"));
+        panel.add(eraseRadiusSlider);
+        panel.add(eraseToggle);
         return panel;
     }
 
@@ -267,10 +274,28 @@ public class TownPlanOperation extends AbstractOperation {
         JOptionPane.showMessageDialog(view, "Stamped " + count + " columns into the Town Layout layer.", "Town Plan", JOptionPane.INFORMATION_MESSAGE);
     }
 
+    private boolean isErasing() {
+        return (eraseToggle != null) && eraseToggle.isSelected();
+    }
+
+    /** Erase the stamped footprint under {@code world} using the current brush radius, and repaint. */
+    private void eraseAt(Point world) {
+        final Dimension dimension = getDimension();
+        if (dimension == null) {
+            return;
+        }
+        TownPlanStamper.erase(dimension, world.x, world.y, eraseRadiusSlider.getValue());
+        ((WorldPainter) getView()).repaint();
+    }
+
     private final MouseAdapter mouseHandler = new MouseAdapter() {
         @Override
         public void mousePressed(MouseEvent e) {
             final WorldPainter view = (WorldPainter) getView();
+            if (isErasing()) {
+                eraseAt(view.viewToWorld(e.getPoint()));
+                return;
+            }
             if ((overlay == null) || (overlay.getImage() == null)) {
                 return;
             }
@@ -285,6 +310,10 @@ public class TownPlanOperation extends AbstractOperation {
         @Override
         public void mouseDragged(MouseEvent e) {
             final WorldPainter view = (WorldPainter) getView();
+            if (isErasing()) {
+                eraseAt(view.viewToWorld(e.getPoint()));
+                return;
+            }
             if ((overlay == null) || (overlay.getImage() == null)
                     || (activeHandle == TownPlanPlacement.Handle.NONE) || (lastWorld == null)) {
                 return;
@@ -325,6 +354,12 @@ public class TownPlanOperation extends AbstractOperation {
 
         @Override
         public void mouseReleased(MouseEvent e) {
+            if (isErasing()) {
+                final Dimension dimension = getDimension();
+                if (dimension != null) {
+                    dimension.armSavePoint();
+                }
+            }
             activeHandle = TownPlanPlacement.Handle.NONE;
         }
     };
@@ -332,6 +367,8 @@ public class TownPlanOperation extends AbstractOperation {
     private JPanel optionsPanel;
     private JSlider thresholdSlider;
     private JCheckBox invertCheckBox;
+    private JToggleButton eraseToggle;
+    private JSlider eraseRadiusSlider;
     private JButton blockButton;
     private Overlay overlay;
     private Point lastWorld;

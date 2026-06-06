@@ -1,6 +1,9 @@
 package org.pepsoft.worldpainter.townplan;
 
 import org.junit.Test;
+import org.pepsoft.worldpainter.Dimension;
+import org.pepsoft.worldpainter.TestData;
+import org.pepsoft.worldpainter.layers.TownLayout;
 
 import java.awt.Point;
 import java.awt.Rectangle;
@@ -85,5 +88,53 @@ public class TownPlanStamperTest {
         assertEquals(1, cols.size());
         assertTrue(cols.contains(new Point(0, 1)));    // clockwise result
         assertFalse(cols.contains(new Point(0, -1)));  // would be counter-clockwise
+    }
+
+    @Test
+    public void discRadiusZeroIsJustCentre() {
+        Set<Point> cols = TownPlanStamper.computeDisc(5, 7, 0.0);
+        assertEquals(1, cols.size());
+        assertTrue(cols.contains(new Point(5, 7)));
+    }
+
+    @Test
+    public void discRadiusOneIsPlusShape() {
+        // radius 1: centre + 4 orthogonal neighbours; diagonals (dx^2 + dz^2 = 2) fall outside.
+        Set<Point> cols = TownPlanStamper.computeDisc(0, 0, 1.0);
+        assertEquals(5, cols.size());
+        assertTrue(cols.contains(new Point(0, 0)));
+        assertTrue(cols.contains(new Point(1, 0)));
+        assertTrue(cols.contains(new Point(-1, 0)));
+        assertTrue(cols.contains(new Point(0, 1)));
+        assertTrue(cols.contains(new Point(0, -1)));
+        assertFalse(cols.contains(new Point(1, 1)));   // diagonal excluded
+    }
+
+    @Test
+    public void discIsCentredOnGivenColumn() {
+        Set<Point> cols = TownPlanStamper.computeDisc(10, -4, 2.0);
+        assertTrue(cols.contains(new Point(10, -4)));   // centre
+        assertTrue(cols.contains(new Point(12, -4)));   // +2 in x, on the rim (4 <= 4)
+        assertTrue(cols.contains(new Point(10, -2)));   // +2 in z, on the rim
+        assertFalse(cols.contains(new Point(12, -2)));  // (2,2): 8 > 4, outside
+        assertFalse(cols.contains(new Point(13, -4)));  // +3 in x: 9 > 4, outside
+    }
+
+    @Test
+    public void eraseClearsDiscAndLeavesRest() {
+        final Rectangle area = new Rectangle(0, 0, 128, 128);
+        final Dimension dimension = TestData.createDimension(area, 64);
+        // Paint a 3x3 block of footprint around (10,10).
+        for (int x = 9; x <= 11; x++) {
+            for (int z = 9; z <= 11; z++) {
+                dimension.setBitLayerValueAt(TownLayout.INSTANCE, x, z, true);
+            }
+        }
+        // Erase radius 1 at the centre clears (10,10) and its 4 orthogonal neighbours only.
+        int cleared = TownPlanStamper.erase(dimension, 10, 10, 1.0);
+        assertEquals(5, cleared);
+        assertFalse(dimension.getBitLayerValueAt(TownLayout.INSTANCE, 10, 10));
+        assertFalse(dimension.getBitLayerValueAt(TownLayout.INSTANCE, 11, 10));
+        assertTrue(dimension.getBitLayerValueAt(TownLayout.INSTANCE, 9, 9)); // diagonal corner survives
     }
 }
