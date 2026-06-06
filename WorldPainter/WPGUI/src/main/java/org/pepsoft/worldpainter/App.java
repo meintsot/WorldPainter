@@ -3133,12 +3133,7 @@ public final class App extends JFrame implements BrushControl,
 
         // Hytale-only prefab placement panels (gated on in configureForPlatform()); they share prefabPlacementOp
         // with the prefab placement tool button created in createToolPanel().
-        final java.io.File hytaleAssetsDir = org.pepsoft.worldpainter.hytale.HytaleTerrain.getHytaleAssetsDir();
         prefabPlacementsPanel = new org.pepsoft.worldpainter.hytale.prefab.HytalePrefabPlacementsPanel(view, prefabPlacementOp);
-
-        prefabPaletteFrame = new DockableFrameBuilder(new org.pepsoft.worldpainter.hytale.prefab.HytalePrefabPalette(hytaleAssetsDir), "Prefab Palette", DOCK_SIDE_WEST, 3).scrollable().build();
-        dockingManager.addFrame(prefabPaletteFrame);
-        dockingManager.hideFrame(prefabPaletteFrame.getKey());
 
         prefabPlacementsFrame = new DockableFrameBuilder(prefabPlacementsPanel, "Prefab Placements", DOCK_SIDE_EAST, 3).scrollable().build();
         dockingManager.addFrame(prefabPlacementsFrame);
@@ -6626,7 +6621,6 @@ public final class App extends JFrame implements BrushControl,
         if (isHytalePlatform) {
             dockingManager.showFrame(prefabsPanelFrame.getKey());
             dockingManager.showFrame(environmentPanelFrame.getKey());
-            dockingManager.showFrame(prefabPaletteFrame.getKey());
             dockingManager.showFrame(prefabPlacementsFrame.getKey());
             if (prefabPlacementsPanel != null) {
                 prefabPlacementsPanel.refresh();
@@ -6636,7 +6630,6 @@ public final class App extends JFrame implements BrushControl,
         } else {
             dockingManager.hideFrame(prefabsPanelFrame.getKey());
             dockingManager.hideFrame(environmentPanelFrame.getKey());
-            dockingManager.hideFrame(prefabPaletteFrame.getKey());
             dockingManager.hideFrame(prefabPlacementsFrame.getKey());
             // entitiesPanelFrame hidden — experimental
         }
@@ -8121,7 +8114,6 @@ public final class App extends JFrame implements BrushControl,
     private DockableFrame entitiesPanelFrame;
     private DockableFrame environmentPanelFrame;
     private org.pepsoft.worldpainter.operations.PrefabPlacementOperation prefabPlacementOp;
-    private DockableFrame prefabPaletteFrame;
     private DockableFrame prefabPlacementsFrame;
     private AbstractButton prefabPlacementToolButton;
     private org.pepsoft.worldpainter.hytale.prefab.HytalePrefabPlacementsPanel prefabPlacementsPanel;
