@@ -4,7 +4,6 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.dnd.*;
 import java.io.File;
-import java.util.List;
 
 /** Dockable palette of placeable Hytale prefabs; drag a thumbnail onto the map. */
 public final class HytalePrefabPalette extends JPanel {
@@ -33,11 +32,17 @@ public final class HytalePrefabPalette extends JPanel {
 
         DragSource.getDefaultDragSource().createDefaultDragGestureRecognizer(
                 list, DnDConstants.ACTION_COPY, dge -> {
-                    PrefabPaletteModel.PrefabItem item = list.getSelectedValue();
-                    if (item != null) {
-                        dge.startDrag(DragSource.DefaultCopyDrop,
-                                new PrefabTransferable(item.path, item.name));
+                    int idx = list.locationToIndex(dge.getDragOrigin());
+                    if (idx < 0) {
+                        return;
                     }
+                    Rectangle cellBounds = list.getCellBounds(idx, idx);
+                    if ((cellBounds == null) || (! cellBounds.contains(dge.getDragOrigin()))) {
+                        return;
+                    }
+                    PrefabPaletteModel.PrefabItem item = listModel.getElementAt(idx);
+                    dge.startDrag(DragSource.DefaultCopyDrop,
+                            new PrefabTransferable(item.path, item.name));
                 });
 
         refilter("");
@@ -45,10 +50,7 @@ public final class HytalePrefabPalette extends JPanel {
 
     private void refilter(String query) {
         listModel.clear();
-        List<PrefabPaletteModel.PrefabItem> items = model.search(query);
-        for (PrefabPaletteModel.PrefabItem i : items) {
-            listModel.addElement(i);
-        }
+        listModel.addAll(model.search(query));
     }
 
     /** Cell renderer drawing the prefab thumbnail + name. */
@@ -73,6 +75,13 @@ public final class HytalePrefabPalette extends JPanel {
         @Override
         public Component getListCellRendererComponent(JList<? extends PrefabPaletteModel.PrefabItem> list,
                 PrefabPaletteModel.PrefabItem value, int index, boolean selected, boolean focused) {
+            if (value == null) {
+                icon.setIcon(null);
+                label.setText("");
+                setBackground(list.getBackground());
+                setOpaque(true);
+                return this;
+            }
             icon.setIcon(new ImageIcon(renderer.render(value.path, thumb)));
             label.setText(value.name);
             setBackground(selected ? list.getSelectionBackground() : list.getBackground());
