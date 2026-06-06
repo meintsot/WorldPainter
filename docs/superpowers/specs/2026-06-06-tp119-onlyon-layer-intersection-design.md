@@ -36,8 +36,10 @@ So the feature is: let the user select `AllOfFilter` instead of `AnyOfFilter` fo
 
 In scope:
 1. A boolean "intersection" choice threaded UI → `DefaultFilter` → `OnlyOnTerrainOrLayerFilter.create()`.
-2. Two radio buttons in `BrushOptions` — **"any of these"** (default) / **"all of these"** — shown
-   only when 2+ "only on" items are selected.
+2. Two radio menu items in the existing **"only on" popup menu** — **"Match any of these (union)"**
+   (default) / **"Match all of these (intersection)"** — shown only when 2+ "only on" items are
+   selected. (Chosen over inline panel radios to avoid fragile NetBeans `GroupLayout`/`.form`
+   surgery, and to match how the recent multi-select feature extended this same menu.)
 3. Persistence of the choice in saved filter presets (`FilterPreset`).
 4. Unit tests for the model + preset round-trip.
 
@@ -77,23 +79,20 @@ public static Filter create(Dimension dimension, Object item, boolean intersecti
   (**unchanged** — uses the kept 12-arg overload, stays union). Scripting-API intersection support
   is out of scope.
 
-### 4.3 UI — `BrushOptions` (WPGUI, NetBeans `.form` panel)
-- Add a `ButtonGroup` of two `JRadioButton`s — **"any of these"** (selected by default) and
-  **"all of these"** — placed under the "only on" row.
-- **Visibility:** shown/enabled only when `onlyOn` is a `List` with ≥ 2 items; hidden/disabled
-  otherwise (with 0–1 items, union == intersection, so the choice is meaningless). Wire this into
-  the existing `installPaint(onlyOn, …)` / `setControlStates()` path that already runs whenever the
-  "only on" selection changes.
-- `getFilter()`: pass the radio state as the `onlyOnIntersection` argument to the `DefaultFilter`
-  constructor.
-- `setFilter(DefaultFilter)`: set the radio from the filter shape — `onlyOnFilter instanceof
-  AllOfFilter` → "all of these", otherwise "any of these". (`AllOfFilter` is already detected at the
-  existing branch in `setFilter()`.)
-- Radio changes trigger the existing `filterChanged()` notification so the live filter updates.
-- **Implementation note / main risk:** inserting the radio pair into the existing
-  `GroupLayout`-managed `.form`. Resolve in the plan: prefer editing `BrushOptions.form` +
-  regenerated `initComponents()` consistently; fall back to adding a small sub-panel programmatically
-  after `initComponents()` if a clean `.form` edit proves impractical.
+### 4.3 UI — `BrushOptions` (WPGUI)
+- Add an instance field `private boolean onlyOnIntersection;` (default `false` = union).
+- In `createReplaceMenu()` (the "only on" popup builder), after the existing items are copied into
+  the popup: **when `onlyOn` is a `List` with ≥ 2 items**, append a separator and a `ButtonGroup` of
+  two `JRadioButtonMenuItem`s — **"Match any of these (union)"** (selected when
+  `!onlyOnIntersection`) and **"Match all of these (intersection)"** (selected when
+  `onlyOnIntersection`). Each item's listener sets `onlyOnIntersection` and calls `filterChanged()`.
+  With 0–1 items the items are omitted (union == intersection, so the choice is meaningless).
+  No layout / `.form` change; `javax.swing.*` (ButtonGroup, JRadioButtonMenuItem) and
+  `java.util.List` are already imported.
+- `getFilter()`: pass `onlyOnIntersection` as the new `DefaultFilter` constructor argument.
+- `setFilter(DefaultFilter)`: set `onlyOnIntersection = filter.isOnlyOnIntersection()` (and `false`
+  in the `filter == null` branch).
+- The `exceptOn` popup (`createExceptOnMenu()`) is **not** changed.
 
 ### 4.4 Persistence — `FilterPreset` (WPCore, `Serializable`)
 - Add `private boolean onlyOnIntersection;` (default `false`) with getter/setter.
@@ -107,7 +106,7 @@ public static Filter create(Dimension dimension, Object item, boolean intersecti
 ## 5. Data flow
 
 ```
-radio ("any"/"all") in BrushOptions
+"Match any"/"Match all" menu item in the "only on" popup → BrushOptions.onlyOnIntersection
   → BrushOptions.getFilter() passes onlyOnIntersection
     → new DefaultFilter(... onlyOnItem, onlyOnIntersection ...)
       → OnlyOnTerrainOrLayerFilter.create(dim, onlyOnItem, onlyOnIntersection)
@@ -130,11 +129,13 @@ Round-trip (preset save/load and `setFilter`/`getFilter`) preserves the choice v
 - **Persistence (unit, WPCore):** `FilterPreset.captureFrom(..., onlyOnIntersection = true)` →
   `resolveOnlyOn()` + `isOnlyOnIntersection()` preserves both the items and the flag across a
   serialize/deserialize round-trip; a preset missing the field loads as `false`.
-- **UI (build-verified + manual):** with 2+ "only on" layers the radios appear and default to "any";
-  switching to "all" makes a brush / a Fill operation affect only the overlap; restoring a saved
-  "all" preset re-selects the radio. (Swing/JIDE panel not unit-tested.)
+- **UI (build-verified + manual):** with 2+ "only on" items the two match-mode menu items appear in
+  the "only on" popup and default to "Match any"; selecting "Match all" makes a brush / a Fill
+  operation affect only the overlap; restoring a saved "all" preset re-selects "Match all". (Swing
+  panel not unit-tested.)
 
 ## 7. Open questions
 
-None. Decisions locked: shared scope (brushes + global ops); two radio buttons "any of these" /
-"all of these"; default = "any" (union); persisted in `FilterPreset`; "except on" unchanged.
+None. Decisions locked: shared scope (brushes + global ops); two radio menu items in the "only on"
+popup — "Match any of these (union)" (default) / "Match all of these (intersection)"; default =
+union; persisted in `FilterPreset`; "except on" unchanged.
