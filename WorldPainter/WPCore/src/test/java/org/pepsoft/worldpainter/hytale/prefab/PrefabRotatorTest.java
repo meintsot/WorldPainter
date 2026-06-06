@@ -3,6 +3,7 @@ package org.pepsoft.worldpainter.hytale.prefab;
 import org.junit.Test;
 import org.pepsoft.worldpainter.hytale.prefab.HytalePrefabPaster.PrefabBlock;
 import org.pepsoft.worldpainter.hytale.prefab.HytalePrefabPaster.PrefabBlockData;
+import org.pepsoft.worldpainter.hytale.prefab.HytalePrefabPaster.PrefabFluid;
 
 import java.util.*;
 
@@ -90,5 +91,84 @@ public class PrefabRotatorTest {
         PrefabBlockData d = data(Collections.singletonList(new PrefabBlock(0, 0, 0, "A", 0)));
         PrefabBlockData r = PrefabRotator.rotate(d, 80.0);
         assertEquals(3, r.blocks.get(0).rotation);
+    }
+
+    @Test
+    public void cardinal180And270ExactPositionsAndYaw() {
+        PrefabBlockData d = data(Collections.singletonList(new PrefabBlock(2, 0, 3, "A", 1)));
+
+        PrefabBlock b180 = PrefabRotator.rotate(d, 180.0).blocks.get(0);
+        assertEquals(-2, b180.x);
+        assertEquals(-3, b180.z);
+        assertEquals(3, b180.rotation); // rotateRaw(1,2) = (1-2+4)%4 = 3
+
+        PrefabBlock b270 = PrefabRotator.rotate(d, 270.0).blocks.get(0);
+        assertEquals(3, b270.x);   // steps=3: (x,z)->(z,-x) => (3,-2)
+        assertEquals(-2, b270.z);
+        assertEquals(2, b270.rotation); // rotateRaw(1,3) = (1-3+4)%4 = 2
+    }
+
+    @Test
+    public void cardinalRotationAboutNonZeroAnchor() {
+        // anchor (10,0,20); block (12,5,20) -> offset (2,0) -> 90° -> (0,2) -> world (10,5,22)
+        PrefabBlockData d = new PrefabBlockData(10, 0, 20,
+                Collections.singletonList(new PrefabBlock(12, 5, 20, "A", 0)),
+                Collections.emptyList());
+        PrefabBlock b = PrefabRotator.rotate(d, 90.0).blocks.get(0);
+        assertEquals(10, b.x);
+        assertEquals(22, b.z);
+        assertEquals(5, b.y);
+    }
+
+    @Test
+    public void freeAngleAboutNonZeroAnchorStaysBracketed() {
+        PrefabBlockData d = new PrefabBlockData(100, 0, 200,
+                Arrays.asList(new PrefabBlock(102, 0, 200, "A", 0),
+                              new PrefabBlock(98, 0, 200, "B", 0)),
+                Collections.emptyList());
+        PrefabBlockData r = PrefabRotator.rotate(d, 37.0);
+        assertFalse(r.blocks.isEmpty());
+        for (PrefabBlock b : r.blocks) {
+            assertTrue("x within anchor bracket", Math.abs(b.x - 100) <= 3);
+            assertTrue("z within anchor bracket", Math.abs(b.z - 200) <= 3);
+        }
+    }
+
+    @Test
+    public void freeAngleResamplesLayersIndependently() {
+        PrefabBlockData d = data(Arrays.asList(
+                new PrefabBlock(2, 0, 0, "low", 0),
+                new PrefabBlock(0, 1, 2, "high", 0)));
+        PrefabBlockData r = PrefabRotator.rotate(d, 90.0001); // off-cardinal -> free path
+        Map<Integer, List<PrefabBlock>> byY = new HashMap<>();
+        for (PrefabBlock b : r.blocks) {
+            byY.computeIfAbsent(b.y, k -> new ArrayList<>()).add(b);
+        }
+        assertTrue("layer y=0 present", byY.containsKey(0));
+        assertTrue("layer y=1 present", byY.containsKey(1));
+        for (PrefabBlock b : byY.get(0)) {
+            assertEquals("low", b.blockName);
+        }
+        for (PrefabBlock b : byY.get(1)) {
+            assertEquals("high", b.blockName);
+        }
+    }
+
+    @Test
+    public void fluidsRotateCardinalAndFree() {
+        PrefabBlockData d = new PrefabBlockData(0, 0, 0,
+                Collections.emptyList(),
+                Collections.singletonList(new PrefabFluid(2, 5, 0, "Water", 1)));
+
+        PrefabFluid c = PrefabRotator.rotate(d, 90.0).fluids.get(0);
+        assertEquals(0, c.x);
+        assertEquals(2, c.z);
+        assertEquals(5, c.y);
+        assertEquals("Water", c.fluidName);
+        assertEquals(1, c.level);
+
+        PrefabBlockData rf = PrefabRotator.rotate(d, 37.0);
+        assertEquals(1, rf.fluids.size());
+        assertEquals("Water", rf.fluids.get(0).fluidName);
     }
 }
