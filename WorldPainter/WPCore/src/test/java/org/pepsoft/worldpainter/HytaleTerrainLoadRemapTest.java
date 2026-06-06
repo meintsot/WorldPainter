@@ -88,6 +88,24 @@ public class HytaleTerrainLoadRemapTest {
     }
 
     @Test
+    public void paletteRemapIsNoOpWhenStoredOrderingEqualsCurrent() {
+        // A world saved by this same build carries a palette equal to the current
+        // ordering; the load remap must leave every pixel untouched (fast-path).
+        Dimension dim = buildHytaleDimension();
+        Tile tile = dim.getTile(0, 0);
+        int clayNow = HytaleTerrain.getByBlockId("Soil_Clay").getLayerIndex();
+        HytaleTerrainLayer.setTerrainIndex(tile, 5, 5, clayNow);
+        dim.putManagedAttributeForTests("hytaleTerrainVersion", 3);
+        dim.putManagedAttributeForTests("hytaleTerrainPalette",
+                new HashMap<>(org.pepsoft.worldpainter.hytale.HytaleTerrainPalette.currentPalette()));
+
+        dim.migrateHytaleTerrainPaletteOnLoad();
+
+        assertEquals("unchanged ordering must not move any pixel",
+                clayNow, HytaleTerrainLayer.getTerrainIndex(dim.getTile(0, 0), 5, 5));
+    }
+
+    @Test
     public void legacyRemapIsNoOpWhenNoHytaleTerrainData() {
         // A non-Hytale (or unpainted) world at version 2 must not throw or change anything.
         Dimension dim = buildHytaleDimension();

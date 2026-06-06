@@ -2770,9 +2770,11 @@ public class Dimension extends InstanceKeeper implements TileProvider, Serializa
                 managedAttributes.put("hytalePlantsLayerMigrated", Boolean.TRUE);
             }
         }
-        if (wpVersion < 13) {
-            migrateHytaleTerrainPaletteOnLoad();
-        }
+        // Deliberately NOT gated on wpVersion: a stored self-describing terrain
+        // palette must be honoured on every load so a future registry/terrain-list
+        // change is corrected even when CURRENT_WP_VERSION is not bumped. The method
+        // no-ops cheaply when the stored ordering already matches the current one.
+        migrateHytaleTerrainPaletteOnLoad();
         wpVersion = CURRENT_WP_VERSION;
 
         // Make sure customLayers isn't some weird read-only list
@@ -2872,7 +2874,7 @@ public class Dimension extends InstanceKeeper implements TileProvider, Serializa
      * Worlds saved with {@code hytaleTerrainVersion >= 3} carry a self-describing
      * {@code stored-index -> block-id} palette; we remap each stored ordinal to
      * the current layer index of the same block id, so registry/terrain-list
-     * changes (e.g. TP-57's +304 blocks) can no longer silently substitute
+     * changes (e.g. TP-57's +249 blocks) can no longer silently substitute
      * blocks. Legacy worlds saved before the palette existed (version &lt; 3) are
      * remapped against the reconstructed pre-TP-57 ordering instead.
      */
@@ -2884,7 +2886,12 @@ public class Dimension extends InstanceKeeper implements TileProvider, Serializa
         Map<Integer, String> storedPalette = (managedAttributes != null)
                 ? (Map<Integer, String>) managedAttributes.get("hytaleTerrainPalette") : null;
         if ((htv >= 3) && (storedPalette != null)) {
-            org.pepsoft.worldpainter.hytale.HytaleTerrainPalette.remapTiles(tiles.values(), storedPalette);
+            // Fast-path: if the stored ordering already equals the current one
+            // (the common case — same build, or registry unchanged), skip the
+            // per-pixel scan entirely. Otherwise remap by block id.
+            if (! storedPalette.equals(org.pepsoft.worldpainter.hytale.HytaleTerrainPalette.currentPalette())) {
+                org.pepsoft.worldpainter.hytale.HytaleTerrainPalette.remapTiles(tiles.values(), storedPalette);
+            }
         } else if ((htv < 3) && hasHytaleTerrainData()) {
             // Legacy world saved before the self-describing palette existed (no
             // stored palette). Interpret stored ordinals against the reconstructed
