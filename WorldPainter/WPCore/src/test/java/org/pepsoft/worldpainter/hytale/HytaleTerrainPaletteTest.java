@@ -19,4 +19,26 @@ public class HytaleTerrainPaletteTest {
                     palette.get(i - 1));
         }
     }
+
+    @Test
+    public void remapByBlockIdHandlesShiftAndRemoval() {
+        // Simulated "old" palette: index 1 -> Rock_Stone, index 2 -> Soil_Clay,
+        // index 3 -> a block id that no longer exists.
+        java.util.Map<Integer, String> oldPalette = new java.util.HashMap<>();
+        oldPalette.put(1, "Rock_Stone");
+        oldPalette.put(2, "Soil_Clay");
+        oldPalette.put(3, "Block_That_Was_Deleted");
+
+        int stoneNow = HytaleTerrain.getByBlockId("Rock_Stone").getLayerIndex();
+        int clayNow  = HytaleTerrain.getByBlockId("Soil_Clay").getLayerIndex();
+
+        assertEquals(stoneNow, HytaleTerrainPalette.remapIndex(1, oldPalette));
+        assertEquals(clayNow,  HytaleTerrainPalette.remapIndex(2, oldPalette));
+        assertEquals("unknown block id clears the pixel",
+                0, HytaleTerrainPalette.remapIndex(3, oldPalette));
+        assertEquals("index 0 stays 0",
+                0, HytaleTerrainPalette.remapIndex(0, oldPalette));
+        assertEquals("index absent from palette is left unchanged",
+                7, HytaleTerrainPalette.remapIndex(7, oldPalette));
+    }
 }
