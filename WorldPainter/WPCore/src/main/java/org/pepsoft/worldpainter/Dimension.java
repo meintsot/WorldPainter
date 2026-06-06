@@ -2808,7 +2808,42 @@ public class Dimension extends InstanceKeeper implements TileProvider, Serializa
     @Serial
     private void writeObject(ObjectOutputStream out) throws IOException {
         prepareForSaving();
+        snapshotHytaleTerrainPalette();
         out.defaultWriteObject();
+    }
+
+    /**
+     * Snapshot a self-describing Hytale terrain palette (stored layer index -&gt;
+     * block id) into managed attributes, so that when this world is reopened in a
+     * build whose terrain list has changed (e.g. the block registry grew) the
+     * stored per-pixel terrain ordinals can be remapped by block id instead of
+     * silently resolving to a different block. Only written when this dimension
+     * actually has Hytale terrain data. See {@code HytaleTerrainPalette}.
+     */
+    void snapshotHytaleTerrainPalette() {
+        if (! hasHytaleTerrainData()) {
+            return;
+        }
+        if (managedAttributes == null) {
+            managedAttributes = new HashMap<>();
+        }
+        managedAttributes.put("hytaleTerrainPalette",
+                new HashMap<>(org.pepsoft.worldpainter.hytale.HytaleTerrainPalette.currentPalette()));
+        managedAttributes.put("hytaleTerrainVersion", 3);
+    }
+
+    private boolean hasHytaleTerrainData() {
+        for (Tile tile : tiles.values()) {
+            if (org.pepsoft.worldpainter.hytale.HytaleTerrainLayer.hasTerrainData(tile)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Test-only accessor for a managed attribute. */
+    Object getManagedAttributeForTests(String key) {
+        return (managedAttributes != null) ? managedAttributes.get(key) : null;
     }
 
     private World2 world;
