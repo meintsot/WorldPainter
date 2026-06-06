@@ -1,5 +1,7 @@
 package org.pepsoft.worldpainter.hytale;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -19,10 +21,14 @@ import java.util.Set;
  * <p>Worlds saved before the self-describing palette ({@code hytaleTerrainVersion 3})
  * existed carry no palette, so we reconstruct the pre-TP-57 ordering here: the
  * curated prefix is unchanged (TP-57 did not touch {@code HytaleTerrain}); the
- * auto-generated tail is the current tail with the 249 TP-57 additions removed.
- * Verified that {@code HytaleBlockRegistry} had no other changes between TP-57 and
- * this fix, so the reconstruction is exact for the pre-TP-57 era (best-effort for
- * any older era). See {@code HytaleTerrainPalette}.</p>
+ * auto-generated tail is the current tail with later additions removed and later
+ * removals restored, re-sorted into the same global alphabetical order. The later
+ * registry edits we must compensate for are: the 249 TP-57 additions
+ * ({@link #TP57_ADDED_BLOCK_IDS}); and TP-65, which removed the wrong-order
+ * {@code Rock_Stone_Mossy_*} construction sub-tree ({@link #PRE_TP57_REMOVED_BLOCK_IDS},
+ * restored) and added the two correctly-named blocks ({@link #POST_TP57_ADDED_BLOCK_IDS},
+ * excluded). Keep these sets in sync with any future registry change, otherwise the
+ * reconstruction drifts. See {@code HytaleTerrainPalette}.</p>
  */
 final class HytaleTerrainV2Snapshot {
 
@@ -113,7 +119,39 @@ final class HytaleTerrainV2Snapshot {
         "Wood_Sallow_Trunk_Stairs", "Wood_Spiral_Trunk_Half", "Wood_Spiral_Trunk_Stairs",
         "Wood_Stormbark_Trunk_Half", "Wood_Stormbark_Trunk_Stairs", "Wood_Windwillow_Trunk_Half",
         "Wood_Windwillow_Trunk_Stairs", "Wood_Wisteria_Wild_Trunk_Half", "Wood_Wisteria_Wild_Trunk_Stairs"
-        
+
+    );
+
+    /**
+     * Block ids added to {@link HytaleBlockRegistry} <em>after</em> the pre-TP-57
+     * baseline by later fixes. They must be excluded from the reconstructed pre-TP-57
+     * tail exactly like {@link #TP57_ADDED_BLOCK_IDS}. TP-65 replaced the wrong-order
+     * {@code Rock_Stone_Mossy_*} construction sub-tree with these two real Hytale blocks.
+     */
+    private static final Set<String> POST_TP57_ADDED_BLOCK_IDS = Set.of(
+        "Rock_Stone_Brick_Mossy", "Rock_Stone_Cobble_Mossy"
+    );
+
+    /**
+     * Pre-TP-57 block ids later <em>removed</em> from {@link HytaleBlockRegistry}, so
+     * they are absent from the current ordering and must be re-inserted to reconstruct
+     * the pre-TP-57 tail. These are the 26 wrong-order variants that the old
+     * {@code addRockVariants("Rock_Stone_Mossy")} generated before TP-65 dropped them.
+     */
+    private static final Set<String> PRE_TP57_REMOVED_BLOCK_IDS = Set.of(
+        "Rock_Stone_Mossy_Brick", "Rock_Stone_Mossy_Brick_Beam",
+        "Rock_Stone_Mossy_Brick_Decorative", "Rock_Stone_Mossy_Brick_Half",
+        "Rock_Stone_Mossy_Brick_Ornate", "Rock_Stone_Mossy_Brick_Pillar_Base",
+        "Rock_Stone_Mossy_Brick_Pillar_Middle", "Rock_Stone_Mossy_Brick_Roof",
+        "Rock_Stone_Mossy_Brick_Roof_Flat", "Rock_Stone_Mossy_Brick_Roof_Flap",
+        "Rock_Stone_Mossy_Brick_Roof_Vertical", "Rock_Stone_Mossy_Brick_Smooth",
+        "Rock_Stone_Mossy_Brick_Smooth_Half", "Rock_Stone_Mossy_Brick_Stairs",
+        "Rock_Stone_Mossy_Brick_Wall", "Rock_Stone_Mossy_Cobble",
+        "Rock_Stone_Mossy_Cobble_Beam", "Rock_Stone_Mossy_Cobble_Half",
+        "Rock_Stone_Mossy_Cobble_Roof", "Rock_Stone_Mossy_Cobble_Roof_Flat",
+        "Rock_Stone_Mossy_Cobble_Roof_Flap", "Rock_Stone_Mossy_Cobble_Roof_Vertical",
+        "Rock_Stone_Mossy_Cobble_Stairs", "Rock_Stone_Mossy_Cobble_Wall",
+        "Rock_Stone_Mossy_Stalactite_Large", "Rock_Stone_Mossy_Stalactite_Small"
     );
 
     /**
@@ -127,16 +165,40 @@ final class HytaleTerrainV2Snapshot {
         int curatedCount = HytaleTerrain.getDefaultTerrains().size();
         Map<Integer, String> palette = new HashMap<>(current.size() * 2);
         int oldIndex = 0;
-        for (int i = 0; i < current.size(); i++) {
-            String id = current.get(i);
-            boolean curated = (i < curatedCount);
-            if ((! curated) && (id != null) && TP57_ADDED_BLOCK_IDS.contains(id)) {
-                continue; // did not exist pre-TP-57; it shifts the later entries
-            }
+
+        // Curated prefix keeps its indices: HytaleTerrain (the curated pick list) was
+        // never touched by TP-57 or TP-65.
+        int curatedLimit = Math.min(curatedCount, current.size());
+        for (int i = 0; i < curatedLimit; i++) {
             oldIndex++;
+            String id = current.get(i);
             if (id != null) {
                 palette.put(oldIndex, id);
             }
+        }
+
+        // Reconstruct the pre-TP-57 auto-generated tail. ALL_TERRAINS builds that tail
+        // by iterating HytaleBlockRegistry.getAllBlockNames() (natural String order)
+        // and skipping curated blocks, so the pre-TP-57 tail is the current tail
+        //   minus ids that did not exist pre-TP-57 (TP-57 + later additions)
+        //   plus pre-TP-57 ids later removed (TP-65 removals),
+        // re-sorted into that same natural String order.
+        List<String> tail = new ArrayList<>();
+        for (int i = curatedLimit; i < current.size(); i++) {
+            String id = current.get(i);
+            if (id == null) {
+                continue;
+            }
+            if (TP57_ADDED_BLOCK_IDS.contains(id) || POST_TP57_ADDED_BLOCK_IDS.contains(id)) {
+                continue; // did not exist pre-TP-57; it shifts the later entries
+            }
+            tail.add(id);
+        }
+        tail.addAll(PRE_TP57_REMOVED_BLOCK_IDS); // existed pre-TP-57, later removed
+        Collections.sort(tail);
+        for (String id : tail) {
+            oldIndex++;
+            palette.put(oldIndex, id);
         }
         return palette;
     }
