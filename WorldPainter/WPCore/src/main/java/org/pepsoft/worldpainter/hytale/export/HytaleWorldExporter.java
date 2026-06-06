@@ -844,7 +844,7 @@ public class HytaleWorldExporter implements WorldExporter {
 
         // 5. Prefab markers: copy all from original
         for (HytaleChunk.PrefabMarker pm : originalChunk.getPrefabMarkers()) {
-            newChunk.addPrefabMarker(pm.x, pm.y, pm.z, pm.category, pm.prefabPath);
+            newChunk.addPrefabMarker(pm.x, pm.y, pm.z, pm.category, pm.prefabPath, pm.rotation);
         }
     }
 
