@@ -58,4 +58,25 @@ public class HytaleTerrainPaletteTest {
         int clayNow = HytaleTerrain.getByBlockId("Soil_Clay").getLayerIndex();
         assertEquals(clayNow, HytaleTerrainLayer.getTerrainIndex(tile, 10, 10));
     }
+
+    @Test
+    public void preTp57SnapshotReconstructsShiftedClayIndex() {
+        java.util.Map<Integer, String> snap = HytaleTerrainV2Snapshot.asPalette();
+        assertTrue("snapshot must be populated", snap.size() > 1000);
+        assertTrue("snapshot must contain Soil_Clay", snap.containsValue("Soil_Clay"));
+        assertTrue("snapshot must contain Rock_Stone", snap.containsValue("Rock_Stone"));
+
+        // The pre-TP-57 index of Soil_Clay must be LOWER than its current index:
+        // TP-57 inserted alphabetically-earlier blocks (Metal_*, Plant_*, Rock_*),
+        // shifting clay up. This is exactly the regression a pre-TP-57 save hit.
+        int preClay = snap.entrySet().stream()
+                .filter(e -> "Soil_Clay".equals(e.getValue()))
+                .map(java.util.Map.Entry::getKey).findFirst().orElseThrow();
+        int currentClay = HytaleTerrain.getByBlockId("Soil_Clay").getLayerIndex();
+        assertTrue("pre-TP-57 clay index (" + preClay + ") must be below current ("
+                + currentClay + ")", preClay < currentClay);
+
+        // Remapping the OLD clay index through the snapshot yields the CURRENT clay index.
+        assertEquals(currentClay, HytaleTerrainPalette.remapIndex(preClay, snap));
+    }
 }
