@@ -3056,6 +3056,10 @@ public final class App extends JFrame implements BrushControl,
         view.setRadius(radius);
         view.setBrushShape(brush.getBrushShape());
 
+        // Create the shared prefab placement operation early: createToolPanel() (invoked below) wires its tool
+        // button to this same instance, and the Prefab Placements panel (registered further down) shares it too.
+        prefabPlacementOp = new org.pepsoft.worldpainter.operations.PrefabPlacementOperation(view);
+
         glassPane = new GlassPane();
         final BufferedImage cursorImage = IconUtils.loadUnscaledImage("org/pepsoft/worldpainter/cursor.png");
         final java.awt.Dimension bestCursorSize = Toolkit.getDefaultToolkit().getBestCursorSize(Math.round(32 * getUIScale()), Math.round(32 * getUIScale()));
@@ -3126,6 +3130,19 @@ public final class App extends JFrame implements BrushControl,
         environmentPanelFrame = new DockableFrameBuilder(createEnvironmentPanel(), "Environments", DOCK_SIDE_WEST, 3).scrollable().build();
         dockingManager.addFrame(environmentPanelFrame);
         dockingManager.hideFrame(environmentPanelFrame.getKey());
+
+        // Hytale-only prefab placement panels (gated on in configureForPlatform()); they share prefabPlacementOp
+        // with the prefab placement tool button created in createToolPanel().
+        final java.io.File hytaleAssetsDir = org.pepsoft.worldpainter.hytale.HytaleTerrain.getHytaleAssetsDir();
+        prefabPlacementsPanel = new org.pepsoft.worldpainter.hytale.prefab.HytalePrefabPlacementsPanel(view, prefabPlacementOp);
+
+        prefabPaletteFrame = new DockableFrameBuilder(new org.pepsoft.worldpainter.hytale.prefab.HytalePrefabPalette(hytaleAssetsDir), "Prefab Palette", DOCK_SIDE_WEST, 3).scrollable().build();
+        dockingManager.addFrame(prefabPaletteFrame);
+        dockingManager.hideFrame(prefabPaletteFrame.getKey());
+
+        prefabPlacementsFrame = new DockableFrameBuilder(prefabPlacementsPanel, "Prefab Placements", DOCK_SIDE_EAST, 3).scrollable().build();
+        dockingManager.addFrame(prefabPlacementsFrame);
+        dockingManager.hideFrame(prefabPlacementsFrame.getKey());
 
         dockingManager.addFrame(new DockableFrameBuilder(createBrushPanel(), "Brushes", DOCK_SIDE_EAST, 1).build());
 
@@ -3524,6 +3541,11 @@ public final class App extends JFrame implements BrushControl,
 //        toolPanel.add(createButtonForOperation(new Erode(view, this, mapDragControl), 'm'));
         toolPanel.add(createButtonForOperation(new SetSpawnPoint(view)));
         toolPanel.add(createButtonForOperation(new org.pepsoft.worldpainter.operations.TownPlanOperation(view), 't'));
+        // Hytale-only prefab placement tool (gated on in configureForPlatform()); reuses the shared prefabPlacementOp
+        // so the tool button and the Prefab Placements panel drive the same operation instance.
+        prefabPlacementToolButton = createButtonForOperation(prefabPlacementOp);
+        prefabPlacementToolButton.setVisible(false);
+        toolPanel.add(prefabPlacementToolButton);
         final JButton button = new JButton(loadScaledIcon("globals"));
         button.setMargin(App.BUTTON_INSETS);
         button.addActionListener(e -> showGlobalOperations());
@@ -6598,14 +6620,24 @@ public final class App extends JFrame implements BrushControl,
         floodWithPoisonButton.setVisible(isHytalePlatform);
         floodWithSlimeButton.setVisible(isHytalePlatform);
         floodWithTarButton.setVisible(isHytalePlatform);
+        if (prefabPlacementToolButton != null) {
+            prefabPlacementToolButton.setVisible(isHytalePlatform);
+        }
         if (isHytalePlatform) {
             dockingManager.showFrame(prefabsPanelFrame.getKey());
             dockingManager.showFrame(environmentPanelFrame.getKey());
+            dockingManager.showFrame(prefabPaletteFrame.getKey());
+            dockingManager.showFrame(prefabPlacementsFrame.getKey());
+            if (prefabPlacementsPanel != null) {
+                prefabPlacementsPanel.refresh();
+            }
             // entitiesPanelFrame hidden — experimental
             updateSpecificPrefabsList();
         } else {
             dockingManager.hideFrame(prefabsPanelFrame.getKey());
             dockingManager.hideFrame(environmentPanelFrame.getKey());
+            dockingManager.hideFrame(prefabPaletteFrame.getKey());
+            dockingManager.hideFrame(prefabPlacementsFrame.getKey());
             // entitiesPanelFrame hidden — experimental
         }
         activateLayersPanel();
@@ -8088,6 +8120,11 @@ public final class App extends JFrame implements BrushControl,
     private DockableFrame prefabsPanelFrame;
     private DockableFrame entitiesPanelFrame;
     private DockableFrame environmentPanelFrame;
+    private org.pepsoft.worldpainter.operations.PrefabPlacementOperation prefabPlacementOp;
+    private DockableFrame prefabPaletteFrame;
+    private DockableFrame prefabPlacementsFrame;
+    private AbstractButton prefabPlacementToolButton;
+    private org.pepsoft.worldpainter.hytale.prefab.HytalePrefabPlacementsPanel prefabPlacementsPanel;
     private DefaultListModel<org.pepsoft.worldpainter.hytale.PrefabFileEntry> specificPrefabListModel;
     private java.util.List<org.pepsoft.worldpainter.hytale.PrefabFileEntry> discoveredPrefabs = java.util.Collections.emptyList();
     private JTextField specificPrefabSearchField;
