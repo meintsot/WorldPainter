@@ -6,6 +6,7 @@ import org.pepsoft.minecraft.Material;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertEquals;
@@ -38,6 +39,33 @@ public class HytaleBlockRegistryTest {
 
         HytaleBlockRegistry.ensureMaterialsRegistered();
         assertEquals("hytale:Wood_Test_Trunk", Material.get("hytale:Wood_Test_Trunk").name);
+    }
+
+    @Test
+    public void testRockStoneMossyConstructionVariantsUseCorrectHytaleNames() {
+        List<String> rockConstruction =
+                HytaleBlockRegistry.getBlockNames(HytaleBlockRegistry.Category.ROCK_CONSTRUCTION);
+
+        // Hytale's mossy construction blocks put "_Mossy" last
+        // (Rock_Stone_Cobble_Mossy / Rock_Stone_Brick_Mossy).
+        assertTrue("ROCK_CONSTRUCTION should contain Rock_Stone_Cobble_Mossy",
+                rockConstruction.contains("Rock_Stone_Cobble_Mossy"));
+        assertTrue("ROCK_CONSTRUCTION should contain Rock_Stone_Brick_Mossy",
+                rockConstruction.contains("Rock_Stone_Brick_Mossy"));
+
+        // TP-65: generating the variant sub-tree from the "Rock_Stone_Mossy" base
+        // produced wrong-order names that don't exist in Hytale and export as the
+        // magenta error block. None of those may be offered.
+        for (String id : rockConstruction) {
+            assertFalse("Wrong-order block leaked into the picker (TP-65): " + id,
+                    id.startsWith("Rock_Stone_Mossy_"));
+        }
+
+        // The corrected blocks must still resolve to the ROCK_CONSTRUCTION category.
+        assertEquals(HytaleBlockRegistry.Category.ROCK_CONSTRUCTION,
+                HytaleBlockRegistry.getCategoryForBlock("Rock_Stone_Cobble_Mossy"));
+        assertEquals(HytaleBlockRegistry.Category.ROCK_CONSTRUCTION,
+                HytaleBlockRegistry.getCategoryForBlock("Rock_Stone_Brick_Mossy"));
     }
 
     @Test

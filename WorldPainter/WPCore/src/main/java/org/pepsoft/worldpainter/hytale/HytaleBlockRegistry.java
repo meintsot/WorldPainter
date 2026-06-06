@@ -834,7 +834,7 @@ public class HytaleBlockRegistry {
         // --- ROCK CONSTRUCTION ---
         List<String> rockConstruction = new ArrayList<>();
         for (String base : new String[]{
-            "Rock_Stone", "Rock_Stone_Mossy", "Rock_Basalt", "Rock_Calcite", "Rock_Marble",
+            "Rock_Stone", "Rock_Basalt", "Rock_Calcite", "Rock_Marble",
             "Rock_Quartzite", "Rock_Sandstone", "Rock_Sandstone_Red", "Rock_Sandstone_White",
             "Rock_Shale", "Rock_Slate", "Rock_Aqua", "Rock_Volcanic", "Rock_Chalk",
             "Rock_Gold", "Rock_Concrete", "Rock_Peach", "Rock_Ledge", "Rock_Lime",
@@ -842,6 +842,14 @@ public class HytaleBlockRegistry {
         }) {
             addRockVariants(rockConstruction, base);
         }
+        // TP-65: "Rock_Stone_Mossy" is itself a "_Mossy" base, so feeding it to the
+        // generic variant generator yields wrong-order names (e.g. Rock_Stone_Mossy_Cobble)
+        // that don't exist in Hytale and export as the magenta error block. Hytale has
+        // exactly two mossy construction variants, both with "_Mossy" last. Register
+        // them explicitly instead. (The base block Rock_Stone_Mossy itself stays in the
+        // ROCK category and as the MOSSY_STONE terrain.)
+        rockConstruction.add("Rock_Stone_Brick_Mossy");
+        rockConstruction.add("Rock_Stone_Cobble_Mossy");
         rockConstruction.add("Rock_Volcanic_Cracked_Lava");
         rockConstruction.add("Rock_Volcanic_Cracked_Poisoned");
         // TP-57: Update 4 added additional rock variants that don't follow the
