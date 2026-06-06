@@ -16,9 +16,13 @@ import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
+
+import static org.pepsoft.worldpainter.Constants.TILE_SIZE;
 
 /**
  * Interactive preview for TP-46 "Import Map and Merge". Draws the target
@@ -45,6 +49,14 @@ public class MergePreviewPanel extends JPanel {
     private final Consumer<Point> offsetListener;
     private Point offset;
 
+    // Precomputed, offset-independent: only the tiles that hold real (non-Void)
+    // data, plus the content bounding box of each map. Computed once because the
+    // tiles don't change while the dialog is open, so drag repaints stay cheap.
+    private final List<TileCell> targetCells;
+    private final List<TileCell> sourceCells;
+    private final Rectangle targetContentExtent;
+    private final Rectangle sourceContentExtent;
+
     // Drag state
     private boolean dragging = false;
     private Point dragStartScreen;
@@ -56,6 +68,10 @@ public class MergePreviewPanel extends JPanel {
         this.source = source;
         this.offset = new Point(initialOffset);
         this.offsetListener = offsetListener;
+        this.targetCells = buildCells(target, TARGET_FILL);
+        this.sourceCells = buildCells(source, SOURCE_FILL);
+        this.targetContentExtent = MergePreviewModel.contentExtent(target);
+        this.sourceContentExtent = MergePreviewModel.contentExtent(source);
         setBackground(new Color(20, 20, 28));
         setPreferredSize(new java.awt.Dimension(420, 280));
         setCursor(Cursor.getPredefinedCursor(Cursor.MOVE_CURSOR));
@@ -100,9 +116,20 @@ public class MergePreviewPanel extends JPanel {
     }
 
     private Rectangle combinedTileExtent() {
-        Rectangle t = target.getExtent();
-        Rectangle s = source.getExtent();
-        Rectangle sShifted = new Rectangle(s.x + offset.x, s.y + offset.y, s.width, s.height);
+        Rectangle t = targetContentExtent;
+        Rectangle sShifted = (sourceContentExtent == null)
+            ? null
+            : new Rectangle(sourceContentExtent.x + offset.x, sourceContentExtent.y + offset.y,
+                            sourceContentExtent.width, sourceContentExtent.height);
+        if ((t == null) && (sShifted == null)) {
+            return new Rectangle(0, 0, 0, 0);
+        }
+        if (t == null) {
+            return sShifted;
+        }
+        if (sShifted == null) {
+            return t;
+        }
         return t.union(sShifted);
     }
 
@@ -121,7 +148,7 @@ public class MergePreviewPanel extends JPanel {
         Graphics2D g2 = (Graphics2D) g.create();
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF);
         try {
-            if (target.getTileCount() == 0 && source.getTileCount() == 0) {
+            if (targetCells.isEmpty() && sourceCells.isEmpty()) {
                 g2.setColor(Color.LIGHT_GRAY);
                 g2.drawString("No tiles to preview", 10, 20);
                 return;
@@ -133,31 +160,31 @@ public class MergePreviewPanel extends JPanel {
             int originX = (getWidth() - totalW) / 2;
             int originY = 8;
 
-            // Compute overlap set (target coords where source tiles land)
+            // Compute overlap set (target coords where source tiles land). Uses
+            // tile existence — matching the merge's own collision rule — so the
+            // count stays truthful even where Void-padded tiles overlap.
             Set<Point> overlapCoords = new HashSet<>();
             for (Tile s : source.getTiles()) {
                 Point shifted = new Point(s.getX() + offset.x, s.getY() + offset.y);
                 if (target.getTile(shifted) != null) overlapCoords.add(shifted);
             }
 
-            // Target tiles
-            for (Tile t : target.getTiles()) {
-                int px = originX + (t.getX() - ext.x) * pxPerTile;
-                int py = originY + (t.getY() - ext.y) * pxPerTile;
-                Color fill = sampleTileColour(t, TARGET_FILL);
-                g2.setColor(fill);
+            // Target tiles (only those with real data; fully-Void tiles skipped)
+            for (TileCell t : targetCells) {
+                int px = originX + (t.tileX - ext.x) * pxPerTile;
+                int py = originY + (t.tileY - ext.y) * pxPerTile;
+                g2.setColor(t.colour);
                 g2.fillRect(px, py, pxPerTile, pxPerTile);
             }
 
             // Source tiles (translucent overlay; red border on overlap)
             Composite prev = g2.getComposite();
             g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.85f));
-            for (Tile s : source.getTiles()) {
-                int sx = s.getX() + offset.x, sy = s.getY() + offset.y;
+            for (TileCell s : sourceCells) {
+                int sx = s.tileX + offset.x, sy = s.tileY + offset.y;
                 int px = originX + (sx - ext.x) * pxPerTile;
                 int py = originY + (sy - ext.y) * pxPerTile;
-                Color fill = sampleTileColour(s, SOURCE_FILL);
-                g2.setColor(fill);
+                g2.setColor(s.colour);
                 g2.fillRect(px, py, pxPerTile, pxPerTile);
                 if (overlapCoords.contains(new Point(sx, sy))) {
                     g2.setComposite(AlphaComposite.SrcOver);
@@ -180,7 +207,7 @@ public class MergePreviewPanel extends JPanel {
 
             // Footer status
             String info = String.format("Offset: (%d, %d)  •  Target: %d tiles  •  Source: %d tiles  •  Overlap: %d",
-                offset.x, offset.y, target.getTileCount(), source.getTileCount(), overlapCoords.size());
+                offset.x, offset.y, targetCells.size(), sourceCells.size(), overlapCoords.size());
             g2.setColor(TEXT_BG);
             g2.fillRect(0, getHeight() - 22, getWidth(), 22);
             g2.setColor(Color.WHITE);
@@ -198,27 +225,71 @@ public class MergePreviewPanel extends JPanel {
     }
 
     /**
-     * Pick a single representative colour for a tile by sampling its heightmap.
-     * Cheap stand-in for proper terrain rendering: blueish at low elevations,
-     * greenish-brown for mid, off-white at high elevations.
+     * Build the drawable cells for one map: one {@link TileCell} per tile that
+     * holds real (non-Void) data. Fully-Void tiles — which the importer creates
+     * for non-imported chunks — are dropped so the preview shows the same shape
+     * the editor canvas does. Done once per dialog; tiles don't change while it
+     * is open.
      */
-    private static Color sampleTileColour(Tile tile, Color tint) {
-        // Sample a 4x4 grid of the 128x128 tile to estimate average height.
+    private static List<TileCell> buildCells(Dimension dimension, Color tint) {
+        List<TileCell> cells = new ArrayList<>();
+        for (Tile tile : dimension.getTiles()) {
+            float coverage = MergePreviewModel.coverage(tile);
+            if (coverage <= 0f) {
+                continue; // fully Void → not part of the visible map
+            }
+            cells.add(new TileCell(tile.getX(), tile.getY(), sampleTileColour(tile, tint, coverage)));
+        }
+        return cells;
+    }
+
+    /**
+     * Pick a single representative colour for a tile by sampling the heights of
+     * its non-Void pixels, then fade it by how much of the tile holds real data.
+     * Cheap stand-in for proper terrain rendering: darker at low elevations,
+     * brighter at high; fully-imported tiles are solid, sparse edge tiles faint.
+     * Void pixels are skipped so non-imported areas neither tint the colour nor
+     * make a barely-imported tile look full.
+     */
+    private static Color sampleTileColour(Tile tile, Color tint, float coverage) {
+        // Sample a 16x16 grid across the 128x128 tile, ignoring Void pixels.
         float sum = 0;
-        int samples = 16;
-        for (int sx = 0; sx < 4; sx++) {
-            for (int sy = 0; sy < 4; sy++) {
-                int x = 16 + sx * 32, y = 16 + sy * 32;
+        int samples = 0;
+        for (int x = 0; x < TILE_SIZE; x += 8) {
+            for (int y = 0; y < TILE_SIZE; y += 8) {
+                if (tile.getBitLayerValue(org.pepsoft.worldpainter.layers.Void.INSTANCE, x, y)) {
+                    continue;
+                }
                 sum += tile.getHeight(x, y);
+                samples++;
             }
         }
-        float avg = sum / samples;
-        float range = Math.max(1, tile.getMaxHeight() - tile.getMinHeight());
-        float norm = Math.max(0f, Math.min(1f, (avg - tile.getMinHeight()) / range));
+        float norm = 0.5f;
+        if (samples > 0) {
+            float avg = sum / samples;
+            float range = Math.max(1, tile.getMaxHeight() - tile.getMinHeight());
+            norm = Math.max(0f, Math.min(1f, (avg - tile.getMinHeight()) / range));
+        }
         // Mix tint with brightness based on normalised height.
         int r = (int) (tint.getRed()   * (0.5f + 0.5f * norm));
         int g = (int) (tint.getGreen() * (0.5f + 0.5f * norm));
         int b = (int) (tint.getBlue()  * (0.5f + 0.5f * norm));
-        return new Color(Math.min(255, r), Math.min(255, g), Math.min(255, b), tint.getAlpha());
+        // Fade by coverage so partly-imported edge tiles read as lighter, with a
+        // floor so a sparsely-imported tile is still visible.
+        int a = (int) (tint.getAlpha() * Math.max(0.4f, coverage));
+        return new Color(Math.min(255, r), Math.min(255, g), Math.min(255, b), Math.min(255, a));
+    }
+
+    /** A precomputed, offset-independent drawable cell for one content tile. */
+    private static final class TileCell {
+        final int tileX;
+        final int tileY;
+        final Color colour;
+
+        TileCell(int tileX, int tileY, Color colour) {
+            this.tileX = tileX;
+            this.tileY = tileY;
+            this.colour = colour;
+        }
     }
 }
