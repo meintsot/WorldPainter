@@ -602,6 +602,10 @@ public class HytaleChunk implements Chunk {
         prefabMarkers.add(new PrefabMarker(x, y, z, category, prefabPath));
     }
 
+    public void addPrefabMarker(int x, int y, int z, String category, String prefabPath, double rotation) {
+        prefabMarkers.add(new PrefabMarker(x, y, z, category, prefabPath, rotation));
+    }
+
     public List<PrefabMarker> getPrefabMarkers() { return prefabMarkers; }
     
     // ----- Inner classes -----
@@ -613,13 +617,20 @@ public class HytaleChunk implements Chunk {
         public final int x, y, z;
         public final String category;
         public final String prefabPath;
+        /** Y-axis rotation in degrees. Defaults to 0.0 for legacy markers. */
+        public final double rotation;
 
         public PrefabMarker(int x, int y, int z, String category, String prefabPath) {
+            this(x, y, z, category, prefabPath, 0.0);
+        }
+
+        public PrefabMarker(int x, int y, int z, String category, String prefabPath, double rotation) {
             this.x = x;
             this.y = y;
             this.z = z;
             this.category = category;
             this.prefabPath = prefabPath;
+            this.rotation = rotation;
         }
     }
     

@@ -223,6 +223,7 @@ public class HytaleBsonChunkSerializer {
                 entry.put("z", new BsonInt32(pm.z));
                 entry.put("category", new BsonString(pm.category));
                 entry.put("path", new BsonString(pm.prefabPath));
+                entry.put("rotation", new BsonDouble(pm.rotation));
                 prefabArr.add(entry);
             }
             doc.put("PrefabMarkers", prefabArr);
