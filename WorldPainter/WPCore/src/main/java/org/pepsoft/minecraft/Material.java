@@ -753,11 +753,7 @@ public final class Material implements Serializable {
         try {
             int rot = Integer.parseInt(hytaleRotStr);
             if ((rot >= 0) && (rot <= 63)) {
-                int roll = rot >> 4;
-                int pitch = (rot >> 2) & 3;
-                int yaw = rot & 3;
-                yaw = ((yaw - (steps % 4)) + 4) % 4;
-                int newRot = (roll << 4) | (pitch << 2) | yaw;
+                int newRot = org.pepsoft.worldpainter.hytale.HytaleRotations.rotateRaw(rot, steps);
                 if (newRot != rot) {
                     return withProperty(HYTALE_ROTATION_PROPERTY, Integer.toString(newRot));
                 }
