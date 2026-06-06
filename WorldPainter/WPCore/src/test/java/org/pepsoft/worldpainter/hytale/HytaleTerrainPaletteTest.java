@@ -41,4 +41,21 @@ public class HytaleTerrainPaletteTest {
         assertEquals("index absent from palette is left unchanged",
                 7, HytaleTerrainPalette.remapIndex(7, oldPalette));
     }
+
+    @Test
+    public void remapTilesRewritesStoredClayIndexToCurrentClayIndex() {
+        org.pepsoft.worldpainter.Tile tile =
+                new org.pepsoft.worldpainter.Tile(0, 0, 0, 320); // x, y, minHeight, maxHeight
+        // Pretend this world was saved when "Soil_Clay" lived at stored index 5.
+        HytaleTerrainLayer.setTerrainIndex(tile, 10, 10, 5);
+        java.util.Map<Integer, String> oldPalette = new java.util.HashMap<>();
+        oldPalette.put(5, "Soil_Clay");
+
+        int rewritten = HytaleTerrainPalette.remapTiles(
+                java.util.Collections.singletonList(tile), oldPalette);
+
+        assertEquals(1, rewritten);
+        int clayNow = HytaleTerrain.getByBlockId("Soil_Clay").getLayerIndex();
+        assertEquals(clayNow, HytaleTerrainLayer.getTerrainIndex(tile, 10, 10));
+    }
 }
