@@ -34,12 +34,12 @@ public class TownLayoutSettings implements ExporterSettings {
         this.block = block;
     }
 
-    public int getMarkerHeight() {
-        return markerHeight;
+    public int getSurfaceDepth() {
+        return surfaceDepth;
     }
 
-    public void setMarkerHeight(int markerHeight) {
-        this.markerHeight = markerHeight;
+    public void setSurfaceDepth(int surfaceDepth) {
+        this.surfaceDepth = surfaceDepth;
     }
 
     @Override
@@ -47,7 +47,7 @@ public class TownLayoutSettings implements ExporterSettings {
         int hash = 7;
         hash = 41 * hash + (this.export ? 1 : 0);
         hash = 41 * hash + ((this.block != null) ? this.block.hashCode() : 0);
-        hash = 41 * hash + this.markerHeight;
+        hash = 41 * hash + this.surfaceDepth;
         return hash;
     }
 
@@ -66,7 +66,7 @@ public class TownLayoutSettings implements ExporterSettings {
         if ((this.block == null) ? (other.block != null) : (! this.block.equals(other.block))) {
             return false;
         }
-        return this.markerHeight == other.markerHeight;
+        return this.surfaceDepth == other.surfaceDepth;
     }
 
     @Override
@@ -80,7 +80,7 @@ public class TownLayoutSettings implements ExporterSettings {
 
     private boolean export = true;
     private Material block = Material.STONE;
-    private int markerHeight = 3;
+    private int surfaceDepth = 1;
 
     private static final long serialVersionUID = 1L;
 }

@@ -14,9 +14,9 @@ public class TownLayoutSettingsTest {
         assertEquals(a, b);
         assertEquals(a.hashCode(), b.hashCode());
 
-        b.setMarkerHeight(7);
+        b.setSurfaceDepth(7);
         assertNotEquals(a, b);
-        b.setMarkerHeight(a.getMarkerHeight());
+        b.setSurfaceDepth(a.getSurfaceDepth());
         assertEquals(a, b);
 
         b.setExport(! a.isExport());
@@ -35,5 +35,10 @@ public class TownLayoutSettingsTest {
     @Test
     public void defaultBlockIsStone() {
         assertEquals(Material.STONE, new TownLayoutSettings().getBlock());
+    }
+
+    @Test
+    public void defaultSurfaceDepthIsOne() {
+        assertEquals(1, new TownLayoutSettings().getSurfaceDepth());
     }
 }

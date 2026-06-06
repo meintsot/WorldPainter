@@ -15,6 +15,7 @@ import java.awt.image.BufferedImage;
 import static org.junit.Assert.*;
 import static org.pepsoft.minecraft.Constants.BLK_WOOL;
 import static org.pepsoft.minecraft.Material.AIR;
+import static org.pepsoft.minecraft.Material.STONE;
 
 public class TownPlanStampIntegrationTest {
     @Test
@@ -34,19 +35,19 @@ public class TownPlanStampIntegrationTest {
         assertFalse(dimension.getBitLayerValueAt(TownLayout.INSTANCE, 5, 5));
 
         // Export: the exporter must READ the BIT layer (would throw with the int-value API) and
-        // place the marker pillar at the surface for the stamped column.
+        // replace the surface block for the stamped column.
         final Material blackWool = Material.get(BLK_WOOL, 15);
         TownLayoutSettings settings = new TownLayoutSettings();
         settings.setBlock(blackWool);
-        settings.setMarkerHeight(3);
+        settings.setSurfaceDepth(1);
         MinecraftWorld world = TestData.createMinecraftWorld(area, terrainHeight, Material.STONE);
 
         TownLayoutExporter exporter = new TownLayoutExporter(dimension, TestData.PLATFORM, settings);
         exporter.addFeatures(area, area, world);
 
-        assertEquals(blackWool, world.getMaterialAt(0, 0, terrainHeight + 1));
-        assertEquals(blackWool, world.getMaterialAt(0, 0, terrainHeight + 3));
-        assertEquals(AIR, world.getMaterialAt(0, 0, terrainHeight + 4));     // pillar height respected
-        assertEquals(AIR, world.getMaterialAt(5, 5, terrainHeight + 1));     // unstamped column untouched
+        assertEquals(blackWool, world.getMaterialAt(0, 0, terrainHeight));       // surface replaced, flush
+        assertEquals(AIR, world.getMaterialAt(0, 0, terrainHeight + 1));         // nothing added above
+        assertNotEquals(blackWool, world.getMaterialAt(0, 0, terrainHeight - 1)); // depth 1: below surface untouched
+        assertEquals(STONE, world.getMaterialAt(5, 5, terrainHeight));          // unstamped column surface untouched
     }
 }
