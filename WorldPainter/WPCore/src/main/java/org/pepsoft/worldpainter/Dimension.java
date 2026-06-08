@@ -19,6 +19,7 @@ import org.pepsoft.util.undo.BufferKey;
 import org.pepsoft.util.undo.UndoListener;
 import org.pepsoft.util.undo.UndoManager;
 import org.pepsoft.worldpainter.biomeschemes.CustomBiome;
+import org.pepsoft.worldpainter.hytale.HytalePrefabPlacement;
 import org.pepsoft.worldpainter.hytale.HytaleTerrain;
 import org.pepsoft.worldpainter.hytale.HytaleTerrainLayer;
 import org.pepsoft.worldpainter.brushes.Brush;
@@ -1323,6 +1324,31 @@ public class Dimension extends InstanceKeeper implements TileProvider, Serializa
         changeNo++;
         for (Listener listener: listeners) {
             listener.overlayRemoved(this, index, overlay);
+        }
+    }
+
+    public List<HytalePrefabPlacement> getHytalePrefabPlacements() {
+        return unmodifiableList(hytalePrefabPlacements);
+    }
+
+    public void addHytalePrefabPlacement(HytalePrefabPlacement placement) {
+        hytalePrefabPlacements.add(placement);
+        changeNo++;
+    }
+
+    public boolean removeHytalePrefabPlacement(HytalePrefabPlacement placement) {
+        final boolean removed = hytalePrefabPlacements.remove(placement);
+        if (removed) {
+            changeNo++;
+        }
+        return removed;
+    }
+
+    public void replaceHytalePrefabPlacement(HytalePrefabPlacement oldPlacement, HytalePrefabPlacement newPlacement) {
+        final int index = hytalePrefabPlacements.indexOf(oldPlacement);
+        if (index >= 0) {
+            hytalePrefabPlacements.set(index, newPlacement);
+            changeNo++;
         }
     }
 
@@ -2770,6 +2796,11 @@ public class Dimension extends InstanceKeeper implements TileProvider, Serializa
                 managedAttributes.put("hytalePlantsLayerMigrated", Boolean.TRUE);
             }
         }
+        if (wpVersion < 14) {
+            if (hytalePrefabPlacements == null) {
+                hytalePrefabPlacements = new ArrayList<>();
+            }
+        }
         // Deliberately NOT gated on wpVersion: a stored self-describing terrain
         // palette must be honoured on every load so a future registry/terrain-list
         // change is corrected even when CURRENT_WP_VERSION is not bumped. The method
@@ -2950,6 +2981,7 @@ public class Dimension extends InstanceKeeper implements TileProvider, Serializa
     private String soloedPalette;
     private UUID id = UUID.randomUUID();
     private List<Overlay> overlays = new ArrayList<>();
+    private List<HytalePrefabPlacement> hytalePrefabPlacements = new ArrayList<>();
     /**
      * Index of the underground biome, or {@code null} for "same as surface".
      */
@@ -2977,7 +3009,7 @@ public class Dimension extends InstanceKeeper implements TileProvider, Serializa
 
     private static final long TOP_LAYER_DEPTH_SEED_OFFSET = 180728193;
     private static final float ROOT_EIGHT = (float) Math.sqrt(8.0);
-    private static final int CURRENT_WP_VERSION = 13;
+    private static final int CURRENT_WP_VERSION = 14;
     private static final BufferKey<Map<String, Object>> BUFFER_KEY_MANAGED_ATTRIBUTES = new BufferKey<>() {};
     private static final org.slf4j.Logger logger = org.slf4j.LoggerFactory.getLogger(Dimension.class);
     @Serial

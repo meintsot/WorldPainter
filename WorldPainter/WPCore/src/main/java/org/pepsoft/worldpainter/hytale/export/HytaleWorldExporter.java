@@ -633,6 +633,18 @@ public class HytaleWorldExporter implements WorldExporter {
                 }
             }
 
+            // Enqueue exact user-authored prefab placements whose anchor falls within this
+            // region's original (un-offset) world bounds. The region covers Hytale chunks
+            // [regionCoords << 5, +32) → offset block range [regionCoords << 10, +1024);
+            // converting back to original WorldPainter coords (the space placement.getX/Y use)
+            // means subtracting blockOffset. These bands tile the world with no overlap or
+            // gap, so each placement's anchor lands in exactly one region (no double-paste,
+            // no drop).
+            int regionMinWorldX = (regionCoords.x << 10) - blockOffsetX;
+            int regionMinWorldZ = (regionCoords.y << 10) - blockOffsetZ;
+            enqueueExactPlacements(dimension, regionMinWorldX, regionMinWorldZ,
+                    regionMinWorldX + 1024, regionMinWorldZ + 1024, regionPrefabPastes);
+
             // ── Region-level prefab pastes ─────────────────────────────
             // Execute all prefab pastes AFTER every chunk in the region is populated, so
             // multi-chunk prefabs (HytalePrefabLayer + HytaleSpecificPrefabLayer) can be
@@ -643,7 +655,7 @@ public class HytaleWorldExporter implements WorldExporter {
             for (PendingPrefabPaste pending : regionPrefabPastes) {
                 boolean pasted = prefabPaster.paste(chunksByCoords,
                         pending.worldX, pending.anchorY, pending.worldZ,
-                        blockOffsetX, blockOffsetZ, pending.prefabPath);
+                        blockOffsetX, blockOffsetZ, pending.prefabPath, pending.rotationDegrees);
                 if (!pasted && pending.prefabName != null) {
                     // Fallback: keep a marker on the chunk containing the anchor so the
                     // missing prefab is visible during debugging.
@@ -653,7 +665,7 @@ public class HytaleWorldExporter implements WorldExporter {
                         int aLocalX = Math.floorMod(pending.worldX + blockOffsetX, HytaleChunk.CHUNK_SIZE);
                         int aLocalZ = Math.floorMod(pending.worldZ + blockOffsetZ, HytaleChunk.CHUNK_SIZE);
                         anchorChunk.addPrefabMarker(aLocalX, pending.anchorY, aLocalZ,
-                                pending.prefabName, pending.prefabPath);
+                                pending.prefabName, pending.prefabPath, pending.rotationDegrees);
                     }
                 }
             }
@@ -844,7 +856,7 @@ public class HytaleWorldExporter implements WorldExporter {
 
         // 5. Prefab markers: copy all from original
         for (HytaleChunk.PrefabMarker pm : originalChunk.getPrefabMarkers()) {
-            newChunk.addPrefabMarker(pm.x, pm.y, pm.z, pm.category, pm.prefabPath);
+            newChunk.addPrefabMarker(pm.x, pm.y, pm.z, pm.category, pm.prefabPath, pm.rotation);
         }
     }
 
@@ -1036,13 +1048,20 @@ public class HytaleWorldExporter implements WorldExporter {
     }
 
     /** Deferred prefab paste — collected during column loop, executed after all terrain is placed. */
-    private static final class PendingPrefabPaste {
+    static final class PendingPrefabPaste {
         final int localX, anchorY, localZ, worldX, worldZ;
         final String prefabPath;
         final String prefabName; // for fallback marker (display name for both layer types)
+        final double rotationDegrees;
 
         PendingPrefabPaste(int localX, int anchorY, int localZ,
                            int worldX, int worldZ, String prefabPath, String prefabName) {
+            this(localX, anchorY, localZ, worldX, worldZ, prefabPath, prefabName, 0.0);
+        }
+
+        PendingPrefabPaste(int localX, int anchorY, int localZ,
+                           int worldX, int worldZ, String prefabPath, String prefabName,
+                           double rotationDegrees) {
             this.localX = localX;
             this.anchorY = anchorY;
             this.localZ = localZ;
@@ -1050,6 +1069,7 @@ public class HytaleWorldExporter implements WorldExporter {
             this.worldZ = worldZ;
             this.prefabPath = prefabPath;
             this.prefabName = prefabName;
+            this.rotationDegrees = rotationDegrees;
         }
     }
 
@@ -1482,6 +1502,33 @@ public class HytaleWorldExporter implements WorldExporter {
         if (entityLayerValue < HytaleEntityLayer.SPAWN_TAGS.length
                 && HytaleEntityLayer.SPAWN_TAGS[entityLayerValue] != null) {
             chunk.setSpawnTag(localX, localZ, HytaleEntityLayer.SPAWN_TAGS[entityLayerValue]);
+        }
+    }
+
+    /**
+     * Enqueue every exact prefab placement whose anchor falls within the given region
+     * world bounds [minWorldX, maxWorldX) x [minWorldZ, maxWorldZ). Resolves snap-to-surface
+     * height from the dimension. Anchor-in-region filtering means each placement is enqueued
+     * by exactly one region, avoiding double-paste.
+     */
+    static void enqueueExactPlacements(Dimension dimension,
+                                       int minWorldX, int minWorldZ, int maxWorldX, int maxWorldZ,
+                                       List<PendingPrefabPaste> out) {
+        for (HytalePrefabPlacement placement : dimension.getHytalePrefabPlacements()) {
+            final int wx = placement.getX();
+            final int wz = placement.getY();
+            if ((wx < minWorldX) || (wx >= maxWorldX) || (wz < minWorldZ) || (wz >= maxWorldZ)) {
+                continue;
+            }
+            final int anchorY;
+            if (placement.isSnapToSurface() || (placement.getHeight() == null)) {
+                anchorY = dimension.getIntHeightAt(wx, wz) + 1;
+            } else {
+                anchorY = placement.getHeight();
+            }
+            out.add(new PendingPrefabPaste(
+                    0, anchorY, 0, wx, wz, placement.getPrefabPath(),
+                    placement.getPrefabName(), placement.getRotationDegrees()));
         }
     }
 

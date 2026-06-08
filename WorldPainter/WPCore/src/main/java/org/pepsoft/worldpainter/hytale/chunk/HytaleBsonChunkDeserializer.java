@@ -818,16 +818,18 @@ final class HytaleBsonChunkDeserializer {
             }
         }
 
-        // Prefab Markers: [ { x, y, z, category, path }, ... ]
+        // Prefab Markers: [ { x, y, z, category, path, rotation? }, ... ]
         if (metaDoc.containsKey("PrefabMarkers")) {
             for (BsonValue val : metaDoc.getArray("PrefabMarkers")) {
                 BsonDocument entry = val.asDocument();
+                double rotation = entry.containsKey("rotation") ? entry.getDouble("rotation").getValue() : 0.0;
                 chunk.addPrefabMarker(
                     entry.getInt32("x").getValue(),
                     entry.getInt32("y").getValue(),
                     entry.getInt32("z").getValue(),
                     entry.getString("category").getValue(),
-                    entry.getString("path").getValue()
+                    entry.getString("path").getValue(),
+                    rotation
                 );
             }
         }
