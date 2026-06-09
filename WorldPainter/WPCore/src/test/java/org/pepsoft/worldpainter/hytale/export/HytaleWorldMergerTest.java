@@ -649,6 +649,13 @@ public class HytaleWorldMergerTest {
         assertNull(merger.recoverOffsetFromSpawn(mapDir));
     }
 
+    @Test
+    public void readExistingRegionCoordsReturnsRegionsForExportedMap() throws Exception {
+        File mapDir = createExportedHytaleMap("region_coords_unit");
+        java.util.Set<Point> coords = HytaleWorldMerger.readExistingRegionCoords(mapDir);
+        assertFalse("Exported map must have at least one region file", coords.isEmpty());
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────────────
 
     /**
