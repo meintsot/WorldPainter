@@ -304,6 +304,18 @@ public class HytaleWorldMerger extends HytaleWorldExporter implements WorldMerge
 
         performSanityChecks();
 
+        // Fast path: a tile selection means "apply only these tiles to the already-exported
+        // world". Patch them in place — overwrite just the selected tiles' chunks and touch
+        // nothing else — instead of renaming the whole save to a backup and rebuilding it. Cost
+        // is proportional to the selection, not the world size. No backup is made; the merge
+        // dialog warns the user first.
+        if (worldExportSettings.getTilesToExport() != null) {
+            logger.info("Fast in-place selective merge of {} tile(s) into {}",
+                    worldExportSettings.getTilesToExport().size(), mapDir);
+            mergeSelectedTilesInPlace(progressReceiver);
+            return;
+        }
+
         Objects.requireNonNull(backupDir, "backupDir");
         if (backupDir.exists()) {
             throw new IllegalArgumentException("Backup directory already exists: " + backupDir);
@@ -382,6 +394,21 @@ public class HytaleWorldMerger extends HytaleWorldExporter implements WorldMerge
             }
             throw e;
         }
+    }
+
+    /**
+     * Apply only the active tile selection to the existing world in place. Overwrites just the
+     * selected tiles' chunks and leaves every other chunk and region file untouched on disk; no
+     * rename, no backup, no save-structure rebuild. Reads each original chunk from the live world
+     * (for entity / block-health / biome / block merge) before overwriting it.
+     */
+    private void mergeSelectedTilesInPlace(ProgressReceiver progressReceiver)
+            throws IOException, ProgressReceiver.OperationCancelled {
+        Dimension surface = world.getDimension(NORMAL_DETAIL);
+        // Read originals from the LIVE world. exportDimension() leaves a pre-set originalChunkStore
+        // untouched (see HytaleWorldExporter.openOriginalChunkStore) and closes it when done.
+        originalChunkStore = new HytaleChunkStore(mapDir, surface.getMinHeight(), surface.getMaxHeight());
+        exportSelectedTilesInPlace(mapDir, progressReceiver);
     }
 
     /**

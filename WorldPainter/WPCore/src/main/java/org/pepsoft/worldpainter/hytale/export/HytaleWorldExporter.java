@@ -121,7 +121,12 @@ public class HytaleWorldExporter implements WorldExporter {
     // Offset to center terrain at world origin (computed during export)
     private int blockOffsetX = 0;
     private int blockOffsetZ = 0;
-    
+
+    // When true, exportRegion opens existing region files (openOrCreate) and overwrites only the
+    // selected tiles' chunks instead of truncating (create). Enables fast in-place selective
+    // merges; never set during a normal export. Set by exportSelectedTilesInPlace().
+    private boolean inPlaceMerge = false;
+
     // Prefab paster for inlining prefab blocks during export (initialized at export time)
     private HytalePrefabPaster prefabPaster;
 
@@ -334,9 +339,40 @@ public class HytaleWorldExporter implements WorldExporter {
     
     
     /**
+     * Fast in-place selective merge: regenerate only the tiles in the active tile selection and
+     * write them directly into the existing world at {@code worldDir}, overwriting just those
+     * tiles' chunks and leaving every other chunk and region file untouched on disk. Unlike
+     * {@link #export}, this does not wipe or rebuild the save and makes no backup.
+     *
+     * <p>The caller (e.g. {@link HytaleWorldMerger}) must pre-set {@link #originalChunkStore} to
+     * the live world so the per-chunk merge ({@code mergeOriginalChunkData} /
+     * {@code applyMergeOverrides}) reads each original chunk before it is overwritten. Within a
+     * region all original reads happen before any write, so the read-then-overwrite on the same
+     * file is safe.
+     *
+     * @param worldDir the inner Hytale world dir (.../universe/worlds/default) to patch in place
+     */
+    protected void exportSelectedTilesInPlace(File worldDir, ProgressReceiver progressReceiver)
+            throws IOException, ProgressReceiver.OperationCancelled {
+        HytaleBlockRegistry.ensureMaterialsRegistered();
+        Dimension dim0 = world.getDimension(NORMAL_DETAIL);
+        if (dim0 == null) {
+            return;
+        }
+        prefabPaster = new HytalePrefabPaster(HytaleTerrain.getHytaleAssetsDir());
+        final Set<Point> selectedTiles = worldExportSettings.getTilesToExport();
+        inPlaceMerge = true;
+        try {
+            exportDimension(worldDir, dim0, selectedTiles, progressReceiver);
+        } finally {
+            inPlaceMerge = false;
+        }
+    }
+
+    /**
      * Export a dimension by exporting each region in parallel.
      */
-    private ChunkFactory.Stats exportDimension(File worldDir, Dimension dimension, Set<Point> selectedTiles, ProgressReceiver progressReceiver) 
+    private ChunkFactory.Stats exportDimension(File worldDir, Dimension dimension, Set<Point> selectedTiles, ProgressReceiver progressReceiver)
             throws ProgressReceiver.OperationCancelled {
         return doWithMdcContext(() -> {
             if (progressReceiver != null) {
@@ -543,7 +579,14 @@ public class HytaleWorldExporter implements WorldExporter {
         Path regionPath = chunksDir.toPath().resolve(HytaleRegionFile.getRegionFileName(regionCoords.x, regionCoords.y));
         
         try (HytaleRegionFile regionFile = new HytaleRegionFile(regionPath)) {
-            regionFile.create();
+            if (inPlaceMerge) {
+                // In-place selective merge: open the existing region file and overwrite ONLY the
+                // selected tiles' chunks, preserving every other chunk's blob. create() would
+                // truncate the file and lose the untouched chunks.
+                regionFile.openOrCreate();
+            } else {
+                regionFile.create();
+            }
             
             int minHeight = dimension.getMinHeight();
             int maxHeight = dimension.getMaxHeight();

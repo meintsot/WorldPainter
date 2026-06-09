@@ -448,6 +448,40 @@ public class HytaleWorldMergerTest {
         }
     }
 
+    /**
+     * The point of the fast in-place selective merge: a region file that contains no selected tile
+     * must never be rewritten. Tiles (-4,-4),(-4,4),(4,-4),(4,4) each live in a different Hytale
+     * region {(-1,-1),(-1,0),(0,-1),(0,0)} (offset 0). Selecting only tile (4,4) (region (0,0))
+     * must leave region (-1,-1)'s file byte-for-byte identical. The old rename+rebuild merge
+     * re-serialised every untouched chunk, changing those bytes; this asserts we no longer do.
+     */
+    @Test
+    public void selectiveMergeLeavesUntouchedRegionFilesByteIdentical() throws Exception {
+        java.util.Set<Point> worldTiles = new java.util.HashSet<>(java.util.Arrays.asList(
+                new Point(-4, -4), new Point(-4, 4), new Point(4, -4), new Point(4, 4)));
+        File mapDir = createExportedHytaleMap("inplace_bytes", worldTiles);
+
+        File untouchedRegion = new File(new File(mapDir, "chunks"), "-1.-1.region.bin");
+        assertTrue("Setup: untouched region file must exist", untouchedRegion.isFile());
+        byte[] before = java.nio.file.Files.readAllBytes(untouchedRegion.toPath());
+
+        World2 world = buildImportedWorld(mapDir, worldTiles);
+        WorldExportSettings settings = new WorldExportSettings(
+                java.util.Collections.singleton(DIM_NORMAL),
+                java.util.Collections.singleton(new Point(4, 4)),
+                null);
+        HytaleWorldMerger merger = new HytaleWorldMerger(world, settings, mapDir, HYTALE);
+        merger.merge(new File(tempDir.getRoot(), "inplace_bytes_bkp"), null);
+
+        byte[] after = java.nio.file.Files.readAllBytes(untouchedRegion.toPath());
+        assertArrayEquals("A non-selected region file must be byte-identical after an in-place "
+                + "selective merge (it must never be rewritten)", before, after);
+
+        try (HytaleChunkStore store = new HytaleChunkStore(mapDir, 0, 320)) {
+            assertNotNull("Selected tile (4,4) chunk (16,16) must exist after merge", store.getChunk(16, 16));
+        }
+    }
+
     // ── Centering-offset regression (the "merged result is split / corrupted" bug) ────
 
     /**
