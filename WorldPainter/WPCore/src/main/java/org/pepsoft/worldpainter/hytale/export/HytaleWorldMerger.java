@@ -857,7 +857,6 @@ public class HytaleWorldMerger extends HytaleWorldExporter implements WorldMerge
     // ── Offset-recovery helpers (Task 2) ─────────────────────────────────────────────
 
     /** Coverage threshold below which the resolved offset is rejected (abort rather than misplace). */
-    @SuppressWarnings("unused")
     private static final double COVERAGE_THRESHOLD = 0.9;
 
     /**
