@@ -1,5 +1,6 @@
 package org.pepsoft.worldpainter.hytale;
 
+import org.pepsoft.util.GUIUtils;
 import org.pepsoft.worldpainter.hytale.vegetation.HytaleAutoVegetationDefaults;
 
 import javax.swing.*;
@@ -64,9 +65,9 @@ public final class HytaleAutoVegetationDialog extends JDialog {
     // ── UI construction ───────────────────────────────────────────────
 
     private void buildUi() {
-        setLayout(new BorderLayout(8, 8));
+        setLayout(new BorderLayout(scaled(8), scaled(8)));
         ((JComponent) getContentPane()).setBorder(
-                BorderFactory.createEmptyBorder(10, 10, 10, 10));
+                BorderFactory.createEmptyBorder(scaled(10), scaled(10), scaled(10), scaled(10)));
 
         add(buildTopBar(),    BorderLayout.NORTH);
         add(buildBiomeArea(), BorderLayout.CENTER);
@@ -77,7 +78,7 @@ public final class HytaleAutoVegetationDialog extends JDialog {
 
     /** Top bar: Enabled checkbox, Seed field, Reset-to-defaults button. */
     private JPanel buildTopBar() {
-        JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+        JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT, scaled(8), 0));
         bar.setBorder(BorderFactory.createTitledBorder("Global"));
 
         enabledCheckBox = new JCheckBox("Enabled", settings.isEnabled());
@@ -106,8 +107,8 @@ public final class HytaleAutoVegetationDialog extends JDialog {
         JScrollPane scroll = new JScrollPane(biomeListPanel,
                 JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
                 JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
-        scroll.setPreferredSize(new Dimension(780, 420));
-        scroll.getVerticalScrollBar().setUnitIncrement(20);
+        scroll.setPreferredSize(new Dimension(scaled(780), scaled(420)));
+        scroll.getVerticalScrollBar().setUnitIncrement(scaled(20));
         return scroll;
     }
 
@@ -147,10 +148,20 @@ public final class HytaleAutoVegetationDialog extends JDialog {
         biomeListPanel.repaint();
     }
 
+    /**
+     * Scale a design-time pixel value (authored at 1× / 96 DPI) to the active UI
+     * scale.  The dialog hard-codes component sizes, but {@code Main} inflates all
+     * look-and-feel fonts by {@link GUIUtils#getUIScale()} on HiDPI displays; without
+     * this the fixed boxes clip the scaled fonts.  Returns the value unchanged at 1×.
+     */
+    private static int scaled(int px) {
+        return Math.round(px * GUIUtils.getUIScale());
+    }
+
     /** Thin horizontal separator shown between zone groups. */
     private static Component buildZoneSeparator() {
         JSeparator sep = new JSeparator(JSeparator.HORIZONTAL);
-        sep.setMaximumSize(new Dimension(Integer.MAX_VALUE, 8));
+        sep.setMaximumSize(new Dimension(Integer.MAX_VALUE, scaled(8)));
         return sep;
     }
 
@@ -158,38 +169,37 @@ public final class HytaleAutoVegetationDialog extends JDialog {
     private JPanel buildBiomeRow(BiomeRowState state) {
         JPanel row = new JPanel();
         row.setLayout(new BoxLayout(row, BoxLayout.X_AXIS));
-        row.setBorder(BorderFactory.createEmptyBorder(3, 4, 3, 4));
-        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, row.getMinimumSize().height + 12));
+        row.setBorder(BorderFactory.createEmptyBorder(scaled(3), scaled(4), scaled(3), scaled(4)));
         row.setAlignmentX(Component.LEFT_ALIGNMENT);
 
         // Color swatch
         JPanel swatch = new JPanel();
         swatch.setBackground(new Color(state.biome.getDisplayColor()));
-        swatch.setPreferredSize(new Dimension(14, 14));
-        swatch.setMinimumSize(new Dimension(14, 14));
-        swatch.setMaximumSize(new Dimension(14, 14));
+        swatch.setPreferredSize(new Dimension(scaled(14), scaled(14)));
+        swatch.setMinimumSize(new Dimension(scaled(14), scaled(14)));
+        swatch.setMaximumSize(new Dimension(scaled(14), scaled(14)));
         swatch.setBorder(BorderFactory.createLineBorder(Color.DARK_GRAY, 1));
         row.add(swatch);
-        row.add(Box.createHorizontalStrut(6));
+        row.add(Box.createHorizontalStrut(scaled(6)));
 
         // Biome display name (fixed width so sliders align)
         JLabel nameLabel = new JLabel(state.biome.getDisplayName());
-        nameLabel.setPreferredSize(new Dimension(180, 20));
-        nameLabel.setMinimumSize(new Dimension(180, 20));
-        nameLabel.setMaximumSize(new Dimension(180, 20));
+        nameLabel.setPreferredSize(new Dimension(scaled(180), scaled(20)));
+        nameLabel.setMinimumSize(new Dimension(scaled(180), scaled(20)));
+        nameLabel.setMaximumSize(new Dimension(scaled(180), scaled(20)));
         row.add(nameLabel);
-        row.add(Box.createHorizontalStrut(8));
+        row.add(Box.createHorizontalStrut(scaled(8)));
 
         // Coverage label + slider
         JLabel coverageLabel = new JLabel(String.format("%3d%%", state.coveragePercent));
-        coverageLabel.setPreferredSize(new Dimension(38, 20));
-        coverageLabel.setMinimumSize(new Dimension(38, 20));
-        coverageLabel.setMaximumSize(new Dimension(38, 20));
+        coverageLabel.setPreferredSize(new Dimension(scaled(38), scaled(20)));
+        coverageLabel.setMinimumSize(new Dimension(scaled(38), scaled(20)));
+        coverageLabel.setMaximumSize(new Dimension(scaled(38), scaled(20)));
 
         JSlider slider = new JSlider(0, 100, state.coveragePercent);
-        slider.setPreferredSize(new Dimension(140, 24));
-        slider.setMinimumSize(new Dimension(80, 24));
-        slider.setMaximumSize(new Dimension(180, 24));
+        slider.setPreferredSize(new Dimension(scaled(140), scaled(24)));
+        slider.setMinimumSize(new Dimension(scaled(80), scaled(24)));
+        slider.setMaximumSize(new Dimension(scaled(180), scaled(24)));
         slider.setToolTipText("Coverage percentage for " + state.biome.getDisplayName());
         slider.addChangeListener(e -> {
             state.coveragePercent = slider.getValue();
@@ -198,15 +208,22 @@ public final class HytaleAutoVegetationDialog extends JDialog {
         state.slider = slider;
 
         row.add(new JLabel("Coverage:"));
-        row.add(Box.createHorizontalStrut(4));
+        row.add(Box.createHorizontalStrut(scaled(4)));
         row.add(slider);
-        row.add(Box.createHorizontalStrut(4));
+        row.add(Box.createHorizontalStrut(scaled(4)));
         row.add(coverageLabel);
-        row.add(Box.createHorizontalStrut(10));
+        row.add(Box.createHorizontalStrut(scaled(10)));
 
         // Plant list panel (grows horizontally)
         JPanel plantArea = buildPlantArea(state);
         row.add(plantArea);
+
+        // Cap the row's height at its preferred height so BoxLayout doesn't
+        // stretch rows vertically.  Must be computed AFTER the children are
+        // added: an empty row's preferred height is just its border insets,
+        // and BoxLayout clamps each row to its maximum, which crushed the
+        // plant list and buttons into a few pixels (TP-56).
+        row.setMaximumSize(new Dimension(Integer.MAX_VALUE, row.getPreferredSize().height));
 
         return row;
     }
@@ -218,7 +235,7 @@ public final class HytaleAutoVegetationDialog extends JDialog {
      * "Add plant" and "Remove selected" button.
      */
     private JPanel buildPlantArea(BiomeRowState state) {
-        JPanel panel = new JPanel(new BorderLayout(4, 0));
+        JPanel panel = new JPanel(new BorderLayout(scaled(4), 0));
 
         // List model backed by state.plants
         DefaultListModel<String> listModel = new DefaultListModel<>();
@@ -230,11 +247,11 @@ public final class HytaleAutoVegetationDialog extends JDialog {
         list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         list.setToolTipText("Plants for this biome (name · weight)");
         JScrollPane listScroll = new JScrollPane(list);
-        listScroll.setPreferredSize(new Dimension(200, 60));
+        listScroll.setPreferredSize(new Dimension(scaled(200), scaled(60)));
         panel.add(listScroll, BorderLayout.CENTER);
 
         // Buttons: Add / Remove / Edit Weight
-        JPanel btnPanel = new JPanel(new GridLayout(0, 1, 0, 2));
+        JPanel btnPanel = new JPanel(new GridLayout(0, 1, 0, scaled(2)));
 
         JButton addBtn = new JButton("+ Add plant");
         addBtn.setToolTipText("Add a surface-only Hytale terrain as a plant");
@@ -339,9 +356,9 @@ public final class HytaleAutoVegetationDialog extends JDialog {
         // Build picker dialog
         JDialog picker = new JDialog(this, "Add Plant — " + state.biome.getDisplayName(),
                 ModalityType.APPLICATION_MODAL);
-        picker.setLayout(new BorderLayout(8, 8));
+        picker.setLayout(new BorderLayout(scaled(8), scaled(8)));
         ((JComponent) picker.getContentPane()).setBorder(
-                BorderFactory.createEmptyBorder(8, 8, 8, 8));
+                BorderFactory.createEmptyBorder(scaled(8), scaled(8), scaled(8), scaled(8)));
 
         DefaultListModel<HytaleTerrain> pickerModel = new DefaultListModel<>();
         for (HytaleTerrain t : surfaceTerrains) {
@@ -353,7 +370,7 @@ public final class HytaleAutoVegetationDialog extends JDialog {
         pickerList.setSelectedIndex(0);
 
         JScrollPane pickerScroll = new JScrollPane(pickerList);
-        pickerScroll.setPreferredSize(new Dimension(260, 300));
+        pickerScroll.setPreferredSize(new Dimension(scaled(260), scaled(300)));
         picker.add(pickerScroll, BorderLayout.CENTER);
 
         // Weight spinner
@@ -392,7 +409,7 @@ public final class HytaleAutoVegetationDialog extends JDialog {
 
     /** OK / Cancel button bar. */
     private JPanel buildButtonBar() {
-        JPanel bar = new JPanel(new FlowLayout(FlowLayout.RIGHT, 6, 0));
+        JPanel bar = new JPanel(new FlowLayout(FlowLayout.RIGHT, scaled(6), 0));
 
         JButton cancelButton = new JButton("Cancel");
         cancelButton.addActionListener(e -> dispose());
