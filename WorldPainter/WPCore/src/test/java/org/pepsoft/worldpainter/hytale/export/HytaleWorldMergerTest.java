@@ -667,6 +667,19 @@ public class HytaleWorldMergerTest {
     }
 
     @Test
+    public void resolveSnapsSubTileOffsetToNearestTile() throws Exception {
+        // The true export offset is always a multiple of 128 (a centeringOffset). Spawn-based
+        // recovery drifts by a sub-tile amount when the world's spawn moved since export, so the
+        // sidecar a prior merge stored can be off-grid. Resolution must snap it back to the grid.
+        // (2860, -584) -> nearest multiples of 128 -> (2816, -640).
+        File mapDir = createExportedHytaleMap("resolve_snap");
+        HytaleExportMetadata.writeBlockOffset(mapDir, 2860, -584);
+        HytaleWorldMerger merger = newMerger(mapDir);
+        assertEquals("Sub-tile drift must snap to the nearest multiple of 128",
+                new Point(2816, -640), merger.resolveBlockOffset());
+    }
+
+    @Test
     public void resolvePrefersSpawnRecoveryOverDriftedCenteringWhenNoSidecar() throws Exception {
         java.util.Set<Point> exportTiles = new java.util.HashSet<>(java.util.Arrays.asList(
                 new Point(0, 0), new Point(8, 0)));

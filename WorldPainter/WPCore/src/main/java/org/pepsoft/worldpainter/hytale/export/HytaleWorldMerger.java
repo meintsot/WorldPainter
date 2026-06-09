@@ -481,6 +481,23 @@ public class HytaleWorldMerger extends HytaleWorldExporter implements WorldMerge
     }
 
     /**
+     * Snap a block offset to the nearest multiple of 128 (one WorldPainter tile). The offset an
+     * export actually uses is ALWAYS a multiple of 128 — it is a {@code centeringOffset}
+     * ({@code -centerTile * 128}) or {@code (0,0)}. Spawn-based recovery ({@code saveSpawn -
+     * worldSpawn}) drifts by a sub-tile amount when the world's spawn point was moved since the
+     * export; snapping removes that drift (and self-heals a sidecar written before this snap
+     * existed). Null-safe so it can wrap {@link #recoverOffsetFromSpawn}.
+     */
+    private static Point snapToTile(Point offset) {
+        if (offset == null) {
+            return null;
+        }
+        return new Point(
+                (int) (Math.round(offset.x / 128.0) * 128),
+                (int) (Math.round(offset.y / 128.0) * 128));
+    }
+
+    /**
      * Resolve the block offset to write the merge with, reading the existing map at {@link #mapDir}.
      * MUST be called before any backup rename (while mapDir still holds the chunks and config.json).
      * Order: stored sidecar (authoritative) -> best of {spawn recovery, centering heuristic} validated
@@ -489,15 +506,16 @@ public class HytaleWorldMerger extends HytaleWorldExporter implements WorldMerge
     Point resolveBlockOffset() {
         final Point sidecar = HytaleExportMetadata.readBlockOffset(mapDir);
         if (sidecar != null) {
-            logger.info("Using stored export offset {} from sidecar in {}", sidecar, mapDir);
-            return sidecar;
+            final Point snapped = snapToTile(sidecar);
+            logger.info("Using stored export offset {} from sidecar in {}", snapped, mapDir);
+            return snapped;
         }
         final Set<Point> existingRegions = readExistingRegionCoords(mapDir);
         if (existingRegions.isEmpty()) {
             return heuristicOffset();   // nothing to align to (degenerate / empty map)
         }
         final Set<Point> allTiles = world.getDimension(NORMAL_DETAIL).getTileCoords();
-        final Point oSpawn = recoverOffsetFromSpawn(mapDir);
+        final Point oSpawn = snapToTile(recoverOffsetFromSpawn(mapDir));
         final Point oHeuristic = heuristicOffset();
         // Evaluate spawn recovery first so it wins ties (it is exact when the spawn is unchanged).
         final java.util.List<Point> candidates = (oSpawn != null)
