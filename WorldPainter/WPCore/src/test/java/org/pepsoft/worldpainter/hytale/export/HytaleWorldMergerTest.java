@@ -680,6 +680,65 @@ public class HytaleWorldMergerTest {
     }
 
     @Test
+    public void resolveAlignsByFootprintEvenWhenBoundsAndSpawnChanged() throws Exception {
+        // The Calandor case: a legacy map (no sidecar) whose WorldPainter spawn was moved and whose
+        // tile bounds changed since export — so neither spawn recovery nor current-centering can find
+        // the offset. Footprint alignment matches the map's distinctive shape to the existing chunks
+        // and recovers the exact export offset regardless.
+        //
+        // Distinctive L-shaped footprint, far from the origin so the export offset is large/non-trivial.
+        java.util.Set<Point> exportTiles = new java.util.HashSet<>(java.util.Arrays.asList(
+                new Point(20, 20), new Point(21, 20), new Point(22, 20), new Point(23, 20),
+                new Point(20, 21), new Point(20, 22)));
+        World2 exportWorld = buildScratchWorldWithSpawn("fp_export", exportTiles);
+        File baseDir = tempDir.newFolder("base_fp");
+        new HytaleWorldExporter(exportWorld, new WorldExportSettings()).export(baseDir, "fp_export", null, null);
+        File mapDir = new File(new File(new File(new File(baseDir, "fp_export"), "universe"), "worlds"), "default");
+        Point exportOffset = HytaleWorldExporter.centeringOffset(exportTiles);   // = (-2688, -2688)
+        assertEquals("precondition: export offset is the centering of the export tiles",
+                new Point(-2688, -2688), exportOffset);
+        assertTrue("simulate a legacy map: no sidecar",
+                new File(mapDir, HytaleExportMetadata.SIDECAR_NAME).delete());
+
+        // Revamp: same shape (so it is still recognisable) + a far tile that shifts current centering,
+        // and a wildly moved spawn so spawn recovery would be nonsense.
+        java.util.Set<Point> revampedTiles = new java.util.HashSet<>(exportTiles);
+        revampedTiles.add(new Point(50, 50));
+        World2 revamped = buildScratchWorldWithSpawn("fp_revamp", revampedTiles);
+        revamped.setSpawnPoint(new Point(9999, 9999));
+
+        HytaleWorldMerger merger = new HytaleWorldMerger(revamped, new WorldExportSettings(), mapDir, HYTALE);
+        assertEquals("Footprint alignment must recover the export offset from the map's shape, "
+                + "independent of spawn and current centering",
+                exportOffset, merger.resolveBlockOffset());
+    }
+
+    @Test
+    public void footprintAlignmentReturnsNullWhenShapesDoNotMatch() throws Exception {
+        // No recognisable shared shape -> alignOffsetByFootprint must refuse (null), so resolveBlockOffset
+        // aborts rather than guess. Existing chunks far from where the world's tiles could ever land.
+        File mapDir = createExportedHytaleMap("fp_nomatch");   // single tile (0,0) -> chunks around origin
+        assertTrue(new File(mapDir, HytaleExportMetadata.SIDECAR_NAME).delete());
+
+        // A world whose single tile is at (0,0): its footprint is one slot; the existing footprint is one
+        // slot too, so SOME shift always overlaps fully -> that is a legitimate (if trivial) match. To force
+        // a genuine no-match we instead remove all chunks so the existing footprint is empty.
+        File chunksDir = new File(mapDir, "chunks");
+        for (File f : chunksDir.listFiles((d, n) -> n.endsWith(".region.bin"))) {
+            assertTrue(f.delete());
+        }
+        World2 world = buildImportedWorld(mapDir);
+        HytaleWorldMerger merger = new HytaleWorldMerger(world, new WorldExportSettings(), mapDir, HYTALE);
+        assertNull("Empty existing footprint -> no alignment", merger.alignOffsetByFootprint(mapDir));
+        try {
+            merger.resolveBlockOffset();
+            fail("Expected InvalidMapException when the footprint cannot be aligned");
+        } catch (InvalidMapException expected) {
+            // ok
+        }
+    }
+
+    @Test
     public void resolvePrefersSpawnRecoveryOverDriftedCenteringWhenNoSidecar() throws Exception {
         java.util.Set<Point> exportTiles = new java.util.HashSet<>(java.util.Arrays.asList(
                 new Point(0, 0), new Point(8, 0)));

@@ -497,11 +497,19 @@ public class HytaleWorldMerger extends HytaleWorldExporter implements WorldMerge
                 (int) (Math.round(offset.y / 128.0) * 128));
     }
 
+    /** A footprint alignment must explain at least this fraction of the existing tile-slots. */
+    private static final double FOOTPRINT_COVERAGE_MIN = 0.75;
+
     /**
      * Resolve the block offset to write the merge with, reading the existing map at {@link #mapDir}.
      * MUST be called before any backup rename (while mapDir still holds the chunks and config.json).
-     * Order: stored sidecar (authoritative) -> best of {spawn recovery, centering heuristic} validated
-     * by region coverage -> abort if nothing clears {@link #COVERAGE_THRESHOLD}.
+     *
+     * <p>Order: stored sidecar (authoritative, snapped to the tile grid) → {@link #alignOffsetByFootprint
+     * shape-based alignment} of the world's tile footprint against the chunks already in the save →
+     * abort. The footprint alignment is spawn-independent and is the reliable recovery for maps
+     * exported before the sidecar existed (the spawn point may have moved since export, which made
+     * spawn-based recovery unreliable). If the footprint can't be aligned unambiguously, we abort
+     * rather than risk misplacing tiles — a full export then resets alignment and stores a sidecar.
      */
     Point resolveBlockOffset() {
         final Point sidecar = HytaleExportMetadata.readBlockOffset(mapDir);
@@ -510,36 +518,103 @@ public class HytaleWorldMerger extends HytaleWorldExporter implements WorldMerge
             logger.info("Using stored export offset {} from sidecar in {}", snapped, mapDir);
             return snapped;
         }
-        final Set<Point> existingRegions = readExistingRegionCoords(mapDir);
-        if (existingRegions.isEmpty()) {
-            return heuristicOffset();   // nothing to align to (degenerate / empty map)
+        final Point footprint = alignOffsetByFootprint(mapDir);
+        if (footprint != null) {
+            logger.info("Resolved export offset {} by footprint alignment for merge into {}", footprint, mapDir);
+            return footprint;
         }
-        final Set<Point> allTiles = world.getDimension(NORMAL_DETAIL).getTileCoords();
-        final Point oSpawn = snapToTile(recoverOffsetFromSpawn(mapDir));
-        final Point oHeuristic = heuristicOffset();
-        // Evaluate spawn recovery first so it wins ties (it is exact when the spawn is unchanged).
-        final java.util.List<Point> candidates = (oSpawn != null)
-                ? java.util.Arrays.asList(oSpawn, oHeuristic)
-                : java.util.Collections.singletonList(oHeuristic);
-        Point best = null;
-        double bestCoverage = -1.0;
-        for (Point candidate : candidates) {
-            final double cov = coverage(allTiles, candidate, existingRegions);
-            if (cov > bestCoverage) {
-                bestCoverage = cov;
-                best = candidate;
+        throw new InvalidMapException("Could not determine the original block alignment of the existing Hytale "
+                + "map by matching its shape against your world (the footprints did not line up unambiguously). "
+                + "Aborting so tiles are not misplaced. This usually means the map's tile layout changed too much "
+                + "since it was exported, or the map shape is too uniform to align. Do a full export to reset "
+                + "alignment — it stores the offset so future merges align automatically.");
+    }
+
+    /**
+     * Determine the export block offset by aligning the world's tile footprint to the chunks already
+     * in the existing map — completely spawn-independent. Both the world and the save represent the
+     * same map, and the export offset is always tile-aligned (a multiple of 128), so there is exactly
+     * one integer tile-shift {@code k} that lays the world's tiles over the existing data. We
+     * cross-correlate the two footprints and take the peak, but only when it is unambiguous (a single
+     * best shift) and explains most of the existing data; otherwise we return {@code null} so the
+     * caller aborts rather than misplacing.
+     *
+     * @return the {@code (blockOffsetX, blockOffsetZ)} that aligns the footprints, or {@code null} if
+     *         no confident alignment exists.
+     */
+    Point alignOffsetByFootprint(File worldDir) {
+        final Dimension surface = world.getDimension(NORMAL_DETAIL);
+        if (surface == null) {
+            return null;
+        }
+        final Set<Point> worldTiles = surface.getTileCoords();
+        if (worldTiles.isEmpty()) {
+            return null;
+        }
+        final Set<Point> existingSlots = readExistingTileSlots(worldDir, surface.getMinHeight(), surface.getMaxHeight());
+        if (existingSlots.isEmpty()) {
+            return null;
+        }
+        int wMinX = Integer.MAX_VALUE, wMaxX = Integer.MIN_VALUE, wMinY = Integer.MAX_VALUE, wMaxY = Integer.MIN_VALUE;
+        for (Point t : worldTiles) {
+            wMinX = Math.min(wMinX, t.x); wMaxX = Math.max(wMaxX, t.x);
+            wMinY = Math.min(wMinY, t.y); wMaxY = Math.max(wMaxY, t.y);
+        }
+        int eMinX = Integer.MAX_VALUE, eMaxX = Integer.MIN_VALUE, eMinY = Integer.MAX_VALUE, eMaxY = Integer.MIN_VALUE;
+        for (Point s : existingSlots) {
+            eMinX = Math.min(eMinX, s.x); eMaxX = Math.max(eMaxX, s.x);
+            eMinY = Math.min(eMinY, s.y); eMaxY = Math.max(eMaxY, s.y);
+        }
+        // The world tile (tx,ty) lands on slot (tx+kx, ty+ky); search every shift that overlaps E.
+        int bestOverlap = -1, secondOverlap = -1, bestCount = 0, bestKx = 0, bestKy = 0;
+        for (int kx = eMinX - wMaxX; kx <= eMaxX - wMinX; kx++) {
+            for (int ky = eMinY - wMaxY; ky <= eMaxY - wMinY; ky++) {
+                int overlap = 0;
+                for (Point t : worldTiles) {
+                    if (existingSlots.contains(new Point(t.x + kx, t.y + ky))) {
+                        overlap++;
+                    }
+                }
+                if (overlap > bestOverlap) {
+                    secondOverlap = bestOverlap;
+                    bestOverlap = overlap;
+                    bestCount = 1;
+                    bestKx = kx;
+                    bestKy = ky;
+                } else if (overlap == bestOverlap) {
+                    bestCount++;
+                } else if (overlap > secondOverlap) {
+                    secondOverlap = overlap;
+                }
             }
         }
-        if (bestCoverage >= COVERAGE_THRESHOLD) {
-            logger.info("Resolved export offset {} (matches {}% of existing regions) for merge into {}",
-                    best, Math.round(bestCoverage * 100), mapDir);
-            return best;
+        final double coverage = (double) bestOverlap / existingSlots.size();
+        // Confident only if the peak is unique (no tie) and explains most of the existing footprint.
+        if ((bestCount == 1) && (coverage >= FOOTPRINT_COVERAGE_MIN)) {
+            logger.info("Footprint alignment: offset ({},{}) explains {}/{} existing tile-slots (runner-up {})",
+                    bestKx * 128, bestKy * 128, bestOverlap, existingSlots.size(), secondOverlap);
+            return new Point(bestKx * 128, bestKy * 128);
         }
-        throw new InvalidMapException("Could not determine the original block alignment of the existing "
-                + "Hytale map (best match " + Math.round(bestCoverage * 100) + "% of existing regions). "
-                + "Aborting so tiles are not misplaced. This map was exported before TalePainter stored its "
-                + "export offset, and spawn-based recovery did not line up — re-check the world's spawn point, "
-                + "or do a full export to reset alignment.");
+        logger.warn("Footprint alignment inconclusive for {}: best {}/{} slots (coverage {}%), runner-up {}, "
+                + "peaks {} — refusing to guess the offset", worldDir, bestOverlap, existingSlots.size(),
+                Math.round(coverage * 100), secondOverlap, bestCount);
+        return null;
+    }
+
+    /**
+     * The footprint of the existing chunks as a set of tile-sized slots (a WorldPainter tile is 4×4
+     * Hytale chunks, so a tile-slot = chunk &gt;&gt; 2). Reads only region/blob indices, not chunk data.
+     */
+    private static Set<Point> readExistingTileSlots(File worldDir, int minHeight, int maxHeight) {
+        final Set<Point> slots = new HashSet<>();
+        try (HytaleChunkStore store = new HytaleChunkStore(worldDir, minHeight, maxHeight)) {
+            for (MinecraftCoords c : store.getChunkCoords()) {
+                slots.add(new Point(c.x >> 2, c.z >> 2));
+            }
+        } catch (Exception e) {
+            logger.warn("Could not read existing chunk footprint from {}: {}", worldDir, e.getMessage());
+        }
+        return slots;
     }
 
     @Override
@@ -872,10 +947,7 @@ public class HytaleWorldMerger extends HytaleWorldExporter implements WorldMerge
         }
     }
 
-    // ── Offset-recovery helpers (Task 2) ─────────────────────────────────────────────
-
-    /** Coverage threshold below which the resolved offset is rejected (abort rather than misplace). */
-    private static final double COVERAGE_THRESHOLD = 0.9;
+    // ── Legacy offset-recovery helpers (superseded by alignOffsetByFootprint; retained for tests) ──
 
     /**
      * Read the region coordinates present in {@code <worldDir>/chunks} (files named
