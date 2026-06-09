@@ -84,6 +84,9 @@ public class HytaleWorldMerger extends HytaleWorldExporter implements WorldMerge
     /** Cooperatively-cancellable abort flag honoured by {@link #applyMergeOverrides}. */
     private volatile boolean aborted = false;
 
+    /** Block offset resolved once per merge (before any rename) and reused for every chunk. */
+    private Point resolvedBlockOffset;
+
     /** Collected merge warnings, surfaced via {@link #getWarnings()}. */
     private final List<String> warnings = new ArrayList<>();
 
@@ -305,9 +308,16 @@ public class HytaleWorldMerger extends HytaleWorldExporter implements WorldMerge
 
         // Reset transient run state in case the same merger instance is reused.
         aborted = false;
+        resolvedBlockOffset = null;
         warnings.clear();
 
         performSanityChecks();
+
+        // Resolve the block offset ONCE, now, while mapDir still holds the existing chunks and
+        // config.json (the full-merge path renames mapDir to a backup further down). Both the
+        // in-place and full-merge paths reach determineBlockOffset, which returns this value.
+        // Throws InvalidMapException (aborting before any modification) if alignment can't be found.
+        this.resolvedBlockOffset = resolveBlockOffset();
 
         // Fast path: a tile selection means "apply only these tiles to the already-exported
         // world". Patch them in place — overwrite just the selected tiles' chunks and touch
@@ -462,12 +472,63 @@ public class HytaleWorldMerger extends HytaleWorldExporter implements WorldMerge
      * imported maps but not for maps produced by a fresh (centered) export, where it left the
      * regenerated tiles offset from the rest of the world.
      */
-    @Override
-    protected Point determineBlockOffset(Dimension dimension, Set<Point> exportedTileCoords) {
+    /** Today's offset behavior: (0,0) for imported maps, else center the current tile set. */
+    private Point heuristicOffset() {
         if (world.getImportedFrom() != null) {
             return new Point(0, 0);
         }
-        return HytaleWorldExporter.centeringOffset(dimension.getTileCoords());
+        return HytaleWorldExporter.centeringOffset(world.getDimension(NORMAL_DETAIL).getTileCoords());
+    }
+
+    /**
+     * Resolve the block offset to write the merge with, reading the existing map at {@link #mapDir}.
+     * MUST be called before any backup rename (while mapDir still holds the chunks and config.json).
+     * Order: stored sidecar (authoritative) -> best of {spawn recovery, centering heuristic} validated
+     * by region coverage -> abort if nothing clears {@link #COVERAGE_THRESHOLD}.
+     */
+    Point resolveBlockOffset() {
+        final Point sidecar = HytaleExportMetadata.readBlockOffset(mapDir);
+        if (sidecar != null) {
+            logger.info("Using stored export offset {} from sidecar in {}", sidecar, mapDir);
+            return sidecar;
+        }
+        final Set<Point> existingRegions = readExistingRegionCoords(mapDir);
+        if (existingRegions.isEmpty()) {
+            return heuristicOffset();   // nothing to align to (degenerate / empty map)
+        }
+        final Set<Point> allTiles = world.getDimension(NORMAL_DETAIL).getTileCoords();
+        final Point oSpawn = recoverOffsetFromSpawn(mapDir);
+        final Point oHeuristic = heuristicOffset();
+        // Evaluate spawn recovery first so it wins ties (it is exact when the spawn is unchanged).
+        final java.util.List<Point> candidates = (oSpawn != null)
+                ? java.util.Arrays.asList(oSpawn, oHeuristic)
+                : java.util.Collections.singletonList(oHeuristic);
+        Point best = null;
+        double bestCoverage = -1.0;
+        for (Point candidate : candidates) {
+            final double cov = coverage(allTiles, candidate, existingRegions);
+            if (cov > bestCoverage) {
+                bestCoverage = cov;
+                best = candidate;
+            }
+        }
+        if (bestCoverage >= COVERAGE_THRESHOLD) {
+            logger.info("Resolved export offset {} (matches {}% of existing regions) for merge into {}",
+                    best, Math.round(bestCoverage * 100), mapDir);
+            return best;
+        }
+        throw new InvalidMapException("Could not determine the original block alignment of the existing "
+                + "Hytale map (best match " + Math.round(bestCoverage * 100) + "% of existing regions). "
+                + "Aborting so tiles are not misplaced. This map was exported before TalePainter stored its "
+                + "export offset, and spawn-based recovery did not line up — re-check the world's spawn point, "
+                + "or do a full export to reset alignment.");
+    }
+
+    @Override
+    protected Point determineBlockOffset(Dimension dimension, Set<Point> exportedTileCoords) {
+        // merge() resolves the offset once (before any rename) and caches it here. When that hasn't
+        // run (e.g. determineBlockOffset called directly in a unit test), fall back to the heuristic.
+        return (resolvedBlockOffset != null) ? resolvedBlockOffset : heuristicOffset();
     }
 
     /**

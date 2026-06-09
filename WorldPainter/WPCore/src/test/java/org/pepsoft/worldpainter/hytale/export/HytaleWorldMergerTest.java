@@ -656,7 +656,125 @@ public class HytaleWorldMergerTest {
         assertFalse("Exported map must have at least one region file", coords.isEmpty());
     }
 
+    // ── Task 3: resolveBlockOffset tests ─────────────────────────────────────────────
+
+    @Test
+    public void resolveUsesSidecarOffsetWhenPresent() throws Exception {
+        File mapDir = createExportedHytaleMap("resolve_sidecar");
+        HytaleExportMetadata.writeBlockOffset(mapDir, -512, 0);
+        HytaleWorldMerger merger = newMerger(mapDir);
+        assertEquals(new Point(-512, 0), merger.resolveBlockOffset());
+    }
+
+    @Test
+    public void resolvePrefersSpawnRecoveryOverDriftedCenteringWhenNoSidecar() throws Exception {
+        java.util.Set<Point> exportTiles = new java.util.HashSet<>(java.util.Arrays.asList(
+                new Point(0, 0), new Point(8, 0)));
+        World2 exportWorld = buildScratchWorldWithSpawn("drift_export", exportTiles);
+        File baseDir = tempDir.newFolder("base_drift");
+        new HytaleWorldExporter(exportWorld, new WorldExportSettings()).export(baseDir, "drift_export", null, null);
+        File mapDir = new File(new File(new File(new File(baseDir, "drift_export"), "universe"), "worlds"), "default");
+
+        assertTrue(new File(mapDir, HytaleExportMetadata.SIDECAR_NAME).delete()); // simulate legacy map
+
+        java.util.Set<Point> revampedTiles = new java.util.HashSet<>(exportTiles);
+        revampedTiles.add(new Point(100, 0));
+        World2 revamped = buildScratchWorldWithSpawn("drift_revamp", revampedTiles);
+
+        HytaleWorldMerger merger = new HytaleWorldMerger(revamped, new WorldExportSettings(), mapDir, HYTALE);
+        assertEquals("Resolved offset must match the original export, not the drifted centering",
+                new Point(-512, 0), merger.resolveBlockOffset());
+    }
+
+    @Test
+    public void inPlaceMergeWithDriftedBoundsLandsTileAtOriginalRegion() throws Exception {
+        java.util.Set<Point> exportTiles = new java.util.HashSet<>(java.util.Arrays.asList(
+                new Point(0, 0), new Point(8, 0)));
+        World2 exportWorld = buildScratchWorldWithSpawn("place_export", exportTiles);
+        File baseDir = tempDir.newFolder("base_place");
+        new HytaleWorldExporter(exportWorld, new WorldExportSettings()).export(baseDir, "place_export", null, null);
+        File mapDir = new File(new File(new File(new File(baseDir, "place_export"), "universe"), "worlds"), "default");
+        assertTrue(new File(mapDir, HytaleExportMetadata.SIDECAR_NAME).delete()); // legacy map
+
+        try (HytaleChunkStore store = new HytaleChunkStore(innerWorld(mapDir), 0, 320)) {
+            assertNotNull("Setup: tile (0,0) chunk (-16,0) exists in region (-1,0)", store.getChunk(-16, 0));
+        }
+
+        java.util.Set<Point> revampedTiles = new java.util.HashSet<>(exportTiles);
+        revampedTiles.add(new Point(100, 0));
+        World2 revamped = buildScratchWorldWithSpawn("place_revamp", revampedTiles);
+        WorldExportSettings settings = new WorldExportSettings(
+                java.util.Collections.singleton(DIM_NORMAL),
+                java.util.Collections.singleton(new Point(0, 0)),
+                null);
+        HytaleWorldMerger merger = new HytaleWorldMerger(revamped, settings, mapDir, HYTALE);
+        merger.merge(new File(tempDir.getRoot(), "place_bkp"), null);
+
+        try (HytaleChunkStore store = new HytaleChunkStore(innerWorld(mapDir), 0, 320)) {
+            // Correct: still region (-1,0). Drifted offset (-6400,0) would put tile (0,0) at block -6400 -> chunk -200.
+            assertNotNull("Selected tile (0,0) must remain in region (-1,0) after merge", store.getChunk(-16, 0));
+            assertNull("Tile must NOT land at the drifted chunk (-200,0) / region (-7,0)", store.getChunk(-200, 0));
+        }
+        assertEquals(new Point(-512, 0), HytaleExportMetadata.readBlockOffset(mapDir));
+    }
+
+    @Test
+    public void resolveAbortsWhenNoOffsetExplainsTheExistingChunks() throws Exception {
+        // The centering heuristic re-centers current tiles around origin, so a single tile would land on
+        // region (0,0) and accidentally match a centered export. To force a genuine no-match we replace
+        // the chunks with one region FAR from origin (50,50) and remove any recoverable spawn.
+        File mapDir = createExportedHytaleMap("abort_case");
+        assertTrue(new File(mapDir, HytaleExportMetadata.SIDECAR_NAME).delete());
+        File chunksDir = new File(mapDir, "chunks");
+        for (File f : chunksDir.listFiles((d, n) -> n.endsWith(".region.bin"))) {
+            assertTrue(f.delete());
+        }
+        assertTrue("create a region file far from origin", new File(chunksDir, "50.50.region.bin").createNewFile());
+        java.nio.file.Files.write(new File(mapDir, "config.json").toPath(),
+                "{ }".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
+        // buildImportedWorld uses importedFrom -> heuristic offset (0,0); config.json has no
+        // SpawnProvider so recoverOffsetFromSpawn() returns null — no spawn anchor needed.
+        World2 world = buildImportedWorld(mapDir);   // tile (0,0); importedFrom set -> heuristic offset (0,0)
+        HytaleWorldMerger merger = new HytaleWorldMerger(world, new WorldExportSettings(), mapDir, HYTALE);
+        try {
+            merger.resolveBlockOffset();
+            fail("Expected InvalidMapException when no candidate offset explains the existing chunks");
+        } catch (InvalidMapException expected) {
+            // ok
+        }
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────────────
+
+    /**
+     * A from-scratch world with the given tiles and an explicit spawn at WP (0,0). */
+    private World2 buildScratchWorldWithSpawn(String name, java.util.Set<Point> tiles) {
+        World2 world = new World2(HYTALE, 0, 320);
+        world.setName(name);
+        world.setCreateGoodiesChest(false);
+        world.setSpawnPoint(new Point(0, 0));
+        long seed = 11L;
+        TileFactory tileFactory = TileFactoryFactory.createFlatTileFactory(
+                seed, Terrain.STONE, 0, 320, 64, 62, false, false);
+        Dimension.Anchor anchor = new Dimension.Anchor(DIM_NORMAL, Dimension.Role.DETAIL, false, 0);
+        Dimension dim = new Dimension(world, "Surface", seed, tileFactory, anchor);
+        dim.setEventsInhibited(true);
+        for (Point t : tiles) {
+            Tile tile = tileFactory.createTile(t.x, t.y);
+            for (int x = 0; x < 128; x++) {
+                for (int z = 0; z < 128; z++) {
+                    tile.setHeight(x, z, 64);
+                    tile.setTerrain(x, z, Terrain.STONE);
+                    HytaleTerrainLayer.setTerrainIndex(tile, x, z, HytaleTerrain.STONE.getLayerIndex());
+                }
+            }
+            dim.addTile(tile);
+        }
+        dim.setEventsInhibited(false);
+        world.addDimension(dim);
+        return world;
+    }
 
     /**
      * Build a small TalePainter world and export it as a Hytale save. Returns the INNER
