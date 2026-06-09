@@ -603,6 +603,52 @@ public class HytaleWorldMergerTest {
         assertNotNull("Export must write the block-offset sidecar", stored);
     }
 
+    @Test
+    public void coverageCountsExistingRegionsExplainedByTiles() throws Exception {
+        File mapDir = createExportedHytaleMap("coverage_unit");
+        HytaleWorldMerger merger = newMerger(mapDir);
+
+        java.util.Set<Point> existing = new java.util.HashSet<>(java.util.Arrays.asList(
+                new Point(0, 0), new Point(-1, 0)));
+        // Offset 0: tile (0,0) -> block 0..127 -> region (0,0); tile (-8,0) -> block -1024..-897 -> region (-1,0).
+        java.util.Set<Point> tiles = new java.util.HashSet<>(java.util.Arrays.asList(
+                new Point(0, 0), new Point(-8, 0)));
+        assertEquals("Both existing regions explained -> coverage 1.0",
+                1.0, merger.coverage(tiles, new Point(0, 0), existing), 1e-9);
+
+        assertEquals("No existing region explained -> coverage 0.0",
+                0.0, merger.coverage(new java.util.HashSet<>(java.util.Arrays.asList(new Point(50, 50))),
+                        new Point(0, 0), existing), 1e-9);
+    }
+
+    @Test
+    public void recoverOffsetFromSpawnSubtractsWorldSpawnFromSaveSpawn() throws Exception {
+        File mapDir = createExportedHytaleMap("spawn_unit");
+        File config = new File(mapDir, "config.json");
+        String json = "{ \"SpawnProvider\": { \"SpawnPoint\": { \"X\": 2448.0, \"Y\": 142.0, \"Z\": 1184.0 } } }";
+        java.nio.file.Files.write(config.toPath(), json.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+
+        World2 world = buildImportedWorld(mapDir);
+        world.setSpawnPoint(new Point(400, 184));
+        HytaleWorldMerger merger = new HytaleWorldMerger(world, new WorldExportSettings(), mapDir, HYTALE);
+
+        Point off = merger.recoverOffsetFromSpawn(mapDir);
+        assertNotNull(off);
+        assertEquals("offsetX = saveSpawn.X - wpSpawn.x = 2448 - 400", 2048, off.x);
+        assertEquals("offsetZ = saveSpawn.Z - wpSpawn.y = 1184 - 184", 1000, off.y);
+    }
+
+    @Test
+    public void recoverOffsetFromSpawnReturnsNullWhenNoSpawnInConfig() throws Exception {
+        File mapDir = createExportedHytaleMap("spawn_none");
+        File config = new File(mapDir, "config.json");
+        java.nio.file.Files.write(config.toPath(), "{ }".getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        World2 world = buildImportedWorld(mapDir);
+        world.setSpawnPoint(new Point(0, 0));
+        HytaleWorldMerger merger = new HytaleWorldMerger(world, new WorldExportSettings(), mapDir, HYTALE);
+        assertNull(merger.recoverOffsetFromSpawn(mapDir));
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────────────
 
     /**

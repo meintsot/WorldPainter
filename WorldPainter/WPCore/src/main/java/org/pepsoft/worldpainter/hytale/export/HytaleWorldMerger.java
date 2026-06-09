@@ -19,10 +19,15 @@ import org.pepsoft.worldpainter.util.FileInUseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import java.awt.Point;
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -786,5 +791,103 @@ public class HytaleWorldMerger extends HytaleWorldExporter implements WorldMerge
             default:
                 return true;
         }
+    }
+
+    // ── Offset-recovery helpers (Task 2) ─────────────────────────────────────────────
+
+    /** Coverage threshold below which the resolved offset is rejected (abort rather than misplace). */
+    @SuppressWarnings("unused")
+    private static final double COVERAGE_THRESHOLD = 0.9;
+
+    /**
+     * Read the region coordinates present in {@code <worldDir>/chunks} (files named
+     * {@code "<x>.<z>.region.bin"}). Used to validate a candidate block offset against the chunks
+     * already in the existing map.
+     */
+    static Set<Point> readExistingRegionCoords(File worldDir) {
+        final Set<Point> coords = new HashSet<>();
+        final File chunksDir = new File(worldDir, CHUNKS_DIR);
+        final File[] files = chunksDir.listFiles((d, n) -> n.endsWith(".region.bin"));
+        if (files == null) {
+            return coords;
+        }
+        for (File f : files) {
+            final String[] parts = f.getName().split("\\.");
+            if (parts.length >= 3) {
+                try {
+                    coords.add(new Point(Integer.parseInt(parts[0]), Integer.parseInt(parts[1])));
+                } catch (NumberFormatException ignored) {
+                    // skip non-coordinate filenames
+                }
+            }
+        }
+        return coords;
+    }
+
+    /**
+     * Recover the offset the existing map was exported with from its spawn point. The export wrote
+     * {@code saveSpawn = world.getSpawnPoint() + blockOffset} (HytaleWorldConfigWriter), so
+     * {@code blockOffset = saveSpawn - world.getSpawnPoint()}. Returns {@code null} when the world
+     * has no spawn point or the existing {@code config.json} has no usable {@code SpawnProvider.SpawnPoint}.
+     */
+    Point recoverOffsetFromSpawn(File worldDir) {
+        final Point wpSpawn = world.getSpawnPoint();
+        if (wpSpawn == null) {
+            return null;
+        }
+        final File configFile = new File(worldDir, "config.json");
+        if (!configFile.isFile()) {
+            return null;
+        }
+        try {
+            final String text = new String(Files.readAllBytes(configFile.toPath()), StandardCharsets.UTF_8);
+            final JsonObject root = JsonParser.parseString(text).getAsJsonObject();
+            if (!root.has("SpawnProvider")) {
+                return null;
+            }
+            final JsonObject sp = root.getAsJsonObject("SpawnProvider");
+            if (!sp.has("SpawnPoint")) {
+                return null;
+            }
+            final JsonObject pt = sp.getAsJsonObject("SpawnPoint");
+            if ((!pt.has("X")) || (!pt.has("Z"))) {
+                return null;
+            }
+            final int saveX = (int) Math.round(pt.get("X").getAsDouble());
+            final int saveZ = (int) Math.round(pt.get("Z").getAsDouble());
+            return new Point(saveX - wpSpawn.x, saveZ - wpSpawn.y);
+        } catch (Exception e) {
+            logger.warn("Could not recover offset from spawn in {}: {}", configFile, e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Fraction of {@code existingRegions} that are "explained" by some tile in {@code tileCoords}
+     * under {@code offset}: i.e. the tile, once offset, falls in that region. A correct offset lands
+     * the unchanged tiles back on the regions the export wrote (coverage near 1.0); a drifted offset
+     * scores lower. Returns 1.0 for an empty {@code existingRegions} (nothing to validate against).
+     */
+    static double coverage(Set<Point> tileCoords, Point offset, Set<Point> existingRegions) {
+        if (existingRegions.isEmpty()) {
+            return 1.0;
+        }
+        final Set<Point> hit = new HashSet<>();
+        for (Point t : tileCoords) {
+            final int bx0 = (t.x * 128) + offset.x;
+            final int bz0 = (t.y * 128) + offset.y;
+            // region = chunk >> 5 = block >> 10. A 128-block tile may straddle a 1024-block boundary.
+            final int rx0 = bx0 >> 10, rx1 = (bx0 + 127) >> 10;
+            final int rz0 = bz0 >> 10, rz1 = (bz0 + 127) >> 10;
+            for (int rx = rx0; rx <= rx1; rx++) {
+                for (int rz = rz0; rz <= rz1; rz++) {
+                    final Point r = new Point(rx, rz);
+                    if (existingRegions.contains(r)) {
+                        hit.add(r);
+                    }
+                }
+            }
+        }
+        return (double) hit.size() / existingRegions.size();
     }
 }
