@@ -482,6 +482,68 @@ public class HytaleWorldMergerTest {
         }
     }
 
+    /**
+     * The repaint on a selected tile must actually land in the in-place-merged chunk. The original
+     * export put terrain up to y=64; raising the selected tile to height 100 must make y=90 solid
+     * stone after the merge.
+     */
+    @Test
+    public void selectiveMergeAppliesRepaintToSelectedTileInPlace() throws Exception {
+        File mapDir = createExportedHytaleMap("inplace_update");   // single tile (0,0), height 64
+
+        World2 world = buildImportedWorld(mapDir);
+        Dimension dim = world.getDimension(NORMAL_DETAIL);
+        Tile tile = dim.getTile(0, 0);
+        dim.setEventsInhibited(true);
+        for (int x = 0; x < 128; x++) {
+            for (int z = 0; z < 128; z++) {
+                tile.setHeight(x, z, 100);
+            }
+        }
+        dim.setEventsInhibited(false);
+
+        WorldExportSettings settings = new WorldExportSettings(
+                java.util.Collections.singleton(DIM_NORMAL),
+                java.util.Collections.singleton(new Point(0, 0)),
+                null);
+        HytaleWorldMerger merger = new HytaleWorldMerger(world, settings, mapDir, HYTALE);
+        merger.merge(new File(tempDir.getRoot(), "inplace_update_bkp"), null);
+
+        try (HytaleChunkStore store = new HytaleChunkStore(innerWorld(mapDir), 0, 320)) {
+            HytaleChunk chunk = (HytaleChunk) store.getChunk(0, 0);
+            assertNotNull(chunk);
+            assertEquals("Repaint to height 100 must land in the in-place-merged chunk",
+                    HytaleTerrain.STONE.getPrimaryBlock().id, idOrEmpty(chunk.getHytaleBlock(0, 90, 0)));
+        }
+    }
+
+    /**
+     * The in-place path must read each original chunk from the LIVE world (the same file it then
+     * overwrites) and merge its data back. Seed a man-made block above the terrain in the original;
+     * with mergeBlocksAboveGround (default true) it must survive the in-place selective merge.
+     */
+    @Test
+    public void selectiveMergePreservesOriginalAboveGroundBlocksInPlace() throws Exception {
+        File mapDir = createExportedHytaleMap("inplace_meta");   // tile (0,0), terrainHeight 64
+        injectIntoOriginal(mapDir, 0, 0, chunk ->
+                chunk.setHytaleBlock(0, 70, 0, HytaleBlock.of("Cloth_Wool")));   // above-ground, man-made
+
+        World2 world = buildImportedWorld(mapDir);   // mergeBlocksAboveGround defaults true
+        WorldExportSettings settings = new WorldExportSettings(
+                java.util.Collections.singleton(DIM_NORMAL),
+                java.util.Collections.singleton(new Point(0, 0)),
+                null);
+        HytaleWorldMerger merger = new HytaleWorldMerger(world, settings, mapDir, HYTALE);
+        merger.merge(new File(tempDir.getRoot(), "inplace_meta_bkp"), null);
+
+        try (HytaleChunkStore store = new HytaleChunkStore(innerWorld(mapDir), 0, 320)) {
+            HytaleChunk chunk = (HytaleChunk) store.getChunk(0, 0);
+            assertNotNull(chunk);
+            assertEquals("In-place merge must read the original (live) chunk and keep its above-ground "
+                    + "block", "Cloth_Wool", idOrEmpty(chunk.getHytaleBlock(0, 70, 0)));
+        }
+    }
+
     // ── Centering-offset regression (the "merged result is split / corrupted" bug) ────
 
     /**
