@@ -435,7 +435,8 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         }
 
         // Roof sub-variants → try base roof texture
-        if (blockId.endsWith("_Flap") || blockId.endsWith("_Flat") || blockId.endsWith("_Vertical")) {
+        if (blockId.endsWith("_Flap") || blockId.endsWith("_Flat") || blockId.endsWith("_Vertical")
+                || blockId.endsWith("_Hollow") || blockId.endsWith("_Shallow") || blockId.endsWith("_Steep")) {
             String base = blockId.substring(0, blockId.lastIndexOf('_'));
             addTextureCandidates(base, topCandidates, sideCandidates);
             for (String prefix : new String[] { "Rock_", "Soil_" }) {
@@ -971,8 +972,10 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
             addGeneratedIconCandidates(blockId.replace("_Planks_", "_"), candidates);
         }
 
-        // Roof sub-variants (_Roof_Flap, _Roof_Flat, _Roof_Vertical) → try base _Roof
-        if (blockId.endsWith("_Flap") || blockId.endsWith("_Flat") || blockId.endsWith("_Vertical")) {
+        // Roof sub-variants (_Roof_Flap, _Roof_Flat, _Roof_Vertical, _Roof_Hollow,
+        // _Roof_Shallow, _Roof_Steep) → try base _Roof
+        if (blockId.endsWith("_Flap") || blockId.endsWith("_Flat") || blockId.endsWith("_Vertical")
+                || blockId.endsWith("_Hollow") || blockId.endsWith("_Shallow") || blockId.endsWith("_Steep")) {
             String base = blockId.substring(0, blockId.lastIndexOf('_'));
             addGeneratedIconCandidates(base, candidates);
             // Also try without Rock_/Soil_ prefix for roof base
@@ -1818,6 +1821,14 @@ public final class HytaleTerrain implements Serializable, Comparable<HytaleTerra
         if (id.startsWith("Soil_Snow")) return 0xfffafa;
         if (id.startsWith("Soil_")) return 0x8b5a2b;
         
+        // Metal colours (TP-57: Update 4 construction sets)
+        if (id.startsWith("Metal_Bronze")) return 0xcd7f32;
+        if (id.startsWith("Metal_Copper")) return 0xb87333;
+        if (id.startsWith("Metal_Iron")) return 0x8d9296;
+        if (id.startsWith("Metal_Zinc")) return 0xb6c0c4;
+        if (id.startsWith("Metal_Gold")) return 0xd4af37;
+        if (id.startsWith("Metal_")) return 0x9aa0a4;
+
         // Fluid colours
         if (id.contains("Water")) return 0x3366ff;
         if (id.contains("Lava")) return 0xff4500;
