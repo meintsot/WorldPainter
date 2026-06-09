@@ -404,6 +404,11 @@ public class HytaleWorldExporter implements WorldExporter {
 
             logger.info("Block offset for export: ({},{})", blockOffsetX, blockOffsetZ);
 
+            // Persist the offset so later merges reuse this exact alignment instead of recomputing
+            // a centering offset that drifts when the world's tile bounds change. Covers every path
+            // through exportDimension: plain export, full merge, and in-place selective merge.
+            HytaleExportMetadata.writeBlockOffset(worldDir, blockOffset.x, blockOffset.y);
+
             // Open the original imported world (if any) for merging entities, block health,
             // and metadata back into the exported chunks for round-trip fidelity
             openOriginalChunkStore(dimension);

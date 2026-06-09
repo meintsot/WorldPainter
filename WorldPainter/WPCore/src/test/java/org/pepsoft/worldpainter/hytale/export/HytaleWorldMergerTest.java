@@ -596,6 +596,13 @@ public class HytaleWorldMergerTest {
                 new Point(0, 0), mergeOffset);
     }
 
+    @Test
+    public void exportWritesBlockOffsetSidecar() throws Exception {
+        File mapDir = createExportedHytaleMap("sidecar_written");
+        Point stored = HytaleExportMetadata.readBlockOffset(mapDir);
+        assertNotNull("Export must write the block-offset sidecar", stored);
+    }
+
     // ── helpers ──────────────────────────────────────────────────────────────────────
 
     /**
