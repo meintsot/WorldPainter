@@ -408,7 +408,14 @@ public class HytaleWorldMerger extends HytaleWorldExporter implements WorldMerge
         // Read originals from the LIVE world. exportDimension() leaves a pre-set originalChunkStore
         // untouched (see HytaleWorldExporter.openOriginalChunkStore) and closes it when done.
         originalChunkStore = new HytaleChunkStore(mapDir, surface.getMinHeight(), surface.getMaxHeight());
-        exportSelectedTilesInPlace(mapDir, progressReceiver);
+        try {
+            exportSelectedTilesInPlace(mapDir, progressReceiver);
+        } finally {
+            // Defensive: exportDimension() closes the store on success, but if it throws
+            // (cancellation, OOM, region failure) the open read handles on the live region
+            // files would leak. closeOriginalChunkStore() is null-safe and idempotent.
+            closeOriginalChunkStore();
+        }
     }
 
     /**

@@ -125,7 +125,7 @@ public class HytaleWorldExporter implements WorldExporter {
     // When true, exportRegion opens existing region files (openOrCreate) and overwrites only the
     // selected tiles' chunks instead of truncating (create). Enables fast in-place selective
     // merges; never set during a normal export. Set by exportSelectedTilesInPlace().
-    private boolean inPlaceMerge = false;
+    private volatile boolean inPlaceMerge = false;
 
     // Prefab paster for inlining prefab blocks during export (initialized at export time)
     private HytalePrefabPaster prefabPaster;
@@ -806,7 +806,7 @@ public class HytaleWorldExporter implements WorldExporter {
     /**
      * Close the original chunk store after export is complete.
      */
-    private void closeOriginalChunkStore() {
+    protected void closeOriginalChunkStore() {
         if (originalChunkStore != null) {
             try {
                 originalChunkStore.close();

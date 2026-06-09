@@ -477,7 +477,7 @@ public class HytaleWorldMergerTest {
         assertArrayEquals("A non-selected region file must be byte-identical after an in-place "
                 + "selective merge (it must never be rewritten)", before, after);
 
-        try (HytaleChunkStore store = new HytaleChunkStore(mapDir, 0, 320)) {
+        try (HytaleChunkStore store = new HytaleChunkStore(innerWorld(mapDir), 0, 320)) {
             assertNotNull("Selected tile (4,4) chunk (16,16) must exist after merge", store.getChunk(16, 16));
         }
     }
