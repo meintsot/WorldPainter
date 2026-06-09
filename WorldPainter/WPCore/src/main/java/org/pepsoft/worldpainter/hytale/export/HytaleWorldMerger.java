@@ -583,6 +583,7 @@ public class HytaleWorldMerger extends HytaleWorldExporter implements WorldMerge
                     bestKy = ky;
                 } else if (overlap == bestOverlap) {
                     bestCount++;
+                    secondOverlap = bestOverlap;   // a second shift reached the max (keeps the log accurate)
                 } else if (overlap > secondOverlap) {
                     secondOverlap = overlap;
                 }
