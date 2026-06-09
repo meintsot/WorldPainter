@@ -272,6 +272,17 @@ public class MergeWorldDialog extends WorldPainterDialog {
             sb.append("<li>A tile selection is active! Only " + selectedTiles.size() + " tiles of the<br>" + dim + " dimension are going to be merged.");
             showWarning = true;
         }
+        if (isHytale && radioButtonExportSelection.isSelected()) {
+            // The Hytale selective merge patches the selected tiles directly into the existing
+            // world and makes no backup (see HytaleWorldMerger.mergeSelectedTilesInPlace). Warn
+            // regardless of disableTileSelectionWarning, and state the one assumption that matters:
+            // the tile layout must not have changed since the export.
+            sb.append("<li><b>Fast in-place merge:</b> the selected tiles are written directly into "
+                    + "your exported world and <b>no backup is made</b>.<br>"
+                    + "Make sure you have your own backup, and that you have <b>not added or removed "
+                    + "tiles</b> since the last export (only repaint existing tiles).");
+            showWarning = true;
+        }
         sb.append("</ul>Do you want to continue with the merge?</html>");
         if (showWarning && (JOptionPane.showConfirmDialog(this, sb.toString(), "Review Warnings", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE) != JOptionPane.YES_OPTION)) {
             return;
