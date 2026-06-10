@@ -230,6 +230,40 @@ public class HytaleBsonChunkSerializer {
             hasData = true;
         }
 
+        // ── Painted Biomes (TP-125: restore the Biome layer on re-import) ──
+        String[] paintedBiomes = chunk.getPaintedBiomes();
+        BsonArray biomeArr = new BsonArray();
+        for (int i = 0; i < paintedBiomes.length; i++) {
+            if (paintedBiomes[i] != null) {
+                int x = i % HytaleChunk.CHUNK_SIZE;
+                int z = i / HytaleChunk.CHUNK_SIZE;
+                BsonDocument entry = new BsonDocument();
+                entry.put("x", new BsonInt32(x));
+                entry.put("z", new BsonInt32(z));
+                entry.put("biome", new BsonString(paintedBiomes[i]));
+                biomeArr.add(entry);
+            }
+        }
+        if (!biomeArr.isEmpty()) {
+            doc.put("PaintedBiomes", biomeArr);
+            hasData = true;
+        }
+
+        // ── Auto Vegetation (TP-125: restore the layer on re-import) ──
+        boolean[] autoVeg = chunk.getAutoVegetationFlags();
+        boolean anyAutoVeg = false;
+        byte[] autoVegBits = new byte[autoVeg.length / 8];
+        for (int i = 0; i < autoVeg.length; i++) {
+            if (autoVeg[i]) {
+                autoVegBits[i >> 3] |= (byte) (1 << (i & 7));
+                anyAutoVeg = true;
+            }
+        }
+        if (anyAutoVeg) {
+            doc.put("AutoVegetation", new BsonBinary(autoVegBits));
+            hasData = true;
+        }
+
         return hasData ? doc : null;
     }
 

@@ -1430,6 +1430,10 @@ public class HytaleWorldExporter implements WorldExporter {
                 // user-painted plant at this pixel. Curated defaults are
                 // lazily seeded the first time the layer is exported on a
                 // dimension that has no settings yet.
+                if (tile.getBitLayerValue(HytaleAutoVegetationLayer.INSTANCE, tileLocalX, tileLocalZ)) {
+                    // TP-125: record the layer in TalePainterMetadata so re-importing the save restores it
+                    chunk.setAutoVegetation(localX, localZ, true);
+                }
                 if (tile.getBitLayerValue(HytaleAutoVegetationLayer.INSTANCE, tileLocalX, tileLocalZ)
                         && (plantIndex == 0)) {
                     HytaleAutoVegetationSettings autoVegSettings = (HytaleAutoVegetationSettings)
@@ -1522,6 +1526,8 @@ public class HytaleWorldExporter implements WorldExporter {
                 biome = hb.getName();
                 environment = hb.getEnvironment();
                 tint = hb.getTint();
+                // TP-125: record the painted biome in TalePainterMetadata so re-importing the save restores it
+                chunk.setPaintedBiomeName(localX, localZ, biome);
             } else {
                 // Unknown biome ID, fall back to auto
                 biome = mapTerrainToBiome(localTerrain);

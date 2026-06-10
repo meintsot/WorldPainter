@@ -341,6 +341,53 @@ public class HytaleMapImporter extends MapImporter {
 
         applyFluidLayerForColumn(chunk, tile, localX, localZ, tilePixelX, tilePixelZ, surfaceY, waterLevel);
         applyEnvironmentLayerForColumn(chunk, tile, localX, localZ, tilePixelX, tilePixelZ);
+        restorePlantForColumn(chunk, tile, localX, localZ, tilePixelX, tilePixelZ, surfaceY, waterLevel);
+        restoreTalePainterLayersForColumn(chunk, tile, localX, localZ, tilePixelX, tilePixelZ);
+    }
+
+    /**
+     * TP-125: reconstruct the plants layer from the plant block sitting on this column. Plants are exported as
+     * real blocks directly above the terrain surface (or at the water surface for floating water plants); the
+     * surface scan deliberately skips them, so without this they would be lost on every import.
+     */
+    private void restorePlantForColumn(HytaleChunk chunk, Tile tile,
+                                       int localX, int localZ, int tilePixelX, int tilePixelZ,
+                                       int surfaceY, int waterLevel) {
+        final int[] candidateYs = (waterLevel > surfaceY)
+                ? new int[] { surfaceY + 1, waterLevel, waterLevel + 1 }
+                : new int[] { surfaceY + 1 };
+        for (int y : candidateYs) {
+            if ((y <= surfaceY) || (y < 0) || (y >= HytaleChunk.DEFAULT_MAX_HEIGHT)) {
+                continue;
+            }
+            final HytaleBlock block = chunk.getHytaleBlock(localX, y, localZ);
+            if ((block == null) || block.isEmpty() || (! HytaleBlockRegistry.isSurfaceOnlyBlock(block.id))) {
+                continue;
+            }
+            final HytaleTerrain plantTerrain = HytaleTerrain.getByBlockId(block.id);
+            if (plantTerrain != null) {
+                HytalePlantsLayer.setPlantIndex(tile, tilePixelX, tilePixelZ, plantTerrain.getLayerIndex());
+                return;
+            }
+        }
+    }
+
+    /**
+     * TP-125: restore the TalePainter-only layers round-tripped through the TalePainterMetadata chunk component:
+     * the painted {@link org.pepsoft.worldpainter.layers.Biome} layer and the auto-vegetation layer.
+     */
+    private void restoreTalePainterLayersForColumn(HytaleChunk chunk, Tile tile,
+                                                   int localX, int localZ, int tilePixelX, int tilePixelZ) {
+        final String paintedBiome = chunk.getPaintedBiomeName(localX, localZ);
+        if (paintedBiome != null) {
+            final HytaleBiome biome = HytaleBiome.getByName(paintedBiome);
+            if (biome != null) {
+                tile.setLayerValue(org.pepsoft.worldpainter.layers.Biome.INSTANCE, tilePixelX, tilePixelZ, biome.getId());
+            }
+        }
+        if (chunk.isAutoVegetation(localX, localZ)) {
+            tile.setBitLayerValue(HytaleAutoVegetationLayer.INSTANCE, tilePixelX, tilePixelZ, true);
+        }
     }
 
     /**

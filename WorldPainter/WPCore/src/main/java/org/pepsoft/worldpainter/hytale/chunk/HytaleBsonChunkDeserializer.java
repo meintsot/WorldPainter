@@ -787,7 +787,8 @@ final class HytaleBsonChunkDeserializer {
     }
 
     /**
-     * Read TalePainterMetadata BSON component: water tints, spawn overrides, prefab markers.
+     * Read TalePainterMetadata BSON component: water tints, spawn overrides, prefab markers, painted biomes and
+     * auto-vegetation flags (TP-125).
      */
     private static void readTalePainterMetadata(BsonDocument metaDoc, HytaleChunk chunk) {
         // Water Tints: { "x,z": "hexColor", ... }
@@ -831,6 +832,28 @@ final class HytaleBsonChunkDeserializer {
                     entry.getString("path").getValue(),
                     rotation
                 );
+            }
+        }
+
+        // Painted Biomes (TP-125): [ { x, z, biome }, ... ]
+        if (metaDoc.containsKey("PaintedBiomes")) {
+            for (BsonValue val : metaDoc.getArray("PaintedBiomes")) {
+                BsonDocument entry = val.asDocument();
+                chunk.setPaintedBiomeName(
+                    entry.getInt32("x").getValue(),
+                    entry.getInt32("z").getValue(),
+                    entry.getString("biome").getValue()
+                );
+            }
+        }
+
+        // Auto Vegetation (TP-125): 1024-column bitset, 128 bytes
+        if (metaDoc.containsKey("AutoVegetation")) {
+            byte[] bits = metaDoc.getBinary("AutoVegetation").getData();
+            for (int i = 0; i < HytaleChunk.CHUNK_SIZE * HytaleChunk.CHUNK_SIZE && (i >> 3) < bits.length; i++) {
+                if ((bits[i >> 3] & (1 << (i & 7))) != 0) {
+                    chunk.setAutoVegetation(i % HytaleChunk.CHUNK_SIZE, i / HytaleChunk.CHUNK_SIZE, true);
+                }
             }
         }
     }

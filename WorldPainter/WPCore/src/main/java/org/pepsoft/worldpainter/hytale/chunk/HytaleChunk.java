@@ -35,6 +35,8 @@ public class HytaleChunk implements Chunk {
     private final HytaleSection[] sections;
     private final short[] heightmap;
     private final String[] biomes; // Biome name for each column (32x32 = 1024)
+    private final String[] paintedBiomes; // TP-125: biome name for columns the user explicitly painted (null = auto)
+    private final boolean[] autoVegetation; // TP-125: columns with the auto-vegetation layer painted
     private final String[] environments; // Environment name for each column (32x32 = 1024)
     private final int[] tints; // Tint color (ARGB) for each column (32x32 = 1024)
     private final String[] waterTints; // Per-column water tint hex (null = use environment default)
@@ -61,6 +63,8 @@ public class HytaleChunk implements Chunk {
         }
         this.heightmap = new short[CHUNK_SIZE * CHUNK_SIZE];
         this.biomes = new String[CHUNK_SIZE * CHUNK_SIZE];
+        this.paintedBiomes = new String[CHUNK_SIZE * CHUNK_SIZE];
+        this.autoVegetation = new boolean[CHUNK_SIZE * CHUNK_SIZE];
         this.environments = new String[CHUNK_SIZE * CHUNK_SIZE];
         this.tints = new int[CHUNK_SIZE * CHUNK_SIZE];
         this.waterTints = new String[CHUNK_SIZE * CHUNK_SIZE];
@@ -484,6 +488,42 @@ public class HytaleChunk implements Chunk {
      */
     public String[] getBiomes() {
         return biomes;
+    }
+
+    /**
+     * Get the biome the user explicitly painted at a column, or {@code null} if the column's biome is automatic.
+     * TP-125: round-tripped through TalePainterMetadata so re-importing the save restores the painted Biome layer.
+     */
+    public String getPaintedBiomeName(int x, int z) {
+        return paintedBiomes[z * CHUNK_SIZE + x];
+    }
+
+    /** Record that the user explicitly painted the specified biome at a column (TP-125). */
+    public void setPaintedBiomeName(int x, int z, String biome) {
+        paintedBiomes[z * CHUNK_SIZE + x] = biome;
+    }
+
+    /** Get all painted biomes for serialization (entries are {@code null} for auto-biome columns). */
+    public String[] getPaintedBiomes() {
+        return paintedBiomes;
+    }
+
+    /**
+     * Whether the auto-vegetation layer was painted at a column. TP-125: round-tripped through TalePainterMetadata
+     * so re-importing the save restores the layer.
+     */
+    public boolean isAutoVegetation(int x, int z) {
+        return autoVegetation[z * CHUNK_SIZE + x];
+    }
+
+    /** Record that the auto-vegetation layer is painted at a column (TP-125). */
+    public void setAutoVegetation(int x, int z, boolean value) {
+        autoVegetation[z * CHUNK_SIZE + x] = value;
+    }
+
+    /** Get all auto-vegetation flags for serialization. */
+    public boolean[] getAutoVegetationFlags() {
+        return autoVegetation;
     }
     
     /**
