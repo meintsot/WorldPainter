@@ -249,19 +249,21 @@ public class ImportHeightMapDialog extends WorldPainterDialog implements Documen
             }
             return null;
         }
-        final float scale = (float) spinnerScale.getValue();
+        // TP-122: the X and Y axes can be scaled independently (when unlinked)
+        final float scaleX = (float) spinnerScale.getValue();
+        final float scaleY = checkBoxLinkScales.isSelected() ? scaleX : (float) spinnerScaleY.getValue();
         HeightMap heightMap = BitmapHeightMap.build()
                 .withName(selectedFile.getName())
                 .withImage(image)
                 .withFile(selectedFile)
                 .now();
-        if (scale != 100.f) {
+        if ((scaleX != 100.0f) || (scaleY != 100.0f)) {
             heightMap = heightMap.smoothed();
         }
         final int offsetX = (int) spinnerOffsetX.getValue();
         final int offsetY = (int) spinnerOffsetY.getValue();
-        if ((scale != 100.0f) || (offsetX != 0) || (offsetY != 0)) {
-            heightMap = new TransformingHeightMap(heightMap.getName() + " transformed", heightMap, scale / 100, scale / 100, offsetX, offsetY, 0.0f);
+        if ((scaleX != 100.0f) || (scaleY != 100.0f) || (offsetX != 0) || (offsetY != 0)) {
+            heightMap = new TransformingHeightMap(heightMap.getName() + " transformed", heightMap, scaleX / 100, scaleY / 100, offsetX, offsetY, 0.0f);
         }
         if (checkBoxInvert.isSelected()) {
             heightMap = new DifferenceHeightMap(new ConstantHeightMap((float) (Math.pow(2, bitDepth) - 1)), heightMap);
@@ -456,9 +458,10 @@ public class ImportHeightMapDialog extends WorldPainterDialog implements Documen
         if (image == null) {
             return;
         }
-        final float importScale = (float) spinnerScale.getValue();
-        final int scaledWidth = Math.round(image.getWidth() * (importScale / 100));
-        final int scaledHeight = Math.round(image.getHeight() * (importScale / 100));
+        final float importScaleX = (float) spinnerScale.getValue();
+        final float importScaleY = checkBoxLinkScales.isSelected() ? importScaleX : (float) spinnerScaleY.getValue();
+        final int scaledWidth = Math.round(image.getWidth() * (importScaleX / 100));
+        final int scaledHeight = Math.round(image.getHeight() * (importScaleY / 100));
         labelWorldDimensions.setText("Scaled size: " + INT_NUMBER_FORMAT.format(scaledWidth) + " x " + INT_NUMBER_FORMAT.format(scaledHeight) + " blocks");
         final int exportedWidth = Math.round(scaledWidth * dimensionScale);
         final int exportedHeight = Math.round(scaledHeight * dimensionScale);
@@ -804,6 +807,10 @@ public class ImportHeightMapDialog extends WorldPainterDialog implements Documen
         jPanel2 = new javax.swing.JPanel();
         jLabel3 = new javax.swing.JLabel();
         spinnerScale = new javax.swing.JSpinner();
+        labelScaleY = new javax.swing.JLabel();
+        spinnerScaleY = new javax.swing.JSpinner();
+        labelScaleYPercent = new javax.swing.JLabel();
+        checkBoxLinkScales = new javax.swing.JCheckBox();
         labelWorldDimensions = new javax.swing.JLabel();
         comboBoxMaxHeight = new javax.swing.JComboBox<>();
         jLabel4 = new javax.swing.JLabel();
@@ -913,13 +920,35 @@ public class ImportHeightMapDialog extends WorldPainterDialog implements Documen
             }
         });
 
-        jLabel3.setText("Scale:");
+        jLabel3.setText("Scale X:");
 
         spinnerScale.setModel(new javax.swing.SpinnerNumberModel(Float.valueOf(100.0f), Float.valueOf(0.01f), Float.valueOf(999.99f), Float.valueOf(0.1f)));
         spinnerScale.setEditor(new javax.swing.JSpinner.NumberEditor(spinnerScale, "0.00"));
         spinnerScale.addChangeListener(new javax.swing.event.ChangeListener() {
             public void stateChanged(javax.swing.event.ChangeEvent evt) {
                 spinnerScaleStateChanged(evt);
+            }
+        });
+
+        labelScaleY.setText("Y:");
+
+        spinnerScaleY.setModel(new javax.swing.SpinnerNumberModel(Float.valueOf(100.0f), Float.valueOf(0.01f), Float.valueOf(999.99f), Float.valueOf(0.1f)));
+        spinnerScaleY.setEditor(new javax.swing.JSpinner.NumberEditor(spinnerScaleY, "0.00"));
+        spinnerScaleY.setEnabled(false);
+        spinnerScaleY.addChangeListener(new javax.swing.event.ChangeListener() {
+            public void stateChanged(javax.swing.event.ChangeEvent evt) {
+                spinnerScaleYStateChanged(evt);
+            }
+        });
+
+        labelScaleYPercent.setText("%");
+
+        checkBoxLinkScales.setSelected(true);
+        checkBoxLinkScales.setText("uniform");
+        checkBoxLinkScales.setToolTipText("When checked the X and Y axes are scaled uniformly; uncheck to scale them independently (TP-122)");
+        checkBoxLinkScales.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                checkBoxLinkScalesActionPerformed(evt);
             }
         });
 
@@ -1285,6 +1314,14 @@ public class ImportHeightMapDialog extends WorldPainterDialog implements Documen
                         .addComponent(spinnerScale, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addGap(0, 0, 0)
                         .addComponent(jLabel4)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(labelScaleY)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(spinnerScaleY, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(0, 0, 0)
+                        .addComponent(labelScaleYPercent)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addComponent(checkBoxLinkScales)
                         .addGap(18, 18, 18)
                         .addComponent(jLabel11)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
@@ -1337,6 +1374,10 @@ public class ImportHeightMapDialog extends WorldPainterDialog implements Documen
                     .addComponent(jLabel3)
                     .addComponent(spinnerScale, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel4)
+                    .addComponent(labelScaleY)
+                    .addComponent(spinnerScaleY, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addComponent(labelScaleYPercent)
+                    .addComponent(checkBoxLinkScales)
                     .addComponent(jLabel11)
                     .addComponent(spinnerOffsetX, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jLabel12)
@@ -1618,11 +1659,30 @@ public class ImportHeightMapDialog extends WorldPainterDialog implements Documen
     }//GEN-LAST:event_buttonSelectFileActionPerformed
 
     private void spinnerScaleStateChanged(javax.swing.event.ChangeEvent evt) {//GEN-FIRST:event_spinnerScaleStateChanged
+        if (checkBoxLinkScales.isSelected() && (! spinnerScaleY.getValue().equals(spinnerScale.getValue()))) {
+            // TP-122: uniform scaling: keep the Y scale in sync with the X scale
+            spinnerScaleY.setValue(spinnerScale.getValue());
+        }
         if (image != null) {
             updateWorldDimensions();
             updatePreview(false);
         }
     }//GEN-LAST:event_spinnerScaleStateChanged
+
+    private void spinnerScaleYStateChanged(javax.swing.event.ChangeEvent evt) {
+        if (image != null) {
+            updateWorldDimensions();
+            updatePreview(false);
+        }
+    }
+
+    private void checkBoxLinkScalesActionPerformed(java.awt.event.ActionEvent evt) {
+        final boolean linked = checkBoxLinkScales.isSelected();
+        spinnerScaleY.setEnabled(! linked);
+        if (linked && (! spinnerScaleY.getValue().equals(spinnerScale.getValue()))) {
+            spinnerScaleY.setValue(spinnerScale.getValue());
+        }
+    }
 
     private void buttonOkActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_buttonOkActionPerformed
         if (jTabbedPane1.getSelectedIndex() == 0) {
@@ -1819,6 +1879,10 @@ public class ImportHeightMapDialog extends WorldPainterDialog implements Documen
     private javax.swing.JSpinner spinnerOffsetX;
     private javax.swing.JSpinner spinnerOffsetY;
     private javax.swing.JSpinner spinnerScale;
+    private javax.swing.JLabel labelScaleY;
+    private javax.swing.JSpinner spinnerScaleY;
+    private javax.swing.JLabel labelScaleYPercent;
+    private javax.swing.JCheckBox checkBoxLinkScales;
     private javax.swing.JSpinner spinnerVoidBelow;
     private javax.swing.JSpinner spinnerWorldHigh;
     private javax.swing.JSpinner spinnerWorldLow;
