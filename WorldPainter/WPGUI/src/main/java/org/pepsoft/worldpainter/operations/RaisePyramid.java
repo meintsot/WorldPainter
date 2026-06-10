@@ -8,6 +8,7 @@ package org.pepsoft.worldpainter.operations;
 import org.pepsoft.worldpainter.Dimension;
 import org.pepsoft.worldpainter.Terrain;
 import org.pepsoft.worldpainter.WorldPainter;
+import org.pepsoft.worldpainter.layers.ReadOnly;
 
 import javax.swing.*;
 
@@ -35,10 +36,13 @@ public class RaisePyramid extends MouseOrTabletOperation {
         float height = dimension.getHeightAt(centreX, centreY);
         dimension.setEventsInhibited(true);
         try {
-            if (height < (dimension.getMaxHeight() - 1.5f)) {
-                dimension.setHeightAt(centreX, centreY, height + 1);
+            // TP-58: don't modify read-only (imported) chunks
+            if (! dimension.getBitLayerValueAt(ReadOnly.INSTANCE, centreX, centreY)) {
+                if (height < (dimension.getMaxHeight() - 1.5f)) {
+                    dimension.setHeightAt(centreX, centreY, height + 1);
+                }
+                dimension.setTerrainAt(centreX, centreY, Terrain.SANDSTONE);
             }
-            dimension.setTerrainAt(centreX, centreY, Terrain.SANDSTONE);
             int maxR = dimension.getMaxHeight() - dimension.getMinHeight();
             for (int r = 1; r < maxR; r++) {
                 if (! raiseRing(dimension, centreX, centreY, r, height--)) {
@@ -53,34 +57,26 @@ public class RaisePyramid extends MouseOrTabletOperation {
     private boolean raiseRing(Dimension dimension, int x, int y, int r, float desiredHeight) {
         boolean raised = false;
         for (int i = -r; i <= r; i++) {
-            float actualHeight = dimension.getHeightAt(x + i, y - r);
-            if (actualHeight < desiredHeight) {
-                raised = true;
-                dimension.setHeightAt(x + i, y - r, desiredHeight);
-                dimension.setTerrainAt(x + i, y - r, Terrain.SANDSTONE);
-            }
-            actualHeight = dimension.getHeightAt(x + i, y + r);
-            if (actualHeight < desiredHeight) {
-                raised = true;
-                dimension.setHeightAt(x + i, y + r, desiredHeight);
-                dimension.setTerrainAt(x + i, y + r, Terrain.SANDSTONE);
-            }
+            raised |= raiseColumn(dimension, x + i, y - r, desiredHeight);
+            raised |= raiseColumn(dimension, x + i, y + r, desiredHeight);
         }
         for (int i = -r + 1; i < r; i++) {
-            float actualHeight = dimension.getHeightAt(x - r, y + i);
-            if (actualHeight < desiredHeight) {
-                raised = true;
-                dimension.setHeightAt(x - r, y + i, desiredHeight);
-                dimension.setTerrainAt(x - r, y + i, Terrain.SANDSTONE);
-            }
-            actualHeight = dimension.getHeightAt(x + r, y + i);
-            if (actualHeight < desiredHeight) {
-                raised = true;
-                dimension.setHeightAt(x + r, y + i, desiredHeight);
-                dimension.setTerrainAt(x + r, y + i, Terrain.SANDSTONE);
-            }
+            raised |= raiseColumn(dimension, x - r, y + i, desiredHeight);
+            raised |= raiseColumn(dimension, x + r, y + i, desiredHeight);
         }
         return raised;
+    }
+
+    private boolean raiseColumn(Dimension dimension, int x, int y, float desiredHeight) {
+        if (dimension.getHeightAt(x, y) < desiredHeight) {
+            // TP-58: don't modify read-only (imported) chunks, but do keep expanding the pyramid past them
+            if (! dimension.getBitLayerValueAt(ReadOnly.INSTANCE, x, y)) {
+                dimension.setHeightAt(x, y, desiredHeight);
+                dimension.setTerrainAt(x, y, Terrain.SANDSTONE);
+            }
+            return true;
+        }
+        return false;
     }
 
     private static final StandardOptionsPanel OPTIONS_PANEL = new StandardOptionsPanel("Raise Pyramid", "<p>Click to raise a four-sided sandstone pyramid from the ground");

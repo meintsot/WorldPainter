@@ -1,6 +1,7 @@
 package org.pepsoft.worldpainter.townplan;
 
 import org.pepsoft.worldpainter.Dimension;
+import org.pepsoft.worldpainter.layers.ReadOnly;
 import org.pepsoft.worldpainter.layers.TownLayout;
 
 import java.awt.Point;
@@ -86,10 +87,15 @@ public final class TownPlanStamper {
                             int threshold, boolean invert, Rectangle worldArea) {
         final Set<Point> columns = computeFootprint(image, originX, originZ, blocksPerPixel, rotationDeg,
                 cropPx, threshold, invert, worldArea);
+        int set = 0;
         for (Point p : columns) {
-            dimension.setBitLayerValueAt(TownLayout.INSTANCE, p.x, p.y, true);
+            // TP-58: don't modify read-only (imported) chunks
+            if (! dimension.getBitLayerValueAt(ReadOnly.INSTANCE, p.x, p.y)) {
+                dimension.setBitLayerValueAt(TownLayout.INSTANCE, p.x, p.y, true);
+                set++;
+            }
         }
-        return columns.size();
+        return set;
     }
 
     /**
@@ -119,6 +125,10 @@ public final class TownPlanStamper {
     public static int erase(Dimension dimension, int centerX, int centerZ, double radius) {
         int cleared = 0;
         for (Point p : computeDisc(centerX, centerZ, radius)) {
+            // TP-58: don't modify read-only (imported) chunks
+            if (dimension.getBitLayerValueAt(ReadOnly.INSTANCE, p.x, p.y)) {
+                continue;
+            }
             if (dimension.getBitLayerValueAt(TownLayout.INSTANCE, p.x, p.y)) {
                 dimension.setBitLayerValueAt(TownLayout.INSTANCE, p.x, p.y, false);
                 cleared++;

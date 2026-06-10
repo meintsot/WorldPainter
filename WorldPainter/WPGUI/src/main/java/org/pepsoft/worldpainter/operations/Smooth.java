@@ -7,6 +7,7 @@ package org.pepsoft.worldpainter.operations;
 
 import org.pepsoft.worldpainter.Dimension;
 import org.pepsoft.worldpainter.WorldPainter;
+import org.pepsoft.worldpainter.layers.ReadOnly;
 
 import javax.swing.*;
 import java.util.Arrays;
@@ -67,12 +68,17 @@ public class Smooth extends AbstractBrushOperation {
                 }
                 if (x >= 10) {
                     for (int y = 5; y < diameter + 5; y++) {
+                        final int worldX = x + centreX - radius - 10, worldY = y + centreY - radius - 5;
+                        if (dimension.getBitLayerValueAt(ReadOnly.INSTANCE, worldX, worldY)) {
+                            // TP-58: don't modify read-only (imported) chunks
+                            continue;
+                        }
                         float strength = dynamicLevel * getStrength(centreX, centreY, centreX + x - radius - 10, centreY + y - radius - 5);
                         if (strength > 0.0f) {
                             float newHeight = strength * (totals[x - 5][y] / sampleCounts[x - 5][y]) + (1 - strength) * currentHeights[x - 5][y];
-                            dimension.setHeightAt(x + centreX - radius - 10, y + centreY - radius - 5, newHeight);
+                            dimension.setHeightAt(worldX, worldY, newHeight);
                             if (applyTheme) {
-                                dimension.applyTheme(x + centreX - radius - 10, y + centreY - radius - 5);
+                                dimension.applyTheme(worldX, worldY);
                             }
                         }
                     }

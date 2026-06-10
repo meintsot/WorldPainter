@@ -9,6 +9,7 @@ import org.pepsoft.util.PerlinNoise;
 import org.pepsoft.worldpainter.Dimension;
 import org.pepsoft.worldpainter.WorldPainter;
 import org.pepsoft.worldpainter.brushes.Brush;
+import org.pepsoft.worldpainter.layers.ReadOnly;
 
 import javax.swing.*;
 
@@ -52,6 +53,10 @@ public class RaiseMountain extends AbstractBrushOperation {
             final boolean applyTheme = options.isApplyTheme();
             for (int x = centreX - radius; x <= centreX + radius; x++) {
                 for (int y = centreY - radius; y <= centreY + radius; y++) {
+                    if (dimension.getBitLayerValueAt(ReadOnly.INSTANCE, x, y)) {
+                        // TP-58: don't modify read-only (imported) chunks
+                        continue;
+                    }
                     final float currentHeight = dimension.getHeightAt(x, y);
                     final float targetHeight = getTargetHeight(minZ, maxRange, centreX, centreY, x, y, peakHeight, inverse);
                     if (inverse ? (targetHeight < currentHeight) : (targetHeight > currentHeight)) {

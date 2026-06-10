@@ -11,6 +11,7 @@ import org.pepsoft.worldpainter.TileFactory;
 import org.pepsoft.worldpainter.WorldPainterView;
 import org.pepsoft.worldpainter.hytale.HytaleFluidLayer;
 import org.pepsoft.worldpainter.layers.FloodWithLava;
+import org.pepsoft.worldpainter.layers.ReadOnly;
 
 import javax.swing.*;
 
@@ -53,6 +54,10 @@ public class Sponge extends AbstractBrushOperation {
                 for (int dy = -radius; dy <= radius; dy++) {
                     if (getStrength(centreX, centreY, centreX + dx, centreY + dy) != 0f) {
                         final int px = centreX + dx, py = centreY + dy;
+                        if (dimension.getBitLayerValueAt(ReadOnly.INSTANCE, px, py)) {
+                            // TP-58: don't modify read-only (imported) chunks
+                            continue;
+                        }
                         if (inverse) {
                             if (waterHeight != -1) {
                                 dimension.setWaterLevelAt(px, py, waterHeight);

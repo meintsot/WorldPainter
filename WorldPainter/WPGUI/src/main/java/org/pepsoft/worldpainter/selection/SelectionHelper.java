@@ -391,6 +391,10 @@ chunks:         for (int chunkX = 0; chunkX < TILE_SIZE; chunkX += 16) {
             final int srcY = (tile.getY() << TILE_SIZE_BITS) | yInTile;
             final int dstX = srcX + dx;
             final int dstY = srcY + dy;
+            if (dimension.getBitLayerValueAt(ReadOnly.INSTANCE, dstX, dstY)) {
+                // TP-58: don't paste over read-only (imported) chunks
+                return;
+            }
             if (options.createNewTiles && (! dimension.isTilePresent(dstX >> TILE_SIZE_BITS, dstY >> TILE_SIZE_BITS))) {
                 if (clearUndoOnNewTileCreation) {
                     dimension.clearUndo();

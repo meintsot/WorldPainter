@@ -9,6 +9,7 @@ import org.pepsoft.util.DesktopUtils;
 import org.pepsoft.util.IconUtils;
 import org.pepsoft.worldpainter.Dimension;
 import org.pepsoft.worldpainter.WorldPainter;
+import org.pepsoft.worldpainter.layers.ReadOnly;
 
 import javax.swing.*;
 import java.awt.*;
@@ -53,6 +54,10 @@ public class Flatten extends AbstractBrushOperation {
                 case FLATTEN -> {
                     for (int x = centreX - radius; x <= centreX + radius; x++) {
                         for (int y = centreY - radius; y <= centreY + radius; y++) {
+                            if (dimension.getBitLayerValueAt(ReadOnly.INSTANCE, x, y)) {
+                                // TP-58: don't modify read-only (imported) chunks
+                                continue;
+                            }
                             float currentHeight = dimension.getHeightAt(x, y);
                             float strength = dynamicLevel * getStrength(centreX, centreY, x, y);
                             if (strength > 0.0f) {
@@ -68,6 +73,10 @@ public class Flatten extends AbstractBrushOperation {
                 case RAISE -> {
                     for (int x = centreX - radius; x <= centreX + radius; x++) {
                         for (int y = centreY - radius; y <= centreY + radius; y++) {
+                            if (dimension.getBitLayerValueAt(ReadOnly.INSTANCE, x, y)) {
+                                // TP-58: don't modify read-only (imported) chunks
+                                continue;
+                            }
                             float currentHeight = dimension.getHeightAt(x, y);
                             float strength = dynamicLevel * getStrength(centreX, centreY, x, y);
                             if (strength > 0.0f) {
@@ -85,6 +94,10 @@ public class Flatten extends AbstractBrushOperation {
                 case LOWER -> {
                     for (int x = centreX - radius; x <= centreX + radius; x++) {
                         for (int y = centreY - radius; y <= centreY + radius; y++) {
+                            if (dimension.getBitLayerValueAt(ReadOnly.INSTANCE, x, y)) {
+                                // TP-58: don't modify read-only (imported) chunks
+                                continue;
+                            }
                             float currentHeight = dimension.getHeightAt(x, y);
                             float strength = dynamicLevel * getStrength(centreX, centreY, x, y);
                             if (strength > 0.0f) {

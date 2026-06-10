@@ -10,6 +10,7 @@ import org.pepsoft.worldpainter.Dimension;
 import org.pepsoft.worldpainter.WorldPainter;
 import org.pepsoft.worldpainter.hytale.HytaleFluidLayer;
 import org.pepsoft.worldpainter.layers.FloodWithLava;
+import org.pepsoft.worldpainter.layers.ReadOnly;
 import org.pepsoft.worldpainter.painting.GeneralQueueLinearFloodFiller;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -107,7 +108,8 @@ public class Flood extends MouseOrTabletOperation {
                             final int height = dimension.getIntHeightAt(x, y);
                             return (height == Integer.MIN_VALUE) // Not on a tile
                                     || (dimension.getWaterLevelAt(x, y) <= height) // Not flooded
-                                    || dimension.getBitLayerValueAt(FloodWithLava.INSTANCE, x, y); // Not water
+                                    || dimension.getBitLayerValueAt(FloodWithLava.INSTANCE, x, y) // Not water
+                                    || dimension.getBitLayerValueAt(ReadOnly.INSTANCE, x, y); // TP-58: read-only
                         }
 
                         @Override public void fill(int x, int y) {
@@ -123,7 +125,8 @@ public class Flood extends MouseOrTabletOperation {
                             final int height = dimension.getIntHeightAt(x, y);
                             return (height == Integer.MIN_VALUE) // Not on a tile
                                     || (dimension.getWaterLevelAt(x, y) <= height) // Not flooded
-                                    || (! dimension.getBitLayerValueAt(FloodWithLava.INSTANCE, x, y)); // Not lava
+                                    || (! dimension.getBitLayerValueAt(FloodWithLava.INSTANCE, x, y)) // Not lava
+                                    || dimension.getBitLayerValueAt(ReadOnly.INSTANCE, x, y); // TP-58: read-only
                         }
 
                         @Override public void fill(int x, int y) {
@@ -147,7 +150,8 @@ public class Flood extends MouseOrTabletOperation {
                             final int height = dimension.getIntHeightAt(x, y);
                             return (height == Integer.MIN_VALUE) // Not on a tile
                                     || (dimension.getWaterLevelAt(x, y) <= height) // Not flooded
-                                    || (dimension.getWaterLevelAt(x, y) <= floodToHeight); // Already at the required level or lower
+                                    || (dimension.getWaterLevelAt(x, y) <= floodToHeight) // Already at the required level or lower
+                                    || dimension.getBitLayerValueAt(ReadOnly.INSTANCE, x, y); // TP-58: read-only
                         }
 
                         @Override public void fill(int x, int y) {
@@ -167,7 +171,8 @@ public class Flood extends MouseOrTabletOperation {
                             final int height = dimension.getIntHeightAt(x, y), waterLevel = dimension.getWaterLevelAt(x, y);
                             return (height == Integer.MIN_VALUE) // Not on a tile
                                     || (height >= floodToHeight) // Higher land encountered
-                                    || (waterLevel >= floodToHeight); // Already at the required level or higher
+                                    || (waterLevel >= floodToHeight) // Already at the required level or higher
+                                    || dimension.getBitLayerValueAt(ReadOnly.INSTANCE, x, y); // TP-58: read-only
                         }
 
                         @Override public void fill(int x, int y) {

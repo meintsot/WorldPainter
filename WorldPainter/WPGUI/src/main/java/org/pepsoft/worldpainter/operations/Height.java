@@ -7,6 +7,7 @@ package org.pepsoft.worldpainter.operations;
 
 import org.pepsoft.worldpainter.Dimension;
 import org.pepsoft.worldpainter.WorldPainter;
+import org.pepsoft.worldpainter.layers.ReadOnly;
 import org.pepsoft.worldpainter.panels.DefaultFilter;
 
 import javax.swing.*;
@@ -56,6 +57,10 @@ public class Height extends AbstractBrushOperation {
             final int radius = getEffectiveRadius();
             for (int x = centreX - radius; x <= centreX + radius; x++) {
                 for (int y = centreY - radius; y <= centreY + radius; y++) {
+                    if (dimension.getBitLayerValueAt(ReadOnly.INSTANCE, x, y)) {
+                        // TP-58: don't modify read-only (imported) chunks
+                        continue;
+                    }
                     final float currentHeight = dimension.getHeightAt(x, y);
                     final float targetHeight = inverse ? Math.max(currentHeight - adjustment, minZ) : Math.min(currentHeight + adjustment, maxZ);
                     final float strength = getFullStrength(centreX, centreY, x, y);

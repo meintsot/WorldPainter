@@ -349,7 +349,7 @@ public class FillDialog extends WPDialogWithPaintSelection implements Listener, 
                             float strength = filter.modifyStrength(worldTileX | x, worldTileY | y, 1.0f);
                             set = (strength > 0.95f) || (Math.random() < strength);
                         }
-                        if (set) {
+                        if (set && (! tile.getBitLayerValue(ReadOnly.INSTANCE, x, y))) { // TP-58: skip read-only chunks
                             boolean toPlants = org.pepsoft.worldpainter.hytale.HytalePlantsLayer.routePaint(
                                     tile, x, y, hytaleTerrain);
                             if (! toPlants) {
@@ -373,7 +373,8 @@ public class FillDialog extends WPDialogWithPaintSelection implements Listener, 
                             float strength = filter.modifyStrength(worldTileX | x, worldTileY | y, 1.0f);
                             set = (strength > 0.95f) || (Math.random() < strength);
                         }
-                        if (set && (tile.getTerrain(x, y) != terrain)) {
+                        if (set && (tile.getTerrain(x, y) != terrain)
+                                && (! tile.getBitLayerValue(ReadOnly.INSTANCE, x, y))) { // TP-58: skip read-only chunks
                             tile.setTerrain(x, y, terrain);
                             org.pepsoft.worldpainter.hytale.HytaleTerrainLayer.setTerrainIndex(tile, x, y, 0);
                         }
@@ -398,7 +399,8 @@ public class FillDialog extends WPDialogWithPaintSelection implements Listener, 
                         } else {
                             layerValue = (int) (filter.modifyStrength(worldTileX | x, worldTileY | y, 1.0f) * baseLayerValue);
                         }
-                        if (tile.getLayerValue(layer, x, y) < layerValue) {
+                        if ((tile.getLayerValue(layer, x, y) < layerValue)
+                                && (! tile.getBitLayerValue(ReadOnly.INSTANCE, x, y))) { // TP-58: skip read-only chunks
                             tile.setLayerValue(layer, x, y, layerValue);
                         }
                     }
@@ -417,13 +419,16 @@ public class FillDialog extends WPDialogWithPaintSelection implements Listener, 
                             float strength = filter.modifyStrength(worldTileX | x, worldTileY | y, 1.0f);
                             set = (strength > 0.95f) || (Math.random() < strength);
                         }
-                        if (set && (! tile.getBitLayerValue(layer, x, y))) {
+                        if (set && (! tile.getBitLayerValue(layer, x, y))
+                                && (! tile.getBitLayerValue(ReadOnly.INSTANCE, x, y))) { // TP-58: skip read-only chunks
                             tile.setBitLayerValue(layer, x, y, true);
                         }
                     }
                 }
             }, progressReceiver);
         } else if (layer.getDataSize() == Layer.DataSize.BIT_PER_CHUNK) {
+            // TP-58: skip read-only chunks, except when filling the Read Only layer itself
+            final boolean fillingReadOnly = layer.equals(ReadOnly.INSTANCE);
             dimension.visitTilesForEditing().forFilter(filter).andDo(tile -> {
                 final int worldTileX = tile.getX() << TILE_SIZE_BITS;
                 final int worldTileY = tile.getY() << TILE_SIZE_BITS;
@@ -436,7 +441,8 @@ public class FillDialog extends WPDialogWithPaintSelection implements Listener, 
                             float strength = filter.modifyStrength(worldTileX | x, worldTileY | y, 1.0f);
                             set = (strength > 0.95f) || (Math.random() < strength);
                         }
-                        if (set && (! tile.getBitLayerValue(layer, x, y))) {
+                        if (set && (! tile.getBitLayerValue(layer, x, y))
+                                && (fillingReadOnly || (! tile.getBitLayerValue(ReadOnly.INSTANCE, x, y)))) {
                             tile.setBitLayerValue(layer, x, y, true);
                         }
                     }
@@ -450,7 +456,19 @@ public class FillDialog extends WPDialogWithPaintSelection implements Listener, 
     private void clearLayer(ProgressReceiver progressReceiver) throws OperationCancelled {
         Layer layer = (Layer) comboBoxClearLayer.getSelectedItem();
         if (filter == null) {
-            dimension.clearLayerData(layer);
+            if (layer.equals(ReadOnly.INSTANCE)) {
+                // TP-58: clearing the Read Only layer itself is always allowed
+                dimension.clearLayerData(layer);
+            } else {
+                // TP-58: clear per tile so read-only (imported) chunks can be skipped
+                dimension.visitTilesForEditing().forFilter(null).andDo(tile -> {
+                    if (! tile.hasLayer(ReadOnly.INSTANCE)) {
+                        tile.clearLayerData(layer);
+                    } else {
+                        clearLayerSkippingReadOnly(tile, layer);
+                    }
+                }, progressReceiver);
+            }
         } else {
             if (layer.getDataSize() == Layer.DataSize.NIBBLE) {
                 dimension.visitTilesForEditing().forFilter(filter).andDo(tile -> {
@@ -465,7 +483,8 @@ public class FillDialog extends WPDialogWithPaintSelection implements Listener, 
                             } else {
                                 layerValue = Math.min(oldLayervalue, 15 - (int) (filter.modifyStrength(worldTileX | x, worldTileY | y, 1.0f) * 15));
                             }
-                            if (oldLayervalue != layerValue) {
+                            if ((oldLayervalue != layerValue)
+                                    && (! tile.getBitLayerValue(ReadOnly.INSTANCE, x, y))) { // TP-58: skip read-only chunks
                                 tile.setLayerValue(layer, x, y, layerValue);
                             }
                         }
@@ -484,13 +503,16 @@ public class FillDialog extends WPDialogWithPaintSelection implements Listener, 
                                 float strength = filter.modifyStrength(worldTileX | x, worldTileY | y, 1.0f);
                                 set = (strength > 0.95f) || (Math.random() < strength);
                             }
-                            if (set && tile.getBitLayerValue(layer, x, y)) {
+                            if (set && tile.getBitLayerValue(layer, x, y)
+                                    && (! tile.getBitLayerValue(ReadOnly.INSTANCE, x, y))) { // TP-58: skip read-only chunks
                                 tile.setBitLayerValue(layer, x, y, false);
                             }
                         }
                     }
                 }, progressReceiver);
             } else if (layer.getDataSize() == Layer.DataSize.BIT_PER_CHUNK) {
+                // TP-58: skip read-only chunks, except when clearing the Read Only layer itself
+                final boolean clearingReadOnly = layer.equals(ReadOnly.INSTANCE);
                 dimension.visitTilesForEditing().forFilter(filter).andDo(tile -> {
                     final int worldTileX = tile.getX() << TILE_SIZE_BITS;
                     final int worldTileY = tile.getY() << TILE_SIZE_BITS;
@@ -503,7 +525,8 @@ public class FillDialog extends WPDialogWithPaintSelection implements Listener, 
                                 float strength = filter.modifyStrength(worldTileX | x, worldTileY | y, 1.0f);
                                 set = (strength > 0.95f) || (Math.random() < strength);
                             }
-                            if (set && tile.getBitLayerValue(layer, x, y)) {
+                            if (set && tile.getBitLayerValue(layer, x, y)
+                                    && (clearingReadOnly || (! tile.getBitLayerValue(ReadOnly.INSTANCE, x, y)))) {
                                 tile.setBitLayerValue(layer, x, y, false);
                             }
                         }
@@ -511,6 +534,37 @@ public class FillDialog extends WPDialogWithPaintSelection implements Listener, 
                 }, progressReceiver);
             } else {
                 throw new UnsupportedOperationException();
+            }
+        }
+    }
+
+    /**
+     * TP-58: clear a layer from a tile column by column, skipping columns in read-only (imported) chunks.
+     */
+    private static void clearLayerSkippingReadOnly(Tile tile, Layer layer) {
+        final Layer.DataSize dataSize = layer.getDataSize();
+        final int step = (dataSize == Layer.DataSize.BIT_PER_CHUNK) ? 16 : 1;
+        for (int x = 0; x < TILE_SIZE; x += step) {
+            for (int y = 0; y < TILE_SIZE; y += step) {
+                if (tile.getBitLayerValue(ReadOnly.INSTANCE, x, y)) {
+                    continue;
+                }
+                switch (dataSize) {
+                    case BIT:
+                    case BIT_PER_CHUNK:
+                        if (tile.getBitLayerValue(layer, x, y)) {
+                            tile.setBitLayerValue(layer, x, y, false);
+                        }
+                        break;
+                    case NIBBLE:
+                    case BYTE:
+                        if (tile.getLayerValue(layer, x, y) != 0) {
+                            tile.setLayerValue(layer, x, y, 0);
+                        }
+                        break;
+                    default:
+                        throw new UnsupportedOperationException("Don't know how to clear layer " + layer);
+                }
             }
         }
     }
@@ -530,7 +584,7 @@ public class FillDialog extends WPDialogWithPaintSelection implements Listener, 
                             float strength = filter.modifyStrength(worldTileX | x, worldTileY | y, 1.0f);
                             set = (strength > 0.95f) || (Math.random() < strength);
                         }
-                        if (set) {
+                        if (set && (! tile.getBitLayerValue(ReadOnly.INSTANCE, x, y))) { // TP-58: skip read-only chunks
                             tile.setLayerValue(layer, x, y, 15 - tile.getLayerValue(layer, x, y));
                         }
                     }
@@ -549,13 +603,15 @@ public class FillDialog extends WPDialogWithPaintSelection implements Listener, 
                             float strength = filter.modifyStrength(worldTileX | x, worldTileY | y, 1.0f);
                             set = (strength > 0.95f) || (Math.random() < strength);
                         }
-                        if (set) {
+                        if (set && (! tile.getBitLayerValue(ReadOnly.INSTANCE, x, y))) { // TP-58: skip read-only chunks
                             tile.setBitLayerValue(layer, x, y, ! tile.getBitLayerValue(layer, x, y));
                         }
                     }
                 }
             }, progressReceiver);
         } else if (layer.getDataSize() == Layer.DataSize.BIT_PER_CHUNK) {
+            // TP-58: skip read-only chunks, except when inverting the Read Only layer itself
+            final boolean invertingReadOnly = layer.equals(ReadOnly.INSTANCE);
             dimension.visitTilesForEditing().forFilter(filter).andDo(tile -> {
                 final int worldTileX = tile.getX() << TILE_SIZE_BITS;
                 final int worldTileY = tile.getY() << TILE_SIZE_BITS;
@@ -568,7 +624,7 @@ public class FillDialog extends WPDialogWithPaintSelection implements Listener, 
                             float strength = filter.modifyStrength(worldTileX | x, worldTileY | y, 1.0f);
                             set = (strength > 0.95f) || (Math.random() < strength);
                         }
-                        if (set) {
+                        if (set && (invertingReadOnly || (! tile.getBitLayerValue(ReadOnly.INSTANCE, x, y)))) {
                             tile.setBitLayerValue(layer, x, y, ! tile.getBitLayerValue(layer, x, y));
                         }
                     }
@@ -593,7 +649,7 @@ public class FillDialog extends WPDialogWithPaintSelection implements Listener, 
                         float strength = filter.modifyStrength(worldTileX | x, worldTileY | y, 1.0f);
                         set = (strength > 0.95f) || (Math.random() < strength);
                     }
-                    if (set) {
+                    if (set && (! tile.getBitLayerValue(ReadOnly.INSTANCE, x, y))) { // TP-58: skip read-only chunks
                         tile.setLayerValue(Biome.INSTANCE, x, y, biome);
                     }
                 }
@@ -603,7 +659,20 @@ public class FillDialog extends WPDialogWithPaintSelection implements Listener, 
     
     private void resetBiomes(ProgressReceiver progressReceiver) throws OperationCancelled {
         if (filter == null) {
-            dimension.clearLayerData(Biome.INSTANCE);
+            // TP-58: reset per tile so read-only (imported) chunks can be skipped
+            dimension.visitTilesForEditing().forFilter(null).andDo(tile -> {
+                if (! tile.hasLayer(ReadOnly.INSTANCE)) {
+                    tile.clearLayerData(Biome.INSTANCE);
+                } else {
+                    for (int x = 0; x < TILE_SIZE; x++) {
+                        for (int y = 0; y < TILE_SIZE; y++) {
+                            if (! tile.getBitLayerValue(ReadOnly.INSTANCE, x, y)) {
+                                tile.setLayerValue(Biome.INSTANCE, x, y, 255);
+                            }
+                        }
+                    }
+                }
+            }, progressReceiver);
         } else {
             dimension.visitTilesForEditing().forFilter(filter).andDo(tile -> {
                 final int worldTileX = tile.getX() << TILE_SIZE_BITS;
@@ -611,7 +680,8 @@ public class FillDialog extends WPDialogWithPaintSelection implements Listener, 
                 for (int x = 0; x < TILE_SIZE; x++) {
                     for (int y = 0; y < TILE_SIZE; y++) {
                         final float strength = filter.modifyStrength(worldTileX | x, worldTileY | y, 1.0f);
-                        if ((strength > 0.95f) || (Math.random() < strength)) {
+                        if (((strength > 0.95f) || (Math.random() < strength))
+                                && (! tile.getBitLayerValue(ReadOnly.INSTANCE, x, y))) { // TP-58: skip read-only chunks
                             tile.setLayerValue(Biome.INSTANCE, x, y, 255);
                         }
                     }
@@ -625,7 +695,8 @@ public class FillDialog extends WPDialogWithPaintSelection implements Listener, 
             if (filter == null) {
                 for (int x = 0; x < TILE_SIZE; x++) {
                     for (int y = 0; y < TILE_SIZE; y++) {
-                        if (tile.getLayerValue(Biome.INSTANCE, x, y) == 255) {
+                        if ((tile.getLayerValue(Biome.INSTANCE, x, y) == 255)
+                                && (! tile.getBitLayerValue(ReadOnly.INSTANCE, x, y))) { // TP-58: skip read-only chunks
                             tile.setLayerValue(Biome.INSTANCE, x, y, dimension.getAutoBiome(tile, x, y, BIOME_PLAINS));
                         }
                     }
@@ -636,7 +707,8 @@ public class FillDialog extends WPDialogWithPaintSelection implements Listener, 
                 for (int x = 0; x < TILE_SIZE; x++) {
                     for (int y = 0; y < TILE_SIZE; y++) {
                         final float strength = filter.modifyStrength(worldTileX | x, worldTileY | y, 1.0f);
-                        if (((strength > 0.95f) || (Math.random() < strength)) && (tile.getLayerValue(Biome.INSTANCE, x, y) == 255)) {
+                        if (((strength > 0.95f) || (Math.random() < strength)) && (tile.getLayerValue(Biome.INSTANCE, x, y) == 255)
+                                && (! tile.getBitLayerValue(ReadOnly.INSTANCE, x, y))) { // TP-58: skip read-only chunks
                             tile.setLayerValue(Biome.INSTANCE, x, y, dimension.getAutoBiome(tile, x, y, BIOME_PLAINS));
                         }
                     }
@@ -656,6 +728,10 @@ public class FillDialog extends WPDialogWithPaintSelection implements Listener, 
                 if (floodWithLava) {
                     for (int x = 0; x < TILE_SIZE; x++) {
                         for (int y = 0; y < TILE_SIZE; y++) {
+                            if (tile.getBitLayerValue(ReadOnly.INSTANCE, x, y)) {
+                                // TP-58: don't modify read-only (imported) chunks
+                                continue;
+                            }
                             boolean set;
                             if (filter == null) {
                                 set = true;
@@ -670,11 +746,15 @@ public class FillDialog extends WPDialogWithPaintSelection implements Listener, 
                         }
                     }
                 } else {
-                    if (filter == null) {
+                    if ((filter == null) && (! tile.hasLayer(ReadOnly.INSTANCE))) {
                         tile.clearLayerData(FloodWithLava.INSTANCE);
                     }
                     for (int x = 0; x < TILE_SIZE; x++) {
                         for (int y = 0; y < TILE_SIZE; y++) {
+                            if (tile.getBitLayerValue(ReadOnly.INSTANCE, x, y)) {
+                                // TP-58: don't modify read-only (imported) chunks
+                                continue;
+                            }
                             boolean set;
                             if (filter == null) {
                                 set = true;
@@ -684,7 +764,7 @@ public class FillDialog extends WPDialogWithPaintSelection implements Listener, 
                             }
                             if (set) {
                                 tile.setWaterLevel(x, y, waterLevel);
-                                if (filter != null) {
+                                if ((filter != null) || tile.hasLayer(ReadOnly.INSTANCE)) {
                                     tile.setBitLayerValue(FloodWithLava.INSTANCE, x, y, false);
                                 }
                             }
@@ -710,7 +790,7 @@ public class FillDialog extends WPDialogWithPaintSelection implements Listener, 
                         float strength = filter.modifyStrength(worldTileX | x, worldTileY | y, 1.0f);
                         set = (strength > 0.95f) || (Math.random() < strength);
                     }
-                    if (set) {
+                    if (set && (! tile.getBitLayerValue(ReadOnly.INSTANCE, x, y))) { // TP-58: skip read-only chunks
                         dimension.applyTheme(worldTileX | x, worldTileY | y);
                     }
                 }

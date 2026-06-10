@@ -7,6 +7,7 @@ package org.pepsoft.worldpainter.operations;
 
 import org.pepsoft.worldpainter.Dimension;
 import org.pepsoft.worldpainter.WorldPainter;
+import org.pepsoft.worldpainter.layers.ReadOnly;
 
 import java.util.Random;
 
@@ -32,6 +33,10 @@ public class Erode extends AbstractBrushOperation {
             for (int i = 0; i < ROUNDS; i++) {
                 for (int x = centreX - radius; x <= centreX + radius; x++) {
                     for (int y = centreY - radius; y <= centreY + radius; y++) {
+                        if (dimension.getBitLayerValueAt(ReadOnly.INSTANCE, x, y)) {
+                            // TP-58: don't modify read-only (imported) chunks
+                            continue;
+                        }
                         float strength = getStrength(centreX, centreY, x, y);
                         if ((strength == 1.0f) || (random.nextFloat() < strength)) {
                             for (int dx = -1; dx <= 1; dx++) {
@@ -82,7 +87,9 @@ public class Erode extends AbstractBrushOperation {
                                     }
                                 }
                             }
-                            if ((lowestDx != 1) || (lowestDy != 1)) {
+                            if (((lowestDx != 1) || (lowestDy != 1))
+                                    // TP-58: don't deposit eroded material on read-only (imported) chunks either
+                                    && (! dimension.getBitLayerValueAt(ReadOnly.INSTANCE, x + lowestDx - 1, y + lowestDy - 1))) {
                                 int difference = heightBuffer[1][1] - heightBuffer[lowestDx][lowestDy];
                                 int amount = Math.min((int) (difference / 2 / (((lowestDx != 1) && (lowestDy != 1)) ? ROOT_OF_TWO : 1)), ERODE_AMOUNT);
                                 amount = (int) ((amount / 64f) * (amount / 64f) * 64);

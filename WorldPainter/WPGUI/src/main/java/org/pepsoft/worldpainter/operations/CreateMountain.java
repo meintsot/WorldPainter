@@ -5,6 +5,7 @@ import org.pepsoft.util.MathUtils;
 import org.pepsoft.worldpainter.Dimension;
 import org.pepsoft.worldpainter.WorldPainter;
 import org.pepsoft.worldpainter.heightMaps.NoiseHeightMap;
+import org.pepsoft.worldpainter.layers.ReadOnly;
 import org.pepsoft.worldpainter.util.GeometryUtil;
 
 import java.util.HashSet;
@@ -151,7 +152,9 @@ public class CreateMountain extends MouseOrTabletOperation {
             int localY = y + dy;
             float localZ = z - d * 2 + dx / 1.5f - Math.min(d / 50, 1) * (float) RANDOM_VARIATION.getHeight(localX, localY); // TODO: make slope and bias configurable, and take it into account for radius of visited circle
             float existingHeight = dimension.getHeightAt(localX, localY);
-            if ((existingHeight != -Float.MAX_VALUE) && localZ >= existingHeight) {
+            if ((existingHeight != -Float.MAX_VALUE) && (localZ >= existingHeight)
+                    // TP-58: don't modify read-only (imported) chunks
+                    && (! dimension.getBitLayerValueAt(ReadOnly.INSTANCE, localX, localY))) {
                 dimension.setHeightAt(localX, localY, localZ);
                 touchedBlocks.set(localX, localY);
             }
