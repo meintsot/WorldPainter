@@ -134,6 +134,16 @@ public class HytaleWorldExporter implements WorldExporter {
     // Protected so subclasses (e.g. HytaleWorldMerger) can pre-set this to a backup directory
     // before invoking export(); when non-null, openOriginalChunkStore() leaves it untouched.
     protected HytaleChunkStore originalChunkStore;
+
+    // Coordinate space of originalChunkStore. False (default): the store holds the original
+    // IMPORTED world, whose chunks sit at WorldPainter coordinates (the importer maps native
+    // chunks 1:1 with no offset). True: the store holds an EXPORTED save — the live world
+    // during an in-place selective merge, or the backup during a full merge — whose chunks
+    // sit at save coordinates (WorldPainter + blockOffset). HytaleWorldMerger sets this to
+    // true alongside the store; getting it wrong shifts every original-chunk lookup by the
+    // export's centering offset (TP-125: content merged from the wrong part of the map, or
+    // silently dropped).
+    protected boolean originalChunkStoreInSaveSpace = false;
     
     public HytaleWorldExporter(World2 world, WorldExportSettings exportSettings) {
         this.world = world;
@@ -837,33 +847,26 @@ public class HytaleWorldExporter implements WorldExporter {
             return;
         }
 
-        // Calculate the original chunk coordinates (before centering offset was applied).
-        // originalBlockX/Z are in WorldPainter tile space; the original Hytale chunk
-        // coordinates are simply these divided by 32 (Hytale chunk size).
-        int origChunkX = originalBlockX >> 5;
-        int origChunkZ = originalBlockZ >> 5;
-
-        HytaleChunk originalChunk;
-        try {
-            originalChunk = (HytaleChunk) originalChunkStore.getChunk(origChunkX, origChunkZ);
-        } catch (Exception e) {
-            logger.debug("Could not read original chunk at {},{}: {}", origChunkX, origChunkZ, e.getMessage());
-            return;
-        }
+        HytaleChunk originalChunk = getOriginalChunk(originalBlockX, originalBlockZ);
         if (originalChunk == null) {
             return;
         }
 
-        // 1. Entities: copy all original entities with position adjusted for centering offset.
-        //    This includes NPCs, creature spawn markers, and player spawn markers from the
-        //    original world. A duplicate player spawn marker may occur (one from addEntitiesToChunk,
-        //    one from the original) but this is harmless — Hytale uses whichever is closer.
+        // 1. Entities: copy all original entities, converting positions to save space.
+        //    An imported-world store holds entities at WorldPainter coordinates, so the export's
+        //    centering offset must be added; a save-space store (merge) already holds them at
+        //    save coordinates, so they are copied verbatim. This includes NPCs, creature spawn
+        //    markers, and player spawn markers from the original world. A duplicate player spawn
+        //    marker may occur (one from addEntitiesToChunk, one from the original) but this is
+        //    harmless — Hytale uses whichever is closer.
+        final int entityOffsetX = originalChunkStoreInSaveSpace ? 0 : blockOffsetX;
+        final int entityOffsetZ = originalChunkStoreInSaveSpace ? 0 : blockOffsetZ;
         for (HytaleEntity entity : originalChunk.getHytaleEntities()) {
             HytaleEntity adjusted = entity.clone();
             adjusted.setPosition(
-                entity.getX() + blockOffsetX,
+                entity.getX() + entityOffsetX,
                 entity.getY(),
-                entity.getZ() + blockOffsetZ
+                entity.getZ() + entityOffsetZ
             );
             newChunk.addHytaleEntity(adjusted);
         }
@@ -905,6 +908,31 @@ public class HytaleWorldExporter implements WorldExporter {
         // 5. Prefab markers: copy all from original
         for (HytaleChunk.PrefabMarker pm : originalChunk.getPrefabMarkers()) {
             newChunk.addPrefabMarker(pm.x, pm.y, pm.z, pm.category, pm.prefabPath, pm.rotation);
+        }
+    }
+
+    /**
+     * Look up the original chunk covering the given pre-offset (WorldPainter) block position in
+     * {@link #originalChunkStore}, accounting for the store's coordinate space: an imported-world
+     * store is queried at WorldPainter coordinates, while a save-space store (merge target or
+     * backup; see {@link #originalChunkStoreInSaveSpace}) is queried at save coordinates
+     * (WorldPainter + block offset). Returns {@code null} when there is no store, no chunk, or
+     * the chunk cannot be read.
+     *
+     * @param worldBlockX Pre-offset world block X of the chunk's NW corner.
+     * @param worldBlockZ Pre-offset world block Z of the chunk's NW corner.
+     */
+    protected HytaleChunk getOriginalChunk(int worldBlockX, int worldBlockZ) {
+        if (originalChunkStore == null) {
+            return null;
+        }
+        final int origChunkX = (originalChunkStoreInSaveSpace ? (worldBlockX + blockOffsetX) : worldBlockX) >> 5;
+        final int origChunkZ = (originalChunkStoreInSaveSpace ? (worldBlockZ + blockOffsetZ) : worldBlockZ) >> 5;
+        try {
+            return (HytaleChunk) originalChunkStore.getChunk(origChunkX, origChunkZ);
+        } catch (Exception e) {
+            logger.debug("Could not read original chunk at {},{}: {}", origChunkX, origChunkZ, e.getMessage());
+            return null;
         }
     }
 

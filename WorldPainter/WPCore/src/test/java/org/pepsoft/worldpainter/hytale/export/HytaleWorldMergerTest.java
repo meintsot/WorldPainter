@@ -11,6 +11,7 @@ import org.pepsoft.worldpainter.TileFactoryFactory;
 import org.pepsoft.worldpainter.World2;
 import org.pepsoft.worldpainter.exporting.WorldExportSettings;
 import org.pepsoft.worldpainter.hytale.HytaleBlock;
+import org.pepsoft.worldpainter.hytale.HytaleEntity;
 import org.pepsoft.worldpainter.hytale.HytaleTerrain;
 import org.pepsoft.worldpainter.hytale.HytaleTerrainLayer;
 import org.pepsoft.worldpainter.hytale.chunk.HytaleChunk;
@@ -541,6 +542,53 @@ public class HytaleWorldMergerTest {
             assertNotNull(chunk);
             assertEquals("In-place merge must read the original (live) chunk and keep its above-ground "
                     + "block", "Cloth_Wool", idOrEmpty(chunk.getHytaleBlock(0, 70, 0)));
+        }
+    }
+
+    /**
+     * TP-125 reproduction: same as {@link #selectiveMergePreservesOriginalAboveGroundBlocksInPlace},
+     * but the existing save was exported with a NON-ZERO centering offset (off-origin tiles).
+     * The in-place merge places the regenerated chunks correctly (the offset resolution works),
+     * but {@code mergeOriginalChunkData} / {@code applyMergeOverrides} look the original chunk up
+     * at pre-offset WorldPainter coordinates, while the live save's chunks sit at save coordinates
+     * (WP + offset). With offset (-1280,-1280) the lookup lands 40 chunks away — on a different
+     * part of the map, or (here) on nothing at all — so the original above-ground content is
+     * silently dropped ("biomes, blocks, vegetation removed; tiles misplaced").
+     */
+    @Test
+    public void selectiveMergePreservesOriginalAboveGroundBlocksWithNonZeroExportOffset() throws Exception {
+        // Off-origin 2x2 world: tiles (10..11, 10..11) -> center tile (10,10) -> offset (-1280,-1280)
+        java.util.Set<Point> worldTiles = new java.util.HashSet<>(java.util.Arrays.asList(
+                new Point(10, 10), new Point(11, 10), new Point(10, 11), new Point(11, 11)));
+        File mapDir = createExportedHytaleMap("inplace_offset_meta", worldTiles);
+
+        // WP tile (10,10) -> save blocks (10*128 - 1280, ...) = (0,0) -> save chunk (0,0).
+        injectIntoOriginal(mapDir, 0, 0, chunk -> {
+            chunk.setHytaleBlock(0, 70, 0, HytaleBlock.of("Cloth_Wool"));   // above-ground, man-made
+            // Entity at SAVE coordinates; must survive the merge at the same position (a
+            // save-space original must not get the +blockOffset adjustment a second time).
+            chunk.addHytaleEntity(new HytaleEntity("TP125_Test_NPC", 5.0, 70.0, 7.0));
+        });
+
+        World2 world = buildImportedWorld(mapDir, worldTiles);   // mergeBlocksAboveGround defaults true
+        WorldExportSettings settings = new WorldExportSettings(
+                java.util.Collections.singleton(DIM_NORMAL),
+                java.util.Collections.singleton(new Point(10, 10)),
+                null);
+        HytaleWorldMerger merger = new HytaleWorldMerger(world, settings, mapDir, HYTALE);
+        merger.merge(new File(tempDir.getRoot(), "inplace_offset_meta_bkp"), null);
+
+        try (HytaleChunkStore store = new HytaleChunkStore(innerWorld(mapDir), 0, 320)) {
+            HytaleChunk chunk = (HytaleChunk) store.getChunk(0, 0);
+            assertNotNull(chunk);
+            assertEquals("In-place merge must preserve the original above-ground block regardless of "
+                    + "the save's export offset", "Cloth_Wool", idOrEmpty(chunk.getHytaleBlock(0, 70, 0)));
+            HytaleEntity npc = chunk.getHytaleEntities().stream()
+                    .filter(e -> "TP125_Test_NPC".equals(e.getEntityType()))
+                    .findFirst().orElse(null);
+            assertNotNull("In-place merge must preserve the original entity", npc);
+            assertEquals("Preserved entity must keep its save-space X (no double offset)", 5.0, npc.getX(), 0.001);
+            assertEquals("Preserved entity must keep its save-space Z (no double offset)", 7.0, npc.getZ(), 0.001);
         }
     }
 

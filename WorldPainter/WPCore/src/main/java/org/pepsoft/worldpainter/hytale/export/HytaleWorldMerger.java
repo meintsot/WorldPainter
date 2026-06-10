@@ -361,6 +361,9 @@ public class HytaleWorldMerger extends HytaleWorldExporter implements WorldMerge
                         backupInnerWorldDir,
                         surface.getMinHeight(),
                         surface.getMaxHeight());
+                // The backup holds an exported save: its chunks sit at save coordinates
+                // (WorldPainter + blockOffset), unlike an imported-world store.
+                originalChunkStoreInSaveSpace = true;
                 logger.info("Opened backup chunk store at {} for round-trip merge", backupInnerWorldDir);
             } else {
                 logger.warn("Backup at {} contains no chunks directory; merge will regenerate everything from scratch",
@@ -423,6 +426,9 @@ public class HytaleWorldMerger extends HytaleWorldExporter implements WorldMerge
         // Read originals from the LIVE world. exportDimension() leaves a pre-set originalChunkStore
         // untouched (see HytaleWorldExporter.openOriginalChunkStore) and closes it when done.
         originalChunkStore = new HytaleChunkStore(mapDir, surface.getMinHeight(), surface.getMaxHeight());
+        // The live world is an exported save: its chunks sit at save coordinates
+        // (WorldPainter + blockOffset), unlike an imported-world store.
+        originalChunkStoreInSaveSpace = true;
         try {
             exportSelectedTilesInPlace(mapDir, progressReceiver);
         } finally {
@@ -804,19 +810,11 @@ public class HytaleWorldMerger extends HytaleWorldExporter implements WorldMerge
             return;
         }
 
-        // Look up the original chunk at this (pre-centering) world position. Same math
-        // as mergeOriginalChunkData(): original Hytale chunks are 32 blocks wide and
-        // worldBlockX/Z are pre-offset WorldPainter coordinates.
-        final int origChunkX = worldBlockX >> 5;
-        final int origChunkZ = worldBlockZ >> 5;
-        final HytaleChunk originalChunk;
-        try {
-            originalChunk = (HytaleChunk) originalChunkStore.getChunk(origChunkX, origChunkZ);
-        } catch (Exception e) {
-            logger.debug("Could not read original chunk at {},{} for merge overrides: {}",
-                    origChunkX, origChunkZ, e.getMessage());
-            return;
-        }
+        // Look up the original chunk at this (pre-centering) world position. The shared helper
+        // converts to the store's coordinate space — for merges the store holds an exported save
+        // (originalChunkStoreInSaveSpace == true), whose chunks sit at WorldPainter + blockOffset
+        // coordinates, NOT at the pre-offset coordinates this hook receives (TP-125).
+        final HytaleChunk originalChunk = getOriginalChunk(worldBlockX, worldBlockZ);
         if (originalChunk == null) {
             return;
         }
