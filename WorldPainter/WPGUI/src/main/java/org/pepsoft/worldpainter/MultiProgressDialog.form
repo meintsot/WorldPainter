@@ -41,7 +41,7 @@
     </DimensionLayout>
   </Layout>
   <SubComponents>
-    <Component class="org.pepsoft.util.swing.MultiProgressComponent" name="multiProgressComponent1">
+    <Component class="org.pepsoft.worldpainter.swing.WindowedMultiProgressComponent" name="multiProgressComponent1">
     </Component>
   </SubComponents>
 </Form>

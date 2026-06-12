@@ -169,7 +169,7 @@ public abstract class MultiProgressDialog<T> extends javax.swing.JDialog impleme
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
-        multiProgressComponent1 = new org.pepsoft.util.swing.MultiProgressComponent();
+        multiProgressComponent1 = new org.pepsoft.worldpainter.swing.WindowedMultiProgressComponent();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.DISPOSE_ON_CLOSE);
 
@@ -194,7 +194,7 @@ public abstract class MultiProgressDialog<T> extends javax.swing.JDialog impleme
     }// </editor-fold>//GEN-END:initComponents
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private org.pepsoft.util.swing.MultiProgressComponent<T> multiProgressComponent1;
+    private org.pepsoft.worldpainter.swing.WindowedMultiProgressComponent<T> multiProgressComponent1;
     // End of variables declaration//GEN-END:variables
 
     private long start;
