@@ -474,8 +474,6 @@ public class HytaleWorldExporter implements WorldExporter {
             //
             // Default is adaptive to target drive throughput and can be overridden with
             // -Dorg.pepsoft.worldpainter.hytale.maxConcurrentRegions=N.
-            final Runtime runtime = Runtime.getRuntime();
-            final long maxMem = runtime.maxMemory();
             Integer configured = Integer.getInteger("org.pepsoft.worldpainter.hytale.maxConcurrentRegions");
             final long writeSpeedMBps = estimateDriveWriteSpeedMBps(worldDir);
             final int adaptiveDefaultConcurrentRegions;
@@ -489,27 +487,25 @@ public class HytaleWorldExporter implements WorldExporter {
             final int configuredMaxConcurrentRegions = (configured != null)
                     ? Math.max(1, configured)
                     : adaptiveDefaultConcurrentRegions;
-            // Per-region memory budget is sized for the default 320-block Hytale height with a
-            // plain export. Scale it up when either dimension increases the per-region cost:
-            //   - taller worlds have proportionally more block data per chunk;
-            //   - imported worlds also keep the original chunk in RAM via mergeOriginalChunkData
-            //     while the new chunk is being generated, roughly doubling peak memory per chunk.
-            // Without this scaling, modded-height imports compute too many concurrent regions
-            // and OOM at runtime even though the heap is technically large enough for one
-            // region at a time.
-            final double heightScale =
-                Math.max(1.0, (double) dimension.getMaxHeight() / HytaleChunk.DEFAULT_MAX_HEIGHT);
-            final double importScale = (originalChunkStore != null) ? 2.0 : 1.0;
+            // The memory cap must be computed from the memory actually still available, not the total heap: for very
+            // large worlds the loaded world itself occupies multiple GB of heap, and budgeting regions against the
+            // total heap causes GC thrash that can stall the export for hours (TP-127).
+            final long availableMemory = estimateAvailableMemoryBytes();
             final long perRegionBudgetBytes =
-                (long) (1536L * 1024 * 1024 * heightScale * importScale);
-            final int maxByMemory = Math.max(1, (int) (maxMem / perRegionBudgetBytes));
+                perRegionMemoryBudgetBytes(dimension.getMaxHeight(), originalChunkStore != null);
+            final int maxByMemory = maxConcurrentRegionsByMemory(availableMemory, perRegionBudgetBytes);
             final int maxByContent = needsFullRegionRetention ? 1 : configuredMaxConcurrentRegions;
             final int maxConcurrentRegions = Math.max(1,
                 Math.min(Math.min(maxByContent, maxByMemory), sortedRegions.size()));
             final Semaphore regionMemorySemaphore = new Semaphore(maxConcurrentRegions);
             final ExecutorService executor = createExecutorService("hytale-export", maxConcurrentRegions);
-            logger.info("Limiting concurrent region exports to {} (configured: {}, adaptive default: {}, drive write: {} MB/s, memory cap: {}, max memory: {} MB)",
-                maxConcurrentRegions, configuredMaxConcurrentRegions, adaptiveDefaultConcurrentRegions, writeSpeedMBps, maxByMemory, maxMem / (1024 * 1024));
+            logger.info("Limiting concurrent region exports to {} (configured: {}, adaptive default: {}, drive write: {} MB/s, memory cap: {}, available memory: {} MB)",
+                maxConcurrentRegions, configuredMaxConcurrentRegions, adaptiveDefaultConcurrentRegions, writeSpeedMBps, maxByMemory, availableMemory / (1024 * 1024));
+            if (maxByMemory == 1) {
+                logger.warn("Available memory ({} MB) only allows one concurrent region export (per-region budget: {} MB); " +
+                        "export may be slow. Consider increasing the memory limit in the preferences.",
+                    availableMemory / (1024 * 1024), perRegionBudgetBytes / (1024 * 1024));
+            }
             
             try {
                 for (Point region : sortedRegions) {
@@ -2263,6 +2259,39 @@ public class HytaleWorldExporter implements WorldExporter {
         return "Grassland";
     }
     
+    /**
+     * Estimate the amount of heap memory in bytes still available for export buffers: the maximum heap size minus the
+     * memory already in use. For very large worlds the loaded world itself can occupy most of the heap, so sizing
+     * export concurrency against the total heap rather than this value causes GC thrash or OOM (TP-127). May return a
+     * negative number if the heap is overcommitted.
+     */
+    public static long estimateAvailableMemoryBytes() {
+        final Runtime runtime = Runtime.getRuntime();
+        runtime.gc();
+        final long memoryInUse = runtime.totalMemory() - runtime.freeMemory();
+        return runtime.maxMemory() - memoryInUse;
+    }
+
+    /**
+     * The estimated peak amount of memory in bytes needed to export one Hytale region. Sized for the default
+     * 320-block Hytale height with a plain export, and scaled up when either factor increases the per-region cost:
+     * taller worlds have proportionally more block data per chunk, and merges also keep the original chunk in RAM via
+     * mergeOriginalChunkData while the new chunk is being generated, roughly doubling peak memory per chunk.
+     */
+    public static long perRegionMemoryBudgetBytes(int maxHeight, boolean mergeOriginalsRetained) {
+        final double heightScale = Math.max(1.0, (double) maxHeight / HytaleChunk.DEFAULT_MAX_HEIGHT);
+        final double mergeScale = mergeOriginalsRetained ? 2.0 : 1.0;
+        return (long) (BASE_PER_REGION_MEMORY_BUDGET_BYTES * heightScale * mergeScale);
+    }
+
+    /**
+     * The number of regions that can safely be exported concurrently within the specified amount of available memory,
+     * at the specified per-region memory budget. Always at least one (TP-127).
+     */
+    public static int maxConcurrentRegionsByMemory(long availableMemoryBytes, long perRegionBudgetBytes) {
+        return Math.max(1, (int) (availableMemoryBytes / perRegionBudgetBytes));
+    }
+
     private ExecutorService createExecutorService(String operation, int jobCount) {
         return MDCThreadPoolExecutor.newFixedThreadPool(chooseThreadCountForExport(operation, jobCount), new ThreadFactory() {
             @Override
@@ -2277,6 +2306,7 @@ public class HytaleWorldExporter implements WorldExporter {
         });
     }
     
+    private static final long BASE_PER_REGION_MEMORY_BUDGET_BYTES = 1536L * 1024 * 1024;
     private static final String EVENT_KEY_ACTION_EXPORT_WORLD = "action.exportWorld";
     private static final AttributeKeyVO<Integer> ATTRIBUTE_KEY_MAX_HEIGHT = new AttributeKeyVO<>("maxHeight");
     private static final AttributeKeyVO<String> ATTRIBUTE_KEY_PLATFORM = new AttributeKeyVO<>("platform");

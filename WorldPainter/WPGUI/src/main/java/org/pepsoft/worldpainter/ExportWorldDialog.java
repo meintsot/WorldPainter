@@ -17,6 +17,7 @@ import org.pepsoft.worldpainter.World2.BorderSettings;
 import org.pepsoft.worldpainter.biomeschemes.CustomBiomeManager;
 import org.pepsoft.worldpainter.exporting.WorldExportSettings;
 import org.pepsoft.worldpainter.hytale.assets.HytaleAssetsLocator;
+import org.pepsoft.worldpainter.hytale.export.HytaleWorldExporter;
 import org.pepsoft.worldpainter.hytale.HytaleTerrainHelper;
 import org.pepsoft.worldpainter.hytale.HytaleWorldSettings;
 import org.pepsoft.worldpainter.layers.CustomLayer;
@@ -308,6 +309,16 @@ public class ExportWorldDialog extends WPDialogWithPaintSelection {
                     sb.append("<li>Data pack file " + dataPackFile.getName() + " is not accessible.<br>It will not be installed.");
                     showWarning = true;
                 }
+            }
+        }
+        if (isHytalePlatform(platform)) {
+            // TP-127: a very large loaded world can leave too little heap for the export itself, in which case the
+            // export crawls in GC thrash rather than failing outright
+            final long availableMemory = HytaleWorldExporter.estimateAvailableMemoryBytes();
+            final long perRegionBudget = HytaleWorldExporter.perRegionMemoryBudgetBytes(world.getMaxHeight(), false);
+            if (availableMemory < perRegionBudget) {
+                sb.append("<li>There may not be enough memory to export this world; the export<br>may be extremely slow or fail. Consider increasing the memory limit<br>in the Preferences and restarting WorldPainter.");
+                showWarning = true;
             }
         }
         sb.append("</ul>");
