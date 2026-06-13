@@ -361,6 +361,11 @@ public class FillDialog extends WPDialogWithPaintSelection implements Listener, 
             }, progressReceiver);
         } else {
             final Terrain terrain = (Terrain) selected;
+            // TP-129/TP-53: painting a Custom Terrain must preserve any Hytale substrate
+            // (HytaleTerrainLayer) the user set via the Hytale palette, so the exporter can
+            // use it as the surface block under plant-mix custom terrains. Non-custom
+            // terrains continue to clear it. Mirrors TerrainPaint.clearHytaleSubstrate.
+            final boolean clearHytaleSubstrate = ! terrain.isCustom();
             dimension.visitTilesForEditing().forFilter(filter).andDo(tile -> {
                 final int worldTileX = tile.getX() << TILE_SIZE_BITS;
                 final int worldTileY = tile.getY() << TILE_SIZE_BITS;
@@ -376,7 +381,9 @@ public class FillDialog extends WPDialogWithPaintSelection implements Listener, 
                         if (set && (tile.getTerrain(x, y) != terrain)
                                 && (! tile.getBitLayerValue(ReadOnly.INSTANCE, x, y))) { // TP-58: skip read-only chunks
                             tile.setTerrain(x, y, terrain);
-                            org.pepsoft.worldpainter.hytale.HytaleTerrainLayer.setTerrainIndex(tile, x, y, 0);
+                            if (clearHytaleSubstrate) {
+                                org.pepsoft.worldpainter.hytale.HytaleTerrainLayer.setTerrainIndex(tile, x, y, 0);
+                            }
                         }
                     }
                 }
@@ -1059,6 +1066,15 @@ chunks:         for (int chunkX = 0; chunkX < TILE_SIZE; chunkX += 16) {
             }
 
             @Override
+            public void hytaleTerrainSelected(HytaleTerrain hytaleTerrain) {
+                // TP-129: on Hytale worlds the terrain combo model holds HytaleTerrain items,
+                // so select the picked HytaleTerrain directly. The default implementation would
+                // convert to a Minecraft Terrain that is absent from the model, causing the
+                // non-editable combo to silently reject the selection (leaving Ashen Sand).
+                comboBox.setSelectedItem(hytaleTerrain);
+            }
+
+            @Override
             public void layerSelected(Layer layer, int value) {
                 if (comboBox == comboBoxBiome) {
                     comboBox.setSelectedItem(value);
@@ -1225,7 +1241,7 @@ chunks:         for (int chunkX = 0; chunkX < TILE_SIZE; chunkX += 16) {
 
         final boolean hytalePlatform = org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.isHytale(dimension.getWorld().getPlatform());
         comboBoxTerrain.setModel(new DefaultComboBoxModel(hytalePlatform
-                ? org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.getAllHytaleTerrains()
+                ? org.pepsoft.worldpainter.hytale.HytaleTerrainHelper.getAllHytaleTerrainsWithCustomTerrains() // TP-129: include custom terrains
                 : Terrain.getConfiguredValues()));
         if (hytalePlatform) {
             comboBoxTerrain.setRenderer(new org.pepsoft.worldpainter.hytale.HytaleTerrainListCellRenderer(colourScheme));

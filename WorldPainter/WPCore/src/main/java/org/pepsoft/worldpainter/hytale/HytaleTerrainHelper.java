@@ -57,6 +57,37 @@ public final class HytaleTerrainHelper {
     }
 
     /**
+     * Get the Hytale terrain list <em>plus</em> the configured Custom Terrains, for
+     * platform-aware terrain combo boxes that must let the user pick a custom terrain
+     * (TP-129). The result is an {@code Object[]} holding every built-in
+     * {@link HytaleTerrain} (from {@link #getAllHytaleTerrains()}) followed by every
+     * configured custom {@link Terrain} slot, sorted by name.
+     *
+     * <p>Unlike {@link #deduplicateForHytaleUi(Terrain[])}, this preserves the full
+     * Hytale terrain pick list (so distinct Hytale terrains that share a Minecraft
+     * fallback remain individually selectable) while still surfacing custom terrains.
+     * Consumers must handle a mixed model: {@code HytaleTerrain} items paint via their
+     * layer index, {@code Terrain} (custom) items paint via the standard terrain path.
+     *
+     * @return Combined built-in Hytale terrains and configured custom terrains.
+     */
+    public static Object[] getAllHytaleTerrainsWithCustomTerrains() {
+        final HytaleTerrain[] builtIns = getAllHytaleTerrains();
+        final List<Terrain> customTerrains = new ArrayList<>();
+        for (final Terrain terrain : Terrain.VALUES) {
+            if (terrain.isCustom() && terrain.isConfigured()) {
+                customTerrains.add(terrain);
+            }
+        }
+        customTerrains.sort(Comparator.comparing(Terrain::getName));
+
+        final List<Object> result = new ArrayList<>(builtIns.length + customTerrains.size());
+        result.addAll(Arrays.asList(builtIns));
+        result.addAll(customTerrains);
+        return result.toArray();
+    }
+
+    /**
      * Deduplicate a Minecraft {@link Terrain} list for Hytale UI usage.
      * <p>
      * Multiple Minecraft terrains map to the same Hytale block (for example
