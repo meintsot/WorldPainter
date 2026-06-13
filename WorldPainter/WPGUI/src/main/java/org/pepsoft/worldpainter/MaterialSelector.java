@@ -110,10 +110,15 @@ public class MaterialSelector extends javax.swing.JPanel {
                     doLaterOnEventThread(() -> beepAndShowError(this, "The material (" + material.name + ") is not compatible with the current map format (" + platform.displayName + ").\nSelect a compatible material.", "Incompatible Material"));
                 }
                 updateMaterialName();
-            } else if (namespace.equals(primaryNamespace)) {
+            } else if (namespace.equals(primaryNamespace) && (allPrimaryNames != null) && allPrimaryNames.contains(simpleName)) {
                 radioButtonMinecraft.setSelected(true);
                 comboBoxMinecraftName.setSelectedItem(simpleName);
             } else {
+                // Modded / non-registry block (e.g. a Hytale block not in HytaleBlockRegistry): the primary combo box
+                // is non-editable and only lists known names, so selecting an unknown name there is silently rejected
+                // by Swing, leaving a registry block selected; that block then overwrites the modded one on save
+                // (TP-130). Route such blocks through the Custom radio, whose namespace and name combo boxes are
+                // editable and preserve arbitrary modded names across an editor reopen.
                 radioButtonCustom.setSelected(true);
                 comboBoxNamespace.setSelectedItem(namespace);
                 updateKnownCustomNames();
