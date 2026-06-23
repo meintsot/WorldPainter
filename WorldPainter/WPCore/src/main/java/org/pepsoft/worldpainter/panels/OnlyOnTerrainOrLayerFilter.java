@@ -92,12 +92,17 @@ public class OnlyOnTerrainOrLayerFilter extends TerrainOrLayerFilter {
         return strength;
     }
 
-    @SuppressWarnings("unchecked") // Guaranteed by code
     public static Filter create(Dimension dimension, Object item) {
+        return create(dimension, item, false);
+    }
+
+    @SuppressWarnings("unchecked") // Guaranteed by code
+    public static Filter create(Dimension dimension, Object item, boolean intersection) {
         if (item instanceof List) {
-            return new AnyOfFilter(((List<Object>) item).stream()
-                    .map(object -> OnlyOnTerrainOrLayerFilter.create(dimension, object))
-                    .collect(toList()));
+            final List<Filter> subFilters = ((List<Object>) item).stream()
+                    .map(object -> OnlyOnTerrainOrLayerFilter.create(dimension, object, intersection))
+                    .collect(toList());
+            return intersection ? new AllOfFilter(subFilters) : new AnyOfFilter(subFilters);
         } else {
             return new OnlyOnTerrainOrLayerFilter(dimension, item);
         }

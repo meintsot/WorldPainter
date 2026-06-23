@@ -182,6 +182,7 @@ public class BrushOptions extends javax.swing.JPanel implements Observer {
                     checkBoxFeather.isSelected(),
                     checkBoxReplace.isSelected(),
                     onlyOn,
+                    onlyOnIntersection,
                     checkBoxExceptOn.isSelected(),
                     exceptOn,
                     (checkBoxAboveSlope.isSelected() || checkBoxBelowSlope.isSelected()) ? (Integer) spinnerSlope.getValue() : -1,
@@ -202,6 +203,7 @@ public class BrushOptions extends javax.swing.JPanel implements Observer {
             checkBoxAboveSlope.setSelected(false);
             checkBoxBelowSlope.setSelected(false);
             onlyOn = exceptOn = null;
+            onlyOnIntersection = false;
         } else {
             checkBoxInSelection.setSelected(filter.inSelection);
             checkBoxOutsideSelection.setSelected(filter.outsideSelection);
@@ -219,6 +221,7 @@ public class BrushOptions extends javax.swing.JPanel implements Observer {
                 spinnerSlope.setValue(filter.degrees);
             }
             checkBoxReplace.setSelected(filter.onlyOn);
+            onlyOnIntersection = filter.isOnlyOnIntersection();
             checkBoxExceptOn.setSelected(filter.exceptOn);
             final App app = App.getInstance();
             if (filter.onlyOnFilter instanceof OnlyOnTerrainOrLayerFilter) {
@@ -618,6 +621,24 @@ public class BrushOptions extends javax.swing.JPanel implements Observer {
         }, false, onlyOn);
         final JPopupMenu popupMenu = new BetterJPopupMenu();
         Arrays.stream(menu.getMenuComponents()).forEach(popupMenu::add);
+        if ((onlyOn instanceof List) && (((List<?>) onlyOn).size() >= 2)) {
+            popupMenu.addSeparator();
+            final ButtonGroup matchGroup = new ButtonGroup();
+            final JRadioButtonMenuItem anyItem = new JRadioButtonMenuItem("Match any of these (union)", ! onlyOnIntersection);
+            anyItem.addActionListener(e -> {
+                onlyOnIntersection = false;
+                filterChanged();
+            });
+            matchGroup.add(anyItem);
+            popupMenu.add(anyItem);
+            final JRadioButtonMenuItem allItem = new JRadioButtonMenuItem("Match all of these (intersection)", onlyOnIntersection);
+            allItem.addActionListener(e -> {
+                onlyOnIntersection = true;
+                filterChanged();
+            });
+            matchGroup.add(allItem);
+            popupMenu.add(allItem);
+        }
         return popupMenu;
     }
 
@@ -1064,7 +1085,8 @@ public class BrushOptions extends javax.swing.JPanel implements Observer {
                     onlyOn,
                     exceptOn,
                     (checkBoxAboveSlope.isSelected() || checkBoxBelowSlope.isSelected()) ? (Integer) spinnerSlope.getValue() : -1,
-                    checkBoxAboveSlope.isSelected());
+                    checkBoxAboveSlope.isSelected(),
+                    onlyOnIntersection);
             Configuration.getInstance().addFilterPreset(preset);
         }
     }
@@ -1105,6 +1127,7 @@ public class BrushOptions extends javax.swing.JPanel implements Observer {
         // Resolve paint objects from the preset
         onlyOn = preset.resolveOnlyOn();
         exceptOn = preset.resolveExceptOn();
+        onlyOnIntersection = preset.isOnlyOnIntersection();
 
         checkBoxInSelection.setSelected(preset.isInSelection());
         checkBoxOutsideSelection.setSelected(preset.isOutsideSelection());
@@ -1491,6 +1514,7 @@ public class BrushOptions extends javax.swing.JPanel implements Observer {
     private ColourScheme colourScheme;
     private CustomBiomeManager customBiomeManager;
     private Object onlyOn, exceptOn;
+    private boolean onlyOnIntersection;
     private Listener listener;
     private boolean initialised;
     private ObservableBoolean selectionState;
